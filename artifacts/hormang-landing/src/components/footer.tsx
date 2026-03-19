@@ -71,7 +71,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground opacity-60">
-          <p>© {new Date().getFullYear()} Hormang. Все права защищены.</p>
+          <p>© 2026 Hormang. All rights reserved.</p>
           <div className="flex gap-6">
             <a href="#" className="hover:text-white transition-colors">Политика конфиденциальности</a>
             <a href="#" className="hover:text-white transition-colors">Условия использования</a>
