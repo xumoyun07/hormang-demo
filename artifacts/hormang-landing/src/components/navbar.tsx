@@ -28,15 +28,11 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-display font-bold text-xl shadow-lg group-hover:scale-105 transition-transform"
-              style={{ background: "var(--brand-gradient)" }}
-            >
-              H
-            </div>
-            <span className="font-display font-extrabold text-2xl tracking-tight text-gradient">
-              Hormang
-            </span>
+            <img
+              src="/hormang-logo.jpg"
+              alt="Hormang"
+              className="h-10 w-auto object-contain group-hover:scale-105 transition-transform"
+            />
           </Link>
 
           {/* Desktop Nav */}

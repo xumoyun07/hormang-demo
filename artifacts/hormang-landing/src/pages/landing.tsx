@@ -226,17 +226,19 @@ function HeroSection() {
           Describe your task — our AI finds the right local pro instantly.
         </motion.p>
 
-        {/* Search box with gradient border */}
+        {/* Search box with proper gradient border */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="p-[2px] rounded-2xl mb-3"
-          style={{ background: "var(--brand-gradient)" }}
+          className="rounded-2xl mb-3 p-3 text-left shadow-xl"
+          style={{
+            border: "2px solid transparent",
+            background: "linear-gradient(#ffffff, #ffffff) padding-box, var(--brand-gradient) border-box",
+          }}
         >
-          <div className="bg-card rounded-[14px] p-3 text-left">
-            {/* Input row */}
-            <div className="flex items-center gap-2">
+          {/* Input row */}
+          <div className="flex items-center gap-2">
               <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-white"
                 style={{ background: "var(--brand-gradient)" }}>
                 <Bot className="w-4 h-4" />
@@ -275,7 +277,6 @@ function HeroSection() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </div>
-          </div>
         </motion.div>
 
         {/* Example prompts with tri-color gradient border on hover */}
