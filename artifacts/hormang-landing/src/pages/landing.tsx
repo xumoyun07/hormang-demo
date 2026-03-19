@@ -1107,10 +1107,6 @@ function CTASection() {
           className="rounded-[2.5rem] p-10 md:p-16 text-center text-white shadow-2xl relative overflow-hidden"
           style={{ background: "var(--brand-gradient)" }}
         >
-          <div className="absolute inset-0 opacity-10" style={{
-            backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
-            backgroundSize: "28px 28px"
-          }} />
           <FloatingOrb size={300} x="70%" y="-30%" delay={0} opacity={0.12} />
           <FloatingOrb size={200} x="-5%" y="60%" delay={1.5} opacity={0.10} />
 
