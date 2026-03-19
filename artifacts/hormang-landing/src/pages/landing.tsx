@@ -183,15 +183,15 @@ function HeroSection() {
 
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden hero-bg">
-      {/* Tri-color background blobs */}
-      <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 opacity-20 blur-3xl pointer-events-none">
-        <div className="w-[550px] h-[550px] rounded-full" style={{ background: "var(--brand-green)" }} />
+      {/* Background blobs — green shades */}
+      <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 opacity-30 blur-3xl pointer-events-none">
+        <div className="w-[550px] h-[550px] rounded-full" style={{ background: "var(--g-light)" }} />
       </div>
-      <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 opacity-18 blur-3xl pointer-events-none">
-        <div className="w-[450px] h-[450px] rounded-full" style={{ background: "var(--brand-blue)" }} />
+      <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 opacity-20 blur-3xl pointer-events-none">
+        <div className="w-[450px] h-[450px] rounded-full" style={{ background: "var(--g-mid)" }} />
       </div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-10 blur-3xl pointer-events-none">
-        <div className="w-[350px] h-[350px] rounded-full" style={{ background: "var(--brand-red)" }} />
+      <div className="absolute top-1/3 left-1/4 opacity-12 blur-3xl pointer-events-none">
+        <div className="w-[300px] h-[300px] rounded-full" style={{ background: "var(--g-deep)" }} />
       </div>
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 w-full relative z-10 text-center py-20">
@@ -261,7 +261,7 @@ function HeroSection() {
 
             {/* Region selector row */}
             <div className="flex items-center gap-1.5 mt-2 pl-10 border-t border-border/50 pt-2">
-              <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: "var(--brand-red)" }} />
+              <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: "var(--g-bright)" }} />
               <select
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
@@ -307,15 +307,15 @@ function HeroSection() {
           className="flex items-center justify-center gap-5 text-xs font-semibold text-muted-foreground"
         >
           <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4" style={{ color: "var(--brand-green)" }} />
+            <CheckCircle2 className="w-4 h-4" style={{ color: "var(--g-forest)" }} />
             Verified Pros
           </div>
           <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4" style={{ color: "var(--brand-red)" }} />
+            <CheckCircle2 className="w-4 h-4" style={{ color: "var(--g-mid)" }} />
             No Hidden Fees
           </div>
           <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4" style={{ color: "var(--brand-blue)" }} />
+            <CheckCircle2 className="w-4 h-4" style={{ color: "var(--g-bright)" }} />
             Pay Card or Cash
           </div>
         </motion.div>

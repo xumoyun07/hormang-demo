@@ -37,7 +37,7 @@
   --color-sidebar: hsl(var(--sidebar));
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
   --color-sidebar-border: hsl(var(--border));
-  
+
   --font-sans: 'DM Sans', sans-serif;
   --font-display: 'Plus Jakarta Sans', sans-serif;
 
@@ -49,89 +49,144 @@
 }
 
 :root {
+  /* Neutral base — clean white with slight warm undertone */
   --background: 0 0% 100%;
-  --foreground: 160 25% 10%;
+  --foreground: 150 25% 10%;
 
-  --border: 145 18% 86%;
-  --input: 145 18% 86%;
-  --ring: 145 65% 38%;
+  --border: 145 20% 88%;
+  --input: 145 20% 88%;
+  --ring: 142 76% 36%;
 
   --card: 0 0% 100%;
-  --card-foreground: 160 25% 10%;
+  --card-foreground: 150 25% 10%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 160 25% 10%;
+  --popover-foreground: 150 25% 10%;
 
-  /* Primary: green (main) */
-  --primary: 145 65% 38%;
+  /* Primary — Fiverr-inspired bright emerald */
+  --primary: 142 76% 36%;
   --primary-foreground: 0 0% 100%;
 
-  /* Secondary: blue */
-  --secondary: 214 89% 52%;
+  /* Secondary — slightly lighter/warmer emerald for contrast */
+  --secondary: 145 60% 28%;
   --secondary-foreground: 0 0% 100%;
 
-  /* Accent: red accent */
-  --accent: 145 65% 94%;
-  --accent-foreground: 145 65% 28%;
+  --muted: 145 18% 96%;
+  --muted-foreground: 145 12% 46%;
 
-  --destructive: 0 84% 55%;
+  /* Accent — very light mint for subtle highlights */
+  --accent: 142 60% 93%;
+  --accent-foreground: 142 76% 28%;
+
+  --destructive: 0 84% 58%;
   --destructive-foreground: 0 0% 100%;
 
-  --muted: 145 15% 95%;
-  --muted-foreground: 150 12% 44%;
-
-  --sidebar: 145 15% 95%;
-  --sidebar-foreground: 160 25% 10%;
+  --sidebar: 145 18% 96%;
+  --sidebar-foreground: 150 25% 10%;
 
   --radius: 0.75rem;
 
-  /* Brand tri-color gradient: green 60%, red 10%, blue 30% */
-  --brand-green: hsl(145, 65%, 38%);
-  --brand-red:   hsl(0, 80%, 54%);
-  --brand-blue:  hsl(214, 89%, 52%);
-  --brand-gradient: linear-gradient(135deg, hsl(145,65%,38%) 0%, hsl(145,65%,42%) 52%, hsl(0,80%,54%) 64%, hsl(0,75%,58%) 72%, hsl(214,89%,52%) 82%, hsl(214,89%,56%) 100%);
-  --brand-gradient-45: linear-gradient(45deg, hsl(145,65%,38%) 0%, hsl(145,65%,42%) 50%, hsl(0,80%,54%) 63%, hsl(214,89%,52%) 80%, hsl(214,89%,56%) 100%);
-  --brand-gradient-text: linear-gradient(90deg, hsl(145,65%,34%) 0%, hsl(145,62%,38%) 48%, hsl(0,78%,50%) 63%, hsl(214,89%,48%) 82%, hsl(214,85%,52%) 100%);
+  /* ── Professional all-green gradient system ────────────────────────
+     Dark forest → Deep emerald → Fiverr green → Bright emerald
+     Uses only green family — no red/blue bleed                      */
+  --g-forest:  hsl(152, 70%, 18%);   /* very dark forest */
+  --g-deep:    hsl(148, 68%, 26%);   /* deep emerald */
+  --g-mid:     hsl(145, 72%, 34%);   /* mid emerald (primary) */
+  --g-bright:  hsl(142, 76%, 44%);   /* Fiverr bright */
+  --g-light:   hsl(140, 72%, 58%);   /* light emerald */
+
+  /* Main gradient — used on buttons, icons, highlight blocks */
+  --brand-gradient: linear-gradient(135deg,
+    hsl(152,70%,20%) 0%,
+    hsl(148,68%,28%) 30%,
+    hsl(145,72%,36%) 58%,
+    hsl(142,76%,46%) 80%,
+    hsl(140,72%,56%) 100%
+  );
+
+  /* 45° variant — for secondary elements */
+  --brand-gradient-45: linear-gradient(45deg,
+    hsl(152,70%,20%) 0%,
+    hsl(145,72%,34%) 50%,
+    hsl(140,72%,54%) 100%
+  );
+
+  /* Text gradient — dark forest to mid-emerald (readable on white) */
+  --brand-gradient-text: linear-gradient(90deg,
+    hsl(152,70%,20%) 0%,
+    hsl(148,68%,28%) 35%,
+    hsl(145,72%,36%) 65%,
+    hsl(142,76%,44%) 100%
+  );
+
+  /* Subtle section background — very light mint wash */
+  --brand-gradient-subtle: linear-gradient(135deg,
+    hsl(145,50%,96%) 0%,
+    hsl(142,55%,93%) 50%,
+    hsl(152,45%,95%) 100%
+  );
 }
 
 .dark {
-  --background: 160 25% 7%;
-  --foreground: 145 18% 94%;
+  --background: 152 30% 7%;
+  --foreground: 145 15% 93%;
 
-  --border: 150 22% 14%;
-  --input: 150 22% 14%;
-  --ring: 145 65% 48%;
+  --border: 148 22% 16%;
+  --input: 148 22% 16%;
+  --ring: 142 76% 46%;
 
-  --card: 160 25% 9%;
-  --card-foreground: 145 18% 94%;
+  --card: 152 28% 9%;
+  --card-foreground: 145 15% 93%;
 
-  --popover: 160 25% 9%;
-  --popover-foreground: 145 18% 94%;
+  --popover: 152 28% 9%;
+  --popover-foreground: 145 15% 93%;
 
-  --primary: 145 65% 48%;
+  --primary: 142 76% 46%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 214 89% 58%;
+  --secondary: 145 60% 36%;
   --secondary-foreground: 0 0% 100%;
 
-  --accent: 150 22% 14%;
-  --accent-foreground: 145 18% 94%;
-
-  --destructive: 0 72% 50%;
-  --destructive-foreground: 145 18% 94%;
-
-  --muted: 150 22% 14%;
+  --muted: 148 22% 16%;
   --muted-foreground: 145 14% 58%;
 
-  --sidebar: 160 25% 7%;
-  --sidebar-foreground: 145 18% 94%;
+  --accent: 148 22% 16%;
+  --accent-foreground: 145 15% 93%;
 
-  --brand-green: hsl(145, 65%, 48%);
-  --brand-red:   hsl(0, 80%, 60%);
-  --brand-blue:  hsl(214, 89%, 60%);
-  --brand-gradient: linear-gradient(135deg, hsl(145,65%,48%) 0%, hsl(145,65%,52%) 52%, hsl(0,80%,60%) 64%, hsl(0,75%,64%) 72%, hsl(214,89%,60%) 82%, hsl(214,89%,64%) 100%);
-  --brand-gradient-45: linear-gradient(45deg, hsl(145,65%,48%) 0%, hsl(145,65%,52%) 50%, hsl(0,80%,60%) 63%, hsl(214,89%,60%) 80%, hsl(214,89%,64%) 100%);
-  --brand-gradient-text: linear-gradient(90deg, hsl(145,65%,54%) 0%, hsl(145,62%,48%) 48%, hsl(0,78%,62%) 63%, hsl(214,89%,62%) 82%, hsl(214,85%,66%) 100%);
+  --destructive: 0 72% 50%;
+  --destructive-foreground: 145 15% 93%;
+
+  --sidebar: 152 30% 7%;
+  --sidebar-foreground: 145 15% 93%;
+
+  --g-forest:  hsl(152, 70%, 28%);
+  --g-deep:    hsl(148, 68%, 36%);
+  --g-mid:     hsl(145, 72%, 44%);
+  --g-bright:  hsl(142, 76%, 54%);
+  --g-light:   hsl(140, 72%, 64%);
+
+  --brand-gradient: linear-gradient(135deg,
+    hsl(152,70%,26%) 0%,
+    hsl(148,68%,34%) 30%,
+    hsl(145,72%,42%) 58%,
+    hsl(142,76%,52%) 80%,
+    hsl(140,72%,62%) 100%
+  );
+  --brand-gradient-45: linear-gradient(45deg,
+    hsl(152,70%,26%) 0%,
+    hsl(145,72%,42%) 50%,
+    hsl(140,72%,60%) 100%
+  );
+  --brand-gradient-text: linear-gradient(90deg,
+    hsl(140,72%,62%) 0%,
+    hsl(142,76%,54%) 50%,
+    hsl(145,72%,46%) 100%
+  );
+  --brand-gradient-subtle: linear-gradient(135deg,
+    hsl(152,28%,10%) 0%,
+    hsl(148,26%,13%) 50%,
+    hsl(145,28%,11%) 100%
+  );
 }
 
 @layer base {
@@ -148,7 +203,7 @@
 }
 
 @layer utilities {
-  /* Tri-color text gradient */
+  /* Green text gradient */
   .text-gradient {
     background: var(--brand-gradient-text);
     -webkit-background-clip: text;
@@ -156,33 +211,23 @@
     background-clip: text;
   }
 
-  /* Tri-color solid background */
+  /* Solid green gradient background */
   .bg-brand-gradient {
     background: var(--brand-gradient);
   }
 
-  .bg-brand-gradient-45 {
-    background: var(--brand-gradient-45);
+  /* Subtle section wash */
+  .bg-brand-subtle {
+    background: var(--brand-gradient-subtle);
   }
 
-  /* Tri-color gradient border using pseudo-element pattern */
-  .gradient-border {
-    position: relative;
-    background: var(--brand-gradient);
-    padding: 2px;
-    border-radius: inherit;
-  }
-  .gradient-border > * {
-    background: hsl(var(--card));
-    border-radius: calc(inherit - 2px);
-  }
-
-  /* Hero background subtle tri-gradient */
+  /* Hero radial glow background */
   .hero-bg {
-    background: radial-gradient(ellipse at 80% 0%, hsl(145,65%,90%) 0%, transparent 60%),
-                radial-gradient(ellipse at 0% 80%, hsl(214,89%,90%) 0%, transparent 55%),
-                radial-gradient(ellipse at 50% 50%, hsl(0,80%,95%) 0%, transparent 50%),
-                hsl(var(--background));
+    background:
+      radial-gradient(ellipse at 75% -10%, hsl(142,70%,88%) 0%, transparent 55%),
+      radial-gradient(ellipse at -5% 90%, hsl(148,65%,86%) 0%, transparent 55%),
+      radial-gradient(ellipse at 50% 50%, hsl(145,60%,94%) 0%, transparent 60%),
+      hsl(0 0% 100%);
   }
 
   .bg-glass {
