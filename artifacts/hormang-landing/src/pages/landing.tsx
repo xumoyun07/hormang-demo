@@ -992,113 +992,6 @@ function ProviderBenefitsSection() {
   );
 }
 
-/* ─── Pricing ────────────────────────────────────────────────── */
-function PricingSection() {
-  const plans = [
-    {
-      name: "Boshlang'ich",
-      desc: "Hormangni sinab ko'rish uchun",
-      price: "0 so'm",
-      period: "/oy",
-      features: ["Katalogda profil", "Oyiga 5 ta javob", "Asosiy qo'llab-quvvatlash"],
-      cta: "Boshlash",
-      highlight: false,
-    },
-    {
-      name: "Professional",
-      desc: "Doimiy daromad istagan ijrochilar uchun",
-      price: "99 000 so'm",
-      period: "/oy",
-      features: ["Qidiruv natijalarida ustuvorlik", "Cheksiz javoblar", "Profilida «Pro» nishoni", "Shaxsiy menejer"],
-      cta: "Profni tanlash",
-      highlight: true,
-    },
-    {
-      name: "Doiracha",
-      desc: "Xizmatingizni yuqoriga ko'taring",
-      price: "Sarflagan miqdoringizga",
-      period: "",
-      features: ["Yuqorida pin qilingan", "Rang bilan ajratilgan", "Yangi so'rovlar uchun SMS"],
-      cta: "Batafsil",
-      highlight: false,
-    },
-  ];
-
-  return (
-    <section id="pricing" className="py-28 bg-card overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-16"
-        >
-          <span className="inline-block text-xs font-bold uppercase tracking-widest text-primary mb-4 px-3 py-1.5 bg-primary/10 rounded-full">
-            Narxlar
-          </span>
-          <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">Oddiy va shaffof narxlar</h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Hormangda biznesingizni o'stirish uchun o'zingizga mos rejani tanlang.
-          </p>
-        </motion.div>
-
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto items-start">
-          {plans.map((plan, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.12, type: "spring", stiffness: 200, damping: 20 }}
-              whileHover={{ y: plan.highlight ? -8 : -4, scale: 1.02 }}
-              className={`rounded-3xl p-8 border-2 flex flex-col transition-shadow duration-300 ${
-                plan.highlight
-                  ? "shadow-2xl relative text-white md:-translate-y-4"
-                  : "bg-card border-border shadow-sm hover:shadow-xl"
-              }`}
-              style={plan.highlight ? { background: "var(--brand-gradient)", border: "2px solid transparent" } : {}}
-            >
-              {plan.highlight && (
-                <div className="absolute top-0 right-8 -translate-y-1/2 bg-white text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-wider text-gradient shadow-lg">
-                  Eng mashhur
-                </div>
-              )}
-              <h3 className={`text-2xl font-bold mb-1 ${plan.highlight ? "text-white" : "text-foreground"}`}>{plan.name}</h3>
-              <p className={`text-sm mb-6 ${plan.highlight ? "text-white/70" : "text-muted-foreground"}`}>{plan.desc}</p>
-              <div className={`mb-6 pb-6 border-b ${plan.highlight ? "border-white/20" : "border-border"}`}>
-                <span className={`text-4xl font-extrabold font-display ${plan.highlight ? "text-white" : "text-gradient"}`}>{plan.price}</span>
-                <span className={`text-sm font-medium ${plan.highlight ? "text-white/60" : "text-muted-foreground"}`}>{plan.period}</span>
-              </div>
-              <ul className="space-y-3.5 mb-8 flex-grow">
-                {plan.features.map((f, fi) => (
-                  <li key={fi} className={`flex items-center gap-3 text-sm font-medium ${plan.highlight ? "text-white" : ""}`}>
-                    <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${plan.highlight ? "text-white/80" : "text-primary"}`} />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              {plan.highlight ? (
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="w-full h-12 text-base font-bold rounded-xl bg-white hover:bg-white/92 transition-colors shadow-lg"
-                  style={{ color: "var(--g-forest)" }}
-                >
-                  {plan.cta}
-                </motion.button>
-              ) : (
-                <Button variant="outline" className="w-full h-12 text-base font-bold border-2">
-                  {plan.cta}
-                </Button>
-              )}
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 /* ─── CTA Section ────────────────────────────────────────────── */
 function CTASection() {
   return (
@@ -1157,7 +1050,6 @@ export default function LandingPage() {
         <BuyerBenefitsSection />
         <TestimonialsSection />
         <ProviderBenefitsSection />
-        <PricingSection />
         <CTASection />
       </main>
       <Footer />
