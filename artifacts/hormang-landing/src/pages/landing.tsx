@@ -135,8 +135,26 @@ function ResultsModal({ results, onClose }: { results: typeof DEMO_PROVIDERS.def
   );
 }
 
+const UZ_REGIONS = [
+  "Toshkent shahri",
+  "Toshkent viloyati",
+  "Andijon viloyati",
+  "Farg'ona viloyati",
+  "Namangan viloyati",
+  "Samarqand viloyati",
+  "Buxoro viloyati",
+  "Navoiy viloyati",
+  "Qashqadaryo viloyati",
+  "Surxondaryo viloyati",
+  "Jizzax viloyati",
+  "Sirdaryo viloyati",
+  "Xorazm viloyati",
+  "Qoraqalpog'iston Respublikasi",
+];
+
 function HeroSection() {
   const [query, setQuery] = useState("");
+  const [region, setRegion] = useState(UZ_REGIONS[0]);
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<typeof DEMO_PROVIDERS.default | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -164,22 +182,26 @@ function HeroSection() {
   }
 
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden">
-      {/* Background blobs */}
-      <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 opacity-25 blur-3xl pointer-events-none">
-        <div className="w-[600px] h-[600px] bg-primary rounded-full" />
+    <section className="relative min-h-screen flex items-center overflow-hidden hero-bg">
+      {/* Tri-color background blobs */}
+      <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 opacity-20 blur-3xl pointer-events-none">
+        <div className="w-[550px] h-[550px] rounded-full" style={{ background: "var(--brand-green)" }} />
       </div>
-      <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 opacity-20 blur-3xl pointer-events-none">
-        <div className="w-[500px] h-[500px] bg-secondary rounded-full" />
+      <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 opacity-18 blur-3xl pointer-events-none">
+        <div className="w-[450px] h-[450px] rounded-full" style={{ background: "var(--brand-blue)" }} />
+      </div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-10 blur-3xl pointer-events-none">
+        <div className="w-[350px] h-[350px] rounded-full" style={{ background: "var(--brand-red)" }} />
       </div>
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 w-full relative z-10 text-center py-20">
-        {/* Small badge */}
+        {/* Badge with tri-color gradient */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground font-semibold text-xs mb-5 border border-primary/15"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-semibold text-xs mb-5 text-white"
+          style={{ background: "var(--brand-gradient)" }}
         >
           <Bot className="w-3.5 h-3.5" />
           AI-powered local service matching
@@ -204,41 +226,59 @@ function HeroSection() {
           Describe your task — our AI finds the right local pro instantly.
         </motion.p>
 
-        {/* Compact search box */}
+        {/* Search box with gradient border */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="bg-card border-2 border-border rounded-2xl shadow-xl shadow-primary/8 p-3 mb-3 text-left focus-within:border-primary transition-colors duration-200"
+          className="p-[2px] rounded-2xl mb-3"
+          style={{ background: "var(--brand-gradient)" }}
         >
-          <div className="flex items-center gap-2">
-            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-              <Bot className="w-4 h-4" />
+          <div className="bg-card rounded-[14px] p-3 text-left">
+            {/* Input row */}
+            <div className="flex items-center gap-2">
+              <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-white"
+                style={{ background: "var(--brand-gradient)" }}>
+                <Bot className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="E.g. My kitchen sink is leaking..."
+                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none"
+              />
+              <Button
+                onClick={() => handleSearch()}
+                disabled={!query.trim() || isSearching}
+                className="h-9 px-5 rounded-xl font-bold text-sm gap-1.5 flex-shrink-0"
+              >
+                {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                {isSearching ? "Finding..." : "Find"}
+              </Button>
             </div>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="E.g. My kitchen sink is leaking..."
-              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none"
-            />
-            <Button
-              onClick={() => handleSearch()}
-              disabled={!query.trim() || isSearching}
-              className="h-9 px-5 rounded-xl font-bold text-sm gap-1.5 flex-shrink-0 shadow-md shadow-primary/20"
-            >
-              {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              {isSearching ? "Finding..." : "Find"}
-            </Button>
-          </div>
-          <div className="flex items-center gap-1.5 mt-2 pl-10">
-            <MapPin className="w-3 h-3 text-muted-foreground" />
-            <span className="text-[11px] text-muted-foreground">Tashkent, Uzbekistan</span>
+
+            {/* Region selector row */}
+            <div className="flex items-center gap-1.5 mt-2 pl-10 border-t border-border/50 pt-2">
+              <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: "var(--brand-red)" }} />
+              <select
+                value={region}
+                onChange={(e) => setRegion(e.target.value)}
+                className="flex-1 bg-transparent text-[11px] text-muted-foreground outline-none cursor-pointer hover:text-foreground transition-colors appearance-none"
+              >
+                {UZ_REGIONS.map((r) => (
+                  <option key={r} value={r}>{r}, O'zbekiston</option>
+                ))}
+              </select>
+              <svg className="w-3 h-3 text-muted-foreground flex-shrink-0 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         </motion.div>
 
-        {/* Example prompts */}
+        {/* Example prompts with tri-color gradient border on hover */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -250,14 +290,16 @@ function HeroSection() {
             <button
               key={p}
               onClick={() => handlePromptClick(p)}
-              className="text-[11px] px-2.5 py-1 rounded-full border border-border bg-card hover:bg-accent hover:border-primary/30 text-muted-foreground hover:text-accent-foreground transition-all duration-150"
+              className="text-[11px] px-2.5 py-1 rounded-full border border-border bg-card hover:text-white transition-all duration-200"
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--brand-gradient)"; (e.currentTarget as HTMLButtonElement).style.borderColor = "transparent"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = ""; (e.currentTarget as HTMLButtonElement).style.borderColor = ""; }}
             >
               {p}
             </button>
           ))}
         </motion.div>
 
-        {/* Trust row */}
+        {/* Trust row — each icon in a different brand color */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -265,15 +307,15 @@ function HeroSection() {
           className="flex items-center justify-center gap-5 text-xs font-semibold text-muted-foreground"
         >
           <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-primary" />
+            <CheckCircle2 className="w-4 h-4" style={{ color: "var(--brand-green)" }} />
             Verified Pros
           </div>
           <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-primary" />
+            <CheckCircle2 className="w-4 h-4" style={{ color: "var(--brand-red)" }} />
             No Hidden Fees
           </div>
           <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-primary" />
+            <CheckCircle2 className="w-4 h-4" style={{ color: "var(--brand-blue)" }} />
             Pay Card or Cash
           </div>
         </motion.div>
@@ -357,24 +399,24 @@ function ProblemSolutionSection() {
 
 function StatsSection() {
   return (
-    <section className="py-16 bg-foreground text-background">
+    <section className="py-16" style={{ background: "var(--brand-gradient)" }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 divide-x divide-white/10 text-center">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 divide-x divide-white/20 text-center">
           <div className="px-4">
-            <p className="text-4xl md:text-5xl font-display font-extrabold text-secondary mb-2">5,000+</p>
-            <p className="text-sm md:text-base font-medium opacity-80">Registered Providers</p>
+            <p className="text-4xl md:text-5xl font-display font-extrabold text-white mb-2">5,000+</p>
+            <p className="text-sm md:text-base font-medium text-white/80">Registered Providers</p>
           </div>
           <div className="px-4">
-            <p className="text-4xl md:text-5xl font-display font-extrabold text-secondary mb-2">20+</p>
-            <p className="text-sm md:text-base font-medium opacity-80">Service Categories</p>
+            <p className="text-4xl md:text-5xl font-display font-extrabold text-white mb-2">20+</p>
+            <p className="text-sm md:text-base font-medium text-white/80">Service Categories</p>
           </div>
           <div className="px-4">
-            <p className="text-4xl md:text-5xl font-display font-extrabold text-secondary mb-2">50,000+</p>
-            <p className="text-sm md:text-base font-medium opacity-80">Tasks Completed</p>
+            <p className="text-4xl md:text-5xl font-display font-extrabold text-white mb-2">50,000+</p>
+            <p className="text-sm md:text-base font-medium text-white/80">Tasks Completed</p>
           </div>
           <div className="px-4">
-            <p className="text-4xl md:text-5xl font-display font-extrabold text-secondary mb-2">4.8<span className="text-3xl">★</span></p>
-            <p className="text-sm md:text-base font-medium opacity-80">Average Rating</p>
+            <p className="text-4xl md:text-5xl font-display font-extrabold text-white mb-2">4.8<span className="text-3xl">★</span></p>
+            <p className="text-sm md:text-base font-medium text-white/80">Average Rating</p>
           </div>
         </div>
       </div>
@@ -398,7 +440,9 @@ function CategoriesSection() {
     <section id="categories" className="py-24 bg-muted/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">Popular Services</h2>
+          <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
+            <span className="text-gradient">Popular</span> Services
+          </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Find the right professional for any task in just a few clicks.
           </p>
@@ -412,9 +456,25 @@ function CategoriesSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-card p-6 rounded-2xl shadow-sm border border-border/50 hover:shadow-xl hover:-translate-y-1 hover:border-primary/20 transition-all duration-300 cursor-pointer group"
+              className="group relative bg-card p-6 rounded-2xl shadow-sm border border-transparent hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
+              style={{ borderColor: "transparent" }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLDivElement).style.border = "2px solid transparent";
+                (e.currentTarget as HTMLDivElement).style.backgroundImage = "var(--brand-gradient), linear-gradient(white, white)";
+                (e.currentTarget as HTMLDivElement).style.backgroundOrigin = "border-box";
+                (e.currentTarget as HTMLDivElement).style.backgroundClip = "padding-box, border-box";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLDivElement).style.border = "";
+                (e.currentTarget as HTMLDivElement).style.backgroundImage = "";
+                (e.currentTarget as HTMLDivElement).style.backgroundOrigin = "";
+                (e.currentTarget as HTMLDivElement).style.backgroundClip = "";
+              }}
             >
-              <div className={`w-14 h-14 rounded-xl ${cat.color} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform`}>
+              <div
+                className="w-14 h-14 rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform text-white"
+                style={{ background: "var(--brand-gradient)" }}
+              >
                 <cat.icon className="w-7 h-7" />
               </div>
               <h3 className="font-bold text-lg mb-2">{cat.name}</h3>
@@ -463,7 +523,9 @@ function HowItWorksSection() {
     <section id="how-it-works" className="py-24 bg-card">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">From Request to Done — in Minutes</h2>
+          <h2 className="text-3xl md:text-5xl font-display font-bold mb-4">
+            From Request to Done — <span className="text-gradient">in Minutes</span>
+          </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Simple, fast, and designed for real people.
           </p>
@@ -482,7 +544,10 @@ function HowItWorksSection() {
               <div className="absolute -top-5 -left-5 text-6xl font-display font-extrabold text-border/40 select-none">
                 {step.num}
               </div>
-              <div className="w-14 h-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center mb-6 relative z-10 shadow-lg shadow-primary/20">
+              <div
+                className="w-14 h-14 rounded-2xl text-white flex items-center justify-center mb-6 relative z-10 shadow-lg"
+                style={{ background: "var(--brand-gradient)" }}
+              >
                 <step.icon className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold mb-3">{step.title}</h3>
@@ -635,13 +700,13 @@ function TestimonialsSection() {
 
 function ProviderBenefitsSection() {
   return (
-    <section id="provider-benefits" className="py-24 bg-foreground text-background relative overflow-hidden">
+    <section id="provider-benefits" className="py-24 relative overflow-hidden text-white" style={{ background: "var(--brand-gradient)" }}>
       <div className="absolute inset-0 opacity-10 bg-[url('https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1920&q=80')] bg-cover bg-center mix-blend-luminosity"></div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           <div>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white font-semibold text-sm mb-6 border border-white/20">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/15 text-white font-semibold text-sm mb-6 border border-white/25">
               <TrendingUp className="w-4 h-4" />
               For Pros & Businesses
             </div>
@@ -657,15 +722,15 @@ function ProviderBenefitsSection() {
                 "Get paid instantly — card or cash"
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-4">
-                  <div className="w-6 h-6 rounded-full bg-secondary shrink-0 flex items-center justify-center text-white mt-1">✓</div>
+                  <div className="w-6 h-6 rounded-full bg-white/20 shrink-0 flex items-center justify-center text-white mt-1">✓</div>
                   <span className="text-white/90 font-medium">{item}</span>
                 </li>
               ))}
             </ul>
             
-            <Button size="lg" className="w-full sm:w-auto bg-secondary text-white hover:bg-secondary/90 shadow-[0_0_30px_-5px_hsl(var(--secondary))] text-lg h-14 px-8">
+            <button className="bg-white font-bold text-lg h-14 px-8 rounded-xl text-gradient hover:bg-white/90 transition-colors shadow-xl">
               Become a Provider
-            </Button>
+            </button>
           </div>
           
           <motion.div
@@ -714,23 +779,26 @@ function PricingSection() {
           </div>
           
           {/* Pro */}
-          <div className="bg-foreground text-background rounded-3xl p-8 shadow-2xl relative flex flex-col transform md:-translate-y-4 border-2 border-foreground">
-            <div className="absolute top-0 right-8 -translate-y-1/2 bg-secondary text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
+          <div
+            className="rounded-3xl p-8 shadow-2xl relative flex flex-col transform md:-translate-y-4 text-white"
+            style={{ background: "var(--brand-gradient)" }}
+          >
+            <div className="absolute top-0 right-8 -translate-y-1/2 bg-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider text-gradient">
               Most Popular
             </div>
-            <h3 className="text-2xl font-bold mb-2">Professional</h3>
-            <p className="text-muted-foreground opacity-80 mb-6">For serious providers who want steady income</p>
-            <div className="mb-6 pb-6 border-b border-white/10">
-              <span className="text-5xl font-extrabold">99,000 sum</span>
-              <span className="text-muted-foreground opacity-70 font-medium">/mo</span>
+            <h3 className="text-2xl font-bold mb-2 text-white">Professional</h3>
+            <p className="text-white/70 mb-6">For serious providers who want steady income</p>
+            <div className="mb-6 pb-6 border-b border-white/20">
+              <span className="text-5xl font-extrabold text-white">99,000 sum</span>
+              <span className="text-white/60 font-medium">/mo</span>
             </div>
             <ul className="space-y-4 mb-8 flex-grow">
-              <li className="flex items-center gap-3 text-sm font-medium"><CheckCircle2 className="w-5 h-5 text-secondary" /> Priority in search results</li>
-              <li className="flex items-center gap-3 text-sm font-medium"><CheckCircle2 className="w-5 h-5 text-secondary" /> Unlimited responses</li>
-              <li className="flex items-center gap-3 text-sm font-medium"><CheckCircle2 className="w-5 h-5 text-secondary" /> "Pro" badge on profile</li>
-              <li className="flex items-center gap-3 text-sm font-medium"><CheckCircle2 className="w-5 h-5 text-secondary" /> Personal manager</li>
+              <li className="flex items-center gap-3 text-sm font-medium text-white"><CheckCircle2 className="w-5 h-5 text-white/80 flex-shrink-0" /> Priority in search results</li>
+              <li className="flex items-center gap-3 text-sm font-medium text-white"><CheckCircle2 className="w-5 h-5 text-white/80 flex-shrink-0" /> Unlimited responses</li>
+              <li className="flex items-center gap-3 text-sm font-medium text-white"><CheckCircle2 className="w-5 h-5 text-white/80 flex-shrink-0" /> "Pro" badge on profile</li>
+              <li className="flex items-center gap-3 text-sm font-medium text-white"><CheckCircle2 className="w-5 h-5 text-white/80 flex-shrink-0" /> Personal manager</li>
             </ul>
-            <Button className="w-full bg-secondary hover:bg-secondary/90 text-white h-12 text-base font-bold">Choose Pro</Button>
+            <button className="w-full h-12 text-base font-bold rounded-xl bg-white text-gradient hover:bg-white/90 transition-colors">Choose Pro</button>
           </div>
 
           {/* Promotion */}
@@ -758,7 +826,7 @@ function CTASection() {
     <section className="py-24 relative overflow-hidden bg-card">
       <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-accent opacity-5"></div>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="bg-gradient-to-r from-primary to-indigo-600 rounded-[2.5rem] p-8 md:p-16 text-center text-white shadow-2xl">
+        <div className="rounded-[2.5rem] p-8 md:p-16 text-center text-white shadow-2xl" style={{ background: "var(--brand-gradient)" }}>
           <h2 className="text-3xl md:text-5xl font-display font-bold mb-6">Ready to get things done?</h2>
           <p className="text-lg md:text-xl opacity-90 mb-10 max-w-2xl mx-auto">
             Download the Hormang app right now and find a verified professional in minutes.
