@@ -948,10 +948,10 @@ function ProviderBenefitsSection() {
             <motion.button
               whileHover={{ scale: 1.04, y: -2 }}
               whileTap={{ scale: 0.97 }}
-              className="bg-white font-bold text-lg h-14 px-8 rounded-xl text-gradient hover:bg-white/92 transition-colors shadow-2xl gap-2 inline-flex items-center"
+              className="bg-white font-bold text-lg h-14 px-8 rounded-xl hover:bg-white/92 transition-colors shadow-2xl gap-2 inline-flex items-center"
             >
-              Ijrochi bo'lish
-              <ArrowRight className="w-5 h-5" />
+              <span className="text-gradient">Ijrochi bo'lish</span>
+              <ArrowRight className="w-5 h-5" style={{ color: "var(--g-mid)" }} />
             </motion.button>
           </motion.div>
 
