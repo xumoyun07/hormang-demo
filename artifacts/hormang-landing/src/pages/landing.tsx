@@ -50,121 +50,191 @@ function getProviderKey(query: string) {
   return "default";
 }
 
+function ResultsModal({ results, onClose }: { results: typeof DEMO_PROVIDERS.default; onClose: () => void }) {
+  return (
+    <motion.div
+      key="modal-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className="relative bg-card rounded-3xl shadow-2xl border border-border w-full max-w-2xl max-h-[85vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal header */}
+        <div className="sticky top-0 bg-card border-b border-border px-6 py-4 rounded-t-3xl flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="font-bold text-base text-foreground">{results.length} providers matched near you</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <XCircle className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Provider cards */}
+        <div className="p-6 space-y-3">
+          {results.map((p, i) => (
+            <motion.div
+              key={p.name}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.08 }}
+              className="flex items-center gap-4 bg-background border border-border rounded-2xl p-4 hover:border-primary/40 hover:shadow-md transition-all duration-200 cursor-pointer group"
+            >
+              <div className={`w-12 h-12 rounded-xl ${p.color} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
+                {p.initials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <p className="font-bold text-sm text-foreground">{p.name}</p>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${p.tag === "Top Rated" ? "bg-yellow-100 text-yellow-700" : p.tag === "Fast Reply" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                    {p.tag}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">{p.category}</p>
+                <div className="flex items-center gap-1 mt-1">
+                  <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                  <span className="text-xs font-semibold text-foreground">{p.rating}</span>
+                  <span className="text-xs text-muted-foreground">({p.reviews} reviews)</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                <span className="text-xs font-bold text-primary">{p.price}</span>
+                <Button size="sm" className="h-8 px-4 text-xs rounded-xl font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                  Contact <ArrowRight className="w-3 h-3 ml-1" />
+                </Button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Modal footer */}
+        <div className="sticky bottom-0 bg-card border-t border-border px-6 py-4 rounded-b-3xl">
+          <p className="text-center text-xs text-muted-foreground mb-3">
+            Register to contact providers, see full profiles, and book instantly.
+          </p>
+          <div className="flex gap-3">
+            <Button className="flex-1 font-bold shadow-lg shadow-primary/20">Sign Up Free</Button>
+            <Button variant="outline" className="flex-1 font-bold">Become a Provider</Button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function HeroSection() {
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<typeof DEMO_PROVIDERS.default | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showModal, setShowModal] = useState(false);
 
   function handleSearch(q = query) {
     if (!q.trim()) return;
-    setResults(null);
     setIsSearching(true);
     setTimeout(() => {
       setIsSearching(false);
       setResults(DEMO_PROVIDERS[getProviderKey(q)] ?? DEMO_PROVIDERS.default);
-    }, 1500);
+      setShowModal(true);
+    }, 1400);
   }
 
   function handlePromptClick(prompt: string) {
     setQuery(prompt);
-    setResults(null);
     setTimeout(() => handleSearch(prompt), 50);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleSearch();
     }
   }
 
   return (
-    <section className="relative pt-28 pb-20 md:pt-40 md:pb-28 overflow-hidden">
+    <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Background blobs */}
-      <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 opacity-30 mix-blend-multiply blur-3xl pointer-events-none">
-        <div className="w-[700px] h-[700px] bg-primary rounded-full" />
+      <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 opacity-25 blur-3xl pointer-events-none">
+        <div className="w-[600px] h-[600px] bg-primary rounded-full" />
       </div>
-      <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 opacity-20 mix-blend-multiply blur-3xl pointer-events-none">
+      <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 opacity-20 blur-3xl pointer-events-none">
         <div className="w-[500px] h-[500px] bg-secondary rounded-full" />
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-        {/* Badge */}
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 w-full relative z-10 text-center py-20">
+        {/* Small badge */}
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent text-accent-foreground font-semibold text-sm mb-8 border border-primary/10"
+          transition={{ duration: 0.4 }}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent text-accent-foreground font-semibold text-xs mb-5 border border-primary/15"
         >
-          <Bot className="w-4 h-4" />
-          AI-powered matching — describe your problem, we find the expert
+          <Bot className="w-3.5 h-3.5" />
+          AI-powered local service matching
         </motion.div>
 
-        {/* Headline */}
+        {/* Compact headline */}
         <motion.h1
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="text-5xl sm:text-6xl lg:text-7xl font-display font-extrabold text-foreground leading-[1.1] mb-6"
+          transition={{ duration: 0.5, delay: 0.08 }}
+          className="text-3xl sm:text-4xl font-display font-extrabold text-foreground leading-tight mb-2"
         >
-          What do you<br />
-          <span className="text-gradient">need help with?</span>
+          What do you <span className="text-gradient">need help with?</span>
         </motion.h1>
 
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed"
+          transition={{ duration: 0.4, delay: 0.15 }}
+          className="text-sm text-muted-foreground mb-6"
         >
-          Describe your task in plain words — our AI instantly finds verified local professionals ready to help you today.
+          Describe your task — our AI finds the right local pro instantly.
         </motion.p>
 
-        {/* AI Search Box */}
+        {/* Compact search box */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="relative bg-card border-2 border-border rounded-3xl shadow-2xl shadow-primary/10 p-4 mb-4 text-left focus-within:border-primary transition-colors duration-300"
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="bg-card border-2 border-border rounded-2xl shadow-xl shadow-primary/8 p-3 mb-3 text-left focus-within:border-primary transition-colors duration-200"
         >
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0 mt-1 w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-              <Bot className="w-5 h-5" />
+          <div className="flex items-center gap-2">
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+              <Bot className="w-4 h-4" />
             </div>
-            <textarea
-              ref={textareaRef}
+            <input
+              type="text"
               value={query}
-              onChange={(e) => { setQuery(e.target.value); setResults(null); }}
+              onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={`E.g. "My kitchen sink is leaking and I need it fixed today" or "Need a babysitter for two kids this Saturday afternoon"...`}
-              rows={3}
-              className="flex-1 resize-none bg-transparent text-base text-foreground placeholder:text-muted-foreground/60 outline-none leading-relaxed"
+              placeholder="E.g. My kitchen sink is leaking..."
+              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none"
             />
-          </div>
-
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <MapPin className="w-3.5 h-3.5" />
-              <span>Tashkent, Uzbekistan</span>
-            </div>
             <Button
               onClick={() => handleSearch()}
               disabled={!query.trim() || isSearching}
-              className="h-10 px-6 rounded-xl font-bold gap-2 shadow-lg shadow-primary/25"
+              className="h-9 px-5 rounded-xl font-bold text-sm gap-1.5 flex-shrink-0 shadow-md shadow-primary/20"
             >
-              {isSearching ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Searching...
-                </>
-              ) : (
-                <>
-                  <Search className="w-4 h-4" />
-                  Find Providers
-                </>
-              )}
+              {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              {isSearching ? "Finding..." : "Find"}
             </Button>
+          </div>
+          <div className="flex items-center gap-1.5 mt-2 pl-10">
+            <MapPin className="w-3 h-3 text-muted-foreground" />
+            <span className="text-[11px] text-muted-foreground">Tashkent, Uzbekistan</span>
           </div>
         </motion.div>
 
@@ -172,126 +242,49 @@ function HeroSection() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="flex flex-wrap justify-center gap-2 mb-10"
+          transition={{ delay: 0.35 }}
+          className="flex flex-wrap justify-center gap-1.5 mb-8"
         >
-          <span className="text-xs text-muted-foreground self-center mr-1">Try:</span>
+          <span className="text-[11px] text-muted-foreground self-center">Try:</span>
           {EXAMPLE_PROMPTS.map((p) => (
             <button
               key={p}
               onClick={() => handlePromptClick(p)}
-              className="text-xs px-3 py-1.5 rounded-full border border-border bg-card hover:bg-accent hover:border-primary/30 text-muted-foreground hover:text-accent-foreground transition-all duration-200"
+              className="text-[11px] px-2.5 py-1 rounded-full border border-border bg-card hover:bg-accent hover:border-primary/30 text-muted-foreground hover:text-accent-foreground transition-all duration-150"
             >
               {p}
             </button>
           ))}
         </motion.div>
 
-        {/* AI Results */}
-        <AnimatePresence>
-          {isSearching && (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="py-8 flex flex-col items-center gap-3"
-            >
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Loader2 className="w-6 h-6 text-primary animate-spin" />
-              </div>
-              <p className="text-sm text-muted-foreground">Our AI is finding the best providers for you...</p>
-            </motion.div>
-          )}
-
-          {results && !isSearching && (
-            <motion.div
-              key="results"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="text-left"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <p className="text-sm font-semibold text-foreground">{results.length} providers matched near you</p>
-                </div>
-                <button
-                  onClick={() => { setResults(null); setQuery(""); }}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Clear
-                </button>
-              </div>
-              <div className="grid sm:grid-cols-3 gap-4">
-                {results.map((p, i) => (
-                  <motion.div
-                    key={p.name}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    className="bg-card border border-border rounded-2xl p-4 hover:shadow-lg hover:border-primary/20 transition-all duration-300 cursor-pointer group"
-                  >
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className={`w-11 h-11 rounded-xl ${p.color} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
-                        {p.initials}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-sm text-foreground truncate">{p.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{p.category}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 mb-2">
-                      <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
-                      <span className="text-xs font-bold text-foreground">{p.rating}</span>
-                      <span className="text-xs text-muted-foreground">({p.reviews} reviews)</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-primary">{p.price}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${p.tag === "Top Rated" ? "bg-yellow-100 text-yellow-700" : p.tag === "Fast Reply" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                        {p.tag}
-                      </span>
-                    </div>
-                    <Button size="sm" className="w-full mt-3 h-8 text-xs rounded-xl font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                      Contact <ArrowRight className="w-3 h-3 ml-1" />
-                    </Button>
-                  </motion.div>
-                ))}
-              </div>
-              <p className="text-center text-xs text-muted-foreground mt-4">
-                Register to contact providers, see full profiles, and book instantly.
-              </p>
-              <div className="flex justify-center gap-3 mt-3">
-                <Button size="sm" className="px-6 font-bold shadow-lg shadow-primary/20">Sign Up Free</Button>
-                <Button size="sm" variant="outline" className="px-6 font-bold">Become a Provider</Button>
-              </div>
-            </motion.div>
-          )}
-
-          {!results && !isSearching && (
-            <motion.div
-              key="trust"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center justify-center gap-6 text-sm font-semibold text-muted-foreground"
-            >
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-secondary" />
-                Verified Pros
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-secondary" />
-                No Hidden Fees
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-secondary" />
-                Pay Card or Cash
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Trust row */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.45 }}
+          className="flex items-center justify-center gap-5 text-xs font-semibold text-muted-foreground"
+        >
+          <div className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-primary" />
+            Verified Pros
+          </div>
+          <div className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-primary" />
+            No Hidden Fees
+          </div>
+          <div className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-primary" />
+            Pay Card or Cash
+          </div>
+        </motion.div>
       </div>
+
+      {/* Results Modal */}
+      <AnimatePresence>
+        {showModal && results && (
+          <ResultsModal results={results} onClose={() => setShowModal(false)} />
+        )}
+      </AnimatePresence>
     </section>
   );
 }
