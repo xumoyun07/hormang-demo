@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { AppStoreBadges } from "@/components/ui/app-store-badges";
@@ -8,47 +8,274 @@ import {
   Sparkles, Wrench, Baby, ChefHat, Truck, 
   Scissors, CarFront, GraduationCap, ShieldCheck, 
   MessageSquare, CreditCard, Bot, Zap, CheckCircle2, TrendingUp,
-  XCircle, Search, Users, Star, Edit3
+  XCircle, Search, Users, Star, Edit3, ArrowRight, Loader2, MapPin
 } from "lucide-react";
 
+const DEMO_PROVIDERS: Record<string, { name: string; category: string; rating: number; reviews: number; price: string; tag: string; color: string; initials: string }[]> = {
+  default: [
+    { name: "Alisher T.", category: "Plumbing & Repairs", rating: 4.9, reviews: 128, price: "from 50,000 sum", tag: "Top Rated", color: "bg-blue-500", initials: "AT" },
+    { name: "Dilnoza M.", category: "Home Cleaning", rating: 4.8, reviews: 94, price: "from 80,000 sum", tag: "Fast Reply", color: "bg-purple-500", initials: "DM" },
+    { name: "Rustam K.", category: "Electrical Work", rating: 5.0, reviews: 57, price: "from 60,000 sum", tag: "Verified", color: "bg-green-500", initials: "RK" },
+  ],
+  clean: [
+    { name: "Gulnora S.", category: "Home Cleaning", rating: 4.9, reviews: 211, price: "from 70,000 sum", tag: "Top Rated", color: "bg-pink-500", initials: "GS" },
+    { name: "Barno U.", category: "Deep Cleaning", rating: 4.8, reviews: 86, price: "from 90,000 sum", tag: "Fast Reply", color: "bg-rose-500", initials: "BU" },
+    { name: "Cleaning Pro", category: "Office Cleaning", rating: 4.7, reviews: 142, price: "from 100,000 sum", tag: "Verified", color: "bg-indigo-500", initials: "CP" },
+  ],
+  plumb: [
+    { name: "Alisher T.", category: "Plumbing", rating: 4.9, reviews: 128, price: "from 50,000 sum", tag: "Top Rated", color: "bg-blue-500", initials: "AT" },
+    { name: "Jasur B.", category: "Pipe Repair", rating: 4.8, reviews: 73, price: "from 45,000 sum", tag: "Fast Reply", color: "bg-cyan-500", initials: "JB" },
+    { name: "Firdavs N.", category: "Plumbing & Heating", rating: 4.9, reviews: 99, price: "from 55,000 sum", tag: "Verified", color: "bg-teal-500", initials: "FN" },
+  ],
+  baby: [
+    { name: "Malika R.", category: "Nanny / Babysitter", rating: 5.0, reviews: 63, price: "from 30,000 sum/hr", tag: "Top Rated", color: "bg-amber-500", initials: "MR" },
+    { name: "Shahlo D.", category: "Childcare", rating: 4.9, reviews: 41, price: "from 25,000 sum/hr", tag: "Fast Reply", color: "bg-yellow-500", initials: "SD" },
+    { name: "Nargiza A.", category: "Nanny + Tutor", rating: 4.8, reviews: 88, price: "from 35,000 sum/hr", tag: "Verified", color: "bg-orange-500", initials: "NA" },
+  ],
+};
+
+const EXAMPLE_PROMPTS = [
+  "My kitchen sink is leaking",
+  "Need babysitter this Saturday",
+  "Apartment deep cleaning",
+  "Electrical socket not working",
+  "Cook for a dinner party",
+];
+
+function getProviderKey(query: string) {
+  const q = query.toLowerCase();
+  if (q.includes("clean") || q.includes("уборк")) return "clean";
+  if (q.includes("plumb") || q.includes("sink") || q.includes("leak") || q.includes("pipe") || q.includes("труб") || q.includes("кран")) return "plumb";
+  if (q.includes("baby") || q.includes("nanny") || q.includes("child") || q.includes("няня") || q.includes("ребен")) return "baby";
+  return "default";
+}
+
 function HeroSection() {
+  const [query, setQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [results, setResults] = useState<typeof DEMO_PROVIDERS.default | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  function handleSearch(q = query) {
+    if (!q.trim()) return;
+    setResults(null);
+    setIsSearching(true);
+    setTimeout(() => {
+      setIsSearching(false);
+      setResults(DEMO_PROVIDERS[getProviderKey(q)] ?? DEMO_PROVIDERS.default);
+    }, 1500);
+  }
+
+  function handlePromptClick(prompt: string) {
+    setQuery(prompt);
+    setResults(null);
+    setTimeout(() => handleSearch(prompt), 50);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSearch();
+    }
+  }
+
   return (
-    <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
-      {/* Abstract Background Elements */}
-      <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 opacity-40 mix-blend-multiply blur-3xl pointer-events-none">
-        <div className="w-[600px] h-[600px] bg-primary rounded-full" />
+    <section className="relative pt-28 pb-20 md:pt-40 md:pb-28 overflow-hidden">
+      {/* Background blobs */}
+      <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 opacity-30 mix-blend-multiply blur-3xl pointer-events-none">
+        <div className="w-[700px] h-[700px] bg-primary rounded-full" />
       </div>
-      <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 opacity-30 mix-blend-multiply blur-3xl pointer-events-none">
+      <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 opacity-20 mix-blend-multiply blur-3xl pointer-events-none">
         <div className="w-[500px] h-[500px] bg-secondary rounded-full" />
       </div>
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center lg:text-left"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent text-accent-foreground font-semibold text-sm mb-6 border border-primary/10">
-              <Zap className="w-4 h-4" fill="currentColor" />
-              The #1 Platform for Local Services
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+        {/* Badge */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent text-accent-foreground font-semibold text-sm mb-8 border border-primary/10"
+        >
+          <Bot className="w-4 h-4" />
+          AI-powered matching — describe your problem, we find the expert
+        </motion.div>
+
+        {/* Headline */}
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="text-5xl sm:text-6xl lg:text-7xl font-display font-extrabold text-foreground leading-[1.1] mb-6"
+        >
+          What do you<br />
+          <span className="text-gradient">need help with?</span>
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed"
+        >
+          Describe your task in plain words — our AI instantly finds verified local professionals ready to help you today.
+        </motion.p>
+
+        {/* AI Search Box */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="relative bg-card border-2 border-border rounded-3xl shadow-2xl shadow-primary/10 p-4 mb-4 text-left focus-within:border-primary transition-colors duration-300"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-1 w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <Bot className="w-5 h-5" />
             </div>
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-display font-extrabold text-foreground leading-[1.1] mb-6">
-              Find Trusted <br/>
-              <span className="text-gradient">Local Services</span><br/>
-              in One Tap.
-            </h1>
-            <p className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-              Hormang connects you with verified local professionals for everyday tasks — from home repairs to babysitting, cooking, and more.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-10">
-              <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-lg font-bold shadow-lg shadow-primary/25">Find a Service</Button>
-              <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 text-lg font-bold border-2">Become a Provider</Button>
+            <textarea
+              ref={textareaRef}
+              value={query}
+              onChange={(e) => { setQuery(e.target.value); setResults(null); }}
+              onKeyDown={handleKeyDown}
+              placeholder={`E.g. "My kitchen sink is leaking and I need it fixed today" or "Need a babysitter for two kids this Saturday afternoon"...`}
+              rows={3}
+              className="flex-1 resize-none bg-transparent text-base text-foreground placeholder:text-muted-foreground/60 outline-none leading-relaxed"
+            />
+          </div>
+
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <MapPin className="w-3.5 h-3.5" />
+              <span>Tashkent, Uzbekistan</span>
             </div>
-            
-            <div className="flex items-center justify-center lg:justify-start gap-6 text-sm font-semibold text-muted-foreground">
+            <Button
+              onClick={() => handleSearch()}
+              disabled={!query.trim() || isSearching}
+              className="h-10 px-6 rounded-xl font-bold gap-2 shadow-lg shadow-primary/25"
+            >
+              {isSearching ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Searching...
+                </>
+              ) : (
+                <>
+                  <Search className="w-4 h-4" />
+                  Find Providers
+                </>
+              )}
+            </Button>
+          </div>
+        </motion.div>
+
+        {/* Example prompts */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="flex flex-wrap justify-center gap-2 mb-10"
+        >
+          <span className="text-xs text-muted-foreground self-center mr-1">Try:</span>
+          {EXAMPLE_PROMPTS.map((p) => (
+            <button
+              key={p}
+              onClick={() => handlePromptClick(p)}
+              className="text-xs px-3 py-1.5 rounded-full border border-border bg-card hover:bg-accent hover:border-primary/30 text-muted-foreground hover:text-accent-foreground transition-all duration-200"
+            >
+              {p}
+            </button>
+          ))}
+        </motion.div>
+
+        {/* AI Results */}
+        <AnimatePresence>
+          {isSearching && (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="py-8 flex flex-col items-center gap-3"
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              </div>
+              <p className="text-sm text-muted-foreground">Our AI is finding the best providers for you...</p>
+            </motion.div>
+          )}
+
+          {results && !isSearching && (
+            <motion.div
+              key="results"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="text-left"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <p className="text-sm font-semibold text-foreground">{results.length} providers matched near you</p>
+                </div>
+                <button
+                  onClick={() => { setResults(null); setQuery(""); }}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Clear
+                </button>
+              </div>
+              <div className="grid sm:grid-cols-3 gap-4">
+                {results.map((p, i) => (
+                  <motion.div
+                    key={p.name}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    className="bg-card border border-border rounded-2xl p-4 hover:shadow-lg hover:border-primary/20 transition-all duration-300 cursor-pointer group"
+                  >
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className={`w-11 h-11 rounded-xl ${p.color} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
+                        {p.initials}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-foreground truncate">{p.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{p.category}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 mb-2">
+                      <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+                      <span className="text-xs font-bold text-foreground">{p.rating}</span>
+                      <span className="text-xs text-muted-foreground">({p.reviews} reviews)</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-primary">{p.price}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${p.tag === "Top Rated" ? "bg-yellow-100 text-yellow-700" : p.tag === "Fast Reply" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                        {p.tag}
+                      </span>
+                    </div>
+                    <Button size="sm" className="w-full mt-3 h-8 text-xs rounded-xl font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                      Contact <ArrowRight className="w-3 h-3 ml-1" />
+                    </Button>
+                  </motion.div>
+                ))}
+              </div>
+              <p className="text-center text-xs text-muted-foreground mt-4">
+                Register to contact providers, see full profiles, and book instantly.
+              </p>
+              <div className="flex justify-center gap-3 mt-3">
+                <Button size="sm" className="px-6 font-bold shadow-lg shadow-primary/20">Sign Up Free</Button>
+                <Button size="sm" variant="outline" className="px-6 font-bold">Become a Provider</Button>
+              </div>
+            </motion.div>
+          )}
+
+          {!results && !isSearching && (
+            <motion.div
+              key="trust"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center justify-center gap-6 text-sm font-semibold text-muted-foreground"
+            >
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-secondary" />
                 Verified Pros
@@ -57,49 +284,13 @@ function HeroSection() {
                 <CheckCircle2 className="w-5 h-5 text-secondary" />
                 No Hidden Fees
               </div>
-            </div>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9, rotate: -2 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="relative mx-auto w-full max-w-md lg:max-w-none perspective-1000"
-          >
-            <img 
-              src={`${import.meta.env.BASE_URL}images/app-mockup.png`} 
-              alt="Hormang App Mockup" 
-              className="w-full h-auto drop-shadow-2xl rounded-3xl"
-            />
-            {/* Floating badges */}
-            <motion.div 
-              animate={{ y: [0, -10, 0] }} 
-              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-              className="absolute top-1/4 -left-8 bg-white p-4 rounded-2xl shadow-xl border border-border flex items-center gap-3"
-            >
-              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-medium">Status</p>
-                <p className="text-sm font-bold text-foreground">Verified</p>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-secondary" />
+                Pay Card or Cash
               </div>
             </motion.div>
-            <motion.div 
-              animate={{ y: [0, 10, 0] }} 
-              transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 1 }}
-              className="absolute bottom-1/4 -right-4 sm:-right-12 bg-white p-4 rounded-2xl shadow-xl border border-border flex items-center gap-3"
-            >
-              <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">
-                ⭐
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-medium">Rating</p>
-                <p className="text-sm font-bold text-foreground">4.9 out of 5</p>
-              </div>
-            </motion.div>
-          </motion.div>
-        </div>
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );
