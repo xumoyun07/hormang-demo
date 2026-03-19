@@ -950,8 +950,8 @@ function ProviderBenefitsSection() {
               whileTap={{ scale: 0.97 }}
               className="bg-white font-bold text-lg h-14 px-8 rounded-xl hover:bg-white/92 transition-colors shadow-2xl gap-2 inline-flex items-center"
             >
-              <span className="text-gradient">Ijrochi bo'lish</span>
-              <ArrowRight className="w-5 h-5" style={{ color: "var(--g-mid)" }} />
+              <span style={{ color: "var(--g-forest)" }}>Ijrochi bo'lish</span>
+              <ArrowRight className="w-5 h-5" style={{ color: "var(--g-forest)" }} />
             </motion.button>
           </motion.div>
 
@@ -1081,7 +1081,8 @@ function PricingSection() {
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
-                  className="w-full h-12 text-base font-bold rounded-xl bg-white text-gradient hover:bg-white/92 transition-colors shadow-lg"
+                  className="w-full h-12 text-base font-bold rounded-xl bg-white hover:bg-white/92 transition-colors shadow-lg"
+                  style={{ color: "var(--g-forest)" }}
                 >
                   {plan.cta}
                 </motion.button>
