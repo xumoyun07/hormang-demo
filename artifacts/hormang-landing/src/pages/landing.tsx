@@ -1058,11 +1058,6 @@ function PricingSection() {
               }`}
               style={plan.highlight ? { background: "var(--brand-gradient)", border: "2px solid transparent" } : {}}
             >
-              {plan.highlight && (
-                <div className="absolute top-0 right-8 -translate-y-1/2 bg-white text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-wider shadow-lg" style={{ color: "var(--g-forest)" }}>
-                  Eng mashhur
-                </div>
-              )}
               <h3 className={`text-2xl font-bold mb-1 ${plan.highlight ? "text-white" : "text-foreground"}`}>{plan.name}</h3>
               <p className={`text-sm mb-6 ${plan.highlight ? "text-white/70" : "text-muted-foreground"}`}>{plan.desc}</p>
               <div className={`mb-6 pb-6 border-b ${plan.highlight ? "border-white/20" : "border-border"}`}>
