@@ -2,13 +2,12 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform, useSpring, useInView } from "framer-motion";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { AppStoreBadges } from "@/components/ui/app-store-badges";
 import { Button } from "@/components/ui/button";
 import {
   Sparkles, Wrench, Baby, ChefHat, Truck,
   Scissors, CarFront, GraduationCap, ShieldCheck,
-  MessageSquare, CreditCard, Bot, Zap, CheckCircle2, TrendingUp,
-  XCircle, Search, Users, Star, Edit3, ArrowRight, Loader2, MapPin, ArrowUpRight
+  MessageSquare, CreditCard, Bot, CheckCircle2, TrendingUp,
+  XCircle, Search, Users, Star, Edit3, ArrowRight, Loader2, MapPin, ArrowUpRight, Zap
 } from "lucide-react";
 
 /* ─── Data ─────────────────────────────────────────────────── */
@@ -1094,43 +1093,6 @@ function PricingSection() {
   );
 }
 
-/* ─── CTA Section ────────────────────────────────────────────── */
-function CTASection() {
-  return (
-    <section id="cta" className="py-28 relative overflow-hidden bg-card">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.94, y: 30 }}
-          whileInView={{ opacity: 1, scale: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7, type: "spring", stiffness: 160, damping: 22 }}
-          className="rounded-[2.5rem] p-10 md:p-16 text-center text-white shadow-2xl relative overflow-hidden"
-          style={{ background: "var(--brand-gradient)" }}
-        >
-          <FloatingOrb size={300} x="70%" y="-30%" delay={0} opacity={0.12} />
-          <FloatingOrb size={200} x="-5%" y="60%" delay={1.5} opacity={0.10} />
-
-          <div className="relative z-10">
-            <motion.div
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-              className="inline-block mb-6"
-            >
-              <Zap className="w-12 h-12 text-white/90" />
-            </motion.div>
-            <h2 className="text-3xl md:text-5xl font-display font-bold mb-6">Ishni boshlashga tayyormisiz?</h2>
-            <p className="text-lg md:text-xl opacity-88 mb-10 max-w-2xl mx-auto leading-relaxed">
-              Hormang ilovasini hozir yuklab oling va bir necha daqiqada tasdiqlangan mutaxassis toping.
-            </p>
-            <div className="flex justify-center">
-              <AppStoreBadges />
-            </div>
-          </div>
-        </motion.div>
-      </div>
-    </section>
-  );
-}
 
 /* ─── Page ───────────────────────────────────────────────────── */
 export default function LandingPage() {
@@ -1149,7 +1111,6 @@ export default function LandingPage() {
         <TestimonialsSection />
         <ProviderBenefitsSection />
         <PricingSection />
-        <CTASection />
       </main>
       <Footer />
     </div>
