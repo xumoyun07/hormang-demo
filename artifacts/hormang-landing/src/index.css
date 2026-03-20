@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
@@ -38,8 +38,8 @@
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
   --color-sidebar-border: hsl(var(--border));
 
-  --font-sans: 'DM Sans', sans-serif;
-  --font-display: 'Plus Jakarta Sans', sans-serif;
+  --font-sans: 'Outfit', sans-serif;
+  --font-display: 'Syne', sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -48,162 +48,138 @@
   --radius-2xl: calc(var(--radius) + 16px);
 }
 
+/* ── DARK COSMOS default theme ──────────────────────────────── */
 :root {
-  /* Neutral base — clean white with slight warm undertone */
+  --background: 150 40% 4%;
+  --foreground: 145 20% 92%;
+
+  --border: 150 30% 12%;
+  --input: 150 30% 10%;
+  --ring: 155 100% 46%;
+
+  --card: 150 38% 6%;
+  --card-foreground: 145 20% 92%;
+
+  --popover: 150 38% 6%;
+  --popover-foreground: 145 20% 92%;
+
+  --primary: 155 100% 46%;
+  --primary-foreground: 150 40% 4%;
+
+  --secondary: 150 76% 32%;
+  --secondary-foreground: 145 20% 92%;
+
+  --muted: 150 30% 10%;
+  --muted-foreground: 145 15% 48%;
+
+  --accent: 150 30% 10%;
+  --accent-foreground: 155 100% 50%;
+
+  --destructive: 0 72% 50%;
+  --destructive-foreground: 145 20% 92%;
+
+  --sidebar: 150 40% 4%;
+  --sidebar-foreground: 145 20% 92%;
+
+  --radius: 0.875rem;
+
+  /* ── Neon green cosmos palette ─────────────────────────────── */
+  --g-neon:    hsl(155, 100%, 50%);
+  --g-bright:  hsl(152, 90%, 42%);
+  --g-mid:     hsl(150, 76%, 32%);
+  --g-deep:    hsl(148, 68%, 20%);
+  --g-forest:  hsl(152, 70%, 12%);
+
+  /* Neon gradient — electric green cascade */
+  --brand-gradient: linear-gradient(135deg,
+    hsl(152, 70%, 14%) 0%,
+    hsl(150, 76%, 28%) 35%,
+    hsl(153, 90%, 40%) 65%,
+    hsl(155, 100%, 48%) 100%
+  );
+
+  --brand-gradient-45: linear-gradient(45deg,
+    hsl(152, 70%, 14%) 0%,
+    hsl(153, 90%, 38%) 50%,
+    hsl(155, 100%, 50%) 100%
+  );
+
+  /* Text gradient — light neon (visible on dark) */
+  --brand-gradient-text: linear-gradient(90deg,
+    hsl(155, 100%, 52%) 0%,
+    hsl(152, 90%, 44%) 50%,
+    hsl(150, 80%, 56%) 100%
+  );
+
+  /* Subtle dark section bg */
+  --brand-gradient-subtle: linear-gradient(135deg,
+    hsl(150, 38%, 7%) 0%,
+    hsl(148, 36%, 9%) 50%,
+    hsl(150, 38%, 7%) 100%
+  );
+
+  /* 3D motion */
+  --ease-slow: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Keep a light option if needed */
+.light {
   --background: 0 0% 100%;
   --foreground: 150 25% 10%;
-
   --border: 145 20% 88%;
   --input: 145 20% 88%;
   --ring: 142 76% 36%;
-
   --card: 0 0% 100%;
   --card-foreground: 150 25% 10%;
-
   --popover: 0 0% 100%;
   --popover-foreground: 150 25% 10%;
-
-  /* Primary — Fiverr-inspired bright emerald */
   --primary: 142 76% 36%;
   --primary-foreground: 0 0% 100%;
-
-  /* Secondary — slightly lighter/warmer emerald for contrast */
   --secondary: 145 60% 28%;
   --secondary-foreground: 0 0% 100%;
-
   --muted: 145 18% 96%;
   --muted-foreground: 145 12% 46%;
-
-  /* Accent — very light mint for subtle highlights */
   --accent: 142 60% 93%;
   --accent-foreground: 142 76% 28%;
-
   --destructive: 0 84% 58%;
   --destructive-foreground: 0 0% 100%;
-
   --sidebar: 145 18% 96%;
   --sidebar-foreground: 150 25% 10%;
-
-  --radius: 0.75rem;
-
-  /* ── Professional all-green gradient system ────────────────────────
-     Dark forest → Deep emerald → Fiverr green → Bright emerald
-     Uses only green family — no red/blue bleed                      */
-  --g-forest:  hsl(152, 70%, 18%);   /* very dark forest */
-  --g-deep:    hsl(148, 68%, 26%);   /* deep emerald */
-  --g-mid:     hsl(145, 72%, 34%);   /* mid emerald (primary) */
-  --g-bright:  hsl(142, 76%, 44%);   /* Fiverr bright */
-  --g-light:   hsl(140, 72%, 58%);   /* light emerald */
-
-  /* Main gradient — used on buttons, icons, highlight blocks */
-  --brand-gradient: linear-gradient(135deg,
-    hsl(152,70%,20%) 0%,
-    hsl(148,68%,28%) 30%,
-    hsl(145,72%,36%) 58%,
-    hsl(142,76%,46%) 80%,
-    hsl(140,72%,56%) 100%
-  );
-
-  /* 45° variant — for secondary elements */
-  --brand-gradient-45: linear-gradient(45deg,
-    hsl(152,70%,20%) 0%,
-    hsl(145,72%,34%) 50%,
-    hsl(140,72%,54%) 100%
-  );
-
-  /* Text gradient — dark forest to mid-emerald (readable on white) */
-  --brand-gradient-text: linear-gradient(90deg,
-    hsl(152,70%,20%) 0%,
-    hsl(148,68%,28%) 35%,
-    hsl(145,72%,36%) 65%,
-    hsl(142,76%,44%) 100%
-  );
-
-  /* Subtle section background — very light mint wash */
-  --brand-gradient-subtle: linear-gradient(135deg,
-    hsl(145,50%,96%) 0%,
-    hsl(142,55%,93%) 50%,
-    hsl(152,45%,95%) 100%
-  );
-}
-
-.dark {
-  --background: 152 30% 7%;
-  --foreground: 145 15% 93%;
-
-  --border: 148 22% 16%;
-  --input: 148 22% 16%;
-  --ring: 142 76% 46%;
-
-  --card: 152 28% 9%;
-  --card-foreground: 145 15% 93%;
-
-  --popover: 152 28% 9%;
-  --popover-foreground: 145 15% 93%;
-
-  --primary: 142 76% 46%;
-  --primary-foreground: 0 0% 100%;
-
-  --secondary: 145 60% 36%;
-  --secondary-foreground: 0 0% 100%;
-
-  --muted: 148 22% 16%;
-  --muted-foreground: 145 14% 58%;
-
-  --accent: 148 22% 16%;
-  --accent-foreground: 145 15% 93%;
-
-  --destructive: 0 72% 50%;
-  --destructive-foreground: 145 15% 93%;
-
-  --sidebar: 152 30% 7%;
-  --sidebar-foreground: 145 15% 93%;
-
-  --g-forest:  hsl(152, 70%, 28%);
-  --g-deep:    hsl(148, 68%, 36%);
-  --g-mid:     hsl(145, 72%, 44%);
-  --g-bright:  hsl(142, 76%, 54%);
-  --g-light:   hsl(140, 72%, 64%);
-
-  --brand-gradient: linear-gradient(135deg,
-    hsl(152,70%,26%) 0%,
-    hsl(148,68%,34%) 30%,
-    hsl(145,72%,42%) 58%,
-    hsl(142,76%,52%) 80%,
-    hsl(140,72%,62%) 100%
-  );
-  --brand-gradient-45: linear-gradient(45deg,
-    hsl(152,70%,26%) 0%,
-    hsl(145,72%,42%) 50%,
-    hsl(140,72%,60%) 100%
-  );
-  --brand-gradient-text: linear-gradient(90deg,
-    hsl(140,72%,62%) 0%,
-    hsl(142,76%,54%) 50%,
-    hsl(145,72%,46%) 100%
-  );
-  --brand-gradient-subtle: linear-gradient(135deg,
-    hsl(152,28%,10%) 0%,
-    hsl(148,26%,13%) 50%,
-    hsl(145,28%,11%) 100%
-  );
+  --g-forest: hsl(152, 70%, 18%);
+  --g-deep: hsl(148, 68%, 26%);
+  --g-mid: hsl(145, 72%, 34%);
+  --g-bright: hsl(142, 76%, 44%);
+  --g-neon: hsl(142, 86%, 50%);
+  --brand-gradient: linear-gradient(135deg, hsl(152,70%,20%) 0%, hsl(148,68%,28%) 30%, hsl(145,72%,36%) 58%, hsl(142,76%,46%) 80%, hsl(140,72%,56%) 100%);
+  --brand-gradient-45: linear-gradient(45deg, hsl(152,70%,20%) 0%, hsl(145,72%,34%) 50%, hsl(140,72%,54%) 100%);
+  --brand-gradient-text: linear-gradient(90deg, hsl(152,70%,20%) 0%, hsl(148,68%,28%) 35%, hsl(145,72%,36%) 65%, hsl(142,76%,44%) 100%);
+  --brand-gradient-subtle: linear-gradient(135deg, hsl(145,50%,96%) 0%, hsl(142,55%,93%) 50%, hsl(152,45%,95%) 100%);
 }
 
 @layer base {
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     @apply font-sans antialiased bg-background text-foreground overflow-x-hidden;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     @apply font-bold tracking-tight;
   }
+  ::selection {
+    background: hsl(155, 100%, 46%, 0.3);
+    color: hsl(155, 100%, 80%);
+  }
 }
 
 @layer utilities {
-  /* Green text gradient */
+  /* Neon text gradient */
   .text-gradient {
     background: var(--brand-gradient-text);
     -webkit-background-clip: text;
@@ -211,29 +187,128 @@
     background-clip: text;
   }
 
-  /* Solid green gradient background */
   .bg-brand-gradient {
     background: var(--brand-gradient);
   }
 
-  /* Subtle section wash */
   .bg-brand-subtle {
     background: var(--brand-gradient-subtle);
   }
 
-  /* Hero radial glow background */
+  /* ── Cosmos hero background ── */
   .hero-bg {
     background:
-      radial-gradient(ellipse at 75% -10%, hsl(142,70%,88%) 0%, transparent 55%),
-      radial-gradient(ellipse at -5% 90%, hsl(148,65%,86%) 0%, transparent 55%),
-      radial-gradient(ellipse at 50% 50%, hsl(145,60%,94%) 0%, transparent 60%),
-      hsl(0 0% 100%);
+      radial-gradient(ellipse 80% 60% at 50% -5%, hsl(155, 100%, 30%, 0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at -10% 80%, hsl(152, 90%, 24%, 0.14) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 40% at 110% 60%, hsl(155, 85%, 28%, 0.10) 0%, transparent 50%),
+      hsl(var(--background));
   }
 
-  .bg-glass {
-    @apply bg-background/70 backdrop-blur-xl border border-white/20 shadow-xl;
+  /* ── Glassmorphism ── */
+  .glass {
+    background: hsl(150, 38%, 6%, 0.7);
+    backdrop-filter: blur(24px) saturate(1.6);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    border: 1px solid hsl(155, 60%, 40%, 0.15);
   }
-  .bg-glass-dark {
-    @apply bg-foreground/80 backdrop-blur-xl border border-white/10 shadow-xl;
+
+  .glass-strong {
+    background: hsl(150, 38%, 5%, 0.85);
+    backdrop-filter: blur(40px) saturate(1.8);
+    -webkit-backdrop-filter: blur(40px) saturate(1.8);
+    border: 1px solid hsl(155, 60%, 40%, 0.2);
   }
+
+  /* ── Glow effects ── */
+  .glow-sm {
+    box-shadow: 0 0 20px hsl(155, 100%, 50%, 0.15), 0 0 40px hsl(155, 100%, 50%, 0.08);
+  }
+  .glow-md {
+    box-shadow: 0 0 30px hsl(155, 100%, 50%, 0.2), 0 0 60px hsl(155, 100%, 50%, 0.1), 0 0 100px hsl(155, 100%, 50%, 0.05);
+  }
+  .glow-lg {
+    box-shadow: 0 0 40px hsl(155, 100%, 50%, 0.3), 0 0 80px hsl(155, 100%, 50%, 0.15), 0 0 160px hsl(155, 100%, 50%, 0.06);
+  }
+  .glow-text {
+    text-shadow: 0 0 20px hsl(155, 100%, 60%, 0.5), 0 0 40px hsl(155, 100%, 60%, 0.25);
+  }
+
+  /* ── Grain texture overlay ── */
+  .grain::after {
+    content: '';
+    position: fixed;
+    inset: -50%;
+    width: 200%;
+    height: 200%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.045;
+    pointer-events: none;
+    z-index: 9999;
+    animation: grain-shift 0.8s steps(1) infinite;
+  }
+
+  @keyframes grain-shift {
+    0%   { transform: translate(0, 0); }
+    10%  { transform: translate(-2%, -3%); }
+    20%  { transform: translate(3%, 2%); }
+    30%  { transform: translate(-1%, 4%); }
+    40%  { transform: translate(4%, -1%); }
+    50%  { transform: translate(-3%, 3%); }
+    60%  { transform: translate(2%, -4%); }
+    70%  { transform: translate(-4%, 1%); }
+    80%  { transform: translate(3%, 3%); }
+    90%  { transform: translate(-1%, -2%); }
+    100% { transform: translate(2%, -3%); }
+  }
+
+  /* ── Neon border ── */
+  .neon-border {
+    border: 1px solid hsl(155, 100%, 50%, 0.3);
+    box-shadow: 0 0 0 1px hsl(155, 100%, 50%, 0.1) inset;
+  }
+  .neon-border-hover {
+    transition: border-color 0.4s, box-shadow 0.4s;
+  }
+  .neon-border-hover:hover {
+    border-color: hsl(155, 100%, 50%, 0.5);
+    box-shadow: 0 0 24px hsl(155, 100%, 50%, 0.15) inset, 0 0 24px hsl(155, 100%, 50%, 0.1);
+  }
+
+  /* ── Perspective grid background ── */
+  .perspective-grid {
+    background-image:
+      linear-gradient(to right, hsl(155, 60%, 40%, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(155, 60%, 40%, 0.06) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* ── Dot grid background ── */
+  .dot-grid {
+    background-image: radial-gradient(circle at 1px 1px, hsl(155, 60%, 40%, 0.2) 1px, transparent 0);
+    background-size: 28px 28px;
+  }
+
+  /* ── Slow motion animation utilities ── */
+  @keyframes float-slow {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    33%       { transform: translateY(-22px) rotate(1.5deg); }
+    66%       { transform: translateY(-10px) rotate(-1deg); }
+  }
+  @keyframes float-slow-2 {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50%       { transform: translateY(-28px) rotate(-2deg); }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50%       { opacity: 0.8; transform: scale(1.04); }
+  }
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  .animate-float-slow   { animation: float-slow 9s ease-in-out infinite; }
+  .animate-float-slow-2 { animation: float-slow-2 12s ease-in-out infinite; }
+  .animate-pulse-glow   { animation: pulse-glow 4s ease-in-out infinite; }
+  .animate-spin-slow    { animation: spin-slow 20s linear infinite; }
 }
