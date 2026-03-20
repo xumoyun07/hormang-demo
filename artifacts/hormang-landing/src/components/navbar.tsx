@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
-import { Menu, X, Zap } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Menu, X, LogOut, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/contexts/auth-context";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -19,6 +22,11 @@ export function Navbar() {
     { name: "Qanday ishlaydi", href: "#how-it-works" },
     { name: "Narxlar", href: "#pricing" },
   ];
+
+  async function handleLogout() {
+    await logout();
+    setLocation("/");
+  }
 
   return (
     <motion.header
@@ -73,22 +81,51 @@ export function Navbar() {
                 </motion.li>
               ))}
             </ul>
+
             <div className="flex items-center gap-3 border-l border-border pl-6">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
-                <a href="#cta">
-                  <Button variant="ghost" className="hidden lg:inline-flex font-semibold">
-                    Kirish
-                  </Button>
-                </a>
-              </motion.div>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.42 }}>
-                <a href="#provider-benefits">
-                  <Button className="font-bold shadow-lg shadow-primary/25 gap-1.5">
-                    <Zap className="w-3.5 h-3.5" />
-                    Ijrochi bo'lish
-                  </Button>
-                </a>
-              </motion.div>
+              {user ? (
+                <>
+                  <motion.button
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    whileHover={{ scale: 1.04 }}
+                    onClick={() => setLocation(user.role === "provider" ? "/dashboard/provider" : "/dashboard/buyer")}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/15 transition-colors"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold">
+                      {user.firstName[0]}
+                    </div>
+                    <span className="text-sm font-semibold text-foreground">{user.firstName}</span>
+                  </motion.button>
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground gap-1.5">
+                      <LogOut className="w-3.5 h-3.5" />
+                      Chiqish
+                    </Button>
+                  </motion.div>
+                </>
+              ) : (
+                <>
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+                    <Button
+                      variant="ghost"
+                      className="font-semibold gap-1.5"
+                      onClick={() => setLocation("/auth/login")}
+                    >
+                      <User className="w-3.5 h-3.5" />
+                      Kirish
+                    </Button>
+                  </motion.div>
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.42 }}>
+                    <Button
+                      className="font-bold shadow-lg shadow-primary/25"
+                      onClick={() => setLocation("/auth/role")}
+                    >
+                      Ro'yxatdan o'tish
+                    </Button>
+                  </motion.div>
+                </>
+              )}
             </div>
           </nav>
 
@@ -135,13 +172,36 @@ export function Navbar() {
                 </motion.a>
               ))}
               <div className="border-t border-border pt-3 mt-1 flex flex-col gap-2">
-                <Button variant="outline" className="w-full font-bold">
-                  Kirish
-                </Button>
-                <Button className="w-full font-bold gap-1.5">
-                  <Zap className="w-3.5 h-3.5" />
-                  Ijrochi bo'lish
-                </Button>
+                {user ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="w-full font-bold"
+                      onClick={() => { setMobileMenuOpen(false); setLocation(user.role === "provider" ? "/dashboard/provider" : "/dashboard/buyer"); }}
+                    >
+                      {user.firstName} {user.lastName}
+                    </Button>
+                    <Button variant="ghost" className="w-full font-bold gap-2 text-muted-foreground" onClick={handleLogout}>
+                      <LogOut className="w-4 h-4" /> Chiqish
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="w-full font-bold"
+                      onClick={() => { setMobileMenuOpen(false); setLocation("/auth/login"); }}
+                    >
+                      Kirish
+                    </Button>
+                    <Button
+                      className="w-full font-bold"
+                      onClick={() => { setMobileMenuOpen(false); setLocation("/auth/role"); }}
+                    >
+                      Ro'yxatdan o'tish
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>
