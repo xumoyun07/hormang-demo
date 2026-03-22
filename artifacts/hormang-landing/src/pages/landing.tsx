@@ -691,93 +691,39 @@ function BuyerBenefitsSection() {
     { icon: CreditCard, title: "Qulay to'lov", desc: "Karta yoki naqd to'lang. Yashirin to'lovlar yo'q." },
   ];
 
-  const providerCards = [
-    { name: "Alisher T.", cat: "Santexnika", rating: 4.9, color: "#2563EB", initials: "AT", rotate: -5, y: "-10px" },
-    { name: "Dilnoza M.", cat: "Tozalik", rating: 4.8, color: "#7C3AED", initials: "DM", rotate: 4, y: "18px" },
-    { name: "Rustam K.", cat: "Elektr", rating: 5.0, color: "#059669", initials: "RK", rotate: 0, y: "0px" },
-  ];
-
   return (
     <section className="py-28 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-16 items-center">
-          {/* Floating mock cards */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-            className="order-2 lg:order-1"
-          >
-            <div className="relative h-72 flex items-center justify-center">
-              {providerCards.map((card, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, scale: 0.88, y: 20 }}
-                  whileInView={{ opacity: 1, scale: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.1 + i * 0.15, duration: 0.7 }}
-                  animate={{ y: [0, i % 2 === 0 ? -8 : 8, 0] }}
-                  whileHover={{ scale: 1.06, zIndex: 20 }}
-                  style={{
-                    position: "absolute",
-                    left: `calc(50% + ${i === 0 ? "-140px" : i === 1 ? "20px" : "-60px"} - 100px)`,
-                    top: `calc(50% + ${card.y} - 65px)`,
-                    zIndex: i,
-                    rotate: card.rotate,
-                  }}
-                  className="w-52 bg-white rounded-2xl p-4 card-shadow border border-gray-100"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm" style={{ background: card.color }}>
-                      {card.initials}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm text-gray-900">{card.name}</p>
-                      <p className="text-xs text-gray-500">{card.cat}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-0.5">
-                    {[1,2,3,4,5].map(s => <Star key={s} className="w-3 h-3 fill-amber-400 text-amber-400" />)}
-                    <span className="text-xs font-bold text-gray-800 ml-1">{card.rating}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, x: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center mb-12"
+        >
+          <span className="pill-label mb-5 inline-flex">Xaridorlar uchun</span>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">
+            Nima uchun xaridorlar Hormangni sevadi
+          </h2>
+        </motion.div>
 
-          <div className="order-1 lg:order-2">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {features.map((feat, i) => (
             <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              key={i}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ delay: 0.08 + i * 0.09, duration: 0.6 }}
+              className="bg-gray-50 border border-gray-100 rounded-xl p-5 hover:bg-blue-50/50 hover:border-blue-100 transition-all duration-200"
             >
-              <span className="pill-label mb-5 inline-flex">Xaridorlar uchun</span>
-              <h2 className="text-3xl md:text-4xl font-extrabold mb-10 text-gray-900">
-                Nima uchun xaridorlar Hormangni sevadi
-              </h2>
+              <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center mb-3.5 card-shadow">
+                <feat.icon className="w-5 h-5 text-blue-600" />
+              </div>
+              <h4 className="text-sm font-bold mb-1.5 text-gray-900">{feat.title}</h4>
+              <p className="text-gray-500 text-xs leading-relaxed">{feat.desc}</p>
             </motion.div>
-
-            <div className="grid sm:grid-cols-2 gap-4">
-              {features.map((feat, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 16 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.12 + i * 0.09, duration: 0.6 }}
-                  className="bg-gray-50 border border-gray-100 rounded-xl p-5 hover:bg-blue-50/50 hover:border-blue-100 transition-all duration-200"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center mb-3.5 card-shadow">
-                    <feat.icon className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <h4 className="text-sm font-bold mb-1.5 text-gray-900">{feat.title}</h4>
-                  <p className="text-gray-500 text-xs leading-relaxed">{feat.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>
