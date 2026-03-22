@@ -237,7 +237,7 @@ function PasswordSection() {
 }
 
 function ProviderProfileSection() {
-  const { providerProfile, setAuth, user } = useAuth();
+  const { providerProfile, setProviderProfile } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -270,7 +270,7 @@ function ProviderProfileSection() {
         workingHours: data.workingHours,
         preferredLocation: data.preferredLocation,
       });
-      setAuth(user!, res.profile);
+      setProviderProfile(res.profile);
       setSuccess(true);
       toast({ title: "Ijrochi profili yangilandi" });
       setTimeout(() => setSuccess(false), 3000);
@@ -355,7 +355,7 @@ function ProviderProfileSection() {
 }
 
 export default function ProfileSettingsPage() {
-  const { user, loading } = useAuth();
+  const { user, providerProfile, activeRole, loading } = useAuth();
   const [, setLocation] = useLocation();
 
   if (loading) {
@@ -371,13 +371,15 @@ export default function ProfileSettingsPage() {
     return null;
   }
 
+  const showProviderSection = activeRole === "provider" || providerProfile !== null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-10 card-shadow">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setLocation(user.role === "provider" ? "/dashboard/provider" : "/dashboard/buyer")}
+              onClick={() => setLocation("/dashboard")}
               className="w-8 h-8 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -401,8 +403,8 @@ export default function ProfileSettingsPage() {
             </div>
             <div>
               <p className="font-bold text-gray-900">{user.firstName} {user.lastName}</p>
-              <p className="text-sm text-gray-500">{user.role === "buyer" ? "Xaridor" : "Ijrochi"}</p>
-              {user.role === "provider" && (
+              <p className="text-sm text-gray-500">{activeRole === "buyer" ? "Xaridor rejimi" : "Ijrochi rejimi"}</p>
+              {providerProfile && (
                 <button
                   onClick={() => setLocation(`/providers/${user.id}`)}
                   className="text-xs text-blue-600 hover:underline font-semibold mt-0.5 flex items-center gap-1"
@@ -416,7 +418,7 @@ export default function ProfileSettingsPage() {
 
         <AnimatePresence>
           <AccountSection />
-          {user.role === "provider" && <ProviderProfileSection />}
+          {showProviderSection && <ProviderProfileSection />}
           <PasswordSection />
         </AnimatePresence>
       </main>

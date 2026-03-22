@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -8,8 +9,7 @@ import LandingPage from "@/pages/landing";
 import RoleSelectPage from "@/pages/auth/role-select";
 import LoginPage from "@/pages/auth/login";
 import RegisterPage from "@/pages/auth/register";
-import BuyerDashboard from "@/pages/dashboard/buyer";
-import ProviderDashboard from "@/pages/dashboard/provider";
+import UnifiedDashboard from "@/pages/dashboard/index";
 import ProfileSettingsPage from "@/pages/profile/settings";
 import ProviderProfilePage from "@/pages/providers/profile";
 
@@ -27,39 +27,30 @@ function Spinner() {
   );
 }
 
-function dashboardFor(role: "buyer" | "provider") {
-  return role === "buyer" ? "/dashboard/buyer" : "/dashboard/provider";
-}
-
 function PublicOnlyRoute({ component: Component }: { component: React.FC }) {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
 
-  if (loading) return <Spinner />;
+  useEffect(() => {
+    if (!loading && user) setLocation("/dashboard");
+  }, [loading, user]);
 
-  if (user) {
-    setLocation(dashboardFor(user.role));
-    return null;
-  }
+  if (loading) return <Spinner />;
+  if (user) return <Spinner />;
 
   return <Component />;
 }
 
-function ProtectedRoute({ component: Component, role }: { component: React.FC; role?: "buyer" | "provider" }) {
+function ProtectedRoute({ component: Component }: { component: React.FC }) {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
 
+  useEffect(() => {
+    if (!loading && !user) setLocation("/auth/login");
+  }, [loading, user]);
+
   if (loading) return <Spinner />;
-
-  if (!user) {
-    setLocation("/auth/login");
-    return null;
-  }
-
-  if (role && user.role !== role) {
-    setLocation(dashboardFor(user.role));
-    return null;
-  }
+  if (!user) return <Spinner />;
 
   return <Component />;
 }
@@ -79,11 +70,14 @@ function Router() {
       <Route path="/auth/register">
         {() => <PublicOnlyRoute component={RegisterPage} />}
       </Route>
+      <Route path="/dashboard">
+        {() => <ProtectedRoute component={UnifiedDashboard} />}
+      </Route>
       <Route path="/dashboard/buyer">
-        {() => <ProtectedRoute component={BuyerDashboard} role="buyer" />}
+        {() => <ProtectedRoute component={UnifiedDashboard} />}
       </Route>
       <Route path="/dashboard/provider">
-        {() => <ProtectedRoute component={ProviderDashboard} role="provider" />}
+        {() => <ProtectedRoute component={UnifiedDashboard} />}
       </Route>
       <Route path="/profile/settings">
         {() => <ProtectedRoute component={ProfileSettingsPage} />}

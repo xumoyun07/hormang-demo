@@ -1,6 +1,10 @@
-# Workspace
+# Hormang — Local Services Marketplace (Uzbekistan)
 
-## Overview
+## Project Goal
+
+Connecting buyers with verified local service providers (plumbers, cleaners, nannies, tutors, etc.) via AI-powered search, full auth/profile system, and dual-role switching between buyer and provider modes within the same account.
+
+## Workspace Overview
 
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 
@@ -90,6 +94,34 @@ Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used b
 ### `lib/api-client-react` (`@workspace/api-client-react`)
 
 Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
+
+### `artifacts/hormang-landing` (`@workspace/hormang-landing`)
+
+React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "Start application" workflow.
+
+**Key pages:**
+- `/` — Landing page with AI search hero, categories, how-it-works, social proof
+- `/auth/role-select` — Choose buyer vs provider registration path
+- `/auth/register` — 1-step (buyer) or 2-step (provider) registration
+- `/auth/login` — Login with email/phone + remember me
+- `/dashboard` — Unified dashboard (also at `/dashboard/buyer`, `/dashboard/provider`)
+- `/profile/settings` — Account, provider profile, and password settings
+- `/providers/:id` — Public provider profile page
+
+**Auth context (`src/contexts/auth-context.tsx`):**
+- `user` — authenticated SafeUser or null
+- `providerProfile` — ProviderProfile or null (any user can hold one)
+- `activeRole` — "buyer" | "provider", persisted in `localStorage` at `hormang_active_role`
+- `switchRole()` — toggle active role; triggers setup modal on first provider switch
+- `setAuth(user, profile?)` — update both user and provider profile
+- `setProviderProfile(profile)` — update provider profile only
+- `loading` — auth init state
+
+**Dual-role system:** Any registered user can switch to provider mode. First switch opens a setup modal to create a provider profile. Role switch is instant (no API call), with animated pill toggle (blue=buyer, violet=provider) in the dashboard header.
+
+**Token storage:** Access token at `hormang_access_token` in localStorage; refresh token in HttpOnly cookie.
+
+**Design system:** Plus Jakarta Sans, `#2563EB` blue (buyer), `hsl(262,80%,54%)` violet (provider), `--brand-gradient` CSS var, `.card-shadow` / `.pill-label` / `.text-gradient` / `.hero-bg` utilities.
 
 ### `scripts` (`@workspace/scripts`)
 

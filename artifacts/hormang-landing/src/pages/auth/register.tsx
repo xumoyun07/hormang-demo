@@ -265,7 +265,7 @@ export default function RegisterPage() {
         });
         setAuth(res.user, null);
         toast({ title: `Xush kelibsiz, ${res.user.firstName}! Hormangga xush kelibsiz.` });
-        setLocation("/dashboard/buyer");
+        setLocation("/dashboard");
       } catch (err: unknown) {
         setServerError(err instanceof Error ? err.message : "Xatolik yuz berdi");
       } finally {
@@ -298,7 +298,7 @@ export default function RegisterPage() {
       });
       setAuth(res.user, profile);
       toast({ title: `Profilingiz tayyor, ${res.user.firstName}! Endi so'rovlar kuting.` });
-      setLocation("/dashboard/provider");
+      setLocation("/dashboard");
     } catch (err: unknown) {
       setServerError(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally {

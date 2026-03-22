@@ -40,7 +40,7 @@ export default function LoginPage() {
       });
       setAuth(res.user, res.providerProfile);
       toast({ title: `Xush kelibsiz, ${res.user.firstName}!` });
-      setLocation(res.user.role === "provider" ? "/dashboard/provider" : "/dashboard/buyer");
+      setLocation("/dashboard");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Xatolik yuz berdi";
       setServerError(msg);
