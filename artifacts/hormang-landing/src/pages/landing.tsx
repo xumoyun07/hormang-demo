@@ -1145,13 +1145,15 @@ function PricingSection() {
               viewport={{ once: true }}
               transition={{ delay: i * 0.14, duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
               whileHover={{ y: plan.highlight ? -10 : -5, scale: 1.02 }}
-              style={{ perspective: "800px" }}
+              style={{ 
+                perspective: "800px",
+                ...(plan.highlight ? { background: "var(--brand-gradient)" } : {})
+              }}
               className={`rounded-3xl p-8 flex flex-col transition-all duration-500 ${
                 plan.highlight
                   ? "relative md:-translate-y-4 glow-lg"
                   : "glass border border-white/8 hover:border-primary/25 neon-border-hover"
               }`}
-              {...(plan.highlight ? { style: { background: "var(--brand-gradient)", perspective: "800px" } } : {})}
             >
               {plan.highlight && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full text-xs font-bold text-black shadow-xl" style={{ background: "hsl(60, 100%, 60%)" }}>
