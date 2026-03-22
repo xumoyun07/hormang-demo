@@ -240,6 +240,139 @@ router.post("/logout", (_req, res) => {
   res.json({ ok: true });
 });
 
+router.put("/profile", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { firstName, lastName, phone, email } = req.body as {
+      firstName?: string;
+      lastName?: string;
+      phone?: string;
+      email?: string;
+    };
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (firstName) updates.firstName = firstName;
+    if (lastName) updates.lastName = lastName;
+    if (phone !== undefined) updates.phone = phone || null;
+    if (email !== undefined) updates.email = email || null;
+
+    const [user] = await db
+      .update(usersTable)
+      .set(updates)
+      .where(eq(usersTable.id, req.user!.id))
+      .returning();
+
+    const safeUser = { ...user, passwordHash: undefined };
+    res.json({ user: safeUser });
+  } catch (err) {
+    console.error("Update profile error:", err);
+    res.status(500).json({ error: "Xatolik yuz berdi" });
+  }
+});
+
+router.put("/provider-profile", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { categories, bio, workingHours, preferredLocation } = req.body as {
+      categories?: string[];
+      bio?: string;
+      workingHours?: string;
+      preferredLocation?: string;
+    };
+
+    const existing = await db
+      .select({ id: providerProfilesTable.id })
+      .from(providerProfilesTable)
+      .where(eq(providerProfilesTable.userId, req.user!.id))
+      .limit(1);
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (categories !== undefined) updates.categories = categories;
+    if (bio !== undefined) updates.bio = bio;
+    if (workingHours !== undefined) updates.workingHours = workingHours;
+    if (preferredLocation !== undefined) updates.preferredLocation = preferredLocation;
+
+    let profile;
+    if (existing.length > 0) {
+      [profile] = await db
+        .update(providerProfilesTable)
+        .set(updates)
+        .where(eq(providerProfilesTable.userId, req.user!.id))
+        .returning();
+    } else {
+      [profile] = await db
+        .insert(providerProfilesTable)
+        .values({ userId: req.user!.id, categories: categories ?? [], bio, workingHours, preferredLocation })
+        .returning();
+    }
+
+    res.json({ profile });
+  } catch (err) {
+    console.error("Update provider profile error:", err);
+    res.status(500).json({ error: "Xatolik yuz berdi" });
+  }
+});
+
+router.post("/change-password", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body as {
+      currentPassword: string;
+      newPassword: string;
+    };
+
+    if (!currentPassword || !newPassword || newPassword.length < 8) {
+      res.status(400).json({ error: "Yangi parol kamida 8 belgidan iborat bo'lishi kerak" });
+      return;
+    }
+
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, req.user!.id))
+      .limit(1);
+
+    const valid = await comparePassword(currentPassword, user.passwordHash);
+    if (!valid) {
+      res.status(401).json({ error: "Joriy parol noto'g'ri" });
+      return;
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await db.update(usersTable).set({ passwordHash, updatedAt: new Date() }).where(eq(usersTable.id, user.id));
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Change password error:", err);
+    res.status(500).json({ error: "Xatolik yuz berdi" });
+  }
+});
+
+router.get("/providers/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, id))
+      .limit(1);
+
+    if (!user || user.role !== "provider") {
+      res.status(404).json({ error: "Ijrochi topilmadi" });
+      return;
+    }
+
+    const [profile] = await db
+      .select()
+      .from(providerProfilesTable)
+      .where(eq(providerProfilesTable.userId, id))
+      .limit(1);
+
+    const safeUser = { ...user, passwordHash: undefined, phone: undefined };
+    res.json({ user: safeUser, providerProfile: profile ?? null });
+  } catch (err) {
+    console.error("Get provider error:", err);
+    res.status(500).json({ error: "Xatolik yuz berdi" });
+  }
+});
+
 router.get("/me", requireAuth, async (req: AuthRequest, res) => {
   try {
     const [user] = await db

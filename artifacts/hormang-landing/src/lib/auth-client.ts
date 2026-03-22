@@ -112,3 +112,44 @@ export async function refreshToken(): Promise<string | null> {
     return null;
   }
 }
+
+export async function updateProfile(body: {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+}): Promise<{ user: SafeUser }> {
+  return request("/auth/profile", {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateProviderProfile(body: {
+  categories?: string[];
+  bio?: string;
+  workingHours?: string;
+  preferredLocation?: string;
+}): Promise<{ profile: ProviderProfile }> {
+  return request("/auth/provider-profile", {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function changePassword(body: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<void> {
+  await request("/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getProviderPublicProfile(id: string): Promise<{
+  user: SafeUser;
+  providerProfile: ProviderProfile | null;
+}> {
+  return request(`/auth/providers/${id}`);
+}

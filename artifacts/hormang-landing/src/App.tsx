@@ -10,6 +10,8 @@ import LoginPage from "@/pages/auth/login";
 import RegisterPage from "@/pages/auth/register";
 import BuyerDashboard from "@/pages/dashboard/buyer";
 import ProviderDashboard from "@/pages/dashboard/provider";
+import ProfileSettingsPage from "@/pages/profile/settings";
+import ProviderProfilePage from "@/pages/providers/profile";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,8 +24,8 @@ function ProtectedRoute({ component: Component, role }: { component: React.FC; r
   const [, setLocation] = useLocation();
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="w-8 h-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
     </div>
   );
 
@@ -53,6 +55,10 @@ function Router() {
       <Route path="/dashboard/provider">
         {() => <ProtectedRoute component={ProviderDashboard} role="provider" />}
       </Route>
+      <Route path="/profile/settings">
+        {() => <ProtectedRoute component={ProfileSettingsPage} />}
+      </Route>
+      <Route path="/providers/:id" component={ProviderProfilePage} />
       <Route component={NotFound} />
     </Switch>
   );
