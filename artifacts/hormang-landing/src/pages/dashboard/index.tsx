@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
+import logoImg from "/hormang-logo.png";
 import {
   Search, ClipboardList, Heart, Settings, LogOut, ChevronRight,
   Inbox, TrendingUp, Star, Eye, CheckCircle2, MapPin, Clock,
@@ -420,8 +421,17 @@ export default function UnifiedDashboard() {
   const { user, providerProfile, activeRole, switchRole, logout } = useAuth();
   const [, setLocation] = useLocation();
   const [showSetup, setShowSetup] = useState(false);
+  const logoControls = useAnimation();
 
   const isProvider = activeRole === "provider";
+
+  function handleLogoHover() {
+    logoControls.start({
+      rotate: [0, -12, 14, -10, 12, -6, 0],
+      scale: [1, 1.1, 1.1, 1.1, 1.1, 1.1, 1],
+      transition: { duration: 0.7, ease: "easeInOut" },
+    });
+  }
 
   async function handleLogout() {
     await logout();
@@ -454,13 +464,13 @@ export default function UnifiedDashboard() {
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-10 card-shadow">
           <div className="max-w-lg mx-auto flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-black shadow-sm transition-all duration-500"
-                style={{ background: accentGradient }}
-              >
-                H
-              </div>
+            <div className="flex items-center gap-2.5" onMouseEnter={handleLogoHover}>
+              <motion.img
+                src={logoImg}
+                alt="Hormang"
+                animate={logoControls}
+                className="w-8 h-8 object-contain"
+              />
               <span className="font-bold text-gray-900 text-sm hidden sm:inline">Hormang</span>
             </div>
 

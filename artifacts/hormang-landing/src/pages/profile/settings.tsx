@@ -8,6 +8,7 @@ import {
   User, Mail, Phone, Lock, ChevronLeft, Loader2, CheckCircle2,
   Eye, EyeOff, MapPin, Clock, Briefcase, Save, ArrowRight,
 } from "lucide-react";
+import logoImg from "/hormang-logo.png";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { updateProfile, updateProviderProfile, changePassword } from "@/lib/auth-client";
@@ -386,12 +387,7 @@ export default function ProfileSettingsPage() {
             </button>
             <span className="font-bold text-gray-900 text-sm">Profil sozlamalari</span>
           </div>
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-black shadow-sm"
-            style={{ background: "var(--brand-gradient)" }}
-          >
-            H
-          </div>
+          <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
         </div>
       </header>
 

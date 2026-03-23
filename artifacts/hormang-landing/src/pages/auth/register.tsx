@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { registerUser, saveProviderProfile } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
+import logoImg from "/hormang-logo.png";
 
 const SERVICE_CATEGORIES = [
   "Tozalik", "Ta'mirlash / Usta", "Enaga / Bola parvarishi",
@@ -317,11 +318,8 @@ export default function RegisterPage() {
         className="w-full max-w-md"
       >
         <div className="text-center mb-7">
-          <div
-            className="inline-flex items-center gap-2 mb-5 text-white text-sm font-bold px-4 py-2 rounded-full shadow-lg"
-            style={{ background: "var(--brand-gradient)" }}
-          >
-            Hormang · {roleLabel}
+          <div className="flex justify-center mb-3">
+            <img src={logoImg} alt="Hormang" className="w-16 h-16 object-contain drop-shadow-md" />
           </div>
 
           {totalSteps > 1 && (

@@ -2,14 +2,24 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, LogOut, User } from "lucide-react";
 import { Button } from "./ui/button";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { useAuth } from "@/contexts/auth-context";
+import logoImg from "/hormang-logo.png";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
+  const logoControls = useAnimation();
+
+  function handleLogoHover() {
+    logoControls.start({
+      rotate: [0, -12, 14, -10, 12, -6, 0],
+      scale: [1, 1.08, 1.08, 1.08, 1.08, 1.08, 1],
+      transition: { duration: 0.7, ease: "easeInOut" },
+    });
+  }
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 16);
@@ -42,16 +52,13 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <motion.div
-              className="relative w-9 h-9 rounded-xl overflow-hidden shadow-sm"
-              whileHover={{ scale: 1.07 }}
-              transition={{ type: "spring", stiffness: 400, damping: 18 }}
-            >
-              <div className="absolute inset-0 flex items-center justify-center text-white font-extrabold text-lg bg-blue-600">
-                H
-              </div>
-            </motion.div>
+          <Link href="/" className="flex items-center gap-2 group" onMouseEnter={handleLogoHover}>
+            <motion.img
+              src={logoImg}
+              alt="Hormang logo"
+              animate={logoControls}
+              className="w-10 h-10 object-contain drop-shadow-sm"
+            />
             <span className="font-extrabold text-xl tracking-tight text-gray-900">
               hormang
             </span>

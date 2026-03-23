@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { loginUser } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
+import logoImg from "/hormang-logo.png";
 
 const schema = z.object({
   contact: z.string().min(3, "Email yoki telefon talab qilinadi"),
@@ -56,11 +57,8 @@ export default function LoginPage() {
         className="w-full max-w-sm"
       >
         <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center gap-2 mb-5 text-white text-sm font-bold px-4 py-2 rounded-full shadow-lg"
-            style={{ background: "var(--brand-gradient)" }}
-          >
-            Hormang
+          <div className="flex justify-center mb-4">
+            <img src={logoImg} alt="Hormang" className="w-16 h-16 object-contain drop-shadow-md" />
           </div>
           <h1 className="text-2xl font-display font-bold text-foreground mb-1">Hisobingizga kiring</h1>
           <p className="text-muted-foreground text-sm">Ro'yxatdan o'tishda ishlatgan ma'lumotlaringizni kiriting</p>
