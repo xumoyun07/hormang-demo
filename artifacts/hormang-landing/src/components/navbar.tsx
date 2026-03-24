@@ -15,9 +15,12 @@ export function Navbar() {
 
   function handleLogoHover() {
     logoControls.start({
-      rotate: [0, -12, 14, -10, 12, -6, 0],
-      scale: [1, 1.08, 1.08, 1.08, 1.08, 1.08, 1],
-      transition: { duration: 0.7, ease: "easeInOut" },
+      y: [0, -3, 0],
+      transition: {
+        duration: 2,
+        repeat: Infinity,
+        ease: "easeInOut",
+      },
     });
   }
 

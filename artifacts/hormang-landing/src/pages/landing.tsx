@@ -175,7 +175,7 @@ function ResultsModal({ results, onClose }: { results: typeof DEMO_PROVIDERS.def
 }
 
 /* ─── Rotating Words ────────────────────────────────────────────── */
-const ROTATE_WORDS = ["santexnikani", "tozalovchini", "enagani", "repetitorni", "ustani"];
+const ROTATE_WORDS = ["santexnikni", "tozalovchini", "enagani", "repetitorni", "ustani"];
 
 function TypewriterHeadline() {
   const [idx, setIdx] = useState(0);
