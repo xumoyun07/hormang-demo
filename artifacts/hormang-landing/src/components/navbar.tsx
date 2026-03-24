@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, LogOut, User } from "lucide-react";
 import { Button } from "./ui/button";
-import { motion, AnimatePresence, useAnimation } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
 
@@ -11,18 +11,7 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
-  const logoControls = useAnimation();
-
-  function handleLogoHover() {
-    logoControls.start({
-      y: [0, -3, 0],
-      transition: {
-        duration: 2,
-        repeat: Infinity,
-        ease: "easeInOut",
-      },
-    });
-  }
+  const [logoHovered, setLogoHovered] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 16);
@@ -55,19 +44,27 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group" onMouseEnter={handleLogoHover}>
+          <Link
+            href="/"
+            className="flex items-center gap-2 group"
+            onMouseEnter={() => setLogoHovered(true)}
+            onMouseLeave={() => setLogoHovered(false)}
+          >
             <motion.img
               src={logoImg}
               alt="Hormang logo"
-              animate={logoControls}
+              animate={logoHovered
+                ? { rotate: [-8, 8], transition: { repeat: Infinity, repeatType: "reverse", duration: 0.35, ease: "easeInOut" } }
+                : { rotate: 0, transition: { duration: 0.25, ease: "easeOut" } }
+              }
               className="w-10 h-10 object-contain drop-shadow-sm"
             />
             <span className="font-extrabold text-xl tracking-tight text-gray-900">Hormang</span>
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-8">
-            <ul className="flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-3">
+            <ul className="flex items-center gap-5">
               {navLinks.map((link, i) => (
                 <motion.li
                   key={link.name}
@@ -85,7 +82,7 @@ export function Navbar() {
               ))}
             </ul>
 
-            <div className="flex items-center gap-3 border-l border-gray-200 pl-6">
+            <div className="flex items-center gap-3 border-l border-gray-200 pl-3">
               {user ? (
                 <>
                   <motion.button
@@ -121,7 +118,7 @@ export function Navbar() {
                   </motion.div>
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.38 }}>
                     <Button
-                      className="font-semibold bg-blue-600 hover:bg-blue-700 shadow-sm"
+                      className="font-semibold bg-blue-500 hover:bg-blue-700 shadow-sm"
                       onClick={() => setLocation("/auth/role")}
                     >
                       Ro'yxatdan o'tish
