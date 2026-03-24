@@ -59,9 +59,7 @@ export function Navbar() {
               animate={logoControls}
               className="w-10 h-10 object-contain drop-shadow-sm"
             />
-            <span className="font-extrabold text-xl tracking-tight text-gray-900">
-              hormang
-            </span>
+            <span className="font-extrabold text-xl tracking-tight text-gray-900">Hormang</span>
           </Link>
 
           {/* Desktop nav */}
@@ -150,7 +148,6 @@ export function Navbar() {
           </button>
         </div>
       </div>
-
       {/* Mobile menu */}
       <AnimatePresence>
         {mobileMenuOpen && (
