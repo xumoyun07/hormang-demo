@@ -19,9 +19,7 @@ export function Footer() {
               <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-extrabold text-lg bg-blue-600 shadow-sm">
                 H
               </div>
-              <span className="font-extrabold text-xl tracking-tight text-gray-900">
-                hormang
-              </span>
+              <span className="font-extrabold text-xl tracking-tight text-gray-900">Hormang</span>
             </Link>
             <p className="text-gray-500 leading-relaxed text-sm">
               Mahalliy mutaxassislar va xizmatlarni topish uchun ishonchli platforma. Tez, xavfsiz va qulay.
