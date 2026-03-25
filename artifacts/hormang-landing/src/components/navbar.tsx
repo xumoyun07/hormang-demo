@@ -57,7 +57,7 @@ export function Navbar() {
                 ? { rotate: [-8, 8], transition: { repeat: Infinity, repeatType: "reverse", duration: 0.35, ease: "easeInOut" } }
                 : { rotate: 0, transition: { duration: 0.25, ease: "easeOut" } }
               }
-              className="w-10 h-10 object-contain drop-shadow-sm"
+              className="w-13 h-13 object-contain drop-shadow-sm"
             />
             <span className="font-extrabold text-xl tracking-tight text-gray-900">Hormang</span>
           </Link>

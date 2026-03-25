@@ -48,18 +48,26 @@ export default function LoginPage() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-sm"
-      >
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <img src={logoImg} alt="Hormang" className="w-16 h-16 object-contain drop-shadow-md" />
-          </div>
+          return (
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="w-full max-w-sm"
+              >
+                <div className="text-center mb-8">
+                  <motion.div
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                    className="flex justify-center mb-3"
+                  >
+                    <img
+                      src={logoImg}
+                      alt="Hormang"
+                      className="w-28 h-28 object-contain drop-shadow-lg"
+                    />
+                  </motion.div>
           <h1 className="text-2xl font-display font-bold text-foreground mb-1">Hisobingizga kiring</h1>
           <p className="text-muted-foreground text-sm">Ro'yxatdan o'tishda ishlatgan ma'lumotlaringizni kiriting</p>
         </div>

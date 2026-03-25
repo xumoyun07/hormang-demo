@@ -595,7 +595,7 @@ function CategoriesSection() {
           >
             <span className="pill-label mb-5 inline-flex">Kategoriyalar</span>
             <h2 className="text-3xl md:text-4xl font-extrabold mb-3 text-gray-900">
-              <span className="text-gradient">Mashhur</span> xizmatlar
+              <span className="text-gradient">Dolzarb</span> xizmatlar
             </h2>
             <p className="text-gray-500 max-w-xl mx-auto text-base leading-relaxed">
               Bir necha bosish bilan istalgan topshiriq uchun mutaxassis toping.
