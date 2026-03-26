@@ -12,6 +12,8 @@ import RegisterPage from "@/pages/auth/register";
 import UnifiedDashboard from "@/pages/dashboard/index";
 import ProfileSettingsPage from "@/pages/profile/settings";
 import ProviderProfilePage from "@/pages/providers/profile";
+import QuestionnairePage from "@/pages/questionnaire";
+import AdminQuestionsPage from "@/pages/admin/questions";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -83,6 +85,8 @@ function Router() {
         {() => <ProtectedRoute component={ProfileSettingsPage} />}
       </Route>
       <Route path="/providers/:id" component={ProviderProfilePage} />
+      <Route path="/questionnaire" component={QuestionnairePage} />
+      <Route path="/admin/questions" component={AdminQuestionsPage} />
       <Route component={NotFound} />
     </Switch>
   );

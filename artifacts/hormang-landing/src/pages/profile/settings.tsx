@@ -15,10 +15,9 @@ import { updateProfile, updateProviderProfile, changePassword } from "@/lib/auth
 import { useToast } from "@/hooks/use-toast";
 
 const SERVICE_CATEGORIES = [
-  "Tozalik", "Ta'mirlash / Usta", "Enaga / Bola parvarishi",
-  "Ovqat pishirish", "Ko'chirish / Transport", "Go'zallik / Sartaroshlik",
-  "Avto xizmat", "Repetitor / O'qituvchi", "Elektr ishlari",
-  "Santexnika", "Dizayn / Yaratuvchanlik", "Boshqalar",
+  "Tozalash", "Ta'mirlash", "Enaga / Bola parvarishi",
+  "Tadbir xizmatlari", "Ko'chirish / Transport", "Go'zallik / Sartaroshlik",
+  "Avto xizmat", "Repetitor / O'qituvchi", "Ustachilik", "Boshqalar",
 ];
 
 const accountSchema = z.object({

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 
 const socialLinks = [
   { icon: Facebook, href: "#" },
-  { icon: Instagram, href: "#" },
+  { icon: Instagram, href: "https://www.instagram.com/hormangapp" },
   { icon: Twitter, href: "#" },
 ];
 

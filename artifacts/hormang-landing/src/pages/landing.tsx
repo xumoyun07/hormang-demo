@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
+import { useLocation } from "wouter";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Button } from "@/components/ui/button";
@@ -552,7 +553,7 @@ function ProblemSolutionSection() {
 }
 
 /* ─── Categories ─────────────────────────────────────────────────── */
-function CategoryCard({ icon: Icon, name, desc, index }: { icon: React.FC<{ className?: string }>; name: string; desc: string; index: number }) {
+function CategoryCard({ icon: Icon, name, desc, index, onClick }: { icon: React.FC<{ className?: string }>; name: string; desc: string; index: number; onClick: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -560,6 +561,7 @@ function CategoryCard({ icon: Icon, name, desc, index }: { icon: React.FC<{ clas
       viewport={{ once: true }}
       transition={{ delay: index * 0.07, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      onClick={onClick}
       className="group bg-white rounded-2xl border border-gray-100 p-6 card-shadow hover:card-shadow-hover hover:border-blue-100 transition-all duration-250 cursor-pointer"
     >
       <div className="w-12 h-12 rounded-xl bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center mb-4 transition-colors duration-200">
@@ -567,20 +569,25 @@ function CategoryCard({ icon: Icon, name, desc, index }: { icon: React.FC<{ clas
       </div>
       <h3 className="font-bold text-base mb-1.5 text-gray-900">{name}</h3>
       <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
+      <p className="text-xs font-semibold text-blue-600 mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        So'rov yuborish →
+      </p>
     </motion.div>
   );
 }
 
 function CategoriesSection() {
+  const [, setLocation] = useLocation();
+
   const categories = [
-    { icon: Sparkles, name: "Tozalik", desc: "Kvartira, ofis, oyna tozalash" },
-    { icon: Wrench, name: "Ta'mirlash", desc: "Santexnika, elektr, qo'l ishlari" },
-    { icon: Baby, name: "Enagalar", desc: "Bola va keksa parvarishi" },
-    { icon: ChefHat, name: "Ovqat pishirish", desc: "Uy oshpazi, tortlar, katering" },
-    { icon: Truck, name: "Ko'chirish", desc: "Ko'chirish va transport" },
-    { icon: Scissors, name: "Go'zallik", desc: "Manikur, soch, makiyaj" },
-    { icon: CarFront, name: "Avto xizmat", desc: "Diagnostika, yuvish, shinalar" },
-    { icon: GraduationCap, name: "Repetitorlar", desc: "Tillar, maktab, musiqa" },
+    { id: "tozalash", icon: Sparkles, name: "Tozalash", desc: "Kvartira, hovli, ofis" },
+    { id: "tamirlash", icon: Wrench, name: "Ta'mirlash", desc: "Santexnika, elektr jihozlari, mebel" },
+    { id: "enaga", icon: Baby, name: "Enagalik", desc: "Bola va keksa parvarishi" },
+    { id: "tadbir", icon: ChefHat, name: "Tadbir xizmatlari", desc: "To'y, tug'ilgan kun, korporativ" },
+    { id: "kochirish", icon: Truck, name: "Ko'chirish, yuk yetkazish", desc: "Ko'chirish va transport xizmatlari" },
+    { id: "gozallik", icon: Scissors, name: "Go'zallik", desc: "Manikyur, soch turmak, makiyaj" },
+    { id: "avto", icon: CarFront, name: "Avto xizmat", desc: "Diagnostika, yuvish, ta'mirlash" },
+    { id: "repetitor", icon: GraduationCap, name: "Repetitorlar", desc: "IELTS, matematika, musiqa" },
   ];
 
   return (
@@ -598,14 +605,21 @@ function CategoriesSection() {
               <span className="text-gradient">Dolzarb</span> xizmatlar
             </h2>
             <p className="text-gray-500 max-w-xl mx-auto text-base leading-relaxed">
-              Bir necha bosish bilan istalgan topshiriq uchun mutaxassis toping.
+              Bir necha bosqich bilan istalgan topshiriq uchun mutaxassis toping.
             </p>
           </motion.div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {categories.map((cat, i) => (
-            <CategoryCard key={i} icon={cat.icon} name={cat.name} desc={cat.desc} index={i} />
+            <CategoryCard
+              key={cat.id}
+              icon={cat.icon}
+              name={cat.name}
+              desc={cat.desc}
+              index={i}
+              onClick={() => setLocation(`/questionnaire?cat=${cat.id}`)}
+            />
           ))}
         </div>
 
