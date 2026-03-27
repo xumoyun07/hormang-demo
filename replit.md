@@ -102,11 +102,24 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 **Key pages:**
 - `/` — Landing page with AI search hero, categories, how-it-works, social proof
 - `/auth/role-select` — Choose buyer vs provider registration path
-- `/auth/register` — 1-step (buyer) or 2-step (provider) registration
-- `/auth/login` — Login with email/phone + remember me
+- `/auth/register` — Multi-step phone+OTP registration (name → phone → OTP → [provider profile])
+- `/auth/login` — Phone-only 2-step login (phone → OTP code)
+- `/auth/migrate` — Legacy migration page: email+password → add phone → OTP verify
 - `/dashboard` — Unified dashboard (also at `/dashboard/buyer`, `/dashboard/provider`)
-- `/profile/settings` — Account, provider profile, and password settings
+- `/profile/settings` — Account (name), Contact info (optional email), provider profile sections
 - `/providers/:id` — Public provider profile page
+
+**Auth System (Phone+OTP, no email/password):**
+- Primary auth: phone number + 6-digit SMS OTP (simulated in dev, `devCode` returned in API response)
+- No passwords for new users; random hash stored (never used for auth)
+- `POST /api/auth/sms/send` — sends OTP; `purpose` = "register" | "login" | "migrate" | "add-phone"
+- `POST /api/auth/register` — `{firstName, lastName, phone, otp, role}`
+- `POST /api/auth/login` — `{phone, otp}` — OTP-based passwordless login
+- `POST /api/auth/migrate-account` — legacy path: `{email, password, phone, otp}` → migrates email user to phone
+- `PUT /api/auth/add-phone` — add phone to existing logged-in account (requires auth)
+- `PUT /api/auth/profile` — update name + optional email (phone not updatable via this endpoint)
+- Email is purely optional, stored without verification, available in profile settings "Kontakt ma'lumotlari" section
+- Migration banner shown in profile settings when `user.phone === null`
 
 **Auth context (`src/contexts/auth-context.tsx`):**
 - `user` — authenticated SafeUser or null

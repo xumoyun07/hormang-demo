@@ -4,7 +4,7 @@ import { getOffers } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
 
 const tabs = [
-  { label: "Bosh sahifa", icon: Home, href: "/landing-page" },
+  { label: "Bosh sahifa", icon: Home, href: "/" },
   { label: "Kategoriyalar", icon: LayoutGrid, href: "/questionnaire" },
   { label: "So'rovlarim", icon: ClipboardList, href: "/my-requests" },
   { label: "Suhbatlarim", icon: MessageCircle, href: "/chat-offers" },

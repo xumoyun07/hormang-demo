@@ -52,12 +52,25 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
   return data as T;
 }
 
+// ─── SMS Verification ──────────────────────────────────────────────────────
+
+export async function sendSmsCode(
+  phone: string,
+  purpose: "register" | "login" | "migrate" | "add-phone",
+): Promise<{ ok: boolean; devCode?: string }> {
+  return request("/auth/sms/send", {
+    method: "POST",
+    body: JSON.stringify({ phone, purpose }),
+  });
+}
+
+// ─── Registration (phone + OTP) ────────────────────────────────────────────
+
 export async function registerUser(body: {
   firstName: string;
   lastName: string;
-  email?: string;
-  phone?: string;
-  password: string;
+  phone: string;
+  otp: string;
   role: "buyer" | "provider";
 }): Promise<AuthResponse> {
   const data = await request<AuthResponse>("/auth/register", {
@@ -80,10 +93,11 @@ export async function saveProviderProfile(body: {
   });
 }
 
+// ─── Login (phone + OTP) ───────────────────────────────────────────────────
+
 export async function loginUser(body: {
-  email?: string;
-  phone?: string;
-  password: string;
+  phone: string;
+  otp: string;
 }): Promise<AuthResponse> {
   const data = await request<AuthResponse>("/auth/login", {
     method: "POST",
@@ -92,6 +106,36 @@ export async function loginUser(body: {
   setToken(data.accessToken);
   return data;
 }
+
+// ─── Account Migration (email+password → add phone) ───────────────────────
+
+export async function migrateAccount(body: {
+  email: string;
+  password: string;
+  phone: string;
+  otp: string;
+}): Promise<AuthResponse> {
+  const data = await request<AuthResponse>("/auth/migrate-account", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  setToken(data.accessToken);
+  return data;
+}
+
+// ─── Add phone to existing logged-in account ──────────────────────────────
+
+export async function addPhone(body: {
+  phone: string;
+  otp: string;
+}): Promise<{ user: SafeUser }> {
+  return request("/auth/add-phone", {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+// ─── Session ───────────────────────────────────────────────────────────────
 
 export async function logoutUser(): Promise<void> {
   await request("/auth/logout", { method: "POST" });
@@ -113,11 +157,12 @@ export async function refreshToken(): Promise<string | null> {
   }
 }
 
+// ─── Profile Updates ───────────────────────────────────────────────────────
+
 export async function updateProfile(body: {
   firstName?: string;
   lastName?: string;
   email?: string;
-  phone?: string;
 }): Promise<{ user: SafeUser }> {
   return request("/auth/profile", {
     method: "PUT",
@@ -133,16 +178,6 @@ export async function updateProviderProfile(body: {
 }): Promise<{ profile: ProviderProfile }> {
   return request("/auth/provider-profile", {
     method: "PUT",
-    body: JSON.stringify(body),
-  });
-}
-
-export async function changePassword(body: {
-  currentPassword: string;
-  newPassword: string;
-}): Promise<void> {
-  await request("/auth/change-password", {
-    method: "POST",
     body: JSON.stringify(body),
   });
 }

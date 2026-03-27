@@ -18,6 +18,7 @@ import MyRequestsPage from "@/pages/my-requests";
 import OffersPage from "@/pages/offers";
 import ChatPage from "@/pages/chat";
 import ChatOffersPage from "@/pages/chat-offers";
+import MigratePage from "@/pages/auth/migrate";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,6 +74,9 @@ function Router() {
       </Route>
       <Route path="/auth/register">
         {() => <PublicOnlyRoute component={RegisterPage} />}
+      </Route>
+      <Route path="/auth/migrate">
+        {() => <PublicOnlyRoute component={MigratePage} />}
       </Route>
       <Route path="/dashboard">
         {() => <ProtectedRoute component={UnifiedDashboard} />}

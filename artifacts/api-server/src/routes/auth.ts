@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, usersTable, providerProfilesTable } from "@workspace/db";
 import {
   hashPassword,
@@ -11,9 +11,36 @@ import {
 } from "../lib/auth.js";
 import type { AuthRequest } from "../middlewares/auth.js";
 import { requireAuth } from "../middlewares/auth.js";
+import crypto from "crypto";
 
 const router = Router();
 
+// ─── OTP Store ────────────────────────────────────────────────────────────────
+interface OtpEntry { code: string; expiresAt: number; purpose: string }
+const otpStore = new Map<string, OtpEntry>();
+
+function normalizePhone(phone: string): string {
+  return phone.replace(/\s+/g, "").trim();
+}
+
+function storeOtp(phone: string, purpose: string): string {
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  otpStore.set(normalizePhone(phone), { code, expiresAt: Date.now() + 5 * 60 * 1000, purpose });
+  return code;
+}
+
+function verifyOtp(phone: string, code: string, purpose: string): boolean {
+  const key = normalizePhone(phone);
+  const entry = otpStore.get(key);
+  if (!entry) return false;
+  if (Date.now() > entry.expiresAt) { otpStore.delete(key); return false; }
+  if (entry.purpose !== purpose) return false;
+  if (entry.code !== code) return false;
+  otpStore.delete(key);
+  return true;
+}
+
+// ─── Rate Limiting ─────────────────────────────────────────────────────────
 const loginAttempts = new Map<string, { count: number; lockedUntil?: number }>();
 
 function checkRateLimit(key: string): { blocked: boolean; remaining: number } {
@@ -22,73 +49,128 @@ function checkRateLimit(key: string): { blocked: boolean; remaining: number } {
   if (entry.lockedUntil && now < entry.lockedUntil) {
     return { blocked: true, remaining: Math.ceil((entry.lockedUntil - now) / 1000) };
   }
-  if (entry.lockedUntil && now >= entry.lockedUntil) {
-    loginAttempts.delete(key);
-  }
+  if (entry.lockedUntil && now >= entry.lockedUntil) loginAttempts.delete(key);
   return { blocked: false, remaining: 5 - entry.count };
 }
 
 function recordFailedAttempt(key: string) {
   const entry = loginAttempts.get(key) ?? { count: 0 };
   entry.count += 1;
-  if (entry.count >= 5) {
-    entry.lockedUntil = Date.now() + 5 * 60 * 1000;
-  }
+  if (entry.count >= 5) entry.lockedUntil = Date.now() + 5 * 60 * 1000;
   loginAttempts.set(key, entry);
 }
 
-function clearAttempts(key: string) {
-  loginAttempts.delete(key);
+function clearAttempts(key: string) { loginAttempts.delete(key); }
+
+async function getProviderProfile(userId: string) {
+  const [profile] = await db
+    .select()
+    .from(providerProfilesTable)
+    .where(eq(providerProfilesTable.userId, userId))
+    .limit(1);
+  return profile ?? null;
 }
 
+// ─── POST /sms/send ─────────────────────────────────────────────────────────
+router.post("/sms/send", async (req, res) => {
+  try {
+    const { phone, purpose } = req.body as { phone?: string; purpose?: string };
+
+    if (!phone || !purpose) {
+      res.status(400).json({ error: "Telefon raqami va maqsad talab qilinadi" });
+      return;
+    }
+
+    const normalized = normalizePhone(phone);
+    const digitsOnly = normalized.replace(/\D/g, "");
+    if (digitsOnly.length < 9) {
+      res.status(400).json({ error: "Noto'g'ri telefon raqami" });
+      return;
+    }
+
+    if (!["register", "login", "migrate", "add-phone"].includes(purpose)) {
+      res.status(400).json({ error: "Noto'g'ri maqsad" });
+      return;
+    }
+
+    if (purpose === "login") {
+      const [user] = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.phone, normalized))
+        .limit(1);
+      if (!user) {
+        res.status(404).json({ error: "Bu raqam ro'yxatdan o'tmagan" });
+        return;
+      }
+    }
+
+    if (purpose === "register") {
+      const [user] = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.phone, normalized))
+        .limit(1);
+      if (user) {
+        res.status(409).json({ error: "Bu raqam allaqachon ro'yxatdan o'tgan" });
+        return;
+      }
+    }
+
+    const code = storeOtp(normalized, purpose);
+
+    // In production: integrate real SMS gateway here
+    // For demo: always return devCode in response
+    res.json({ ok: true, devCode: code });
+  } catch (err) {
+    console.error("SMS send error:", err);
+    res.status(500).json({ error: "Xatolik yuz berdi" });
+  }
+});
+
+// ─── POST /register (phone + OTP) ──────────────────────────────────────────
 router.post("/register", async (req, res) => {
   try {
-    const { firstName, lastName, email, phone, password, role } = req.body as {
-      firstName: string;
-      lastName: string;
-      email?: string;
+    const { firstName, lastName, phone, otp, role } = req.body as {
+      firstName?: string;
+      lastName?: string;
       phone?: string;
-      password: string;
-      role: "buyer" | "provider";
+      otp?: string;
+      role?: "buyer" | "provider";
     };
 
-    if (!firstName || !lastName || !password) {
-      res.status(400).json({ error: "Ism, familiya va parol talab qilinadi" });
+    if (!firstName || !lastName || !phone || !otp) {
+      res.status(400).json({ error: "Ism, familiya, telefon va tasdiqlash kodi talab qilinadi" });
       return;
     }
-    if (!email && !phone) {
-      res.status(400).json({ error: "Email yoki telefon talab qilinadi" });
-      return;
-    }
-    if (!["buyer", "provider"].includes(role)) {
+    if (!role || !["buyer", "provider"].includes(role)) {
       res.status(400).json({ error: "Noto'g'ri rol" });
       return;
     }
-    if (password.length < 8) {
-      res.status(400).json({ error: "Parol kamida 8 belgidan iborat bo'lishi kerak" });
+
+    const normalized = normalizePhone(phone);
+
+    if (!verifyOtp(normalized, otp, "register")) {
+      res.status(400).json({ error: "Tasdiqlash kodi noto'g'ri yoki muddati o'tgan" });
       return;
     }
 
     const existing = await db
       .select({ id: usersTable.id })
       .from(usersTable)
-      .where(
-        email
-          ? eq(usersTable.email, email)
-          : eq(usersTable.phone, phone!)
-      )
+      .where(eq(usersTable.phone, normalized))
       .limit(1);
 
     if (existing.length > 0) {
-      res.status(409).json({ error: "Bu email yoki telefon allaqachon ro'yxatdan o'tgan" });
+      res.status(409).json({ error: "Bu raqam allaqachon ro'yxatdan o'tgan" });
       return;
     }
 
-    const passwordHash = await hashPassword(password);
+    const passwordHash = await hashPassword(crypto.randomBytes(32).toString("hex"));
 
     const [user] = await db
       .insert(usersTable)
-      .values({ firstName, lastName, email, phone, passwordHash, role })
+      .values({ firstName, lastName, phone: normalized, passwordHash, role })
       .returning();
 
     const safeUser = { ...user, passwordHash: undefined };
@@ -96,13 +178,14 @@ router.post("/register", async (req, res) => {
     const refreshToken = generateRefreshToken(user.id);
 
     res.cookie("refreshToken", refreshToken, COOKIE_OPTS);
-    res.status(201).json({ user: safeUser, accessToken });
+    res.status(201).json({ user: safeUser, accessToken, providerProfile: null });
   } catch (err) {
     console.error("Register error:", err);
     res.status(500).json({ error: "Xatolik yuz berdi. Qayta urinib ko'ring." });
   }
 });
 
+// ─── POST /register/provider-profile ────────────────────────────────────────
 router.post("/register/provider-profile", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { categories, bio, workingHours, preferredLocation } = req.body as {
@@ -145,15 +228,11 @@ router.post("/register/provider-profile", requireAuth, async (req: AuthRequest, 
   }
 });
 
+// ─── POST /login (phone + OTP) ──────────────────────────────────────────────
 router.post("/login", async (req, res) => {
-  const { email, phone, password } = req.body as {
-    email?: string;
-    phone?: string;
-    password: string;
-  };
-
-  const key = email ?? phone ?? "unknown";
-  const { blocked, remaining } = checkRateLimit(key);
+  const { phone, otp } = req.body as { phone?: string; otp?: string };
+  const normalized = normalizePhone(phone ?? "");
+  const { blocked, remaining } = checkRateLimit(normalized);
 
   if (blocked) {
     res.status(429).json({ error: `Juda ko'p urinish. ${remaining} soniyadan so'ng qayta urinib ko'ring.` });
@@ -161,51 +240,121 @@ router.post("/login", async (req, res) => {
   }
 
   try {
-    if (!password || (!email && !phone)) {
-      res.status(400).json({ error: "Email/telefon va parol talab qilinadi" });
+    if (!phone || !otp) {
+      res.status(400).json({ error: "Telefon va tasdiqlash kodi talab qilinadi" });
       return;
     }
 
-    const condition = email ? eq(usersTable.email, email) : eq(usersTable.phone, phone!);
+    if (!verifyOtp(normalized, otp, "login")) {
+      recordFailedAttempt(normalized);
+      res.status(401).json({ error: "Tasdiqlash kodi noto'g'ri yoki muddati o'tgan" });
+      return;
+    }
 
     const [user] = await db
       .select()
       .from(usersTable)
-      .where(condition)
+      .where(eq(usersTable.phone, normalized))
       .limit(1);
 
     if (!user) {
-      recordFailedAttempt(key);
-      res.status(401).json({ error: "Email/telefon yoki parol noto'g'ri" });
+      recordFailedAttempt(normalized);
+      res.status(401).json({ error: "Foydalanuvchi topilmadi" });
       return;
     }
 
-    const valid = await comparePassword(password, user.passwordHash);
-    if (!valid) {
-      recordFailedAttempt(key);
-      res.status(401).json({ error: "Email/telefon yoki parol noto'g'ri" });
-      return;
-    }
-
-    clearAttempts(key);
+    clearAttempts(normalized);
 
     await db
       .update(usersTable)
       .set({ lastLoginAt: new Date() })
       .where(eq(usersTable.id, user.id));
 
+    const providerProfile = user.role === "provider" ? await getProviderProfile(user.id) : null;
+
     const safeUser = { ...user, passwordHash: undefined };
     const accessToken = generateAccessToken({ ...user });
     const refreshToken = generateRefreshToken(user.id);
 
     res.cookie("refreshToken", refreshToken, COOKIE_OPTS);
-    res.json({ user: safeUser, accessToken });
+    res.json({ user: safeUser, accessToken, providerProfile });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Xatolik yuz berdi. Qayta urinib ko'ring." });
   }
 });
 
+// ─── POST /migrate-account (email+password → add phone → migrate to OTP) ───
+router.post("/migrate-account", async (req, res) => {
+  try {
+    const { email, password, phone, otp } = req.body as {
+      email?: string;
+      password?: string;
+      phone?: string;
+      otp?: string;
+    };
+
+    if (!email || !password || !phone || !otp) {
+      res.status(400).json({ error: "Barcha maydonlar talab qilinadi" });
+      return;
+    }
+
+    const [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, email))
+      .limit(1);
+
+    if (!user) {
+      res.status(401).json({ error: "Email yoki parol noto'g'ri" });
+      return;
+    }
+
+    const valid = await comparePassword(password, user.passwordHash);
+    if (!valid) {
+      res.status(401).json({ error: "Email yoki parol noto'g'ri" });
+      return;
+    }
+
+    const normalized = normalizePhone(phone);
+
+    if (!verifyOtp(normalized, otp, "migrate")) {
+      res.status(400).json({ error: "Tasdiqlash kodi noto'g'ri yoki muddati o'tgan" });
+      return;
+    }
+
+    const [phoneConflict] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.phone, normalized))
+      .limit(1);
+
+    if (phoneConflict && phoneConflict.id !== user.id) {
+      res.status(409).json({ error: "Bu raqam boshqa hisob bilan bog'liq" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(usersTable)
+      .set({ phone: normalized, updatedAt: new Date() })
+      .where(eq(usersTable.id, user.id))
+      .returning();
+
+    const providerProfile = updated.role === "provider" ? await getProviderProfile(updated.id) : null;
+
+    const safeUser = { ...updated, passwordHash: undefined };
+    const accessToken = generateAccessToken({ ...updated });
+    const refreshToken = generateRefreshToken(updated.id);
+
+    res.cookie("refreshToken", refreshToken, COOKIE_OPTS);
+    res.json({ user: safeUser, accessToken, providerProfile });
+  } catch (err) {
+    console.error("Migrate account error:", err);
+    res.status(500).json({ error: "Xatolik yuz berdi" });
+  }
+});
+
+// ─── POST /refresh ─────────────────────────────────────────────────────────
 router.post("/refresh", async (req, res) => {
   const token = req.cookies?.refreshToken;
   if (!token) {
@@ -235,24 +384,24 @@ router.post("/refresh", async (req, res) => {
   }
 });
 
+// ─── POST /logout ───────────────────────────────────────────────────────────
 router.post("/logout", (_req, res) => {
   res.clearCookie("refreshToken", { path: "/" });
   res.json({ ok: true });
 });
 
+// ─── PUT /profile ──────────────────────────────────────────────────────────
 router.put("/profile", requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { firstName, lastName, phone, email } = req.body as {
+    const { firstName, lastName, email } = req.body as {
       firstName?: string;
       lastName?: string;
-      phone?: string;
       email?: string;
     };
 
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (firstName) updates.firstName = firstName;
     if (lastName) updates.lastName = lastName;
-    if (phone !== undefined) updates.phone = phone || null;
     if (email !== undefined) updates.email = email || null;
 
     const [user] = await db
@@ -269,6 +418,49 @@ router.put("/profile", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+// ─── PUT /add-phone (add phone to existing logged-in account) ──────────────
+router.put("/add-phone", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { phone, otp } = req.body as { phone?: string; otp?: string };
+
+    if (!phone || !otp) {
+      res.status(400).json({ error: "Telefon va tasdiqlash kodi talab qilinadi" });
+      return;
+    }
+
+    const normalized = normalizePhone(phone);
+
+    if (!verifyOtp(normalized, otp, "add-phone")) {
+      res.status(400).json({ error: "Tasdiqlash kodi noto'g'ri yoki muddati o'tgan" });
+      return;
+    }
+
+    const [phoneConflict] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.phone, normalized))
+      .limit(1);
+
+    if (phoneConflict && phoneConflict.id !== req.user!.id) {
+      res.status(409).json({ error: "Bu raqam boshqa hisob bilan bog'liq" });
+      return;
+    }
+
+    const [user] = await db
+      .update(usersTable)
+      .set({ phone: normalized, updatedAt: new Date() })
+      .where(eq(usersTable.id, req.user!.id))
+      .returning();
+
+    const safeUser = { ...user, passwordHash: undefined };
+    res.json({ user: safeUser });
+  } catch (err) {
+    console.error("Add phone error:", err);
+    res.status(500).json({ error: "Xatolik yuz berdi" });
+  }
+});
+
+// ─── PUT /provider-profile ─────────────────────────────────────────────────
 router.put("/provider-profile", requireAuth, async (req: AuthRequest, res) => {
   try {
     const { categories, bio, workingHours, preferredLocation } = req.body as {
@@ -311,40 +503,7 @@ router.put("/provider-profile", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
-router.post("/change-password", requireAuth, async (req: AuthRequest, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body as {
-      currentPassword: string;
-      newPassword: string;
-    };
-
-    if (!currentPassword || !newPassword || newPassword.length < 8) {
-      res.status(400).json({ error: "Yangi parol kamida 8 belgidan iborat bo'lishi kerak" });
-      return;
-    }
-
-    const [user] = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, req.user!.id))
-      .limit(1);
-
-    const valid = await comparePassword(currentPassword, user.passwordHash);
-    if (!valid) {
-      res.status(401).json({ error: "Joriy parol noto'g'ri" });
-      return;
-    }
-
-    const passwordHash = await hashPassword(newPassword);
-    await db.update(usersTable).set({ passwordHash, updatedAt: new Date() }).where(eq(usersTable.id, user.id));
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("Change password error:", err);
-    res.status(500).json({ error: "Xatolik yuz berdi" });
-  }
-});
-
+// ─── GET /providers/:id ────────────────────────────────────────────────────
 router.get("/providers/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -373,6 +532,7 @@ router.get("/providers/:id", async (req, res) => {
   }
 });
 
+// ─── GET /me ───────────────────────────────────────────────────────────────
 router.get("/me", requireAuth, async (req: AuthRequest, res) => {
   try {
     const [user] = await db
@@ -387,18 +547,9 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
     }
 
     const safeUser = { ...user, passwordHash: undefined };
+    const providerProfile = user.role === "provider" ? await getProviderProfile(user.id) : null;
 
-    if (user.role === "provider") {
-      const [profile] = await db
-        .select()
-        .from(providerProfilesTable)
-        .where(eq(providerProfilesTable.userId, user.id))
-        .limit(1);
-      res.json({ user: safeUser, providerProfile: profile ?? null });
-      return;
-    }
-
-    res.json({ user: safeUser, providerProfile: null });
+    res.json({ user: safeUser, providerProfile });
   } catch (err) {
     console.error("Me error:", err);
     res.status(500).json({ error: "Xatolik yuz berdi" });
