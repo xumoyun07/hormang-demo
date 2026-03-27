@@ -10,6 +10,10 @@ import {
   getCategories, getAllQuestionsForCategory, getCategoryById,
   type Question, type CategoryConfig,
 } from "@/lib/questionnaire-store";
+import {
+  saveNewRequest, generateOffersForRequest, getOffersByRequestId,
+  getOrCreateChat, type Offer,
+} from "@/lib/requests-store";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
@@ -545,19 +549,47 @@ function SummaryScreen({
 function RecommendationsScreen({
   categoryId,
   answers,
+  requestId,
   onBack,
 }: {
   categoryId: string;
   answers: Answers;
+  requestId: string | null;
   onBack: () => void;
 }) {
   const cat = getCategoryById(categoryId);
   const [, setLocation] = useLocation();
 
-  const ranked = [...MOCK_PROVIDERS]
-    .map((p) => ({ ...p, match: calcMatch(p, answers) }))
-    .sort((a, b) => b.match - a.match)
-    .slice(0, 6);
+  // Use saved offers from localStorage when we have a requestId, else fall back to mock ranking
+  const savedOffers = requestId ? getOffersByRequestId(requestId) : [];
+
+  const ranked = savedOffers.length > 0
+    ? savedOffers.map((o) => ({
+        id: o.masterId,
+        name: o.masterName,
+        initials: o.masterInitials,
+        color: o.masterColor,
+        rating: 4.7 + Math.random() * 0.3, // realistic random rating
+        reviews: 40 + Math.floor(Math.random() * 180),
+        location: ["Yunusobod", "Chilonzor", "Mirobod", "Sergeli", "Shayxontohur"][Math.floor(Math.random() * 5)],
+        priceLabel: `${o.price.toLocaleString()} so'm`,
+        responseTime: `~${o.avgResponseTime} daqiqa`,
+        match: calcMatch({ ...MOCK_PROVIDERS[0], urgencyFit: "high", baseMatch: 85 + Math.floor(Math.random() * 10) }, answers),
+        avgResponseTime: o.avgResponseTime,
+        offerId: o.id,
+      }))
+    : [...MOCK_PROVIDERS]
+        .map((p) => ({ ...p, match: calcMatch(p, answers), avgResponseTime: 15, offerId: null }))
+        .sort((a, b) => b.match - a.match)
+        .slice(0, 6);
+
+  // Assign distinct match percentages (95, 92, 89, ...)
+  const rankedSorted = ranked.map((p, i) => ({
+    ...p,
+    match: Math.max(72, 95 - i * 3 + (Math.random() < 0.5 ? 1 : 0)),
+    rating: parseFloat((4.7 + Math.random() * 0.3).toFixed(1)),
+    reviews: 40 + Math.floor(Math.random() * 180),
+  }));
 
   const urgency = answers["urgency"] as string | undefined;
   const urgencyInfo = urgency ? URGENCY_LABELS[urgency] : null;
@@ -568,14 +600,13 @@ function RecommendationsScreen({
     return "bg-amber-500";
   }
 
-  function matchReasons(p: typeof ranked[0]): string[] {
-    const reasons: string[] = [];
-    if (p.match >= 90) reasons.push("Yuqori mos keladi");
-    if (p.urgencyFit === "high" && (urgency === "today_tomorrow" || urgency === "3_7_days"))
-      reasons.push("Tez javob beradi");
-    if (p.rating >= 4.9) reasons.push("Top baholangan");
-    if (p.reviews > 100) reasons.push(`${p.reviews}+ sharh`);
-    return reasons.slice(0, 3);
+  function openChat(p: typeof rankedSorted[0]) {
+    if (!requestId) { setLocation("/auth/login"); return; }
+    const chat = getOrCreateChat(
+      requestId, p.id, p.name, p.initials, p.color,
+      p.avgResponseTime, cat?.name ?? categoryId
+    );
+    setLocation(`/chat/${chat.id}`);
   }
 
   return (
@@ -588,13 +619,13 @@ function RecommendationsScreen({
             <h1 className="text-xl font-extrabold text-gray-900">Sizga mos ustalar</h1>
           </div>
           <p className="text-gray-500 text-sm">
-            {ranked.length} ta mutaxassis so'rovingizga mos keldi
+            {rankedSorted.length} ta mutaxassis taklif berdi
             {urgencyInfo ? ` · ${urgencyInfo.label}` : ""}
           </p>
         </div>
 
-        <div className="space-y-3 mb-8">
-          {ranked.map((p, i) => (
+        <div className="space-y-3 mb-6">
+          {rankedSorted.map((p, i) => (
             <motion.div
               key={p.id}
               initial={{ opacity: 0, y: 16 }}
@@ -631,28 +662,18 @@ function RecommendationsScreen({
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex items-center gap-1">
                   <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  <span className="text-xs font-bold text-gray-800">{p.rating}</span>
+                  <span className="text-xs font-bold text-gray-800">{p.rating.toFixed(1)}</span>
                   <span className="text-xs text-gray-400">({p.reviews})</span>
                 </div>
                 <span className="text-xs font-semibold text-blue-600">{p.priceLabel}</span>
               </div>
-
-              {matchReasons(p).length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {matchReasons(p).map((r) => (
-                    <span key={r} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600">
-                      {r}
-                    </span>
-                  ))}
-                </div>
-              )}
 
               <div className="flex gap-2">
                 <Button
                   size="sm"
                   variant="outline"
                   className="flex-1 h-9 text-xs font-semibold border-gray-200 gap-1.5"
-                  onClick={() => setLocation("/auth/login")}
+                  onClick={() => openChat(p)}
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                   Chat ochish
@@ -660,24 +681,44 @@ function RecommendationsScreen({
                 <Button
                   size="sm"
                   className="flex-1 h-9 text-xs font-semibold bg-blue-600 hover:bg-blue-700 gap-1.5"
-                  onClick={() => setLocation("/auth/login")}
+                  onClick={() => requestId ? setLocation(`/offers?requestId=${requestId}`) : setLocation("/auth/login")}
                 >
                   <FileText className="w-3.5 h-3.5" />
-                  Taklif so'rash
+                  Takliflarni ko'rish
                 </Button>
               </div>
             </motion.div>
           ))}
         </div>
 
-        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 text-center">
-          <p className="text-sm font-semibold text-blue-800 mb-3">
-            To'liq profil va tezkor bron uchun ro'yxatdan o'ting — bepul!
-          </p>
-          <Button className="w-full font-bold bg-blue-600 hover:bg-blue-700" onClick={() => setLocation("/auth/role")}>
-            Bepul ro'yxatdan o'tish
-          </Button>
-        </div>
+        {/* CTA: Go to my requests (for logged-in) or register (for guests) */}
+        {requestId ? (
+          <div className="space-y-3">
+            <Button
+              className="w-full py-4 font-bold bg-blue-600 hover:bg-blue-700 rounded-2xl gap-2"
+              onClick={() => setLocation("/my-requests")}
+            >
+              Mening so'rovlarimga o'tish
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full font-semibold border-gray-200 rounded-2xl gap-2"
+              onClick={() => setLocation(`/offers?requestId=${requestId}`)}
+            >
+              Barcha takliflarni ko'rish
+            </Button>
+          </div>
+        ) : (
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 text-center">
+            <p className="text-sm font-semibold text-blue-800 mb-3">
+              Takliflarni qabul qilish uchun ro'yxatdan o'ting — bepul!
+            </p>
+            <Button className="w-full font-bold bg-blue-600 hover:bg-blue-700" onClick={() => setLocation("/auth/role")}>
+              Bepul ro'yxatdan o'tish
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -692,6 +733,7 @@ export default function QuestionnairePage() {
   const [stage, setStage] = useState<Stage>(presetCat ? "questions" : "select-category");
   const [categoryId, setCategoryId] = useState<string>(presetCat ?? "");
   const [answers, setAnswers] = useState<Answers>({});
+  const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
 
   function handleSelectCategory(id: string) {
     setCategoryId(id);
@@ -704,6 +746,11 @@ export default function QuestionnairePage() {
   }
 
   function handleSeeProviders() {
+    // Save request to localStorage and auto-generate offers
+    const cat = getCategoryById(categoryId);
+    const req = saveNewRequest(categoryId, cat?.name ?? categoryId, answers);
+    generateOffersForRequest(req.id, categoryId, answers as Record<string, unknown>);
+    setCurrentRequestId(req.id);
     setStage("recommendations");
   }
 
@@ -738,6 +785,7 @@ export default function QuestionnairePage() {
           <RecommendationsScreen
             categoryId={categoryId}
             answers={answers}
+            requestId={currentRequestId}
             onBack={() => setStage("summary")}
           />
         </motion.div>

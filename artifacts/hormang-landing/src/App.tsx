@@ -14,6 +14,9 @@ import ProfileSettingsPage from "@/pages/profile/settings";
 import ProviderProfilePage from "@/pages/providers/profile";
 import QuestionnairePage from "@/pages/questionnaire";
 import AdminQuestionsPage from "@/pages/admin/questions";
+import MyRequestsPage from "@/pages/my-requests";
+import OffersPage from "@/pages/offers";
+import ChatPage from "@/pages/chat";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -87,6 +90,15 @@ function Router() {
       <Route path="/providers/:id" component={ProviderProfilePage} />
       <Route path="/questionnaire" component={QuestionnairePage} />
       <Route path="/admin/questions" component={AdminQuestionsPage} />
+      <Route path="/my-requests">
+        {() => <ProtectedRoute component={MyRequestsPage} />}
+      </Route>
+      <Route path="/offers">
+        {() => <ProtectedRoute component={OffersPage} />}
+      </Route>
+      <Route path="/chat/:chatId">
+        {() => <ProtectedRoute component={ChatPage} />}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
