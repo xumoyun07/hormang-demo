@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useInView } from "framer-motion";
 import { useLocation } from "wouter";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
 import {
   Sparkles, Wrench, Baby, ChefHat, Truck,
@@ -1050,6 +1051,7 @@ export default function LandingPage() {
       <PricingSection />
       <CTASection />
       <Footer />
+      <BottomNav />
     </div>
   );
 }

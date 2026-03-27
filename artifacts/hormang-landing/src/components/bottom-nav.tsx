@@ -4,11 +4,11 @@ import { getOffers } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
 
 const tabs = [
-  { label: "Bosh sahifa", icon: Home, href: "/" },
+  { label: "Bosh sahifa", icon: Home, href: "/landing-page" },
   { label: "Kategoriyalar", icon: LayoutGrid, href: "/questionnaire" },
   { label: "So'rovlarim", icon: ClipboardList, href: "/my-requests" },
-  { label: "Chat", icon: MessageCircle, href: "/chat-offers" },
-  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+  { label: "Suhbatlarim", icon: MessageCircle, href: "/chat-offers" },
+  { label: "Profil", icon: LayoutDashboard, href: "/dashboard" },
 ];
 
 export function BottomNav() {

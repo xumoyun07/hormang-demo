@@ -64,9 +64,7 @@ function ProtectedRoute({ component: Component }: { component: React.FC }) {
 function Router() {
   return (
     <Switch>
-      <Route path="/">
-        {() => <PublicOnlyRoute component={LandingPage} />}
-      </Route>
+      <Route path="/" component={LandingPage} />
       <Route path="/auth/role">
         {() => <PublicOnlyRoute component={RoleSelectPage} />}
       </Route>
