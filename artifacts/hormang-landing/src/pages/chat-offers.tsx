@@ -1,0 +1,377 @@
+/**
+ * /chat-offers — Combined Offers + Chat History page
+ * Shows all received offers (grouped by request) and recent chats.
+ */
+import { useState, useEffect, useCallback } from "react";
+import { useLocation, useSearch } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  MessageCircle, Clock, ChevronRight, Check, X,
+  Inbox, LayoutList, ChevronLeft,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BottomNav } from "@/components/bottom-nav";
+import {
+  getOffers, getChats, getRequestById, getOrCreateChat,
+  updateOfferStatus,
+  type Offer, type Chat,
+} from "@/lib/requests-store";
+import logoImg from "/hormang-logo.png";
+
+/* ─── Tab type ───────────────────────────────────────────────────── */
+type Tab = "offers" | "chats";
+
+/* ─── Helpers ─────────────────────────────────────────────────────── */
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) {
+    return d.toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" });
+  }
+  return d.toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "short" });
+}
+
+/* ─── Offer Card ─────────────────────────────────────────────────── */
+function OfferCard({ offer, onUpdate, index }: {
+  offer: Offer;
+  onUpdate: () => void;
+  index: number;
+}) {
+  const [, setLocation] = useLocation();
+  const req = getRequestById(offer.requestId);
+  const isAccepted = offer.status === "accepted";
+  const isRejected = offer.status === "rejected";
+
+  function openChat() {
+    const chat = getOrCreateChat(
+      offer.requestId, offer.masterId, offer.masterName,
+      offer.masterInitials, offer.masterColor,
+      offer.avgResponseTime, req?.categoryName ?? ""
+    );
+    setLocation(`/chat/${chat.id}`);
+  }
+
+  function accept() {
+    updateOfferStatus(offer.id, "accepted");
+    onUpdate();
+  }
+
+  function reject() {
+    updateOfferStatus(offer.id, "rejected");
+    onUpdate();
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.35 }}
+      className={`bg-white rounded-2xl border overflow-hidden transition-all duration-200 ${
+        isAccepted ? "border-emerald-200"
+        : isRejected ? "border-gray-100 opacity-55"
+        : "border-gray-100 hover:border-blue-100 hover:shadow-sm"
+      }`}
+    >
+      {/* Request context strip */}
+      {req && (
+        <div className="px-4 pt-3 pb-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+          <span className="text-sm">{req.emoji}</span>
+          <p className="text-xs font-semibold text-gray-500 flex-1 truncate">{req.categoryName}</p>
+          <span className="text-[10px] text-gray-400">{formatDate(offer.createdAt)}</span>
+        </div>
+      )}
+
+      <div className="p-4">
+        {/* Master row */}
+        <div className="flex items-start gap-3 mb-3">
+          <div
+            className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
+            style={{ background: offer.masterColor }}
+          >
+            {offer.masterInitials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-bold text-sm text-gray-900">{offer.masterName}</p>
+              {isAccepted && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600">
+                  Qabul qilingan
+                </span>
+              )}
+              {isRejected && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                  Rad etilgan
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 mt-0.5">
+              <Clock className="w-3 h-3 text-gray-400" />
+              <span className="text-[11px] text-gray-400 font-medium">
+                ~{offer.avgResponseTime} daqiqa
+              </span>
+            </div>
+          </div>
+          {/* Price */}
+          <div className="flex-shrink-0 text-right">
+            <p className="font-extrabold text-base text-blue-600">{offer.price.toLocaleString()}</p>
+            <p className="text-[10px] text-gray-400">so'm</p>
+          </div>
+        </div>
+
+        {/* Message */}
+        <div className="bg-gray-50 rounded-xl px-3 py-2.5 mb-3">
+          <p className="text-sm text-gray-600 leading-relaxed">{offer.message}</p>
+        </div>
+
+        {/* Actions */}
+        {!isRejected && (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={openChat}
+              className="flex-1 h-9 text-xs font-bold border-gray-200 gap-1.5"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              Chat ochish
+            </Button>
+            {!isAccepted ? (
+              <>
+                <Button
+                  size="sm"
+                  onClick={accept}
+                  className="flex-1 h-9 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  Qabul
+                </Button>
+                <button
+                  onClick={reject}
+                  className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                onClick={openChat}
+                className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                Chatga o'tish
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+/* ─── Chat Row ───────────────────────────────────────────────────── */
+function ChatRow({ chat, index }: { chat: Chat; index: number }) {
+  const [, setLocation] = useLocation();
+  const lastMsg = chat.messages[chat.messages.length - 1];
+
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.3 }}
+      onClick={() => setLocation(`/chat/${chat.id}`)}
+      className="w-full bg-white rounded-2xl border border-gray-100 p-4 flex items-start gap-3 hover:border-blue-100 hover:shadow-sm transition-all duration-200 text-left"
+    >
+      <div
+        className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
+        style={{ background: chat.masterColor }}
+      >
+        {chat.masterInitials}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2 mb-0.5">
+          <p className="font-bold text-sm text-gray-900 truncate">{chat.masterName}</p>
+          <span className="text-[10px] text-gray-400 flex-shrink-0">
+            {formatDate(lastMsg?.timestamp ?? chat.createdAt)}
+          </span>
+        </div>
+        <p className="text-xs text-gray-500 font-medium truncate mb-0.5">{chat.categoryName}</p>
+        {lastMsg && (
+          <p className="text-[11px] text-gray-400 truncate">
+            {lastMsg.sender === "customer" ? "Siz: " : ""}{lastMsg.text}
+          </p>
+        )}
+      </div>
+      <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0 mt-1" />
+    </motion.button>
+  );
+}
+
+/* ─── Main Page ──────────────────────────────────────────────────── */
+export default function ChatOffersPage() {
+  const [, setLocation] = useLocation();
+  const rawSearch = useSearch();
+  const params = new URLSearchParams(rawSearch);
+  const filterRequestId = params.get("requestId") ?? undefined;
+
+  const [tab, setTab] = useState<Tab>("offers");
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [chats, setChats] = useState<Chat[]>([]);
+
+  const reload = useCallback(() => {
+    const allOffers = getOffers();
+    const filtered = filterRequestId
+      ? allOffers.filter((o) => o.requestId === filterRequestId)
+      : allOffers;
+    setOffers(
+      [...filtered].sort((a, b) => {
+        // pending first, then by date desc
+        if (a.status === "pending" && b.status !== "pending") return -1;
+        if (b.status === "pending" && a.status !== "pending") return 1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      })
+    );
+    setChats(getChats());
+  }, [filterRequestId]);
+
+  useEffect(() => {
+    reload();
+    window.addEventListener("focus", reload);
+    return () => window.removeEventListener("focus", reload);
+  }, [reload]);
+
+  const filteredReq = filterRequestId ? getRequestById(filterRequestId) : undefined;
+  const pendingCount = offers.filter((o) => o.status === "pending").length;
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-24">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+        <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
+          {filterRequestId ? (
+            <button
+              onClick={() => setLocation("/my-requests")}
+              className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 flex-shrink-0"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          ) : (
+            <button onClick={() => setLocation("/")} className="flex items-center flex-shrink-0">
+              <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
+            </button>
+          )}
+          <div className="flex-1 min-w-0">
+            <h1 className="font-extrabold text-sm text-gray-900 truncate">
+              {filteredReq
+                ? `${filteredReq.emoji} ${filteredReq.categoryName}`
+                : "Takliflar va suhbatlar"}
+            </h1>
+            <p className="text-xs text-gray-400">
+              {pendingCount > 0 ? `${pendingCount} ta yangi taklif` : `${offers.length} taklif · ${chats.length} suhbat`}
+            </p>
+          </div>
+        </div>
+
+        {/* Tab switcher */}
+        <div className="max-w-lg mx-auto px-4 pb-3 flex gap-2">
+          <button
+            onClick={() => setTab("offers")}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+              tab === "offers"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+            }`}
+          >
+            <Inbox className="w-3.5 h-3.5" />
+            Takliflar
+            {pendingCount > 0 && (
+              <span className={`text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center ${
+                tab === "offers" ? "bg-white text-blue-600" : "bg-blue-600 text-white"
+              }`}>
+                {pendingCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setTab("chats")}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+              tab === "chats"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+            }`}
+          >
+            <LayoutList className="w-3.5 h-3.5" />
+            Suhbatlar
+            {chats.length > 0 && (
+              <span className={`text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center ${
+                tab === "chats" ? "bg-white text-blue-600" : "bg-gray-400 text-white"
+              }`}>
+                {chats.length}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto px-4 py-5">
+        <AnimatePresence mode="wait">
+          {tab === "offers" ? (
+            <motion.div
+              key="offers"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {offers.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                    <Inbox className="w-7 h-7 text-gray-400" />
+                  </div>
+                  <p className="font-bold text-gray-600 mb-1">Takliflar yo'q</p>
+                  <p className="text-sm text-gray-400">
+                    So'rov yuborganingizdan keyin ustalar taklif yuborishadi.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {offers.map((offer, i) => (
+                    <OfferCard key={offer.id} offer={offer} onUpdate={reload} index={i} />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="chats"
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {chats.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                    <MessageCircle className="w-7 h-7 text-gray-400" />
+                  </div>
+                  <p className="font-bold text-gray-600 mb-1">Suhbatlar yo'q</p>
+                  <p className="text-sm text-gray-400">
+                    Taklifni qabul qilib, usta bilan suhbat boshlang.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {chats.map((chat, i) => (
+                    <ChatRow key={chat.id} chat={chat} index={i} />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <BottomNav />
+    </div>
+  );
+}

@@ -162,6 +162,11 @@ function updateRequestOfferCount(requestId: string, count: number): void {
   writeJSON(REQUESTS_KEY, reqs.map((r) => r.id === requestId ? { ...r, offerCount: count } : r));
 }
 
+export function updateRequestStatus(requestId: string, status: CustomerRequest["status"]): void {
+  const reqs = readJSON<CustomerRequest[]>(REQUESTS_KEY, []);
+  writeJSON(REQUESTS_KEY, reqs.map((r) => r.id === requestId ? { ...r, status } : r));
+}
+
 /* ─── Offers ─────────────────────────────────────────────────────── */
 
 export function getOffers(): Offer[] {

@@ -17,6 +17,7 @@ import AdminQuestionsPage from "@/pages/admin/questions";
 import MyRequestsPage from "@/pages/my-requests";
 import OffersPage from "@/pages/offers";
 import ChatPage from "@/pages/chat";
+import ChatOffersPage from "@/pages/chat-offers";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -98,6 +99,9 @@ function Router() {
       </Route>
       <Route path="/chat/:chatId">
         {() => <ProtectedRoute component={ChatPage} />}
+      </Route>
+      <Route path="/chat-offers">
+        {() => <ProtectedRoute component={ChatOffersPage} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

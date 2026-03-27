@@ -1,19 +1,20 @@
 /**
  * /my-requests — Customer's posted service requests
- * Shows all saved requests with offer counts and quick-access chat icon.
+ * Sections: Faol so'rovlar (open) + Yakunlangan so'rovlar (closed)
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardList, MessageCircle, ChevronRight,
-  Clock, Wallet, Plus, RefreshCw,
+  Clock, Wallet, Plus, RefreshCw, X, CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import {
   getRequests, getOffersByRequestId, getOrCreateChat,
-  type CustomerRequest, type Offer,
+  updateRequestStatus,
+  type CustomerRequest,
 } from "@/lib/requests-store";
 import logoImg from "/hormang-logo.png";
 
@@ -30,14 +31,33 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "short", year: "numeric" });
 }
 
+/* ─── Briefcase icon (local) ──────────────────────────────────────── */
+function BriefcaseIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+      strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+  );
+}
+
 /* ─── Request Card ───────────────────────────────────────────────── */
-function RequestCard({ req, index }: { req: CustomerRequest; index: number }) {
+function RequestCard({
+  req, index, onClose, onReopen,
+}: {
+  req: CustomerRequest;
+  index: number;
+  onClose: (id: string) => void;
+  onReopen: (id: string) => void;
+}) {
   const [, setLocation] = useLocation();
   const offers = getOffersByRequestId(req.id);
   const urgency = req.answers["urgency"] as string | undefined;
   const budget = req.answers["budget"] as number | undefined;
   const openToOffers = req.answers["budget_open"] as boolean | undefined;
   const urgencyInfo = urgency ? URGENCY_SHORT[urgency] : null;
+  const isOpen = req.status === "open";
 
   function openChat() {
     if (offers.length === 0) return;
@@ -51,14 +71,22 @@ function RequestCard({ req, index }: { req: CustomerRequest; index: number }) {
 
   return (
     <motion.div
+      layout
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06, duration: 0.4 }}
-      className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:border-gray-200 hover:shadow-sm transition-all duration-200"
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ delay: index * 0.05, duration: 0.35 }}
+      className={`bg-white rounded-2xl border overflow-hidden transition-all duration-200 ${
+        isOpen
+          ? "border-gray-100 hover:border-gray-200 hover:shadow-sm"
+          : "border-gray-100 opacity-75"
+      }`}
     >
       {/* Card header */}
       <div className="px-4 pt-4 pb-3 flex items-start gap-3">
-        <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-xl flex-shrink-0">
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${
+          isOpen ? "bg-blue-50" : "bg-gray-100"
+        }`}>
           {req.emoji}
         </div>
         <div className="flex-1 min-w-0">
@@ -67,8 +95,10 @@ function RequestCard({ req, index }: { req: CustomerRequest; index: number }) {
         </div>
         {/* Offer count badge */}
         {offers.length > 0 && (
-          <div className="flex-shrink-0 flex items-center gap-1 bg-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
-            <Briefcase className="w-3 h-3" />
+          <div className={`flex-shrink-0 flex items-center gap-1 text-white text-xs font-bold px-2.5 py-1 rounded-full ${
+            isOpen ? "bg-blue-600" : "bg-gray-400"
+          }`}>
+            <BriefcaseIcon className="w-3 h-3" />
             {offers.length}
           </div>
         )}
@@ -88,14 +118,13 @@ function RequestCard({ req, index }: { req: CustomerRequest; index: number }) {
             {openToOffers ? "Taklifga ochiq" : `${Number(budget).toLocaleString()} so'm`}
           </span>
         )}
-      </div>
-
-      {/* Status */}
-      <div className="px-4 pb-3">
+        {/* Status chip */}
         <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
-          req.status === "open" ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-500"
+          isOpen
+            ? "bg-emerald-50 text-emerald-600"
+            : "bg-gray-100 text-gray-500"
         }`}>
-          {req.status === "open" ? "Faol" : req.status === "accepted" ? "Qabul qilingan" : "Yopilgan"}
+          {isOpen ? "Faol" : "Yopilgan"}
         </span>
       </div>
 
@@ -105,16 +134,18 @@ function RequestCard({ req, index }: { req: CustomerRequest; index: number }) {
           variant="outline"
           size="sm"
           className="flex-1 h-9 text-xs font-bold border-gray-200 gap-1.5"
-          onClick={() => setLocation(`/offers?requestId=${req.id}`)}
+          onClick={() => setLocation(`/chat-offers?requestId=${req.id}`)}
         >
           Takliflar ko'rish
           {offers.length > 0 && (
-            <span className="bg-blue-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+            <span className={`text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center text-white ${isOpen ? "bg-blue-600" : "bg-gray-400"}`}>
               {offers.length}
             </span>
           )}
           <ChevronRight className="w-3.5 h-3.5 ml-auto" />
         </Button>
+
+        {/* Chat button */}
         <button
           onClick={openChat}
           disabled={offers.length === 0}
@@ -123,18 +154,38 @@ function RequestCard({ req, index }: { req: CustomerRequest; index: number }) {
         >
           <MessageCircle className="w-4 h-4" />
         </button>
+
+        {/* Close / Reopen button */}
+        {isOpen ? (
+          <button
+            onClick={() => onClose(req.id)}
+            className="w-9 h-9 rounded-xl border border-red-100 bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-100 transition-colors"
+            title="So'rovni yopish"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        ) : (
+          <button
+            onClick={() => onReopen(req.id)}
+            className="w-9 h-9 rounded-xl border border-emerald-100 bg-emerald-50 flex items-center justify-center text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 transition-colors"
+            title="Qayta faollashtirish"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+          </button>
+        )}
       </div>
     </motion.div>
   );
 }
 
-// Lucide icon that wasn't imported at top — local alias
-function Briefcase({ className }: { className?: string }) {
+/* ─── Section Header ─────────────────────────────────────────────── */
+function SectionLabel({ label, count, color }: { label: string; count: number; color: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
-      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-    </svg>
+    <div className="flex items-center gap-2 mb-3">
+      <div className={`w-2 h-2 rounded-full ${color}`} />
+      <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">{label}</p>
+      <span className="text-[11px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{count}</span>
+    </div>
   );
 }
 
@@ -143,16 +194,28 @@ export default function MyRequestsPage() {
   const [, setLocation] = useLocation();
   const [requests, setRequests] = useState<CustomerRequest[]>([]);
 
-  // Reload from localStorage on mount and when window is focused
-  function reload() {
+  const reload = useCallback(() => {
     setRequests(getRequests());
-  }
+  }, []);
 
   useEffect(() => {
     reload();
     window.addEventListener("focus", reload);
     return () => window.removeEventListener("focus", reload);
-  }, []);
+  }, [reload]);
+
+  function handleClose(id: string) {
+    updateRequestStatus(id, "cancelled");
+    reload();
+  }
+
+  function handleReopen(id: string) {
+    updateRequestStatus(id, "open");
+    reload();
+  }
+
+  const active = requests.filter((r) => r.status === "open");
+  const closed = requests.filter((r) => r.status !== "open");
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -164,9 +227,14 @@ export default function MyRequestsPage() {
           </button>
           <div className="flex-1">
             <h1 className="font-extrabold text-sm text-gray-900">Mening so'rovlarim</h1>
-            <p className="text-xs text-gray-400">{requests.length} ta so'rov</p>
+            <p className="text-xs text-gray-400">
+              {active.length} faol · {closed.length} yopilgan
+            </p>
           </div>
-          <button onClick={reload} className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+          <button
+            onClick={reload}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          >
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
@@ -197,8 +265,11 @@ export default function MyRequestsPage() {
           </motion.div>
         ) : (
           <>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Barcha so'rovlar</p>
+            {/* New request button */}
+            <div className="flex items-center justify-between mb-5">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                Jami {requests.length} ta so'rov
+              </p>
               <button
                 onClick={() => setLocation("/questionnaire")}
                 className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700"
@@ -208,13 +279,45 @@ export default function MyRequestsPage() {
               </button>
             </div>
 
-            <div className="space-y-3">
-              <AnimatePresence>
-                {requests.map((req, i) => (
-                  <RequestCard key={req.id} req={req} index={i} />
-                ))}
-              </AnimatePresence>
-            </div>
+            {/* ── Active section ── */}
+            {active.length > 0 && (
+              <div className="mb-6">
+                <SectionLabel label="Faol so'rovlar" count={active.length} color="bg-emerald-500" />
+                <div className="space-y-3">
+                  <AnimatePresence mode="popLayout">
+                    {active.map((req, i) => (
+                      <RequestCard
+                        key={req.id}
+                        req={req}
+                        index={i}
+                        onClose={handleClose}
+                        onReopen={handleReopen}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </div>
+            )}
+
+            {/* ── Closed section ── */}
+            {closed.length > 0 && (
+              <div>
+                <SectionLabel label="Yakunlangan so'rovlar" count={closed.length} color="bg-gray-400" />
+                <div className="space-y-3">
+                  <AnimatePresence mode="popLayout">
+                    {closed.map((req, i) => (
+                      <RequestCard
+                        key={req.id}
+                        req={req}
+                        index={i}
+                        onClose={handleClose}
+                        onReopen={handleReopen}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
