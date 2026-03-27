@@ -159,7 +159,9 @@ export default function MyRequestsPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
-          <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
+          <button onClick={() => setLocation("/")} className="flex items-center flex-shrink-0">
+            <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
+          </button>
           <div className="flex-1">
             <h1 className="font-extrabold text-sm text-gray-900">Mening so'rovlarim</h1>
             <p className="text-xs text-gray-400">{requests.length} ta so'rov</p>

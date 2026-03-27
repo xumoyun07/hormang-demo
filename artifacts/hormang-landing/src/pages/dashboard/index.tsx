@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BottomNav } from "@/components/bottom-nav";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import logoImg from "/hormang-logo.png";
@@ -456,8 +457,9 @@ export default function UnifiedDashboard() {
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-10 card-shadow">
           <div className="max-w-lg mx-auto flex items-center justify-between gap-3">
-            <div
-              className="flex items-center gap-2.5"
+            <button
+              className="flex items-center gap-2.5 cursor-pointer"
+              onClick={() => setLocation("/")}
               onMouseEnter={() => setLogoHovered(true)}
               onMouseLeave={() => setLogoHovered(false)}
             >
@@ -471,7 +473,7 @@ export default function UnifiedDashboard() {
                 className="w-8 h-8 object-contain"
               />
               <span className="font-bold text-gray-900 text-sm hidden sm:inline">Hormang</span>
-            </div>
+            </button>
 
             <div className="flex-1 flex justify-center">
               <div className="relative flex items-center bg-gray-100 rounded-2xl p-1 gap-1">
@@ -522,7 +524,7 @@ export default function UnifiedDashboard() {
           </div>
         </header>
 
-        <main className="max-w-lg mx-auto px-4 py-8">
+        <main className="max-w-lg mx-auto px-4 py-8 pb-28">
           <motion.div
             key={activeRole}
             initial={{ opacity: 0, y: 8 }}
@@ -595,6 +597,8 @@ export default function UnifiedDashboard() {
           <ProviderSetupModal onDone={handleSetupDone} onCancel={handleSetupCancel} />
         )}
       </AnimatePresence>
+
+      <BottomNav />
     </>
   );
 }

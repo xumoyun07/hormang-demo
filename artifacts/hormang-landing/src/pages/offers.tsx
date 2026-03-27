@@ -218,7 +218,9 @@ export default function OffersPage() {
             </button>
           )}
           {!filterRequestId && (
-            <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain flex-shrink-0" />
+            <button onClick={() => setLocation("/")} className="flex items-center flex-shrink-0">
+              <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
+            </button>
           )}
           <div className="flex-1 min-w-0">
             <h1 className="font-extrabold text-sm text-gray-900 truncate">

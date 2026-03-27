@@ -11,6 +11,7 @@ import {
 import logoImg from "/hormang-logo.png";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
+import { BottomNav } from "@/components/bottom-nav";
 import { updateProfile, updateProviderProfile, changePassword } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -386,11 +387,13 @@ export default function ProfileSettingsPage() {
             </button>
             <span className="font-bold text-gray-900 text-sm">Profil sozlamalari</span>
           </div>
-          <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
+          <button onClick={() => setLocation("/")} className="flex items-center">
+            <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
+          </button>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-8">
+      <main className="max-w-2xl mx-auto px-4 py-8 pb-28">
         <div className="mb-6">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 text-xl font-black">
@@ -417,6 +420,8 @@ export default function ProfileSettingsPage() {
           <PasswordSection />
         </AnimatePresence>
       </main>
+
+      <BottomNav />
     </div>
   );
 }

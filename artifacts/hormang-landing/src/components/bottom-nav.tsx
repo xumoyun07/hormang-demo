@@ -3,7 +3,7 @@ import { Home, ClipboardList, Briefcase, MessageCircle, User } from "lucide-reac
 import { getLatestChatId, getOffers } from "@/lib/requests-store";
 
 const tabs = [
-  { label: "Bosh sahifa", icon: Home, href: "/dashboard" },
+  { label: "Bosh sahifa", icon: Home, href: "/" },
   { label: "So'rovlarim", icon: ClipboardList, href: "/my-requests" },
   { label: "Takliflar", icon: Briefcase, href: "/offers" },
   { label: "Chat", icon: MessageCircle, href: "__chat__" },
@@ -26,7 +26,7 @@ export function BottomNav() {
 
   function isActive(href: string): boolean {
     if (href === "__chat__") return location.startsWith("/chat/");
-    if (href === "/dashboard") return location === "/dashboard";
+    if (href === "/") return location === "/" || location === "/dashboard";
     return location.startsWith(href);
   }
 
