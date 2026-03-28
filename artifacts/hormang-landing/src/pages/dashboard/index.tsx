@@ -24,7 +24,7 @@ const SERVICE_CATEGORIES = [
 ];
 
 const setupSchema = z.object({
-  categories: z.array(z.string()).min(1, "Kamida bitta kategoriya tanlang"),
+  categories: z.array(z.string()).optional(),
   bio: z.string().max(300).optional(),
   workingHours: z.string().optional(),
   preferredLocation: z.string().optional(),
