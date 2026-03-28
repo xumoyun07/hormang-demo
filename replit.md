@@ -109,6 +109,18 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 - `/profile/settings` — Account (name), Contact info (optional email), provider profile sections
 - `/providers/:id` — Public provider profile page
 
+**Provider (Ijrochi) Pages:**
+- `/provider-home` — Provider home with profile completion, upcoming services, events placeholder, available requests (slide cards + tabbed list), share profile
+- `/provider/requests` — So'rovlar: unseen badge, fullscreen slide modal (swipe left/right), category filter chips, respond/ignore actions
+- `/provider/chats` — Suhbatlarim: search bar, tabs (All | Unread | By service), chat rows with unread badges, inline chat view
+
+**Role-Based Navigation:**
+- `BottomNav` detects `activeRole` from auth context and switches between buyer tabs and provider tabs
+- **Buyer tabs**: Bosh sahifa(/), Kategoriyalar, So'rovlarim, Suhbatlarim, Profil
+- **Provider tabs**: Bosh sahifa(/provider-home), So'rovlar, Smart-Hormang (disabled—shows toast), Suhbatlarim, Profil
+- Badges: buyer gets offer count on Suhbatlarim; provider gets unseen request count on So'rovlar + unread count on Suhbatlarim
+- `provider-store.ts` — mock data store with 7 requests, 3 upcoming services, 3 chats; seeded once to localStorage
+
 **Auth System (Phone+OTP, no email/password):**
 - Primary auth: phone number + 6-digit SMS OTP (simulated in dev, `devCode` returned in API response)
 - No passwords for new users; random hash stored (never used for auth)

@@ -167,6 +167,10 @@
     box-shadow: 0 4px 16px rgba(34, 90, 200, 0.10), 0 12px 40px rgba(34, 90, 200, 0.07);
   }
 
+  /* ── Scrollbar hide ── */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
   /* ── Hero section ── */
   .hero-bg {
     background:
