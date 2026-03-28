@@ -58,12 +58,28 @@ export interface ProviderChat {
   createdAt: string;
 }
 
+export interface ProviderOffer {
+  id: string;
+  requestId: string;
+  price: number;
+  priceLabel: string;
+  message: string;
+  completionTime: string;
+  startDate: string;
+  termsAccepted: boolean;
+  fileUrls: string[];
+  createdAt: string;
+  status: "pending" | "accepted" | "rejected";
+}
+
 /* ─── Storage Keys ───────────────────────────────────────────────── */
 
 const REQUESTS_KEY = "hormang_provider_requests";
 const SERVICES_KEY = "hormang_provider_services";
 const CHATS_KEY = "hormang_provider_chats";
 const SEEN_KEY = "hormang_provider_seen";
+const OFFERS_KEY = "hormang_provider_offers";
+const AVG_RESPONSE_KEY = "hormang_provider_avg_response";
 
 /* ─── Storage helpers ─────────────────────────────────────────────── */
 
@@ -390,4 +406,80 @@ export function markChatRead(chatId: string): void {
 
 export function getTotalUnread(): number {
   return getProviderChats().reduce((sum, c) => sum + c.unread, 0);
+}
+
+/* ─── Offers ─────────────────────────────────────────────────────── */
+
+export function getOffers(): ProviderOffer[] {
+  return readJSON<ProviderOffer[]>(OFFERS_KEY, []);
+}
+
+export function getOfferByRequestId(requestId: string): ProviderOffer | undefined {
+  return getOffers().find((o) => o.requestId === requestId);
+}
+
+export function saveOffer(data: Omit<ProviderOffer, "id" | "createdAt" | "status">): ProviderOffer {
+  const offers = getOffers();
+  const offer: ProviderOffer = {
+    ...data,
+    id: uid(),
+    createdAt: new Date().toISOString(),
+    status: "pending",
+  };
+  writeJSON(OFFERS_KEY, [...offers, offer]);
+  return offer;
+}
+
+/* ─── Avg Response Time ──────────────────────────────────────────── */
+
+export function getAvgResponseMinutes(): number {
+  const raw = localStorage.getItem(AVG_RESPONSE_KEY);
+  return raw ? parseInt(raw, 10) : 14;
+}
+
+export function setAvgResponseMinutes(mins: number): void {
+  localStorage.setItem(AVG_RESPONSE_KEY, String(mins));
+}
+
+/* ─── Create chat from offer ─────────────────────────────────────── */
+
+export function createChatFromOffer(request: ProviderRequest, offer: ProviderOffer): ProviderChat {
+  const chats = readJSON<ProviderChat[]>(CHATS_KEY, []);
+  const existing = chats.find((c) => c.customerId === `req_${request.id}`);
+  if (existing) return existing;
+
+  const initials = request.customerName
+    .split(" ")
+    .map((p) => p[0] ?? "")
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  const palette = ["#2563EB", "#7C3AED", "#059669", "#D97706", "#DC2626", "#0891B2"];
+  const color = palette[Math.floor(Math.random() * palette.length)];
+
+  const offerText = `Taklif narxi: ${offer.priceLabel}\nBajarish muddati: ${offer.completionTime}\n\n${offer.message}`;
+
+  const newChat: ProviderChat = {
+    id: uid(),
+    customerId: `req_${request.id}`,
+    customerName: request.customerName,
+    customerInitials: initials,
+    customerColor: color,
+    categoryName: request.categoryName,
+    categoryEmoji: request.emoji,
+    messages: [
+      {
+        id: uid(),
+        sender: "provider",
+        text: offerText,
+        timestamp: new Date().toISOString(),
+      },
+    ],
+    unread: 0,
+    createdAt: new Date().toISOString(),
+  };
+
+  writeJSON(CHATS_KEY, [...chats, newChat]);
+  return newChat;
 }

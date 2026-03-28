@@ -2,18 +2,20 @@
  * /provider/requests — So'rovlar page (Provider side)
  * - Unseen requests badge + fullscreen sliding cards
  * - Scrollable filtered list below
+ * - "Javob berish" opens the full OfferForm
  */
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import {
-  ChevronLeft, ChevronRight, Send, Inbox, MapPin, Filter, X, Check,
+  ChevronLeft, ChevronRight, Send, Inbox, MapPin, Filter, X, Check, CheckCircle2,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
+import { OfferForm } from "@/components/offer-form";
 import { useToast } from "@/hooks/use-toast";
 import {
   getProviderRequests, getUnseenRequests, markSeen, markAllSeen,
-  updateProviderRequestStatus,
+  updateProviderRequestStatus, getOfferByRequestId,
   type ProviderRequest,
 } from "@/lib/provider-store";
 import logoImg from "/hormang-logo.png";
@@ -46,17 +48,16 @@ function FullscreenSlider({
   requests,
   startIndex,
   onClose,
-  onRespond,
+  onOpenOffer,
   onIgnore,
 }: {
   requests: ProviderRequest[];
   startIndex: number;
   onClose: () => void;
-  onRespond: (id: string) => void;
+  onOpenOffer: (req: ProviderRequest) => void;
   onIgnore: (id: string) => void;
 }) {
   const [index, setIndex] = useState(startIndex);
-  const { toast } = useToast();
   const current = requests[index];
 
   const urg = current ? urgencyLabel(current.urgency) : null;
@@ -65,14 +66,6 @@ function FullscreenSlider({
 
   function next() { if (index < requests.length - 1) setIndex((i) => i + 1); }
   function prev() { if (index > 0) setIndex((i) => i - 1); }
-
-  function handleRespond() {
-    if (!current) return;
-    updateProviderRequestStatus(current.id, "responded");
-    onRespond(current.id);
-    if (index < requests.length - 1) setIndex((i) => i + 1);
-    else onClose();
-  }
 
   function handleIgnore() {
     if (!current) return;
@@ -94,7 +87,7 @@ function FullscreenSlider({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 bg-black/50 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4"
     >
       <motion.div
         initial={{ y: "100%" }}
@@ -190,7 +183,7 @@ function FullscreenSlider({
               O'tkazish
             </button>
             <button
-              onClick={handleRespond}
+              onClick={() => onOpenOffer(current)}
               className="flex-1 h-11 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
               style={{ background: VIOLET }}
             >
@@ -221,6 +214,7 @@ export default function ProviderRequestsPage() {
   const [activeCategory, setActiveCategory] = useState("Barchasi");
   const [showSlider, setShowSlider] = useState(false);
   const [sliderStart, setSliderStart] = useState(0);
+  const [offerRequest, setOfferRequest] = useState<ProviderRequest | null>(null);
   const [version, setVersion] = useState(0);
 
   const reload = useCallback(() => {
@@ -229,6 +223,9 @@ export default function ProviderRequestsPage() {
   }, []);
 
   useEffect(() => { reload(); }, [reload, version]);
+
+  const allOpen = requests.filter((r) => r.status === "open");
+  const allResponded = requests.filter((r) => r.status === "responded");
 
   const filtered = requests.filter((r) => {
     if (activeCategory === "Barchasi") return r.status === "open";
@@ -246,12 +243,20 @@ export default function ProviderRequestsPage() {
     toast({ title: "Barchasi ko'rilgan deb belgilandi" });
   }
 
-  function onRespond(_id: string) {
-    setVersion((v) => v + 1);
+  function openOfferForm(req: ProviderRequest) {
+    setShowSlider(false);
+    setOfferRequest(req);
   }
 
-  function onIgnore(_id: string) {
-    setVersion((v) => v + 1);
+  function closeOfferForm() {
+    setOfferRequest(null);
+    reload();
+  }
+
+  function onOfferSubmitted() {
+    setOfferRequest(null);
+    reload();
+    setLocation("/provider/chats");
   }
 
   return (
@@ -264,7 +269,7 @@ export default function ProviderRequestsPage() {
           </button>
           <div className="flex-1">
             <h1 className="font-extrabold text-sm text-gray-900">So'rovlar</h1>
-            <p className="text-xs text-gray-400">{requests.filter((r) => r.status === "open").length} ta ochiq so'rov</p>
+            <p className="text-xs text-gray-400">{allOpen.length} ta ochiq · {allResponded.length} ta javob berilgan</p>
           </div>
           {unseen.length > 0 && (
             <button
@@ -320,15 +325,15 @@ export default function ProviderRequestsPage() {
           ))}
         </div>
 
-        {/* Requests list */}
+        {/* Open requests list */}
         {filtered.length === 0 ? (
-          <div className="text-center py-16">
+          <div className="text-center py-12">
             <Inbox className="w-12 h-12 text-gray-200 mx-auto mb-3" />
             <p className="font-bold text-gray-400 mb-1">So'rovlar yo'q</p>
             <p className="text-sm text-gray-300">Bu kategoriyada hozircha so'rov yo'q</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 mb-6">
             {filtered.map((r, i) => {
               const urg = urgencyLabel(r.urgency);
               const isUnseen = unseen.some((u) => u.id === r.id);
@@ -371,16 +376,7 @@ export default function ProviderRequestsPage() {
                         O'tkazish
                       </button>
                       <button
-                        onClick={() => {
-                          const idx = unseen.length > 0 ? unseen.findIndex((u) => u.id === r.id) : -1;
-                          if (idx !== -1) openSlider(idx);
-                          else {
-                            updateProviderRequestStatus(r.id, "responded");
-                            markSeen(r.id);
-                            toast({ title: "Javob yuborildi!" });
-                            reload();
-                          }
-                        }}
+                        onClick={() => openOfferForm(r)}
                         className="flex-1 h-9 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-sm"
                         style={{ background: VIOLET }}
                       >
@@ -394,6 +390,48 @@ export default function ProviderRequestsPage() {
             })}
           </div>
         )}
+
+        {/* Responded requests section */}
+        {allResponded.length > 0 && (
+          <div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">
+              Taklif yuborilganlar
+            </p>
+            <div className="space-y-2">
+              {allResponded.map((r, i) => {
+                const offer = getOfferByRequestId(r.id);
+                return (
+                  <motion.div
+                    key={r.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="bg-white rounded-2xl border border-green-100 overflow-hidden"
+                  >
+                    <div className="px-4 py-3 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0 text-lg">
+                        {r.emoji}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-gray-800 truncate">{r.categoryName}</p>
+                        <p className="text-[11px] text-gray-400 truncate">{r.customerName}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 border border-green-100 px-2 py-0.5 rounded-full">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Taklif yuborilgan
+                        </span>
+                        {offer && (
+                          <span className="text-[10px] text-violet-600 font-bold">{offer.priceLabel}</span>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Sliding modal */}
@@ -403,8 +441,19 @@ export default function ProviderRequestsPage() {
             requests={unseen}
             startIndex={sliderStart}
             onClose={() => { setShowSlider(false); reload(); }}
-            onRespond={(id) => { onRespond(id); reload(); }}
-            onIgnore={(id) => { onIgnore(id); reload(); }}
+            onOpenOffer={(req) => openOfferForm(req)}
+            onIgnore={() => { setVersion((v) => v + 1); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Offer form */}
+      <AnimatePresence>
+        {offerRequest && (
+          <OfferForm
+            request={offerRequest}
+            onClose={closeOfferForm}
+            onSubmitted={onOfferSubmitted}
           />
         )}
       </AnimatePresence>
