@@ -98,7 +98,7 @@ function ProfileCompletion() {
       <div className="flex items-center gap-4">
         <div className="relative flex-shrink-0">
           <CircularProgress pct={pct} />
-          <span className="absolute inset-0 flex items-center justify-center text-sm font-extrabold text-violet-700 rotate-[90deg]">
+          <span className="absolute inset-0 flex items-center justify-center text-sm font-extrabold text-violet-700 rotate-[0deg]">
             {pct}%
           </span>
         </div>
@@ -462,7 +462,7 @@ function ShareProfile() {
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
         <Share2 className="w-4 h-4 text-violet-600" />
-        <h2 className="font-bold text-sm text-gray-900">Profilimni ulashing</h2>
+        <h2 className="font-bold text-sm text-gray-900">Profil bilan ulashing</h2>
       </div>
       <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-4">
         <p className="text-xs text-gray-500 mb-3">Profilingiz havolasini do'stlar va mijozlarga ulashing</p>

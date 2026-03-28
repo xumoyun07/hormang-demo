@@ -7,11 +7,12 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search, MessageCircle, ChevronRight, X,
+  Search, MessageCircle, ChevronRight, X, ChevronDown,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
+import { useAuth } from "@/contexts/auth-context";
 import {
   getProviderChats, markChatRead, sendProviderMessage, getProviderChatById,
   type ProviderChat, type ProviderChatMessage,
@@ -181,21 +182,29 @@ type SortTab = "all" | "unread" | "by-service";
 
 export default function ProviderChatsPage() {
   const [, setLocation] = useLocation();
+  const { providerProfile } = useAuth();
   const [chats, setChats] = useState<ProviderChat[]>([]);
   const [tab, setTab] = useState<SortTab>("all");
   const [query, setQuery] = useState("");
   const [openChatId, setOpenChatId] = useState<string | null>(null);
+  const [selectedService, setSelectedService] = useState<string | null>(null);
+  const [showServiceMenu, setShowServiceMenu] = useState(false);
 
   const reload = useCallback(() => { setChats(getProviderChats()); }, []);
 
   useEffect(() => { reload(); }, [reload]);
 
   const totalUnread = chats.reduce((s, c) => s + c.unread, 0);
+  const services = providerProfile?.categories ?? [];
 
   let displayed = chats;
   if (tab === "unread") displayed = chats.filter((c) => c.unread > 0);
   if (tab === "by-service") {
-    displayed = [...chats].sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+    if (selectedService) {
+      displayed = chats.filter((c) => c.categoryName === selectedService);
+    } else {
+      displayed = [...chats].sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+    }
   }
   if (query) {
     const q = query.toLowerCase();
@@ -249,17 +258,21 @@ export default function ProviderChatsPage() {
           </div>
 
           {/* Tabs */}
-          <div className="max-w-lg mx-auto px-4 pb-3 flex gap-2">
+          <div className="max-w-lg mx-auto px-4 pb-3 flex gap-2 items-center relative">
             {tabs.map((t) => (
               <button
                 key={t.id}
-                onClick={() => setTab(t.id)}
+                onClick={() => {
+                  setTab(t.id);
+                  if (t.id === "by-service") setShowServiceMenu(!showServiceMenu);
+                }}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                   tab === t.id ? "text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                 }`}
                 style={tab === t.id ? { background: VIOLET } : {}}
               >
                 {t.label}
+                {t.id === "by-service" && <ChevronDown className="w-3.5 h-3.5" />}
                 {t.count !== undefined && t.count > 0 && (
                   <span className={`w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center ${
                     tab === t.id ? "bg-white text-violet-700" : "bg-violet-600 text-white"
@@ -267,6 +280,50 @@ export default function ProviderChatsPage() {
                 )}
               </button>
             ))}
+
+            {/* Service menu */}
+            <AnimatePresence>
+              {tab === "by-service" && showServiceMenu && services.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="absolute top-full right-0 mt-2 bg-white rounded-xl border border-gray-200 shadow-lg z-20"
+                >
+                  <button
+                    onClick={() => {
+                      setSelectedService(null);
+                      setShowServiceMenu(false);
+                    }}
+                    className={`block w-full text-left px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-colors ${
+                      selectedService === null
+                        ? "text-white"
+                        : "text-gray-600 hover:bg-gray-50"
+                    }`}
+                    style={selectedService === null ? { background: VIOLET } : {}}
+                  >
+                    Barchasi
+                  </button>
+                  {services.map((service) => (
+                    <button
+                      key={service}
+                      onClick={() => {
+                        setSelectedService(service);
+                        setShowServiceMenu(false);
+                      }}
+                      className={`block w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors border-t border-gray-100 last:rounded-b-xl ${
+                        selectedService === service
+                          ? "text-white"
+                          : "text-gray-600 hover:bg-gray-50"
+                      }`}
+                      style={selectedService === service ? { background: VIOLET } : {}}
+                    >
+                      {service}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
