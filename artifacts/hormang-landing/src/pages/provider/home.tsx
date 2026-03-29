@@ -22,6 +22,7 @@ import {
   updateProviderRequestStatus, getSeenIds, markSeen,
   type ProviderRequest, type UpcomingService,
 } from "@/lib/provider-store";
+import { getLocalProfile, getCompletionChecks, getCompletionPct } from "@/lib/local-profile";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
@@ -73,17 +74,12 @@ function CircularProgress({ pct }: { pct: number }) {
 
 /* ─── Profile Completion ─────────────────────────────────────────── */
 function ProfileCompletion() {
-  const { providerProfile } = useAuth();
+  const { user, providerProfile } = useAuth();
   const [, setLocation] = useLocation();
 
-  const checks = [
-    { done: !!providerProfile?.categories?.length, label: "Xizmat turlarini belgilang" },
-    { done: !!providerProfile?.bio, label: "Bio qo'shing" },
-    { done: !!providerProfile?.workingHours, label: "Ish vaqtini ko'rsating" },
-    { done: !!providerProfile?.preferredLocation, label: "Shahar tanlang" },
-  ];
-  const done = checks.filter((c) => c.done).length;
-  const pct = Math.round((done / checks.length) * 100);
+  const local = user ? getLocalProfile(user.id) : {};
+  const checks = getCompletionChecks(user ?? null, providerProfile, local);
+  const pct = getCompletionPct(checks);
   const missing = checks.filter((c) => !c.done);
 
   if (pct === 100) return null;
@@ -98,16 +94,16 @@ function ProfileCompletion() {
       <div className="flex items-center gap-4">
         <div className="relative flex-shrink-0">
           <CircularProgress pct={pct} />
-          <span className="absolute inset-0 flex items-center justify-center text-sm font-extrabold text-violet-700 rotate-[0deg]">
+          <span className="absolute inset-0 flex items-center justify-center text-sm font-extrabold text-violet-700">
             {pct}%
           </span>
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-gray-900 text-sm mb-0.5">Profilingizni to'ldiring</p>
-          <p className="text-xs text-gray-500 mb-2">{done}/{checks.length} qadamlar bajarildi</p>
+          <p className="text-xs text-gray-500 mb-2">{checks.length - missing.length}/{checks.length} qadamlar bajarildi</p>
           <div className="space-y-1">
             {missing.slice(0, 3).map((m) => (
-              <div key={m.label} className="flex items-center gap-1.5 text-xs text-violet-600">
+              <div key={m.key} className="flex items-center gap-1.5 text-xs text-violet-600">
                 <AlertCircle className="w-3 h-3 flex-shrink-0" />
                 {m.label}
               </div>
