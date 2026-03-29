@@ -80,6 +80,8 @@ const CHATS_KEY = "hormang_provider_chats";
 const SEEN_KEY = "hormang_provider_seen";
 const OFFERS_KEY = "hormang_provider_offers";
 const AVG_RESPONSE_KEY = "hormang_provider_avg_response";
+const SEED_VERSION_KEY = "hormang_provider_seed_version";
+const SEED_VERSION = "v2";
 
 /* ─── Storage helpers ─────────────────────────────────────────────── */
 
@@ -306,6 +308,14 @@ const MOCK_CHATS: ProviderChat[] = [
 /* ─── Seed ────────────────────────────────────────────────────────── */
 
 function seed() {
+  const version = localStorage.getItem(SEED_VERSION_KEY);
+  if (version !== SEED_VERSION) {
+    if (version !== null) {
+      writeJSON(CHATS_KEY, []);
+    }
+    localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
+  }
+
   if (!localStorage.getItem(REQUESTS_KEY)) {
     writeJSON(REQUESTS_KEY, MOCK_REQUESTS);
   }
@@ -313,7 +323,7 @@ function seed() {
     writeJSON(SERVICES_KEY, MOCK_SERVICES);
   }
   if (!localStorage.getItem(CHATS_KEY)) {
-    writeJSON(CHATS_KEY, MOCK_CHATS);
+    writeJSON(CHATS_KEY, []);
   }
 }
 
@@ -439,6 +449,19 @@ export function getAvgResponseMinutes(): number {
 
 export function setAvgResponseMinutes(mins: number): void {
   localStorage.setItem(AVG_RESPONSE_KEY, String(mins));
+}
+
+/* ─── Offer count helpers ─────────────────────────────────────────── */
+
+export function getRequestOfferCount(requestId: string): number {
+  return getOffers().filter((o) => o.requestId === requestId).length;
+}
+
+export function getRequestsWithZeroOffers(): ProviderRequest[] {
+  const offers = getOffers();
+  return getProviderRequests().filter(
+    (r) => r.status === "open" && !offers.some((o) => o.requestId === r.id)
+  );
 }
 
 /* ─── Create chat from offer ─────────────────────────────────────── */

@@ -12,7 +12,6 @@ import {
   Search, MessageCircle, ChevronRight, X, ChevronDown,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
-import { useAuth } from "@/contexts/auth-context";
 import {
   getProviderChats, markChatRead, sendProviderMessage, getProviderChatById,
   type ProviderChat, type ProviderChatMessage,
@@ -30,6 +29,11 @@ function formatTime(iso: string): string {
 }
 
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
+
+const SERVICE_CATEGORIES = [
+  "Tozalash", "Ta'mirlash", "Enagalik", "Tadbir xizmatlari",
+  "Ko'chirish yuk yetkazish", "Go'zallik", "Avto xizmat", "Repetitorlar", "Ustachilik",
+];
 
 /* ─── Inline Chat View ───────────────────────────────────────────── */
 function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) {
@@ -182,7 +186,6 @@ type SortTab = "all" | "unread" | "by-service";
 
 export default function ProviderChatsPage() {
   const [, setLocation] = useLocation();
-  const { providerProfile } = useAuth();
   const [chats, setChats] = useState<ProviderChat[]>([]);
   const [tab, setTab] = useState<SortTab>("all");
   const [query, setQuery] = useState("");
@@ -195,7 +198,7 @@ export default function ProviderChatsPage() {
   useEffect(() => { reload(); }, [reload]);
 
   const totalUnread = chats.reduce((s, c) => s + c.unread, 0);
-  const services = providerProfile?.categories ?? [];
+  const services = SERVICE_CATEGORIES;
 
   let displayed = chats;
   if (tab === "unread") displayed = chats.filter((c) => c.unread > 0);

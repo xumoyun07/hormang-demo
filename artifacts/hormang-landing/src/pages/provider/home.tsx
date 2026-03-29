@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   getProviderRequests, getUpcomingServices, markServiceDone,
   updateProviderRequestStatus, getSeenIds, markSeen,
+  getRequestOfferCount, getRequestsWithZeroOffers,
   type ProviderRequest, type UpcomingService,
 } from "@/lib/provider-store";
 import { getLocalProfile, getCompletionChecks, getCompletionPct } from "@/lib/local-profile";
@@ -230,7 +231,7 @@ function RequestSlideCard({
       <div className="px-5 py-4">
         <p className="text-sm text-gray-700 leading-relaxed mb-4">{request.description}</p>
 
-        <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="bg-gray-50 rounded-xl p-3">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Byudjet</p>
             <p className="text-sm font-extrabold text-violet-700">{request.budgetLabel}</p>
@@ -238,6 +239,17 @@ function RequestSlideCard({
           <div className="bg-gray-50 rounded-xl p-3">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Manzil</p>
             <p className="text-sm font-bold text-gray-800 truncate">{request.location}</p>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-3">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Takliflar</p>
+            {(() => {
+              const cnt = getRequestOfferCount(request.id);
+              return (
+                <p className={`text-sm font-extrabold ${cnt === 0 ? "text-red-500" : "text-emerald-600"}`}>
+                  {cnt} ta
+                </p>
+              );
+            })()}
           </div>
         </div>
 
@@ -323,12 +335,32 @@ function AvailableRequests() {
     { id: "seen", label: "Ko'rilgan" },
   ];
 
+  const totalOpen = requests.filter((r) => r.status === "open").length;
+  const zeroOfferCount = getRequestsWithZeroOffers().length;
+
   return (
     <div className="mb-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Inbox className="w-4 h-4 text-violet-600" />
           <h2 className="font-bold text-sm text-gray-900">Mavjud so'rovlar</h2>
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-3 text-center">
+          <p className="text-xl font-black text-gray-900">{totalOpen}</p>
+          <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">Jami</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-3 text-center relative">
+          <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500" />
+          <p className="text-xl font-black text-gray-900">{newCount}</p>
+          <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">Yangi so'rovlar</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-3 text-center">
+          <p className={`text-xl font-black ${zeroOfferCount > 0 ? "text-red-500" : "text-gray-900"}`}>{zeroOfferCount}</p>
+          <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">Taklif olmagan</p>
         </div>
       </div>
 
@@ -417,6 +449,14 @@ function AvailableRequests() {
                   <p className="text-xs text-gray-500 truncate mb-1">{r.description}</p>
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-[11px] font-bold text-violet-700">{r.budgetLabel}</span>
+                    {(() => {
+                      const cnt = getRequestOfferCount(r.id);
+                      return (
+                        <span className={`text-[11px] font-bold ${cnt === 0 ? "text-red-500" : "text-emerald-600"}`}>
+                          Takliflar: {cnt} ta
+                        </span>
+                      );
+                    })()}
                     <span className="flex items-center gap-0.5 text-[11px] text-gray-400">
                       <MapPin className="w-3 h-3" />{r.location}
                     </span>

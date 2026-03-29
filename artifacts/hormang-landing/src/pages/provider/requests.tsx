@@ -9,14 +9,15 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, Send, Inbox, MapPin, Filter, X, Check, CheckCircle2,
+  Eye, Clock, DollarSign, Calendar, FileText, AlertOctagon,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { OfferForm } from "@/components/offer-form";
 import { useToast } from "@/hooks/use-toast";
 import {
   getProviderRequests, getUnseenRequests, markSeen, markAllSeen,
-  updateProviderRequestStatus, getOfferByRequestId,
-  type ProviderRequest,
+  updateProviderRequestStatus, getOfferByRequestId, getRequestOfferCount,
+  type ProviderRequest, type ProviderOffer,
 } from "@/lib/provider-store";
 import logoImg from "/hormang-logo.png";
 
@@ -39,8 +40,8 @@ function urgencyLabel(u: ProviderRequest["urgency"]): { label: string; color: st
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 
 const CATEGORIES = [
-  "Barchasi", "Ta'mirlash", "Tozalik", "Elektr", "Santexnika",
-  "Repetitor", "Ko'chirish", "Go'zallik", "Avto",
+  "Barchasi", "Tozalash", "Ta'mirlash", "Enagalik", "Tadbir xizmatlari",
+  "Ko'chirish yuk yetkazish", "Go'zallik", "Avto xizmat", "Repetitorlar", "Ustachilik",
 ];
 
 /* ─── Fullscreen Sliding Modal ───────────────────────────────────── */
@@ -205,6 +206,125 @@ function FullscreenSlider({
   );
 }
 
+/* ─── Offer Detail Modal ─────────────────────────────────────────── */
+function OfferDetailModal({
+  request,
+  offer,
+  onClose,
+}: {
+  request: ProviderRequest;
+  offer: ProviderOffer;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", stiffness: 400, damping: 40 }}
+        className="w-full max-w-lg bg-white rounded-t-3xl overflow-hidden"
+      >
+        {/* Header */}
+        <div className="px-5 pt-5 pb-3 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{request.emoji}</span>
+            <div>
+              <p className="font-extrabold text-sm text-gray-900">Yuborilgan taklif</p>
+              <p className="text-xs text-gray-400">{request.categoryName} · {request.customerName}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Offer details */}
+        <div className="px-5 py-4 space-y-3 max-h-[70vh] overflow-y-auto">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-violet-50 rounded-2xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <DollarSign className="w-3.5 h-3.5 text-violet-600" />
+                <p className="text-[10px] font-bold text-violet-600 uppercase tracking-wide">Taklif narxi</p>
+              </div>
+              <p className="text-sm font-extrabold text-violet-800">{offer.priceLabel}</p>
+            </div>
+            <div className="bg-gray-50 rounded-2xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Clock className="w-3.5 h-3.5 text-gray-500" />
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Bajarish muddati</p>
+              </div>
+              <p className="text-sm font-bold text-gray-800">{offer.completionTime}</p>
+            </div>
+          </div>
+
+          {offer.startDate && (
+            <div className="bg-gray-50 rounded-2xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Boshlanish sanasi</p>
+              </div>
+              <p className="text-sm font-bold text-gray-800">{offer.startDate}</p>
+            </div>
+          )}
+
+          <div className="bg-gray-50 rounded-2xl p-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <FileText className="w-3.5 h-3.5 text-gray-500" />
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Xabar</p>
+            </div>
+            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{offer.message}</p>
+          </div>
+
+          {offer.fileUrls && offer.fileUrls.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Biriktirilgan fayllar</p>
+              <div className="grid grid-cols-3 gap-2">
+                {offer.fileUrls.map((url, i) => (
+                  <img key={i} src={url} alt={`Fayl ${i + 1}`}
+                    className="aspect-square object-cover rounded-xl border border-gray-200" />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 py-2">
+            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+              offer.status === "accepted" ? "bg-emerald-500" :
+              offer.status === "rejected" ? "bg-red-500" : "bg-amber-400"
+            }`} />
+            <p className="text-xs font-semibold text-gray-600">
+              Holat:{" "}
+              <span className={
+                offer.status === "accepted" ? "text-emerald-600" :
+                offer.status === "rejected" ? "text-red-600" : "text-amber-600"
+              }>
+                {offer.status === "accepted" ? "Qabul qilindi" :
+                 offer.status === "rejected" ? "Rad etildi" : "Kutilmoqda"}
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <div className="px-5 pb-6">
+          <button
+            onClick={onClose}
+            className="w-full h-11 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-600 hover:bg-gray-50"
+          >
+            Yopish
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function ProviderRequestsPage() {
   const [, setLocation] = useLocation();
@@ -215,6 +335,7 @@ export default function ProviderRequestsPage() {
   const [showSlider, setShowSlider] = useState(false);
   const [sliderStart, setSliderStart] = useState(0);
   const [offerRequest, setOfferRequest] = useState<ProviderRequest | null>(null);
+  const [offerDetailRequest, setOfferDetailRequest] = useState<ProviderRequest | null>(null);
   const [version, setVersion] = useState(0);
 
   const reload = useCallback(() => {
@@ -226,6 +347,7 @@ export default function ProviderRequestsPage() {
 
   const allOpen = requests.filter((r) => r.status === "open");
   const allResponded = requests.filter((r) => r.status === "responded");
+  const allIgnored = requests.filter((r) => r.status === "ignored");
 
   const filtered = requests.filter((r) => {
     if (activeCategory === "Barchasi") return r.status === "open";
@@ -363,6 +485,14 @@ export default function ProviderRequestsPage() {
                       <span className="flex items-center gap-0.5 text-[11px] text-gray-400">
                         <MapPin className="w-3 h-3" />{r.location}
                       </span>
+                      {(() => {
+                        const cnt = getRequestOfferCount(r.id);
+                        return (
+                          <span className={`text-[11px] font-bold ${cnt === 0 ? "text-red-500" : "text-emerald-600"}`}>
+                            Takliflar: {cnt} ta
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -393,9 +523,9 @@ export default function ProviderRequestsPage() {
 
         {/* Responded requests section */}
         {allResponded.length > 0 && (
-          <div>
+          <div className="mb-6">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">
-              Taklif yuborilganlar
+              Taklif yuborilganlar ({allResponded.length})
             </p>
             <div className="space-y-2">
               {allResponded.map((r, i) => {
@@ -406,7 +536,8 @@ export default function ProviderRequestsPage() {
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04 }}
-                    className="bg-white rounded-2xl border border-green-100 overflow-hidden"
+                    onClick={() => offer && setOfferDetailRequest(r)}
+                    className="bg-white rounded-2xl border border-green-100 overflow-hidden cursor-pointer active:scale-[.99] transition-all hover:border-green-200"
                   >
                     <div className="px-4 py-3 flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0 text-lg">
@@ -414,7 +545,7 @@ export default function ProviderRequestsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-gray-800 truncate">{r.categoryName}</p>
-                        <p className="text-[11px] text-gray-400 truncate">{r.customerName}</p>
+                        <p className="text-[11px] text-gray-400 truncate">{r.customerName} · {r.location}</p>
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 border border-green-100 px-2 py-0.5 rounded-full">
@@ -425,10 +556,47 @@ export default function ProviderRequestsPage() {
                           <span className="text-[10px] text-violet-600 font-bold">{offer.priceLabel}</span>
                         )}
                       </div>
+                      {offer && <Eye className="w-4 h-4 text-gray-300 flex-shrink-0" />}
                     </div>
                   </motion.div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Ignored requests section */}
+        {allIgnored.length > 0 && (
+          <div>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">
+              E'tiborsiz qoldirilganlar ({allIgnored.length})
+            </p>
+            <div className="space-y-2">
+              {allIgnored.map((r, i) => (
+                <motion.div
+                  key={r.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+                >
+                  <div className="px-4 py-3 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0 text-lg opacity-60">
+                      {r.emoji}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-gray-500 truncate">{r.categoryName}</p>
+                      <p className="text-[11px] text-gray-300 truncate">{r.customerName} · {timeAgo(r.createdAt)}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                        <AlertOctagon className="w-3 h-3" />
+                        O'tkazib yuborilgan
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           </div>
         )}
@@ -454,6 +622,18 @@ export default function ProviderRequestsPage() {
             request={offerRequest}
             onClose={closeOfferForm}
             onSubmitted={onOfferSubmitted}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Offer detail modal */}
+      <AnimatePresence>
+        {offerDetailRequest && getOfferByRequestId(offerDetailRequest.id) && (
+          <OfferDetailModal
+            key={offerDetailRequest.id}
+            request={offerDetailRequest}
+            offer={getOfferByRequestId(offerDetailRequest.id)!}
+            onClose={() => setOfferDetailRequest(null)}
           />
         )}
       </AnimatePresence>
