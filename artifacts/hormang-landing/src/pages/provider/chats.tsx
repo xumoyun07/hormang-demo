@@ -5,8 +5,9 @@
  * - Chat rows with last message + unread badge
  * - Click opens the chat
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
+import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, MessageCircle, ChevronRight, X, ChevronDown,
@@ -37,23 +38,27 @@ const SERVICE_CATEGORIES = [
 
 /* ─── Inline Chat View ───────────────────────────────────────────── */
 function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) {
-  const [chat, setChat] = useState<ProviderChat | null>(null);
+  useStoreRefresh();
   const [text, setText] = useState("");
-  const bottomRef = { current: null as HTMLDivElement | null };
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const markedRef = useRef(false);
 
-  useEffect(() => {
+  // Mark read once on first render
+  if (!markedRef.current) {
+    markedRef.current = true;
     markChatRead(chatId);
-    setChat(getProviderChatById(chatId) ?? null);
-  }, [chatId]);
+  }
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chat?.messages.length]);
+  const chat = getProviderChatById(chatId) ?? null;
+
+  // Scroll to bottom when messages change
+  if (chat) {
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+  }
 
   function send() {
     if (!text.trim()) return;
-    const updated = sendProviderMessage(chatId, "provider", text.trim());
-    setChat(updated);
+    sendProviderMessage(chatId, "provider", text.trim());
     setText("");
   }
 
@@ -185,17 +190,15 @@ function ChatRow({ chat, index, onClick }: { chat: ProviderChat; index: number; 
 type SortTab = "all" | "unread" | "by-service";
 
 export default function ProviderChatsPage() {
+  useStoreRefresh();
   const [, setLocation] = useLocation();
-  const [chats, setChats] = useState<ProviderChat[]>([]);
   const [tab, setTab] = useState<SortTab>("all");
   const [query, setQuery] = useState("");
   const [openChatId, setOpenChatId] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [showServiceMenu, setShowServiceMenu] = useState(false);
 
-  const reload = useCallback(() => { setChats(getProviderChats()); }, []);
-
-  useEffect(() => { reload(); }, [reload]);
+  const chats = getProviderChats();
 
   const totalUnread = chats.reduce((s, c) => s + c.unread, 0);
   const services = SERVICE_CATEGORIES;
@@ -359,7 +362,7 @@ export default function ProviderChatsPage() {
       {openChatId && (
         <ChatView
           chatId={openChatId}
-          onClose={() => { setOpenChatId(null); reload(); }}
+          onClose={() => setOpenChatId(null)}
         />
       )}
 

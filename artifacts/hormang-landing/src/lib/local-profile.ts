@@ -9,6 +9,7 @@
  */
 
 import type { SafeUser, ProviderProfile } from "./auth-client";
+import { emitStoreChange } from "./store-events";
 
 export interface LocalProfile {
   photoUrl?: string;
@@ -33,6 +34,7 @@ export function getLocalProfile(userId: string): LocalProfile {
 
 export function saveLocalProfile(userId: string, data: LocalProfile): void {
   localStorage.setItem(key(userId), JSON.stringify(data));
+  emitStoreChange();
 }
 
 /* ─── Completion logic ───────────────────────────────────────────── */

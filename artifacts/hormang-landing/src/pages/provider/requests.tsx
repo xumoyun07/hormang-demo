@@ -4,8 +4,9 @@
  * - Scrollable filtered list below
  * - "Javob berish" opens the full OfferForm
  */
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, Send, Inbox, MapPin, Filter, X, Check, CheckCircle2,
@@ -327,23 +328,17 @@ function OfferDetailModal({
 
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function ProviderRequestsPage() {
+  useStoreRefresh();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [requests, setRequests] = useState<ProviderRequest[]>([]);
-  const [unseen, setUnseen] = useState<ProviderRequest[]>([]);
   const [activeCategory, setActiveCategory] = useState("Barchasi");
   const [showSlider, setShowSlider] = useState(false);
   const [sliderStart, setSliderStart] = useState(0);
   const [offerRequest, setOfferRequest] = useState<ProviderRequest | null>(null);
   const [offerDetailRequest, setOfferDetailRequest] = useState<ProviderRequest | null>(null);
-  const [version, setVersion] = useState(0);
 
-  const reload = useCallback(() => {
-    setRequests(getProviderRequests());
-    setUnseen(getUnseenRequests());
-  }, []);
-
-  useEffect(() => { reload(); }, [reload, version]);
+  const requests = getProviderRequests();
+  const unseen = getUnseenRequests();
 
   const allOpen = requests.filter((r) => r.status === "open");
   const allResponded = requests.filter((r) => r.status === "responded");
@@ -361,7 +356,6 @@ export default function ProviderRequestsPage() {
 
   function handleMarkAllSeen() {
     markAllSeen();
-    reload();
     toast({ title: "Barchasi ko'rilgan deb belgilandi" });
   }
 
@@ -372,12 +366,10 @@ export default function ProviderRequestsPage() {
 
   function closeOfferForm() {
     setOfferRequest(null);
-    reload();
   }
 
   function onOfferSubmitted() {
     setOfferRequest(null);
-    reload();
     setLocation("/provider/chats");
   }
 
@@ -499,7 +491,6 @@ export default function ProviderRequestsPage() {
                         onClick={() => {
                           updateProviderRequestStatus(r.id, "ignored");
                           markSeen(r.id);
-                          reload();
                         }}
                         className="flex-1 h-9 rounded-xl border-2 border-red-100 bg-red-50 text-red-500 font-bold text-xs flex items-center justify-center active:scale-95 hover:bg-red-100 transition-all"
                       >
@@ -608,9 +599,9 @@ export default function ProviderRequestsPage() {
           <FullscreenSlider
             requests={unseen}
             startIndex={sliderStart}
-            onClose={() => { setShowSlider(false); reload(); }}
+            onClose={() => setShowSlider(false)}
             onOpenOffer={(req) => openOfferForm(req)}
-            onIgnore={() => { setVersion((v) => v + 1); }}
+            onIgnore={() => {}}
           />
         )}
       </AnimatePresence>

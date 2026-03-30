@@ -8,6 +8,8 @@
  *   hormang_chats     — Chat[]
  */
 
+import { emitStoreChange } from "./store-events";
+
 /* ─── Types ──────────────────────────────────────────────────────── */
 
 export interface CustomerRequest {
@@ -119,6 +121,7 @@ function readJSON<T>(key: string, fallback: T): T {
 
 function writeJSON<T>(key: string, data: T): void {
   localStorage.setItem(key, JSON.stringify(data));
+  emitStoreChange();
 }
 
 function uid(): string {

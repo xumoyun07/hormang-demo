@@ -7,8 +7,9 @@
  *   4. Available Requests (tabs + swipeable cards)
  *   5. Share Profile
  */
-import { useState, useCallback, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
+import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight, ChevronLeft, CalendarDays, Sparkles, Share2, Link2,
@@ -75,6 +76,7 @@ function CircularProgress({ pct }: { pct: number }) {
 
 /* ─── Profile Completion ─────────────────────────────────────────── */
 function ProfileCompletion() {
+  useStoreRefresh();
   const { user, providerProfile } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -119,15 +121,12 @@ function ProfileCompletion() {
 
 /* ─── Upcoming Services ──────────────────────────────────────────── */
 function UpcomingServices() {
-  const [services, setServices] = useState<UpcomingService[]>([]);
-
-  useEffect(() => {
-    setServices(getUpcomingServices().filter((s) => s.status === "upcoming"));
-  }, []);
+  useStoreRefresh();
+  const services = getUpcomingServices().filter((s) => s.status === "upcoming");
 
   function handleDone(id: string) {
     markServiceDone(id);
-    setServices((prev) => prev.filter((s) => s.id !== id));
+    // writeJSON emits → useStoreRefresh re-renders → services recomputed
   }
 
   return (
@@ -291,18 +290,13 @@ function RequestSlideCard({
 type ReqTab = "all" | "new" | "seen";
 
 function AvailableRequests() {
+  useStoreRefresh();
   const [tab, setTab] = useState<ReqTab>("new");
-  const [requests, setRequests] = useState<ProviderRequest[]>([]);
-  const [seen, setSeen] = useState<string[]>([]);
   const [slideIndex, setSlideIndex] = useState(0);
   const { toast } = useToast();
 
-  const reload = useCallback(() => {
-    setRequests(getProviderRequests());
-    setSeen(getSeenIds());
-  }, []);
-
-  useEffect(() => { reload(); }, [reload]);
+  const requests = getProviderRequests();
+  const seen = getSeenIds();
 
   const filtered = requests.filter((r) => {
     if (tab === "new") return !seen.includes(r.id) && r.status === "open";
@@ -318,14 +312,12 @@ function AvailableRequests() {
     updateProviderRequestStatus(id, "responded");
     markSeen(id);
     toast({ title: "Javob yuborildi!", description: "Buyurtmachi siz bilan bog'lanadi." });
-    reload();
     if (slideIndex >= slideReqs.length - 1) setSlideIndex(Math.max(0, slideReqs.length - 2));
   }
 
   function handleIgnore(id: string) {
     updateProviderRequestStatus(id, "ignored");
     markSeen(id);
-    reload();
     if (slideIndex >= slideReqs.length - 1) setSlideIndex(Math.max(0, slideReqs.length - 2));
   }
 
@@ -545,6 +537,7 @@ function EventsSection() {
 
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function ProviderHomePage() {
+  useStoreRefresh();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const unseenCount = getProviderRequests().filter(

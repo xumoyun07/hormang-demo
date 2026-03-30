@@ -2,7 +2,8 @@
  * /chat-offers — Combined Offers + Chat History page
  * Shows all received offers (grouped by request) and recent chats.
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -32,9 +33,8 @@ function formatDate(iso: string): string {
 }
 
 /* ─── Offer Card ─────────────────────────────────────────────────── */
-function OfferCard({ offer, onUpdate, index }: {
+function OfferCard({ offer, index }: {
   offer: Offer;
-  onUpdate: () => void;
   index: number;
 }) {
   const [, setLocation] = useLocation();
@@ -53,12 +53,10 @@ function OfferCard({ offer, onUpdate, index }: {
 
   function accept() {
     updateOfferStatus(offer.id, "accepted");
-    onUpdate();
   }
 
   function reject() {
     updateOfferStatus(offer.id, "rejected");
-    onUpdate();
   }
 
   return (
@@ -209,36 +207,22 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
 
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function ChatOffersPage() {
+  useStoreRefresh();
   const [, setLocation] = useLocation();
   const rawSearch = useSearch();
   const params = new URLSearchParams(rawSearch);
   const filterRequestId = params.get("requestId") ?? undefined;
 
   const [tab, setTab] = useState<Tab>("offers");
-  const [offers, setOffers] = useState<Offer[]>([]);
-  const [chats, setChats] = useState<Chat[]>([]);
 
-  const reload = useCallback(() => {
-    const allOffers = getOffers();
-    const filtered = filterRequestId
-      ? allOffers.filter((o) => o.requestId === filterRequestId)
-      : allOffers;
-    setOffers(
-      [...filtered].sort((a, b) => {
-        // pending first, then by date desc
-        if (a.status === "pending" && b.status !== "pending") return -1;
-        if (b.status === "pending" && a.status !== "pending") return 1;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      })
-    );
-    setChats(getChats());
-  }, [filterRequestId]);
-
-  useEffect(() => {
-    reload();
-    window.addEventListener("focus", reload);
-    return () => window.removeEventListener("focus", reload);
-  }, [reload]);
+  const allOffers = getOffers();
+  const filtered = filterRequestId ? allOffers.filter((o) => o.requestId === filterRequestId) : allOffers;
+  const offers = [...filtered].sort((a, b) => {
+    if (a.status === "pending" && b.status !== "pending") return -1;
+    if (b.status === "pending" && a.status !== "pending") return 1;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+  const chats = getChats();
 
   const filteredReq = filterRequestId ? getRequestById(filterRequestId) : undefined;
   const pendingCount = offers.filter((o) => o.status === "pending").length;
@@ -336,7 +320,7 @@ export default function ChatOffersPage() {
               ) : (
                 <div className="space-y-3">
                   {offers.map((offer, i) => (
-                    <OfferCard key={offer.id} offer={offer} onUpdate={reload} index={i} />
+                    <OfferCard key={offer.id} offer={offer} index={i} />
                   ))}
                 </div>
               )}

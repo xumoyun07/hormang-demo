@@ -2,7 +2,7 @@
  * /offers — All received offers, optionally filtered by ?requestId=
  * Masters send offers; customer can accept/reject or open chat.
  */
-import { useState, useEffect } from "react";
+import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -22,7 +22,7 @@ function formatDate(iso: string): string {
 }
 
 /* ─── Offer Card ─────────────────────────────────────────────────── */
-function OfferCard({ offer, onUpdate, index }: { offer: Offer; onUpdate: () => void; index: number }) {
+function OfferCard({ offer, index }: { offer: Offer; index: number }) {
   const [, setLocation] = useLocation();
   const req = getRequestById(offer.requestId);
 
@@ -41,12 +41,10 @@ function OfferCard({ offer, onUpdate, index }: { offer: Offer; onUpdate: () => v
 
   function accept() {
     updateOfferStatus(offer.id, "accepted");
-    onUpdate();
   }
 
   function reject() {
     updateOfferStatus(offer.id, "rejected");
-    onUpdate();
   }
 
   const isAccepted = offer.status === "accepted";
@@ -174,33 +172,19 @@ function OfferCard({ offer, onUpdate, index }: { offer: Offer; onUpdate: () => v
 
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function OffersPage() {
+  useStoreRefresh();
   const [, setLocation] = useLocation();
   const rawSearch = useSearch();
   const params = new URLSearchParams(rawSearch);
   const filterRequestId = params.get("requestId") ?? undefined;
 
-  const [offers, setOffers] = useState<Offer[]>([]);
-
-  function reload() {
-    const all = getOffers();
-    const filtered = filterRequestId
-      ? all.filter((o) => o.requestId === filterRequestId)
-      : all;
-    // Newest first, then pending first
-    setOffers(
-      [...filtered].sort((a, b) => {
-        if (a.status === "pending" && b.status !== "pending") return -1;
-        if (b.status === "pending" && a.status !== "pending") return 1;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      })
-    );
-  }
-
-  useEffect(() => {
-    reload();
-    window.addEventListener("focus", reload);
-    return () => window.removeEventListener("focus", reload);
-  }, [filterRequestId]);
+  const all = getOffers();
+  const filtered = filterRequestId ? all.filter((o) => o.requestId === filterRequestId) : all;
+  const offers = [...filtered].sort((a, b) => {
+    if (a.status === "pending" && b.status !== "pending") return -1;
+    if (b.status === "pending" && a.status !== "pending") return 1;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
 
   const filteredReq = filterRequestId ? getRequestById(filterRequestId) : undefined;
 
@@ -260,7 +244,7 @@ export default function OffersPage() {
           <div className="space-y-3">
             <AnimatePresence>
               {offers.map((offer, i) => (
-                <OfferCard key={offer.id} offer={offer} onUpdate={reload} index={i} />
+                <OfferCard key={offer.id} offer={offer} index={i} />
               ))}
             </AnimatePresence>
           </div>

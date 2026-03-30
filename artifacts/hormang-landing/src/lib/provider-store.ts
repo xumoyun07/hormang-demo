@@ -8,6 +8,8 @@
  *   hormang_provider_seen      — string[]           (IDs of seen request IDs)
  */
 
+import { emitStoreChange } from "./store-events";
+
 /* ─── Types ──────────────────────────────────────────────────────── */
 
 export interface ProviderRequest {
@@ -95,6 +97,7 @@ function readJSON<T>(key: string, fallback: T): T {
 
 function writeJSON<T>(key: string, data: T): void {
   localStorage.setItem(key, JSON.stringify(data));
+  emitStoreChange();
 }
 
 function uid(): string {
@@ -436,7 +439,24 @@ export function saveOffer(data: Omit<ProviderOffer, "id" | "createdAt" | "status
     createdAt: new Date().toISOString(),
     status: "pending",
   };
-  writeJSON(OFFERS_KEY, [...offers, offer]);
+  const allOffers = [...offers, offer];
+  writeJSON(OFFERS_KEY, allOffers);
+
+  // Sync offer count to the buyer-side CustomerRequest (hormang_requests key)
+  try {
+    const BUYER_REQUESTS_KEY = "hormang_requests";
+    const raw = localStorage.getItem(BUYER_REQUESTS_KEY);
+    if (raw) {
+      const buyerReqs = JSON.parse(raw) as Array<{ id: string; offerCount?: number }>;
+      const idx = buyerReqs.findIndex((r) => r.id === data.requestId);
+      if (idx !== -1) {
+        const count = allOffers.filter((o) => o.requestId === data.requestId).length;
+        buyerReqs[idx] = { ...buyerReqs[idx], offerCount: count };
+        localStorage.setItem(BUYER_REQUESTS_KEY, JSON.stringify(buyerReqs));
+      }
+    }
+  } catch (_) {}
+
   return offer;
 }
 
@@ -449,6 +469,7 @@ export function getAvgResponseMinutes(): number {
 
 export function setAvgResponseMinutes(mins: number): void {
   localStorage.setItem(AVG_RESPONSE_KEY, String(mins));
+  emitStoreChange();
 }
 
 /* ─── Offer count helpers ─────────────────────────────────────────── */

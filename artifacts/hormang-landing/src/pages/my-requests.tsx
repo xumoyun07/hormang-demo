@@ -2,7 +2,7 @@
  * /my-requests — Customer's posted service requests
  * Sections: Faol so'rovlar (open) + Yakunlangan so'rovlar (closed)
  */
-import { useState, useEffect, useCallback } from "react";
+import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -191,27 +191,17 @@ function SectionLabel({ label, count, color }: { label: string; count: number; c
 
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function MyRequestsPage() {
+  useStoreRefresh();
   const [, setLocation] = useLocation();
-  const [requests, setRequests] = useState<CustomerRequest[]>([]);
 
-  const reload = useCallback(() => {
-    setRequests(getRequests());
-  }, []);
-
-  useEffect(() => {
-    reload();
-    window.addEventListener("focus", reload);
-    return () => window.removeEventListener("focus", reload);
-  }, [reload]);
+  const requests = getRequests();
 
   function handleClose(id: string) {
     updateRequestStatus(id, "cancelled");
-    reload();
   }
 
   function handleReopen(id: string) {
     updateRequestStatus(id, "open");
-    reload();
   }
 
   const active = requests.filter((r) => r.status === "open");
@@ -231,12 +221,9 @@ export default function MyRequestsPage() {
               {active.length} faol · {closed.length} yopilgan
             </p>
           </div>
-          <button
-            onClick={reload}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-          >
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-300">
             <RefreshCw className="w-4 h-4" />
-          </button>
+          </div>
         </div>
       </div>
 
