@@ -7,7 +7,7 @@
  *   4. Available Requests (tabs + swipeable cards)
  *   5. Share Profile
  */
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,8 +19,8 @@ import { BottomNav } from "@/components/bottom-nav";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import {
-  getProviderRequests, getUpcomingServices, markServiceDone,
-  updateProviderRequestStatus, getSeenIds, markSeen,
+  getMatchingRequests, getUpcomingServices, markServiceDone,
+  updateProviderRequestStatus, getSeenIds, markSeen, markAllSeen,
   getRequestOfferCount, getRequestsWithZeroOffers,
   type ProviderRequest, type UpcomingService,
 } from "@/lib/provider-store";
@@ -294,9 +294,25 @@ function AvailableRequests() {
   const [tab, setTab] = useState<ReqTab>("new");
   const [slideIndex, setSlideIndex] = useState(0);
   const { toast } = useToast();
+  const { providerProfile } = useAuth();
 
-  const requests = getProviderRequests();
+  const selectedCategories = providerProfile?.categories ?? [];
+  const requests = getMatchingRequests(selectedCategories);
   const seen = getSeenIds();
+
+  // Toast when new matching requests appear
+  const prevUnseenCount = useRef<number | null>(null);
+  const newUnseen = requests.filter((r) => !seen.includes(r.id) && r.status === "open");
+  useEffect(() => {
+    if (prevUnseenCount.current !== null && newUnseen.length > prevUnseenCount.current) {
+      const diff = newUnseen.length - prevUnseenCount.current;
+      toast({
+        title: `Yangi so'rov! 🔔`,
+        description: `${diff} ta yangi so'rov paydo bo'ldi.`,
+      });
+    }
+    prevUnseenCount.current = newUnseen.length;
+  }, [newUnseen.length]);
 
   const filtered = requests.filter((r) => {
     if (tab === "new") return !seen.includes(r.id) && r.status === "open";
@@ -304,8 +320,8 @@ function AvailableRequests() {
     return r.status === "open";
   });
 
-  const newCount = requests.filter((r) => !seen.includes(r.id) && r.status === "open").length;
-  const slideReqs = requests.filter((r) => !seen.includes(r.id) && r.status === "open");
+  const newCount = newUnseen.length;
+  const slideReqs = newUnseen;
   const current = slideReqs[slideIndex];
 
   function handleRespond(id: string) {
@@ -328,7 +344,7 @@ function AvailableRequests() {
   ];
 
   const totalOpen = requests.filter((r) => r.status === "open").length;
-  const zeroOfferCount = getRequestsWithZeroOffers().length;
+  const zeroOfferCount = getRequestsWithZeroOffers(selectedCategories).length;
 
   return (
     <div className="mb-4">
@@ -418,7 +434,14 @@ function AvailableRequests() {
       {filtered.length === 0 ? (
         <div className="text-center py-8">
           <Inbox className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-          <p className="text-sm text-gray-400">So'rovlar yo'q</p>
+          <p className="text-sm font-semibold text-gray-400 mb-1">
+            {selectedCategories.length > 0
+              ? "Sizning kategoriyalaringiz bo'yicha yangi so'rovlar yo'q"
+              : "So'rovlar yo'q"}
+          </p>
+          {selectedCategories.length === 0 && (
+            <p className="text-xs text-gray-300">Profilingizda xizmat kategoriyalarini tanlang</p>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
@@ -538,9 +561,10 @@ function EventsSection() {
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function ProviderHomePage() {
   useStoreRefresh();
-  const { user } = useAuth();
+  const { user, providerProfile } = useAuth();
   const [, setLocation] = useLocation();
-  const unseenCount = getProviderRequests().filter(
+  const selectedCategories = providerProfile?.categories ?? [];
+  const unseenCount = getMatchingRequests(selectedCategories).filter(
     (r) => !getSeenIds().includes(r.id) && r.status === "open"
   ).length;
 

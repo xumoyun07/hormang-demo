@@ -42,6 +42,8 @@ const SERVICE_CATEGORIES = [
   "Repetitorlar",
   "Ustachilik",
 ];
+// ↑ These names must stay in sync with questionnaire-store.ts category names
+//   (normalized comparison strips spaces/slashes, so minor differences are tolerated)
 
 /* ─── Circular Progress ──────────────────────────────────────────── */
 function CircularProgress({ pct }: { pct: number }) {

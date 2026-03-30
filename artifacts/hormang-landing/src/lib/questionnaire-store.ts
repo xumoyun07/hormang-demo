@@ -167,7 +167,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
   },
   {
     id: "kochirish",
-    name: "Ko'chirish / Yuk",
+    name: "Ko'chirish / yuk yetkazish",
     emoji: "🚚",
     questions: [
       {
@@ -212,7 +212,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
   },
   {
     id: "repetitor",
-    name: "Repetitorlik",
+    name: "Repetitorlar",
     emoji: "📚",
     questions: [
       {

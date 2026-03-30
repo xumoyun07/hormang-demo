@@ -23,15 +23,16 @@ const PROVIDER_TABS = [
 
 export function BottomNav() {
   const [location, setLocation] = useLocation();
-  const { user, activeRole } = useAuth();
+  const { user, activeRole, providerProfile } = useAuth();
   const { toast } = useToast();
 
   if (!user) return null;
 
   const isProvider = activeRole === "provider";
+  const selectedCategories = providerProfile?.categories ?? [];
 
   const pendingOffers = getOffers().filter((o) => o.status === "pending").length;
-  const unseenCount = isProvider ? getUnseenRequests().length : 0;
+  const unseenCount = isProvider ? getUnseenRequests(selectedCategories).length : 0;
   const unreadChats = isProvider ? getTotalUnread() : 0;
 
   function isActive(href: string): boolean {

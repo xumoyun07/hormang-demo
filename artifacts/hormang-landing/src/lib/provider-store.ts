@@ -9,6 +9,7 @@
  */
 
 import { emitStoreChange } from "./store-events";
+import type { CustomerRequest } from "./requests-store";
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -127,12 +128,104 @@ function clearLegacyData() {
 // Run once on module load
 clearLegacyData();
 
+/* ─── Category normalisation ─────────────────────────────────────── */
+
+function normalizeCategory(name: string): string {
+  return name.toLowerCase().replace(/[\s/]+/g, "").trim();
+}
+
+function categoryMatches(reqCategory: string, providerCategories: string[]): boolean {
+  if (providerCategories.length === 0) return true; // no filter set → show all
+  const norm = normalizeCategory(reqCategory);
+  return providerCategories.some((c) => normalizeCategory(c) === norm);
+}
+
+/* ─── Buyer-request → ProviderRequest adapter ────────────────────── */
+
+const PROVIDER_STATUSES_KEY = "hormang_provider_statuses";
+type ProviderActionStatus = "responded" | "ignored";
+
+function getProviderStatuses(): Record<string, ProviderActionStatus> {
+  return readJSON<Record<string, ProviderActionStatus>>(PROVIDER_STATUSES_KEY, {});
+}
+
+function urgencyFrom(answers: Record<string, unknown>): ProviderRequest["urgency"] {
+  const u = answers["urgency"] as string | undefined;
+  if (u === "today_tomorrow") return "urgent";
+  if (u === "3_7_days" || u === "1_2_weeks") return "normal";
+  return "flexible";
+}
+
+function budgetFrom(answers: Record<string, unknown>): { budget: number | null; budgetLabel: string } {
+  const b = answers["budget"] as number | undefined;
+  const open = answers["budget_open"] as boolean | undefined;
+  if (b && b > 0) return { budget: b, budgetLabel: `${b.toLocaleString()} so'm` };
+  if (open) return { budget: null, budgetLabel: "Murosalashtirish mumkin" };
+  return { budget: null, budgetLabel: "Kelishiladi" };
+}
+
+function locationFrom(answers: Record<string, unknown>): string {
+  for (const k of ["district", "location", "address", "region", "move_from", "turar_joy"]) {
+    const v = answers[k];
+    if (v && typeof v === "string" && v.trim().length > 0) return v.trim();
+  }
+  return "Toshkent";
+}
+
+function descriptionFrom(answers: Record<string, unknown>): string {
+  const skip = new Set(["urgency", "budget", "budget_open"]);
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(answers)) {
+    if (skip.has(k) || !v || k.endsWith("_photo") || k.endsWith("_file")) continue;
+    if (typeof v === "boolean") parts.push(v ? "Ha" : "Yo'q");
+    else if (Array.isArray(v)) { if (v.length > 0) parts.push((v as string[]).join(", ")); }
+    else if (typeof v === "number") parts.push(String(v));
+    else if (typeof v === "string" && v.trim()) parts.push(v.trim());
+  }
+  const desc = parts.join(" · ");
+  return desc.length > 130 ? desc.slice(0, 127) + "..." : desc || "—";
+}
+
+function adaptBuyerRequest(req: CustomerRequest, actionStatus?: ProviderActionStatus): ProviderRequest {
+  const { budget, budgetLabel } = budgetFrom(req.answers);
+  const status: ProviderRequest["status"] = actionStatus ?? "open";
+  return {
+    id: req.id,
+    categoryId: req.categoryId,
+    categoryName: req.categoryName,
+    emoji: req.emoji,
+    description: descriptionFrom(req.answers),
+    budget,
+    budgetLabel,
+    urgency: urgencyFrom(req.answers),
+    location: locationFrom(req.answers),
+    customerName: "Foydalanuvchi",
+    createdAt: req.createdAt,
+    status,
+  };
+}
+
 /* ─── Requests API ───────────────────────────────────────────────── */
 
+const BUYER_REQUESTS_KEY_CONST = "hormang_requests";
+
+/**
+ * Returns all buyer requests that match the given provider categories,
+ * overlaid with the provider's own seen/responded/ignored state.
+ * Pass [] to get ALL requests (no category filter — for admin/debug).
+ */
+export function getMatchingRequests(selectedCategories: string[]): ProviderRequest[] {
+  const buyerReqs = readJSON<CustomerRequest[]>(BUYER_REQUESTS_KEY_CONST, []);
+  const statuses = getProviderStatuses();
+  return buyerReqs
+    .filter((r) => r.status === "open" && categoryMatches(r.categoryName, selectedCategories))
+    .map((r) => adaptBuyerRequest(r, statuses[r.id]))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+/** Backward-compat: returns all buyer requests, no category filter. */
 export function getProviderRequests(): ProviderRequest[] {
-  return readJSON<ProviderRequest[]>(REQUESTS_KEY, []).sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  return getMatchingRequests([]);
 }
 
 export function getProviderRequestById(id: string): ProviderRequest | undefined {
@@ -140,8 +233,9 @@ export function getProviderRequestById(id: string): ProviderRequest | undefined 
 }
 
 export function updateProviderRequestStatus(id: string, status: ProviderRequest["status"]): void {
-  const reqs = readJSON<ProviderRequest[]>(REQUESTS_KEY, []);
-  writeJSON(REQUESTS_KEY, reqs.map((r) => r.id === id ? { ...r, status } : r));
+  if (status === "open") return;
+  const statuses = getProviderStatuses();
+  writeJSON(PROVIDER_STATUSES_KEY, { ...statuses, [id]: status as ProviderActionStatus });
 }
 
 /* ─── Seen IDs ───────────────────────────────────────────────────── */
@@ -155,14 +249,18 @@ export function markSeen(id: string): void {
   if (!seen.includes(id)) writeJSON(SEEN_KEY, [...seen, id]);
 }
 
-export function markAllSeen(): void {
-  const ids = getProviderRequests().map((r) => r.id);
-  writeJSON(SEEN_KEY, ids);
+export function markAllSeen(selectedCategories: string[] = []): void {
+  const ids = getMatchingRequests(selectedCategories).map((r) => r.id);
+  const existing = getSeenIds();
+  const merged = Array.from(new Set([...existing, ...ids]));
+  writeJSON(SEEN_KEY, merged);
 }
 
-export function getUnseenRequests(): ProviderRequest[] {
+export function getUnseenRequests(selectedCategories: string[] = []): ProviderRequest[] {
   const seen = getSeenIds();
-  return getProviderRequests().filter((r) => !seen.includes(r.id) && r.status === "open");
+  return getMatchingRequests(selectedCategories).filter(
+    (r) => !seen.includes(r.id) && r.status === "open"
+  );
 }
 
 /* ─── Upcoming Services ──────────────────────────────────────────── */
@@ -272,9 +370,9 @@ export function getRequestOfferCount(requestId: string): number {
   return getOffers().filter((o) => o.requestId === requestId).length;
 }
 
-export function getRequestsWithZeroOffers(): ProviderRequest[] {
+export function getRequestsWithZeroOffers(selectedCategories: string[] = []): ProviderRequest[] {
   const offers = getOffers();
-  return getProviderRequests().filter(
+  return getMatchingRequests(selectedCategories).filter(
     (r) => r.status === "open" && !offers.some((o) => o.requestId === r.id)
   );
 }

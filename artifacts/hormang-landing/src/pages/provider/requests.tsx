@@ -4,7 +4,7 @@
  * - Scrollable filtered list below
  * - "Javob berish" opens the full OfferForm
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
@@ -15,8 +15,9 @@ import {
 import { BottomNav } from "@/components/bottom-nav";
 import { OfferForm } from "@/components/offer-form";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/auth-context";
 import {
-  getProviderRequests, getUnseenRequests, markSeen, markAllSeen,
+  getMatchingRequests, getUnseenRequests, markSeen, markAllSeen,
   updateProviderRequestStatus, getOfferByRequestId, getRequestOfferCount,
   type ProviderRequest, type ProviderOffer,
 } from "@/lib/provider-store";
@@ -42,7 +43,7 @@ const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 10
 
 const CATEGORIES = [
   "Barchasi", "Tozalash", "Ta'mirlash", "Enagalik", "Tadbir xizmatlari",
-  "Ko'chirish yuk yetkazish", "Go'zallik", "Avto xizmat", "Repetitorlar", "Ustachilik",
+  "Ko'chirish / yuk yetkazish", "Go'zallik", "Avto xizmat", "Repetitorlar", "Ustachilik",
 ];
 
 /* ─── Fullscreen Sliding Modal ───────────────────────────────────── */
@@ -331,14 +332,26 @@ export default function ProviderRequestsPage() {
   useStoreRefresh();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { providerProfile } = useAuth();
   const [activeCategory, setActiveCategory] = useState("Barchasi");
   const [showSlider, setShowSlider] = useState(false);
   const [sliderStart, setSliderStart] = useState(0);
   const [offerRequest, setOfferRequest] = useState<ProviderRequest | null>(null);
   const [offerDetailRequest, setOfferDetailRequest] = useState<ProviderRequest | null>(null);
 
-  const requests = getProviderRequests();
-  const unseen = getUnseenRequests();
+  const selectedCategories = providerProfile?.categories ?? [];
+  const requests = getMatchingRequests(selectedCategories);
+  const unseen = getUnseenRequests(selectedCategories);
+
+  // Toast on new unseen matching requests
+  const prevUnseenCount = useRef<number | null>(null);
+  useEffect(() => {
+    if (prevUnseenCount.current !== null && unseen.length > prevUnseenCount.current) {
+      const diff = unseen.length - prevUnseenCount.current;
+      toast({ title: `Yangi so'rov! 🔔`, description: `${diff} ta yangi so'rov paydo bo'ldi.` });
+    }
+    prevUnseenCount.current = unseen.length;
+  }, [unseen.length]);
 
   const allOpen = requests.filter((r) => r.status === "open");
   const allResponded = requests.filter((r) => r.status === "responded");
@@ -355,7 +368,7 @@ export default function ProviderRequestsPage() {
   }
 
   function handleMarkAllSeen() {
-    markAllSeen();
+    markAllSeen(selectedCategories);
     toast({ title: "Barchasi ko'rilgan deb belgilandi" });
   }
 
@@ -443,8 +456,16 @@ export default function ProviderRequestsPage() {
         {filtered.length === 0 ? (
           <div className="text-center py-12">
             <Inbox className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="font-bold text-gray-400 mb-1">So'rovlar yo'q</p>
-            <p className="text-sm text-gray-300">Bu kategoriyada hozircha so'rov yo'q</p>
+            <p className="font-bold text-gray-400 mb-1">
+              {selectedCategories.length > 0
+                ? "Sizning kategoriyalaringiz bo'yicha so'rovlar yo'q"
+                : "So'rovlar yo'q"}
+            </p>
+            <p className="text-sm text-gray-300">
+              {selectedCategories.length === 0
+                ? "Profilingizda xizmat kategoriyalarini tanlang"
+                : "Bu kategoriyada hozircha so'rov yo'q"}
+            </p>
           </div>
         ) : (
           <div className="space-y-3 mb-6">
