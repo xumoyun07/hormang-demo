@@ -2,8 +2,8 @@ import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation, useSearch } from "wouter";
 import {
-  ChevronLeft, ChevronRight, Check, Star, MapPin,
-  MessageCircle, FileText, Clock, Zap, Upload, X,
+  ChevronLeft, ChevronRight, Check, CheckCircle2,
+  FileText, Clock, Upload, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,57 +11,13 @@ import {
   type Question, type CategoryConfig,
 } from "@/lib/questionnaire-store";
 import {
-  saveNewRequest, generateOffersForRequest, getOffersByRequestId,
-  getOrCreateChat, type Offer,
+  saveNewRequest,
 } from "@/lib/requests-store";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
 type Stage = "select-category" | "questions" | "summary" | "recommendations";
 type Answers = Record<string, string | string[] | boolean | number | null>;
-
-/* ─── Mock Providers ─────────────────────────────────────────────── */
-interface MockProvider {
-  id: string;
-  name: string;
-  initials: string;
-  color: string;
-  rating: number;
-  reviews: number;
-  location: string;
-  priceLabel: string;
-  minPrice: number;
-  responseTime: string;
-  urgencyFit: "high" | "medium" | "low";
-  baseMatch: number;
-}
-
-const MOCK_PROVIDERS: MockProvider[] = [
-  { id: "1", name: "Alisher T.", initials: "AT", color: "#2563EB", rating: 4.9, reviews: 128, location: "Yunusobod", priceLabel: "50 000 – 150 000 so'm", minPrice: 50000, responseTime: "~15 daqiqa", urgencyFit: "high", baseMatch: 95 },
-  { id: "2", name: "Gulnora S.", initials: "GS", color: "#059669", rating: 4.8, reviews: 211, location: "Chilonzor", priceLabel: "70 000 – 200 000 so'm", minPrice: 70000, responseTime: "~30 daqiqa", urgencyFit: "high", baseMatch: 92 },
-  { id: "3", name: "Jasur B.", initials: "JB", color: "#7C3AED", rating: 5.0, reviews: 73, location: "Mirobod", priceLabel: "60 000 – 180 000 so'm", minPrice: 60000, responseTime: "~1 soat", urgencyFit: "medium", baseMatch: 89 },
-  { id: "4", name: "Malika R.", initials: "MR", color: "#D97706", rating: 4.9, reviews: 63, location: "Sergeli", priceLabel: "40 000 – 120 000 so'm", minPrice: 40000, responseTime: "~2 soat", urgencyFit: "medium", baseMatch: 85 },
-  { id: "5", name: "Firdavs N.", initials: "FN", color: "#DC2626", rating: 4.7, reviews: 99, location: "Bektemir", priceLabel: "80 000 – 250 000 so'm", minPrice: 80000, responseTime: "~3 soat", urgencyFit: "low", baseMatch: 81 },
-  { id: "6", name: "Barno U.", initials: "BU", color: "#0891B2", rating: 4.8, reviews: 86, location: "Shayxontohur", priceLabel: "55 000 – 160 000 so'm", minPrice: 55000, responseTime: "~4 soat", urgencyFit: "low", baseMatch: 78 },
-];
-
-function calcMatch(provider: MockProvider, answers: Answers): number {
-  let score = provider.baseMatch;
-  const urgency = answers["urgency"] as string | undefined;
-  const budget = answers["budget"] as number | undefined;
-  const openToOffers = answers["budget_open"] as boolean | undefined;
-
-  if (urgency === "today_tomorrow" && provider.urgencyFit === "high") score += 3;
-  if (urgency === "today_tomorrow" && provider.urgencyFit === "low") score -= 4;
-  if ((urgency === "3_7_days" || urgency === "1_2_weeks") && provider.urgencyFit === "medium") score += 2;
-
-  if (!openToOffers && budget && budget > 0) {
-    if (budget >= provider.minPrice) score += 2;
-    else score -= 3;
-  }
-
-  return Math.min(98, Math.max(60, score));
-}
 
 const URGENCY_LABELS: Record<string, { label: string; color: string }> = {
   today_tomorrow: { label: "Bugun yoki ertaga kerak", color: "text-red-600 bg-red-50 border-red-200" },
@@ -548,9 +504,7 @@ function SummaryScreen({
 /* ─── Recommendations Screen ─────────────────────────────────────── */
 function RecommendationsScreen({
   categoryId,
-  answers,
   requestId,
-  onBack,
 }: {
   categoryId: string;
   answers: Answers;
@@ -560,165 +514,68 @@ function RecommendationsScreen({
   const cat = getCategoryById(categoryId);
   const [, setLocation] = useLocation();
 
-  // Use saved offers from localStorage when we have a requestId, else fall back to mock ranking
-  const savedOffers = requestId ? getOffersByRequestId(requestId) : [];
-
-  const ranked = savedOffers.length > 0
-    ? savedOffers.map((o) => ({
-        id: o.masterId,
-        name: o.masterName,
-        initials: o.masterInitials,
-        color: o.masterColor,
-        rating: 4.7 + Math.random() * 0.3, // realistic random rating
-        reviews: 40 + Math.floor(Math.random() * 180),
-        location: ["Yunusobod", "Chilonzor", "Mirobod", "Sergeli", "Shayxontohur"][Math.floor(Math.random() * 5)],
-        priceLabel: `${o.price.toLocaleString()} so'm`,
-        responseTime: `~${o.avgResponseTime} daqiqa`,
-        match: calcMatch({ ...MOCK_PROVIDERS[0], urgencyFit: "high", baseMatch: 85 + Math.floor(Math.random() * 10) }, answers),
-        avgResponseTime: o.avgResponseTime,
-        offerId: o.id,
-      }))
-    : [...MOCK_PROVIDERS]
-        .map((p) => ({ ...p, match: calcMatch(p, answers), avgResponseTime: 15, offerId: null }))
-        .sort((a, b) => b.match - a.match)
-        .slice(0, 6);
-
-  // Assign distinct match percentages (95, 92, 89, ...)
-  const rankedSorted = ranked.map((p, i) => ({
-    ...p,
-    match: Math.max(72, 95 - i * 3 + (Math.random() < 0.5 ? 1 : 0)),
-    rating: parseFloat((4.7 + Math.random() * 0.3).toFixed(1)),
-    reviews: 40 + Math.floor(Math.random() * 180),
-  }));
-
-  const urgency = answers["urgency"] as string | undefined;
-  const urgencyInfo = urgency ? URGENCY_LABELS[urgency] : null;
-
-  function matchColor(pct: number) {
-    if (pct >= 90) return "bg-emerald-500";
-    if (pct >= 80) return "bg-blue-500";
-    return "bg-amber-500";
-  }
-
-  function openChat(p: typeof rankedSorted[0]) {
-    if (!requestId) { setLocation("/auth/login"); return; }
-    const chat = getOrCreateChat(
-      requestId, p.id, p.name, p.initials, p.color,
-      p.avgResponseTime, cat?.name ?? categoryId
-    );
-    setLocation(`/chat/${chat.id}`);
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <QuizHeader onBack={onBack} categoryName={cat?.name} emoji={cat?.emoji} />
-      <div className="max-w-lg mx-auto px-4 py-8">
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <h1 className="text-xl font-extrabold text-gray-900">Sizga mos ustalar</h1>
-          </div>
-          <p className="text-gray-500 text-sm">
-            {rankedSorted.length} ta mutaxassis taklif berdi
-            {urgencyInfo ? ` · ${urgencyInfo.label}` : ""}
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="max-w-lg mx-auto px-4 py-12 flex-1 flex flex-col items-center justify-center text-center">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 22 }}
+          className="w-20 h-20 rounded-3xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mx-auto mb-5 shadow-sm"
+        >
+          <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <div className="text-2xl mb-2">{cat?.emoji ?? "📋"}</div>
+          <h1 className="text-xl font-extrabold text-gray-900 mb-2">So'rovingiz yuborildi!</h1>
+          <p className="text-gray-500 text-sm max-w-xs mx-auto mb-1">
+            <span className="font-semibold text-gray-700">{cat?.name}</span> bo'yicha so'rovingiz
+            platformaga yuborildi.
           </p>
-        </div>
+          <p className="text-gray-400 text-xs max-w-xs mx-auto mb-8">
+            Mutaxassislar takliflarini yuborishgach, siz bildirishnoma olasiz.
+          </p>
+        </motion.div>
 
-        <div className="space-y-3 mb-6">
-          {rankedSorted.map((p, i) => (
-            <motion.div
-              key={p.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.07, duration: 0.4 }}
-              className="bg-white rounded-2xl border border-gray-100 p-4 hover:border-blue-100 hover:shadow-md transition-all duration-200"
-            >
-              <div className="flex items-start gap-3 mb-3">
-                <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
-                  style={{ background: p.color }}
-                >
-                  {p.initials}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-0.5">
-                    <p className="font-bold text-sm text-gray-900">{p.name}</p>
-                    <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-white text-xs font-bold ${matchColor(p.match)}`}>
-                      <Zap className="w-3 h-3" />
-                      {p.match}% mos
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" /> {p.location}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {p.responseTime}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  <span className="text-xs font-bold text-gray-800">{p.rating.toFixed(1)}</span>
-                  <span className="text-xs text-gray-400">({p.reviews})</span>
-                </div>
-                <span className="text-xs font-semibold text-blue-600">{p.priceLabel}</span>
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 h-9 text-xs font-semibold border-gray-200 gap-1.5"
-                  onClick={() => openChat(p)}
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  Chat ochish
-                </Button>
-                <Button
-                  size="sm"
-                  className="flex-1 h-9 text-xs font-semibold bg-blue-600 hover:bg-blue-700 gap-1.5"
-                  onClick={() => requestId ? setLocation(`/offers?requestId=${requestId}`) : setLocation("/auth/login")}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  Takliflarni ko'rish
-                </Button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* CTA: Go to my requests (for logged-in) or register (for guests) */}
-        {requestId ? (
-          <div className="space-y-3">
-            <Button
-              className="w-full py-4 font-bold bg-blue-600 hover:bg-blue-700 rounded-2xl gap-2"
-              onClick={() => setLocation("/my-requests")}
-            >
-              Mening so'rovlarimga o'tish
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full font-semibold border-gray-200 rounded-2xl gap-2"
-              onClick={() => setLocation(`/offers?requestId=${requestId}`)}
-            >
-              Barcha takliflarni ko'rish
-            </Button>
-          </div>
-        ) : (
-          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 text-center">
-            <p className="text-sm font-semibold text-blue-800 mb-3">
-              Takliflarni qabul qilish uchun ro'yxatdan o'ting — bepul!
-            </p>
-            <Button className="w-full font-bold bg-blue-600 hover:bg-blue-700" onClick={() => setLocation("/auth/role")}>
-              Bepul ro'yxatdan o'tish
-            </Button>
-          </div>
-        )}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="w-full space-y-3"
+        >
+          {requestId ? (
+            <>
+              <Button
+                className="w-full py-4 font-bold bg-blue-600 hover:bg-blue-700 rounded-2xl gap-2"
+                onClick={() => setLocation("/my-requests")}
+              >
+                Mening so'rovlarimga o'tish
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full font-semibold border-gray-200 rounded-2xl"
+                onClick={() => setLocation("/")}
+              >
+                Bosh sahifaga qaytish
+              </Button>
+            </>
+          ) : (
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
+              <p className="text-sm font-semibold text-blue-800 mb-3">
+                Takliflarni qabul qilish uchun ro'yxatdan o'ting — bepul!
+              </p>
+              <Button className="w-full font-bold bg-blue-600 hover:bg-blue-700" onClick={() => setLocation("/auth/role")}>
+                Bepul ro'yxatdan o'tish
+              </Button>
+            </div>
+          )}
+        </motion.div>
       </div>
     </div>
   );
@@ -746,10 +603,8 @@ export default function QuestionnairePage() {
   }
 
   function handleSeeProviders() {
-    // Save request to localStorage and auto-generate offers
     const cat = getCategoryById(categoryId);
     const req = saveNewRequest(categoryId, cat?.name ?? categoryId, answers);
-    generateOffersForRequest(req.id, categoryId, answers as Record<string, unknown>);
     setCurrentRequestId(req.id);
     setStage("recommendations");
   }

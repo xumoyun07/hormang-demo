@@ -104,236 +104,32 @@ function uid(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
-function daysAgo(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString();
-}
+/* ─── Legacy Data Cleanup ─────────────────────────────────────────── */
 
-function daysFromNow(n: number, time = "10:00"): { date: string; time: string } {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return {
-    date: d.toISOString().slice(0, 10),
-    time,
-  };
-}
+const CLEAN_VERSION = "v3";
 
-/* ─── Mock Data Seed ──────────────────────────────────────────────── */
-
-const MOCK_REQUESTS: ProviderRequest[] = [
-  {
-    id: "pr1",
-    categoryId: "tamirlash",
-    categoryName: "Ta'mirlash / Usta",
-    emoji: "🔧",
-    description: "Oshxonadagi kran oqyapti, urgent kerak, bugun yoki ertaga",
-    budget: 150_000,
-    budgetLabel: "150 000 so'm",
-    urgency: "urgent",
-    location: "Chilonzor tumani, Toshkent",
-    customerName: "Bobur A.",
-    createdAt: daysAgo(0),
-    status: "open",
-  },
-  {
-    id: "pr2",
-    categoryId: "tozalash",
-    categoryName: "Tozalik",
-    emoji: "🧹",
-    description: "3 xonali uy tozalash, chuqur tozalash kerak, 120 kv.m",
-    budget: 200_000,
-    budgetLabel: "200 000 so'm",
-    urgency: "normal",
-    location: "Yunusobod tumani, Toshkent",
-    customerName: "Nodira B.",
-    createdAt: daysAgo(0),
-    status: "open",
-  },
-  {
-    id: "pr3",
-    categoryId: "elektr",
-    categoryName: "Elektr ishlari",
-    emoji: "⚡",
-    description: "Rozetka va chiroq o'rnatish, 4 ta joy",
-    budget: null,
-    budgetLabel: "Kelishiladi",
-    urgency: "flexible",
-    location: "Mirzo Ulugbek tumani",
-    customerName: "Sarvar T.",
-    createdAt: daysAgo(1),
-    status: "open",
-  },
-  {
-    id: "pr4",
-    categoryId: "repetitor",
-    categoryName: "Repetitor",
-    emoji: "📚",
-    description: "11-sinf uchun matematika repetitori kerak, DTBT tayyorgarlik",
-    budget: 100_000,
-    budgetLabel: "100 000 so'm / dars",
-    urgency: "normal",
-    location: "Shayhontohur tumani",
-    customerName: "Malika X.",
-    createdAt: daysAgo(1),
-    status: "open",
-  },
-  {
-    id: "pr5",
-    categoryId: "santexnika",
-    categoryName: "Santexnika",
-    emoji: "🚿",
-    description: "Hammomda duş o'rnatish va eski trubalarni almashtirish",
-    budget: 350_000,
-    budgetLabel: "350 000 so'm",
-    urgency: "normal",
-    location: "Bektemir tumani",
-    customerName: "Ulugbek R.",
-    createdAt: daysAgo(2),
-    status: "open",
-  },
-  {
-    id: "pr6",
-    categoryId: "tamirlash",
-    categoryName: "Ta'mirlash / Usta",
-    emoji: "🔧",
-    description: "Eshikni o'rniga qo'yish kerak, petli singan",
-    budget: 80_000,
-    budgetLabel: "80 000 so'm",
-    urgency: "urgent",
-    location: "Olmazor tumani",
-    customerName: "Dilnoza S.",
-    createdAt: daysAgo(2),
-    status: "open",
-  },
-  {
-    id: "pr7",
-    categoryId: "kochirish",
-    categoryName: "Ko'chirish",
-    emoji: "🚚",
-    description: "3 xonali uydan ko'chirishga yordam, mebel ham bor",
-    budget: 500_000,
-    budgetLabel: "500 000 so'm",
-    urgency: "flexible",
-    location: "Sergeli tumani → Yakkasaroy",
-    customerName: "Farhod M.",
-    createdAt: daysAgo(3),
-    status: "open",
-  },
-];
-
-const MOCK_SERVICES: UpcomingService[] = [
-  {
-    id: "s1",
-    title: "Kran ta'mirlash",
-    customerName: "Jahongir T.",
-    customerInitials: "JT",
-    customerColor: "#2563EB",
-    ...daysFromNow(1, "11:00"),
-    location: "Chilonzor, 7-uy",
-    categoryEmoji: "🔧",
-    status: "upcoming",
-  },
-  {
-    id: "s2",
-    title: "Elektr quvur o'rnatish",
-    customerName: "Shaxlo N.",
-    customerInitials: "SN",
-    customerColor: "#059669",
-    ...daysFromNow(3, "14:00"),
-    location: "Yunusobod, 17A",
-    categoryEmoji: "⚡",
-    status: "upcoming",
-  },
-  {
-    id: "s3",
-    title: "Duş ta'mirlash",
-    customerName: "Behruz K.",
-    customerInitials: "BK",
-    customerColor: "#7C3AED",
-    ...daysFromNow(5, "10:30"),
-    location: "Mirzo Ulugbek",
-    categoryEmoji: "🚿",
-    status: "upcoming",
-  },
-];
-
-const MOCK_CHATS: ProviderChat[] = [
-  {
-    id: "pc1",
-    customerId: "c1",
-    customerName: "Jahongir Toshmatov",
-    customerInitials: "JT",
-    customerColor: "#2563EB",
-    categoryName: "Ta'mirlash",
-    categoryEmoji: "🔧",
-    messages: [
-      { id: "m1", sender: "customer", text: "Salom! Kran ta'mirlash bo'yicha so'rov yubordim.", timestamp: daysAgo(1) },
-      { id: "m2", sender: "provider", text: "Assalomu alaykum! Ko'rdim, bugun bo'sh vaqtim bor.", timestamp: daysAgo(1) },
-      { id: "m3", sender: "customer", text: "Qachon kela olasiz?", timestamp: new Date(Date.now() - 3600_000).toISOString() },
-    ],
-    unread: 1,
-    createdAt: daysAgo(1),
-  },
-  {
-    id: "pc2",
-    customerId: "c2",
-    customerName: "Shaxlo Nazarova",
-    customerInitials: "SN",
-    customerColor: "#059669",
-    categoryName: "Elektr ishlari",
-    categoryEmoji: "⚡",
-    messages: [
-      { id: "m4", sender: "customer", text: "Assalomu alaykum! 4 ta rozetka o'rnatish kerak.", timestamp: daysAgo(2) },
-      { id: "m5", sender: "provider", text: "Salom! Narx 80 000 so'm, kelishsak bo'ladi.", timestamp: daysAgo(2) },
-      { id: "m6", sender: "customer", text: "Yaxshi, kelishildi!", timestamp: daysAgo(2) },
-      { id: "m7", sender: "provider", text: "Demak ertaga 14:00 da boraman.", timestamp: daysAgo(1) },
-    ],
-    unread: 0,
-    createdAt: daysAgo(2),
-  },
-  {
-    id: "pc3",
-    customerId: "c3",
-    customerName: "Nodira Baxtiyorova",
-    customerInitials: "NB",
-    customerColor: "#D97706",
-    categoryName: "Santexnika",
-    categoryEmoji: "🚿",
-    messages: [
-      { id: "m8", sender: "customer", text: "Salom, hozir borish mumkinmi?", timestamp: new Date(Date.now() - 1800_000).toISOString() },
-    ],
-    unread: 1,
-    createdAt: daysAgo(0),
-  },
-];
-
-/* ─── Seed ────────────────────────────────────────────────────────── */
-
-function seed() {
+function clearLegacyData() {
   const version = localStorage.getItem(SEED_VERSION_KEY);
-  if (version !== SEED_VERSION) {
-    if (version !== null) {
-      writeJSON(CHATS_KEY, []);
-    }
-    localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
-  }
-
-  if (!localStorage.getItem(REQUESTS_KEY)) {
-    writeJSON(REQUESTS_KEY, MOCK_REQUESTS);
-  }
-  if (!localStorage.getItem(SERVICES_KEY)) {
-    writeJSON(SERVICES_KEY, MOCK_SERVICES);
-  }
-  if (!localStorage.getItem(CHATS_KEY)) {
-    writeJSON(CHATS_KEY, []);
+  if (version !== CLEAN_VERSION) {
+    // Wipe all mock-seeded data from previous versions (both provider and buyer side)
+    localStorage.removeItem(REQUESTS_KEY);       // hormang_provider_requests
+    localStorage.removeItem(SERVICES_KEY);       // hormang_provider_services
+    localStorage.removeItem(CHATS_KEY);          // hormang_provider_chats
+    localStorage.removeItem(OFFERS_KEY);         // hormang_provider_offers
+    localStorage.removeItem(SEEN_KEY);           // hormang_provider_seen
+    localStorage.removeItem("hormang_requests"); // buyer requests
+    localStorage.removeItem("hormang_offers");   // buyer offers
+    localStorage.removeItem("hormang_chats");    // buyer chats
+    localStorage.setItem(SEED_VERSION_KEY, CLEAN_VERSION);
   }
 }
+
+// Run once on module load
+clearLegacyData();
 
 /* ─── Requests API ───────────────────────────────────────────────── */
 
 export function getProviderRequests(): ProviderRequest[] {
-  seed();
   return readJSON<ProviderRequest[]>(REQUESTS_KEY, []).sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
@@ -372,7 +168,6 @@ export function getUnseenRequests(): ProviderRequest[] {
 /* ─── Upcoming Services ──────────────────────────────────────────── */
 
 export function getUpcomingServices(): UpcomingService[] {
-  seed();
   return readJSON<UpcomingService[]>(SERVICES_KEY, []).sort(
     (a, b) => new Date(a.date + "T" + a.time).getTime() - new Date(b.date + "T" + b.time).getTime()
   );
@@ -386,7 +181,6 @@ export function markServiceDone(id: string): void {
 /* ─── Provider Chats ─────────────────────────────────────────────── */
 
 export function getProviderChats(): ProviderChat[] {
-  seed();
   return readJSON<ProviderChat[]>(CHATS_KEY, []).sort(
     (a, b) => {
       const aLast = a.messages[a.messages.length - 1]?.timestamp ?? a.createdAt;

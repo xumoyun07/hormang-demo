@@ -63,46 +63,6 @@ const REQUESTS_KEY = "hormang_requests";
 const OFFERS_KEY = "hormang_offers";
 const CHATS_KEY = "hormang_chats";
 
-/* ─── Mock Data ──────────────────────────────────────────────────── */
-
-export const MOCK_MASTERS = [
-  { id: "m1", name: "Alisher T.", initials: "AT", color: "#2563EB", avgResponseTime: 15 },
-  { id: "m2", name: "Gulnora S.", initials: "GS", color: "#059669", avgResponseTime: 22 },
-  { id: "m3", name: "Jasur B.", initials: "JB", color: "#7C3AED", avgResponseTime: 35 },
-  { id: "m4", name: "Malika R.", initials: "MR", color: "#D97706", avgResponseTime: 12 },
-  { id: "m5", name: "Firdavs N.", initials: "FN", color: "#DC2626", avgResponseTime: 45 },
-  { id: "m6", name: "Barno U.", initials: "BU", color: "#0891B2", avgResponseTime: 28 },
-];
-
-const OFFER_MESSAGES = [
-  "Assalomu alaykum! So'rovingizni ko'rdim. Yordam bera olaman, bugun bo'sh vaqtim bor.",
-  "Salom! Bu ish bo'yicha tajribam bor. Kelishib olamiz.",
-  "Xizmat ko'rsatishga tayyorman. Sifatni kafolatlayman va o'z vaqtida bajaraman.",
-  "Men bu ishda mutaxassisман. Tez va sifatli bajaraman, narx kelishiladi.",
-  "Assalomu alaykum! Taklifimni ko'rib chiqing. Savollar bo'lsa, javob beraman.",
-  "Salom! Sizning so'rovingiz bilan ishlay olaman. Narxga kelishamiz.",
-];
-
-const MASTER_GREETINGS = [
-  "Assalomu alaykum! So'rovingizni ko'rdim. Qanday yordam bera olaman?",
-  "Salom! Taklifimni ko'rgan bo'lsangiz, savollar bo'lsa bering.",
-  "Assalomu alaykum! Men ishni bajarishga tayyorman. Batafsil gaplashaylik.",
-  "Salom! Bu ish bo'yicha savol bo'lsa so'rang.",
-];
-
-/** Base prices per category (so'm) for "open to offers" requests */
-const CATEGORY_BASE_PRICES: Record<string, number> = {
-  tamirlash: 250_000,
-  tozalash: 150_000,
-  avto: 120_000,
-  kochirish: 350_000,
-  repetitor: 80_000,
-  tadbir: 600_000,
-  gozallik: 130_000,
-  enaga: 70_000,
-  ustachilik: 400_000,
-};
-
 /** Category emoji map */
 const CATEGORY_EMOJIS: Record<string, string> = {
   tamirlash: "🔧", tozalash: "🧹", avto: "🚗", kochirish: "🚚",
@@ -185,61 +145,6 @@ export function updateOfferStatus(offerId: string, status: "accepted" | "rejecte
   writeJSON(OFFERS_KEY, offers);
 }
 
-/** Generates 2–4 mock offers for a given request and saves them */
-export function generateOffersForRequest(
-  requestId: string,
-  categoryId: string,
-  answers: Record<string, unknown>
-): Offer[] {
-  const budget = answers["budget"] as number | undefined;
-  const openToOffers = answers["budget_open"] as boolean | undefined;
-  const basePrice = budget && !openToOffers && budget > 0
-    ? budget
-    : (CATEGORY_BASE_PRICES[categoryId] ?? 200_000);
-
-  // Pick 2-4 random masters
-  const count = 2 + Math.floor(Math.random() * 3); // 2, 3 or 4
-  const shuffled = [...MOCK_MASTERS].sort(() => Math.random() - 0.5).slice(0, count);
-
-  const multipliers = [0.85, 0.95, 1.0, 1.1, 1.2, 1.3];
-
-  const newOffers: Offer[] = shuffled.map((master, i) => ({
-    id: uid(),
-    requestId,
-    masterId: master.id,
-    masterName: master.name,
-    masterInitials: master.initials,
-    masterColor: master.color,
-    price: Math.round(basePrice * multipliers[i % multipliers.length] / 1000) * 1000,
-    message: OFFER_MESSAGES[Math.floor(Math.random() * OFFER_MESSAGES.length)],
-    avgResponseTime: master.avgResponseTime,
-    createdAt: new Date().toISOString(),
-    status: "pending",
-  }));
-
-  const existing = readJSON<Offer[]>(OFFERS_KEY, []);
-  writeJSON(OFFERS_KEY, [...newOffers, ...existing]);
-
-  // Update request offer count
-  updateRequestOfferCount(requestId, newOffers.length);
-
-  // Pre-seed one chat with a greeting so the user can test immediately
-  if (newOffers.length > 0) {
-    const first = newOffers[0];
-    const req = getRequestById(requestId);
-    getOrCreateChat(
-      requestId,
-      first.masterId,
-      first.masterName,
-      first.masterInitials,
-      first.masterColor,
-      first.avgResponseTime,
-      req?.categoryName ?? categoryId
-    );
-  }
-
-  return newOffers;
-}
 
 /* ─── Chats ──────────────────────────────────────────────────────── */
 
@@ -267,14 +172,6 @@ export function getOrCreateChat(
   const existing = getChatById(chatId);
   if (existing) return existing;
 
-  // First greeting from master
-  const greeting: ChatMessage = {
-    id: uid(),
-    sender: "master",
-    text: MASTER_GREETINGS[Math.floor(Math.random() * MASTER_GREETINGS.length)],
-    timestamp: new Date().toISOString(),
-  };
-
   const chat: Chat = {
     id: chatId,
     requestId,
@@ -284,7 +181,7 @@ export function getOrCreateChat(
     masterColor,
     avgResponseTime,
     categoryName,
-    messages: [greeting],
+    messages: [],
     createdAt: new Date().toISOString(),
   };
 
