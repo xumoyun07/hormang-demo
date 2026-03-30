@@ -14,6 +14,7 @@ import ProfileSettingsPage from "@/pages/profile/settings";
 import ProviderProfilePage from "@/pages/providers/profile";
 import QuestionnairePage from "@/pages/questionnaire";
 import AdminQuestionsPage from "@/pages/admin/questions";
+import AdminDashboard from "@/pages/admin/index";
 import MyRequestsPage from "@/pages/my-requests";
 import OffersPage from "@/pages/offers";
 import ChatPage from "@/pages/chat";
@@ -95,6 +96,7 @@ function Router() {
       </Route>
       <Route path="/providers/:id" component={ProviderProfilePage} />
       <Route path="/questionnaire" component={QuestionnairePage} />
+      <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/questions" component={AdminQuestionsPage} />
       <Route path="/my-requests">
         {() => <ProtectedRoute component={MyRequestsPage} />}

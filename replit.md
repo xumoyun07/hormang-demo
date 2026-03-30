@@ -148,6 +148,22 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 
 **Design system:** Plus Jakarta Sans, `#2563EB` blue (buyer), `hsl(262,80%,54%)` violet (provider), `--brand-gradient` CSS var, `.card-shadow` / `.pill-label` / `.text-gradient` / `.hero-bg` utilities.
 
+## Admin Panels
+
+### Main Admin Dashboard — `/admin`
+- **Credentials:** username `hormangVIP`, password `ourhormang123`
+- Session stored in `sessionStorage` (re-login on refresh)
+- Sections: Overview (metrics + Recharts), So'rovlar (requests), Takliflar (offers), Foydalanuvchilar (users), Monetizatsiya (pricing tiers), Audit log
+- Reads live data from: `hormang_requests`, `hormang_offers`, `hormang_provider_offers`, `hormang_provider_chats`
+- All admin actions written to `hormang_admin_log` localStorage key
+- Pricing tiers persisted in `hormang_pricing_tiers`
+- File: `artifacts/hormang-landing/src/pages/admin/index.tsx`
+
+### Category/Question Manager — `/admin/questions`
+- **Password:** `hormang2024` (old panel, still active)
+- Manages per-category questionnaire flows
+- File: `artifacts/hormang-landing/src/pages/admin/questions.tsx`
+
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
