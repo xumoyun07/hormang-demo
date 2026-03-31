@@ -36,7 +36,6 @@ const infoSchema = z.object({
 const providerSchema = z.object({
   categories: z.array(z.string()).min(1, "Kamida bitta kategoriya tanlang"),
   bio: z.string().max(300).optional(),
-  workingHours: z.string().optional(),
   preferredLocation: z.string().optional(),
 });
 
@@ -134,17 +133,10 @@ function ProviderForm({ onDone, onBack, loading }: { onDone: (d: ProviderData) =
           placeholder="Tajribangiz, ko'nikmalaringiz haqida qisqacha yozing..."
           className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all resize-none" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-sm font-semibold text-foreground mb-1.5">Ish vaqti <span className="text-muted-foreground font-normal">(ixtiyoriy)</span></label>
-          <input {...register("workingHours")} placeholder="09:00 – 20:00"
-            className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all" />
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-foreground mb-1.5">Hudud <span className="text-muted-foreground font-normal">(ixtiyoriy)</span></label>
-          <input {...register("preferredLocation")} placeholder="Toshkent, Yunusobod"
-            className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all" />
-        </div>
+      <div>
+        <label className="block text-sm font-semibold text-foreground mb-1.5">Hudud <span className="text-muted-foreground font-normal">(ixtiyoriy)</span></label>
+        <input {...register("preferredLocation")} placeholder="Toshkent, Yunusobod"
+          className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all" />
       </div>
       <div className="flex gap-3">
         <Button type="button" variant="outline" onClick={onBack} className="h-11 px-5 border-2 font-semibold gap-1">
@@ -270,7 +262,6 @@ export default function RegisterPage() {
       const { profile } = await saveProviderProfile({
         categories: data.categories,
         bio: data.bio,
-        workingHours: data.workingHours,
         preferredLocation: data.preferredLocation,
       });
       setAuth(user!, profile);

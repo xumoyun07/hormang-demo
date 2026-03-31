@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
-  MapPin, Clock, CheckCircle2, Star, ChevronLeft,
+  MapPin, CheckCircle2, Star, ChevronLeft,
   Mail, Phone, Briefcase, ShieldCheck, ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -135,12 +135,6 @@ export default function ProviderProfilePage() {
                   <div className="flex items-center gap-1 text-gray-500 text-xs mt-2">
                     <MapPin className="w-3.5 h-3.5" />
                     <span>{profile.preferredLocation}</span>
-                  </div>
-                )}
-                {profile?.workingHours && (
-                  <div className="flex items-center gap-1 text-gray-500 text-xs mt-1">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>{profile.workingHours}</span>
                   </div>
                 )}
               </div>

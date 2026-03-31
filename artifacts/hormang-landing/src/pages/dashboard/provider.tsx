@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import {
   Inbox, TrendingUp, Star, Settings, LogOut,
-  CheckCircle2, Eye, ChevronRight, MapPin, Clock,
+  CheckCircle2, Eye, ChevronRight, MapPin,
 } from "lucide-react";
 
 export default function ProviderDashboard() {
@@ -53,11 +53,10 @@ export default function ProviderDashboard() {
     },
   ];
 
-  const hasProfile = providerProfile?.bio || providerProfile?.workingHours || providerProfile?.preferredLocation;
+  const hasProfile = providerProfile?.bio || providerProfile?.preferredLocation;
   const completeness = [
     !!providerProfile?.categories?.length,
     !!providerProfile?.bio,
-    !!providerProfile?.workingHours,
     !!providerProfile?.preferredLocation,
   ].filter(Boolean).length;
 
@@ -107,11 +106,6 @@ export default function ProviderDashboard() {
                     <MapPin className="w-3 h-3" /> {providerProfile.preferredLocation}
                   </div>
                 )}
-                {providerProfile?.workingHours && (
-                  <div className="flex items-center gap-1 text-gray-400 text-xs mt-0.5">
-                    <Clock className="w-3 h-3" /> {providerProfile.workingHours}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -133,15 +127,15 @@ export default function ProviderDashboard() {
             <div>
               <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
                 <span>Profil to'liqligi</span>
-                <span className="font-bold text-blue-600">{Math.round((completeness / 4) * 100)}%</span>
+                <span className="font-bold text-blue-600">{Math.round((completeness / 3) * 100)}%</span>
               </div>
               <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${(completeness / 4) * 100}%`, background: "var(--brand-gradient)" }}
+                  style={{ width: `${(completeness / 3) * 100}%`, background: "var(--brand-gradient)" }}
                 />
               </div>
-              {completeness < 4 && (
+              {completeness < 3 && (
                 <p className="text-xs text-gray-400 mt-1.5">
                   Profilingizni to'ldiring — bu ko'proq mijoz jalb qiladi
                 </p>
@@ -161,7 +155,7 @@ export default function ProviderDashboard() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-bold text-blue-800">Profilingizni to'ldiring</p>
-                <p className="text-xs text-blue-600">Bio, ish vaqti va hududni qo'shing</p>
+                <p className="text-xs text-blue-600">Bio va hududni qo'shing</p>
               </div>
               <button
                 onClick={() => setLocation("/profile/settings")}

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import logoImg from "/hormang-logo.png";
 import {
   Search, ClipboardList, Heart, Settings, LogOut, ChevronRight,
-  Inbox, TrendingUp, Star, Eye, CheckCircle2, MapPin, Clock,
+  Inbox, TrendingUp, Star, Eye, CheckCircle2, MapPin,
   ShoppingBag, Briefcase, Loader2, ArrowRight, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ const SERVICE_CATEGORIES = [
 const setupSchema = z.object({
   categories: z.array(z.string()).optional(),
   bio: z.string().max(300).optional(),
-  workingHours: z.string().optional(),
   preferredLocation: z.string().optional(),
 });
 type SetupForm = z.infer<typeof setupSchema>;
@@ -93,7 +92,6 @@ function ProviderSetupModal({ onDone, onCancel }: { onDone: () => void; onCancel
       const res = await saveProviderProfile({
         categories: selected,
         bio: data.bio,
-        workingHours: data.workingHours,
         preferredLocation: data.preferredLocation,
       });
       setAuth(user!, res.profile);
@@ -176,27 +174,15 @@ function ProviderSetupModal({ onDone, onCancel }: { onDone: () => void; onCancel
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">
-                  Ish vaqti
-                </label>
-                <input
-                  {...register("workingHours")}
-                  placeholder="09:00 – 20:00"
-                  className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">
-                  Hudud
-                </label>
-                <input
-                  {...register("preferredLocation")}
-                  placeholder="Toshkent"
-                  className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">
+                Hudud
+              </label>
+              <input
+                {...register("preferredLocation")}
+                placeholder="Toshkent"
+                className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
+              />
             </div>
 
             <div className="flex gap-3 pt-1">
@@ -295,7 +281,6 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
   const completeness = [
     !!providerProfile?.categories?.length,
     !!providerProfile?.bio,
-    !!providerProfile?.workingHours,
     !!providerProfile?.preferredLocation,
   ].filter(Boolean).length;
 
@@ -363,23 +348,18 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
                 <MapPin className="w-3 h-3" /> {providerProfile.preferredLocation}
               </span>
             )}
-            {providerProfile.workingHours && (
-              <span className="flex items-center gap-1 text-xs text-gray-500">
-                <Clock className="w-3 h-3" /> {providerProfile.workingHours}
-              </span>
-            )}
           </div>
           <div className="flex items-center gap-2">
             <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-700"
                 style={{
-                  width: `${(completeness / 4) * 100}%`,
+                  width: `${(completeness / 3) * 100}%`,
                   background: "linear-gradient(90deg, hsl(262,80%,54%), hsl(236,76%,60%))",
                 }}
               />
             </div>
-            <span className="text-xs font-bold text-violet-600">{Math.round((completeness / 4) * 100)}%</span>
+            <span className="text-xs font-bold text-violet-600">{Math.round((completeness / 3) * 100)}%</span>
           </div>
         </motion.div>
       )}

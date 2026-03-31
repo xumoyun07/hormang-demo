@@ -3,10 +3,10 @@
  *
  * Features:
  *   - Weighted dynamic completion % (photo 20, name 10, region 15,
- *     services 20, bio 15, experience 10, hours 5, portfolio 5)
+ *     services 20, bio 20, experience 10, portfolio 5)
  *   - Public Profile Preview modal ("Profilimni ko'rish")
  *   - Portfolio with captions + drag-to-reorder
- *   - Debounced localStorage auto-save for bio/experience/hours
+ *   - Debounced localStorage auto-save for bio/experience
  *   - Helper texts + "Add now" scroll anchors for missing items
  *   - Phone-migration modal
  */
@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import {
   ChevronLeft, Camera, Phone, Lock, CheckCircle2, AlertCircle,
-  Save, Loader2, MapPin, Clock, Briefcase, Star, ImagePlus,
+  Save, Loader2, MapPin, Briefcase, Star, ImagePlus,
   X, ArrowRight, RefreshCw, ChevronDown, User, AlertTriangle,
   Eye, Zap, GripVertical, TrendingUp, Award,
 } from "lucide-react";
@@ -129,11 +129,11 @@ function SectionHeader({ icon: Icon, title, sub }: {
    PUBLIC PROFILE PREVIEW MODAL
    ════════════════════════════════════════════════════════════════════ */
 function ProfilePreviewModal({ onClose, firstName, lastName, bio, categories, region, district,
-  experience, workingHours, photoUrl, portfolioItems }: {
+  experience, photoUrl, portfolioItems }: {
   onClose: () => void;
   firstName: string; lastName: string; bio: string;
   categories: string[]; region: string; district: string;
-  experience: string; workingHours: string;
+  experience: string;
   photoUrl?: string; portfolioItems: PortfolioItem[];
 }) {
   const initials = `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase();
@@ -151,8 +151,8 @@ function ProfilePreviewModal({ onClose, firstName, lastName, bio, categories, re
       >
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100">
           <div>
-            <p className="font-extrabold text-gray-900 text-sm">Jamoat profil ko'rinishi</p>
-            <p className="text-xs text-gray-400">Mijozlar shunday ko'radi</p>
+            <p className="font-extrabold text-gray-900 text-sm">Ommaviy profil ko'rinishi</p>
+            <p className="text-xs text-gray-400">Mijozlarga ko'rinishi</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">
             <X className="w-4 h-4" />
@@ -200,7 +200,7 @@ function ProfilePreviewModal({ onClose, firstName, lastName, bio, categories, re
             <div className="bg-gray-50 rounded-xl p-3 flex items-center gap-2.5">
               <MapPin className="w-4 h-4 text-violet-500 flex-shrink-0" />
               <div>
-                <p className="text-[10px] text-gray-400 font-semibold">Joylashuv</p>
+                <p className="text-[10px] text-gray-400 font-semibold">Hudud</p>
                 <p className="text-xs font-bold text-gray-800">
                   {region ? (district ? `${district}, ${region}` : region) : "Ko'rsatilmagan"}
                 </p>
@@ -215,15 +215,6 @@ function ProfilePreviewModal({ onClose, firstName, lastName, bio, categories, re
                 </p>
               </div>
             </div>
-            {workingHours && (
-              <div className="bg-gray-50 rounded-xl p-3 flex items-center gap-2.5 col-span-2">
-                <Clock className="w-4 h-4 text-violet-500 flex-shrink-0" />
-                <div>
-                  <p className="text-[10px] text-gray-400 font-semibold">Ish vaqti</p>
-                  <p className="text-xs font-bold text-gray-800">{workingHours}</p>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Bio */}
@@ -408,7 +399,6 @@ export default function ProfileSettingsPage() {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [experience, setExperience] = useState("");
   const [bio, setBio]               = useState("");
-  const [workingHours, setWorkingHours] = useState("");
 
   /* Populate from auth/local once loaded */
   useEffect(() => {
@@ -419,7 +409,6 @@ export default function ProfileSettingsPage() {
     if (providerProfile) {
       setSelectedServices(providerProfile.categories ?? []);
       setBio(providerProfile.bio ?? "");
-      setWorkingHours(providerProfile.workingHours ?? "");
     }
   }, [user?.id, providerProfile?.id]);
 
@@ -506,7 +495,6 @@ export default function ProfileSettingsPage() {
   /* ── Debounced auto-save to localStorage ── */
   const debouncedBio     = useDebounce(bio, 1200);
   const debouncedExp     = useDebounce(experience, 1200);
-  const debouncedHours   = useDebounce(workingHours, 1200);
   const debouncedPhoto   = useDebounce(photoUrl, 300);
   const debouncedPortf   = useDebounce(portfolioItems, 800);
   const debouncedRegion  = useDebounce(region, 600);
@@ -539,7 +527,7 @@ export default function ProfileSettingsPage() {
   };
   const checks = getCompletionChecks(
     user ?? null,
-    { ...providerProfile, categories: selectedServices, bio, workingHours } as typeof providerProfile,
+    { ...providerProfile, categories: selectedServices, bio } as typeof providerProfile,
     completionLocal,
   );
   const pct     = getCompletionPct(checks);
@@ -552,12 +540,11 @@ export default function ProfileSettingsPage() {
   const refServices   = useRef<HTMLDivElement>(null);
   const refBio        = useRef<HTMLDivElement>(null);
   const refExperience = useRef<HTMLDivElement>(null);
-  const refHours      = useRef<HTMLDivElement>(null);
   const refPortfolio  = useRef<HTMLDivElement>(null);
   const sectionRefs: Record<string, React.RefObject<HTMLDivElement | null>> = {
     photo: refPhoto, name: refName, region: refRegion,
     services: refServices, bio: refBio, experience: refExperience,
-    hours: refHours, portfolio: refPortfolio,
+    portfolio: refPortfolio,
   };
 
   function scrollTo(key: string) {
@@ -587,7 +574,6 @@ export default function ProfileSettingsPage() {
           ? updateProviderProfile({
               categories: selectedServices,
               bio: bio || undefined,
-              workingHours: workingHours || undefined,
               preferredLocation: region ? (district ? `${region}, ${district}` : region) : undefined,
             })
           : Promise.resolve(null),
@@ -913,25 +899,14 @@ export default function ProfileSettingsPage() {
                 </Field>
               </div>
 
-              {/* Working hours */}
-              <div ref={refHours}>
-                <Field label="Ish vaqti" hint="Masalan: Du–Ju 09:00–20:00, Sha 10:00–18:00">
-                  <div className="flex items-center gap-2 border-2 border-gray-200 rounded-2xl px-4 h-11 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/20 bg-white transition-colors">
-                    <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <input value={workingHours} onChange={(e) => setWorkingHours(e.target.value)}
-                      placeholder="09:00 – 20:00"
-                      className="flex-1 bg-transparent text-sm text-gray-800 focus:outline-none placeholder:text-gray-300" />
-                  </div>
-                </Field>
-              </div>
-            </div>
-
+              
             {/* Auto-save indicator */}
             {autoSaveAt && (
               <p className="text-[10px] text-gray-300 mt-3 text-right">
                 Saqlandi {autoSaveAt.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
               </p>
             )}
+            </div>
           </motion.div>
         )}
 
@@ -1046,7 +1021,7 @@ export default function ProfileSettingsPage() {
             firstName={firstName} lastName={lastName}
             bio={bio} categories={selectedServices}
             region={region} district={district}
-            experience={experience} workingHours={workingHours}
+            experience={experience}
             photoUrl={photoUrl} portfolioItems={portfolioItems}
           />
         )}

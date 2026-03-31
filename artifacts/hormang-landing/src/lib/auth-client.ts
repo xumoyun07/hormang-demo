@@ -15,7 +15,6 @@ export interface ProviderProfile {
   userId: string;
   categories: string[];
   bio?: string | null;
-  workingHours?: string | null;
   preferredLocation?: string | null;
   isVerified: boolean;
 }
@@ -84,7 +83,6 @@ export async function registerUser(body: {
 export async function saveProviderProfile(body: {
   categories: string[];
   bio?: string;
-  workingHours?: string;
   preferredLocation?: string;
 }): Promise<{ profile: ProviderProfile }> {
   return request("/auth/register/provider-profile", {
@@ -173,7 +171,6 @@ export async function updateProfile(body: {
 export async function updateProviderProfile(body: {
   categories?: string[];
   bio?: string;
-  workingHours?: string;
   preferredLocation?: string;
 }): Promise<{ profile: ProviderProfile }> {
   return request("/auth/provider-profile", {

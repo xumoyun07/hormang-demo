@@ -120,7 +120,7 @@ export function getCompletionChecks(
       label: "Bio: kamida 50 ta belgi yozing",
       hint: "O'zingizni taniting — bu ishonchni oshiradi",
       done: !!(providerProfile?.bio && providerProfile.bio.length >= 50),
-      weight: 15,
+      weight: 20,
     },
     {
       key: "experience",
@@ -128,13 +128,6 @@ export function getCompletionChecks(
       hint: "Tajriba — asosiy tanlov mezonlaridan biri",
       done: !!(local.experience !== undefined && local.experience >= 0),
       weight: 10,
-    },
-    {
-      key: "hours",
-      label: "Ish vaqtini belgilang",
-      hint: "Masalan: Du–Ju 09:00–20:00",
-      done: !!(providerProfile?.workingHours && providerProfile.workingHours.trim().length > 3),
-      weight: 5,
     },
     {
       key: "portfolio",
