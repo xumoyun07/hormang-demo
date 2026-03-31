@@ -848,6 +848,7 @@ function ProviderBenefitsSection() {
             </ul>
             <Button
               className="h-12 px-7 rounded-xl font-semibold text-sm gap-2 bg-blue-600 hover:bg-blue-700 shadow-sm"
+              onClick={() => window.location.href = "/auth/role"}
             >
               Ijrochi bo'lish
               <ArrowRight className="w-4 h-4" />

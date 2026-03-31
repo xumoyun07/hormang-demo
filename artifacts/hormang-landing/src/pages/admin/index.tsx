@@ -798,7 +798,7 @@ function UsersSection() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-700 text-xs font-bold flex-shrink-0">
-                        {u.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                        {u.name.split(" ").ma p((n) => n[0]).join("").slice(0, 2)}
                       </div>
                       <span className="font-semibold text-gray-800">{u.name}</span>
                     </div>
