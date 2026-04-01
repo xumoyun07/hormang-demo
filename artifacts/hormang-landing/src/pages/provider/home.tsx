@@ -13,7 +13,7 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight, ChevronLeft, CalendarDays, Sparkles, Share2, Link2,
-  CheckCircle2, Clock, MapPin, AlertCircle, Inbox, Send, Check,
+  CheckCircle2, Clock, MapPin, AlertCircle, Inbox, Send, Check, X,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { useAuth } from "@/contexts/auth-context";
@@ -286,12 +286,139 @@ function RequestSlideCard({
   );
 }
 
+/* ─── Request List Modal ─────────────────────────────────────────── */
+function RequestsModal({
+  title,
+  requests,
+  onClose,
+  onRespond,
+  onIgnore,
+}: {
+  title: string;
+  requests: ProviderRequest[];
+  onClose: () => void;
+  onRespond: (id: string) => void;
+  onIgnore: (id: string) => void;
+}) {
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex flex-col"
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
+        <motion.div
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "spring", stiffness: 380, damping: 38 }}
+          className="bg-gray-50 rounded-t-3xl flex flex-col mt-16 flex-1 overflow-hidden"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 bg-white border-b border-gray-100 rounded-t-3xl">
+            <h2 className="font-black text-base text-gray-900">{title}</h2>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+            >
+              <X className="w-4 h-4 text-gray-600" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 pb-8">
+            {requests.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Inbox className="w-10 h-10 text-gray-300 mb-3" />
+                <p className="text-sm font-semibold text-gray-400">
+                  Sizning kategoriyalaringiz bo'yicha so'rovlar yo'q
+                </p>
+              </div>
+            ) : (
+              requests.map((r, i) => {
+                const urg = urgencyLabel(r.urgency);
+                const offerCnt = getRequestOfferCount(r.id);
+                return (
+                  <motion.div
+                    key={r.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+                  >
+                    {/* Card header */}
+                    <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-gray-50">
+                      <span className="text-2xl">{r.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm text-gray-900">{r.categoryName}</p>
+                        <p className="text-xs text-gray-400">{r.customerName} · {timeAgo(r.createdAt)}</p>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${urg.color}`}>
+                        {urg.label}
+                      </span>
+                    </div>
+
+                    {/* Card body */}
+                    <div className="px-4 py-3">
+                      <p className="text-sm text-gray-600 leading-relaxed mb-3 line-clamp-2">
+                        {r.description}
+                      </p>
+
+                      {/* Info chips */}
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        <div className="bg-gray-50 rounded-xl p-2 text-center">
+                          <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">Byudjet</p>
+                          <p className="text-xs font-extrabold text-violet-700">{r.budgetLabel}</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-2 text-center">
+                          <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">Manzil</p>
+                          <p className="text-xs font-bold text-gray-700 truncate">{r.location}</p>
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-2 text-center">
+                          <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">Takliflar</p>
+                          <p className={`text-xs font-extrabold ${offerCnt === 0 ? "text-red-500" : "text-emerald-600"}`}>
+                            {offerCnt} ta
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => onIgnore(r.id)}
+                          className="flex-1 h-9 rounded-xl border-2 border-red-100 bg-red-50 text-red-600 font-bold text-xs flex items-center justify-center gap-1 transition-all active:scale-95 hover:bg-red-100"
+                        >
+                          O'tkazish
+                        </button>
+                        <button
+                          onClick={() => onRespond(r.id)}
+                          className="flex-1 h-9 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-sm"
+                          style={{ background: VIOLET }}
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          Javob berish
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 /* ─── Available Requests ─────────────────────────────────────────── */
-type ReqTab = "all" | "new" | "seen";
+type ModalType = "all" | "new" | "zero" | null;
 
 function AvailableRequests() {
   useStoreRefresh();
-  const [tab, setTab] = useState<ReqTab>("new");
+  const [modal, setModal] = useState<ModalType>(null);
   const [slideIndex, setSlideIndex] = useState(0);
   const { toast } = useToast();
   const { providerProfile } = useAuth();
@@ -300,29 +427,27 @@ function AvailableRequests() {
   const requests = getMatchingRequests(selectedCategories);
   const seen = getSeenIds();
 
-  // Toast when new matching requests appear
+  const openRequests  = requests.filter((r) => r.status === "open");
+  const newUnseen     = openRequests.filter((r) => !seen.includes(r.id));
+  const zeroOffers    = getRequestsWithZeroOffers(selectedCategories);
+
+  const newCount      = newUnseen.length;
+  const totalOpen     = openRequests.length;
+  const zeroCount     = zeroOffers.length;
+
+  // Toast when new matching requests arrive
   const prevUnseenCount = useRef<number | null>(null);
-  const newUnseen = requests.filter((r) => !seen.includes(r.id) && r.status === "open");
   useEffect(() => {
-    if (prevUnseenCount.current !== null && newUnseen.length > prevUnseenCount.current) {
-      const diff = newUnseen.length - prevUnseenCount.current;
-      toast({
-        title: `Yangi so'rov! 🔔`,
-        description: `${diff} ta yangi so'rov paydo bo'ldi.`,
-      });
+    if (prevUnseenCount.current !== null && newCount > prevUnseenCount.current) {
+      const diff = newCount - prevUnseenCount.current;
+      toast({ title: `Yangi so'rov! 🔔`, description: `${diff} ta yangi so'rov paydo bo'ldi.` });
     }
-    prevUnseenCount.current = newUnseen.length;
-  }, [newUnseen.length]);
+    prevUnseenCount.current = newCount;
+  }, [newCount]);
 
-  const filtered = requests.filter((r) => {
-    if (tab === "new") return !seen.includes(r.id) && r.status === "open";
-    if (tab === "seen") return seen.includes(r.id) && r.status === "open";
-    return r.status === "open";
-  });
-
-  const newCount = newUnseen.length;
+  // Slide card state
   const slideReqs = newUnseen;
-  const current = slideReqs[slideIndex];
+  const current   = slideReqs[slideIndex];
 
   function handleRespond(id: string) {
     updateProviderRequestStatus(id, "responded");
@@ -337,159 +462,133 @@ function AvailableRequests() {
     if (slideIndex >= slideReqs.length - 1) setSlideIndex(Math.max(0, slideReqs.length - 2));
   }
 
-  const tabs: { id: ReqTab; label: string; count?: number }[] = [
-    { id: "all", label: "Barchasi" },
-    { id: "new", label: "Yangi", count: newCount },
-    { id: "seen", label: "Ko'rilgan" },
-  ];
+  function handleRespondFromModal(id: string) {
+    updateProviderRequestStatus(id, "responded");
+    markSeen(id);
+    toast({ title: "Javob yuborildi!", description: "Buyurtmachi siz bilan bog'lanadi." });
+  }
 
-  const totalOpen = requests.filter((r) => r.status === "open").length;
-  const zeroOfferCount = getRequestsWithZeroOffers(selectedCategories).length;
+  function handleIgnoreFromModal(id: string) {
+    updateProviderRequestStatus(id, "ignored");
+    markSeen(id);
+  }
+
+  // Determine modal request list
+  const modalRequests =
+    modal === "all"  ? openRequests :
+    modal === "new"  ? newUnseen :
+    modal === "zero" ? zeroOffers :
+    [];
+
+  const modalTitle =
+    modal === "all"  ? "Barcha mos keladigan so'rovlar" :
+    modal === "new"  ? "Yangi so'rovlar" :
+    modal === "zero" ? "Taklif olmagan so'rovlar" :
+    "";
 
   return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+    <>
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-3">
           <Inbox className="w-4 h-4 text-violet-600" />
           <h2 className="font-bold text-sm text-gray-900">Mavjud so'rovlar</h2>
         </div>
-      </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-3 text-center">
-          <p className="text-xl font-black text-gray-900">{totalOpen}</p>
-          <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">Jami</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-3 text-center relative">
-          <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500" />
-          <p className="text-xl font-black text-gray-900">{newCount}</p>
-          <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">Yangi so'rovlar</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-3 text-center">
-          <p className={`text-xl font-black ${zeroOfferCount > 0 ? "text-red-500" : "text-gray-900"}`}>{zeroOfferCount}</p>
-          <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">Taklif olmagan</p>
-        </div>
-      </div>
-
-      {/* Slide cards for new requests */}
-      {slideReqs.length > 0 && (
-        <div className="mb-4">
-          <AnimatePresence mode="wait">
-            {current && (
-              <RequestSlideCard
-                key={current.id}
-                request={current}
-                onRespond={handleRespond}
-                onIgnore={handleIgnore}
-                onNext={() => setSlideIndex((i) => Math.min(i + 1, slideReqs.length - 1))}
-                isLast={slideIndex === slideReqs.length - 1}
-                index={slideIndex}
-                total={slideReqs.length}
-              />
-            )}
-          </AnimatePresence>
-          <div className="flex justify-between mt-3">
-            <button
-              disabled={slideIndex === 0}
-              onClick={() => setSlideIndex((i) => Math.max(0, i - 1))}
-              className="flex items-center gap-1 text-xs font-semibold text-gray-400 disabled:opacity-30 hover:text-violet-600 transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" /> Oldingi
-            </button>
-            <button
-              disabled={slideIndex >= slideReqs.length - 1}
-              onClick={() => setSlideIndex((i) => Math.min(i + 1, slideReqs.length - 1))}
-              className="flex items-center gap-1 text-xs font-semibold text-gray-400 disabled:opacity-30 hover:text-violet-600 transition-colors"
-            >
-              Keyingi <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Tabs + list */}
-      <div className="flex gap-2 mb-3">
-        {tabs.map((t) => (
+        {/* ── Clickable Stats Row ── */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {/* All */}
           <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              tab === t.id
-                ? "text-white shadow-sm"
-                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-            }`}
-            style={tab === t.id ? { background: VIOLET } : {}}
+            onClick={() => setModal("all")}
+            className="bg-white rounded-2xl border border-gray-100 card-shadow p-3 text-center transition-all active:scale-95 hover:border-violet-200 hover:shadow-md"
           >
-            {t.label}
-            {t.count !== undefined && t.count > 0 && (
-              <span className={`w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center ${
-                tab === t.id ? "bg-white text-violet-700" : "bg-violet-600 text-white"
-              }`}>{t.count}</span>
-            )}
+            <p className="text-xl font-black text-gray-900">{totalOpen}</p>
+            <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">Barcha so'rovlar</p>
           </button>
-        ))}
+
+          {/* New — red dot only when there are unseen */}
+          <button
+            onClick={() => setModal("new")}
+            className="bg-white rounded-2xl border border-gray-100 card-shadow p-3 text-center relative transition-all active:scale-95 hover:border-red-200 hover:shadow-md"
+          >
+            {newCount > 0 && (
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500" />
+            )}
+            <p className="text-xl font-black text-gray-900">{newCount}</p>
+            <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">Yangi so'rovlar</p>
+          </button>
+
+          {/* Zero offers */}
+          <button
+            onClick={() => setModal("zero")}
+            className="bg-white rounded-2xl border border-gray-100 card-shadow p-3 text-center transition-all active:scale-95 hover:border-orange-200 hover:shadow-md"
+          >
+            <p className={`text-xl font-black ${zeroCount > 0 ? "text-red-500" : "text-gray-900"}`}>
+              {zeroCount}
+            </p>
+            <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">Taklif olmagan so'rovlar</p>
+          </button>
+        </div>
+
+        {/* ── Slide Cards for new requests ── */}
+        {slideReqs.length > 0 && (
+          <div className="mb-2">
+            <AnimatePresence mode="wait">
+              {current && (
+                <RequestSlideCard
+                  key={current.id}
+                  request={current}
+                  onRespond={handleRespond}
+                  onIgnore={handleIgnore}
+                  onNext={() => setSlideIndex((i) => Math.min(i + 1, slideReqs.length - 1))}
+                  isLast={slideIndex === slideReqs.length - 1}
+                  index={slideIndex}
+                  total={slideReqs.length}
+                />
+              )}
+            </AnimatePresence>
+            <div className="flex justify-between mt-3">
+              <button
+                disabled={slideIndex === 0}
+                onClick={() => setSlideIndex((i) => Math.max(0, i - 1))}
+                className="flex items-center gap-1 text-xs font-semibold text-gray-400 disabled:opacity-30 hover:text-violet-600 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" /> Oldingi
+              </button>
+              <button
+                disabled={slideIndex >= slideReqs.length - 1}
+                onClick={() => setSlideIndex((i) => Math.min(i + 1, slideReqs.length - 1))}
+                className="flex items-center gap-1 text-xs font-semibold text-gray-400 disabled:opacity-30 hover:text-violet-600 transition-colors"
+              >
+                Keyingi <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Empty state when no new requests at all */}
+        {slideReqs.length === 0 && (
+          <div className="text-center py-6">
+            <Inbox className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-gray-400">
+              {selectedCategories.length > 0
+                ? "Hozircha yangi so'rovlar yo'q"
+                : "So'rovlarni ko'rish uchun xizmat kategoriyalarini tanlang"}
+            </p>
+          </div>
+        )}
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="text-center py-8">
-          <Inbox className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-gray-400 mb-1">
-            {selectedCategories.length > 0
-              ? "Sizning kategoriyalaringiz bo'yicha yangi so'rovlar yo'q"
-              : "So'rovlar yo'q"}
-          </p>
-          {selectedCategories.length === 0 && (
-            <p className="text-xs text-gray-300">Profilingizda xizmat kategoriyalarini tanlang</p>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((r, i) => {
-            const urg = urgencyLabel(r.urgency);
-            return (
-              <motion.div
-                key={r.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                className="bg-white rounded-2xl border border-gray-100 card-shadow p-4 flex items-start gap-3"
-              >
-                <span className="text-xl flex-shrink-0 mt-0.5">{r.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                    <p className="font-bold text-sm text-gray-900">{r.categoryName}</p>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${urg.color}`}>{urg.label}</span>
-                  </div>
-                  <p className="text-xs text-gray-500 truncate mb-1">{r.description}</p>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-[11px] font-bold text-violet-700">{r.budgetLabel}</span>
-                    {(() => {
-                      const cnt = getRequestOfferCount(r.id);
-                      return (
-                        <span className={`text-[11px] font-bold ${cnt === 0 ? "text-red-500" : "text-emerald-600"}`}>
-                          Takliflar: {cnt} ta
-                        </span>
-                      );
-                    })()}
-                    <span className="flex items-center gap-0.5 text-[11px] text-gray-400">
-                      <MapPin className="w-3 h-3" />{r.location}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleRespond(r.id)}
-                  className="flex-shrink-0 h-8 px-3 rounded-xl text-white text-xs font-bold"
-                  style={{ background: VIOLET }}
-                >
-                  Javob
-                </button>
-              </motion.div>
-            );
-          })}
-        </div>
+      {/* ── Modals ── */}
+      {modal !== null && (
+        <RequestsModal
+          title={modalTitle}
+          requests={modalRequests}
+          onClose={() => setModal(null)}
+          onRespond={(id) => { handleRespondFromModal(id); }}
+          onIgnore={(id) => { handleIgnoreFromModal(id); }}
+        />
       )}
-    </div>
+    </>
   );
 }
 
