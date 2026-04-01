@@ -663,6 +663,12 @@ export default function ProviderHomePage() {
   const { user, providerProfile } = useAuth();
   const [, setLocation] = useLocation();
   const [logoHovered, setLogoHovered] = useState(false);
+  const [headerLocal, setHeaderLocal] = useState<ReturnType<typeof getLocalProfile>>({});
+
+  useEffect(() => {
+    if (user?.id) setHeaderLocal(getLocalProfile(user.id));
+  }, [user?.id]);
+
   const selectedCategories = providerProfile?.categories ?? [];
   const unseenCount = getMatchingRequests(selectedCategories).filter(
     (r) => !getSeenIds().includes(r.id) && r.status === "open"
@@ -691,10 +697,14 @@ export default function ProviderHomePage() {
           )}
           <button
             onClick={() => setLocation("/profile/settings")}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm"
-            style={{ background: VIOLET }}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm overflow-hidden flex-shrink-0"
+            style={headerLocal.photoUrl ? {} : { background: VIOLET }}
           >
-            {user?.firstName?.[0]}
+            {headerLocal.photoUrl ? (
+              <img src={headerLocal.photoUrl} alt={user?.firstName} className="w-full h-full object-cover" />
+            ) : (
+              user?.firstName?.[0]
+            )}
           </button>
         </div>
       </div>
