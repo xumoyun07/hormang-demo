@@ -596,6 +596,11 @@ export default function UnifiedDashboard() {
   const [, setLocation] = useLocation();
   const [showSetup, setShowSetup] = useState(false);
   const [logoHovered, setLogoHovered] = useState(false);
+  const [headerLocal, setHeaderLocal] = useState<LocalProfile>({});
+
+  useEffect(() => {
+    if (user?.id) setHeaderLocal(getLocalProfile(user.id));
+  }, [user?.id]);
 
   const isProvider = activeRole === "provider";
 
@@ -632,7 +637,7 @@ export default function UnifiedDashboard() {
           <div className="max-w-lg mx-auto flex items-center justify-between gap-3">
             <button
               className="flex items-center gap-2.5 cursor-pointer"
-              onClick={() => setLocation("/")}
+              onClick={() => setLocation("/provider-home")}
               onMouseEnter={() => setLogoHovered(true)}
               onMouseLeave={() => setLogoHovered(false)}
             >
@@ -684,11 +689,15 @@ export default function UnifiedDashboard() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setLocation("/profile/settings")}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm transition-all duration-500"
-                style={{ background: accentGradient }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm transition-all duration-500 overflow-hidden flex-shrink-0"
+                style={headerLocal.photoUrl ? {} : { background: accentGradient }}
                 title={`${user?.firstName} ${user?.lastName}`}
               >
-                {user?.firstName?.[0]}
+                {headerLocal.photoUrl ? (
+                  <img src={headerLocal.photoUrl} alt={user?.firstName} className="w-full h-full object-cover" />
+                ) : (
+                  user?.firstName?.[0]
+                )}
               </button>
               <button onClick={handleLogout} className="text-gray-400 hover:text-gray-600 transition-colors">
                 <LogOut className="w-4 h-4" />

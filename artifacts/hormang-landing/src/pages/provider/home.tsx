@@ -662,6 +662,7 @@ export default function ProviderHomePage() {
   useStoreRefresh();
   const { user, providerProfile } = useAuth();
   const [, setLocation] = useLocation();
+  const [logoHovered, setLogoHovered] = useState(false);
   const selectedCategories = providerProfile?.categories ?? [];
   const unseenCount = getMatchingRequests(selectedCategories).filter(
     (r) => !getSeenIds().includes(r.id) && r.status === "open"
@@ -672,7 +673,10 @@ export default function ProviderHomePage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10 card-shadow">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => setLocation("/")} className="flex items-center gap-2.5">
+          <button onClick={() => setLocation("/provider-home")} 
+          onMouseEnter={() => setLogoHovered(true)}
+          onMouseLeave={() => setLogoHovered(false)}
+            className="flex items-center gap-2.5">
             <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
             <span className="font-bold text-gray-900 text-sm hidden sm:inline">Hormang</span>
           </button>
