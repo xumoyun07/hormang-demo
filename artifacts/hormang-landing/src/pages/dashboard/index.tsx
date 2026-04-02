@@ -602,7 +602,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
 }
 
 export default function UnifiedDashboard() {
-  const { user, providerProfile, activeRole, switchRole, setAuth, logout } = useAuth();
+  const { user, providerProfile, activeRole, switchRole, setProviderProfile, logout } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [logoHovered, setLogoHovered] = useState(false);
@@ -615,7 +615,7 @@ export default function UnifiedDashboard() {
   }, [user?.id]);
 
   const isProvider = activeRole === "provider";
-  const hasBothRoles = !!providerProfile;
+  const hasBothRoles = !!(providerProfile && providerProfile.categories && providerProfile.categories.length > 0);
 
   const accentGradient = isProvider
     ? "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)"
@@ -635,7 +635,7 @@ export default function UnifiedDashboard() {
     setBecomingProvider(true);
     try {
       const res = await saveProviderProfile({ categories });
-      setAuth(user, res.profile);
+      setProviderProfile(res.profile);
       switchRole("provider");
       sessionStorage.setItem("justBecameProvider", "1");
       setShowBecomeModal(false);

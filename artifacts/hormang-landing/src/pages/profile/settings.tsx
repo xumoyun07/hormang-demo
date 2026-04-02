@@ -686,7 +686,7 @@ export default function ProfileSettingsPage() {
                     Tabriklaymiz! Siz endi ijrochi sifatida ro'yxatdan o'tdingiz.
                   </p>
                   <p className="text-white/75 text-xs leading-relaxed">
-                    Profilingizni to'liq to'ldiring — bu mijozlarga sizni topishga yordam beradi.
+                    Profilingizni to'liq to'ldiring — bu mijozlar sizning xizmatinggizni tanlash ehtimolini oshiradi.
                   </p>
                 </div>
               </div>
