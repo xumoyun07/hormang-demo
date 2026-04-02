@@ -218,7 +218,17 @@ function BecomeProviderModal({
 }
 
 function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => void; onBecome: () => void }) {
-  const { providerProfile } = useAuth();
+  const { user, providerProfile } = useAuth();
+  const [local, setLocal] = useState<LocalProfile>({});
+
+  useEffect(() => {
+    if (user?.id) setLocal(getLocalProfile(user.id));
+  }, [user?.id]);
+
+  const fullName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
+  const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase();
+  const location = local.district ? `${local.district}, ${local.region}` : local.region;
+
   const items = [
     {
       icon: Search,
@@ -249,6 +259,54 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
 
   return (
     <div className="space-y-3">
+      {/* ── Customer Profile Hero Card ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="rounded-2xl overflow-hidden shadow-sm"
+        style={{ background: "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)" }}
+      >
+        <div className="p-4 flex items-center gap-4">
+          {/* Avatar */}
+          {local.photoUrl ? (
+            <img src={local.photoUrl} alt={fullName} className="w-16 h-16 rounded-2xl object-cover border-2 border-white/30 flex-shrink-0" />
+          ) : (
+            <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center flex-shrink-0">
+              <span className="text-xl font-black text-white">{initials || "?"}</span>
+            </div>
+          )}
+
+          {/* Info */}
+          <div className="flex-1 min-w-0 text-white">
+            <h2 className="font-extrabold text-base leading-tight truncate">{fullName || "Mehmon"}</h2>
+            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 border border-white/25 rounded-lg text-[11px] font-bold">
+                <ShoppingBag className="w-2.5 h-2.5" /> Xaridor
+              </span>
+              {location && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-white/80">
+                  <MapPin className="w-2.5 h-2.5" /> {location}
+                </span>
+              )}
+            </div>
+            {user?.phone && (
+              <p className="flex items-center gap-1 text-[11px] text-white/70 mt-1">
+                <Phone className="w-2.5 h-2.5" /> {user.phone}
+              </p>
+            )}
+          </div>
+
+          {/* Edit button */}
+          <button
+            onClick={() => onNavigate("/profile/settings")}
+            className="flex-shrink-0 w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 border border-white/25 flex items-center justify-center transition-colors"
+          >
+            <Settings className="w-4 h-4 text-white" />
+          </button>
+        </div>
+      </motion.div>
+
       {items.map(({ icon: Icon, title, desc, action, highlight, badge }, i) => (
         <motion.button
           key={title}

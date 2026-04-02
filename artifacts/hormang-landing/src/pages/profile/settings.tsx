@@ -872,153 +872,64 @@ export default function ProfileSettingsPage() {
         {/* ── Photo + Name card ── */}
         <motion.div ref={refPhoto}
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-          className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <SectionHeader icon={User} title="Asosiy ma'lumotlar" />
 
-          {/* ── Customer profile hero (replaces simple photo row) ── */}
-          {!isProvider ? (
-            <>
-              {/* Gradient hero banner */}
-              <div className="p-5" style={{ background: "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)" }}>
-                <div className="flex items-center gap-4">
-                  {/* Photo with camera button */}
-                  <div className="relative flex-shrink-0">
-                    {photoLoading ? (
-                      <div className="w-20 h-20 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center">
-                        <Loader2 className="w-6 h-6 text-white animate-spin" />
-                      </div>
-                    ) : photoUrl ? (
-                      <img src={photoUrl} alt="Profil" className="w-20 h-20 rounded-2xl object-cover border-2 border-white/30" />
-                    ) : (
-                      <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur border-2 border-white/30 flex items-center justify-center">
-                        <span className="text-2xl font-black text-white">
-                          {(user.firstName[0] ?? "") + (user.lastName[0] ?? "")}
-                        </span>
-                      </div>
-                    )}
-                    <button onClick={() => photoInputRef.current?.click()}
-                      className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-xl bg-white flex items-center justify-center shadow-md transition-colors hover:bg-gray-100"
-                      style={{ color: "hsl(221,78%,48%)" }}>
-                      <Camera className="w-3.5 h-3.5" />
-                    </button>
-                    <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
-                  </div>
-
-                  {/* Name + meta */}
-                  <div className="flex-1 min-w-0 text-white">
-                    <h2 className="font-extrabold text-lg leading-tight mb-1 truncate">
-                      {fullName || "Ism Familiya"}
-                    </h2>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 border border-white/25 rounded-lg text-xs font-bold">
-                        <ShoppingBag className="w-3 h-3" /> Xaridor
-                      </span>
-                      {(region) && (
-                        <span className="inline-flex items-center gap-1 text-xs text-white/80 font-medium">
-                          <MapPin className="w-3 h-3" />
-                          {district ? `${district}, ${region}` : region}
-                        </span>
-                      )}
-                    </div>
-                    {user.phone && (
-                      <p className="flex items-center gap-1 text-xs text-white/70 mt-1.5">
-                        <Phone className="w-3 h-3" /> {user.phone}
-                      </p>
-                    )}
-                    {!photoUrl && (
-                      <button onClick={() => photoInputRef.current?.click()}
-                        className="mt-2 text-xs font-bold text-white/80 hover:text-white underline decoration-white/40 transition-colors">
-                        + Profil suratini yuklash
-                      </button>
-                    )}
-                  </div>
+          <div ref={refName} className="flex items-center gap-4 mb-5">
+            <div className="relative flex-shrink-0">
+              {photoLoading ? (
+                <div className="w-20 h-20 rounded-2xl bg-violet-50 border-2 border-violet-100 flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
                 </div>
-              </div>
-
-              {/* Edit fields below hero */}
-              <div ref={refName} className="p-5 space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Ism" required error={errors.firstName}>
-                    <input value={firstName}
-                      onChange={(e) => { setFirstName(e.target.value); setErrors((p) => ({ ...p, firstName: "" })); }}
-                      placeholder="Ism" className={inputCls()} />
-                  </Field>
-                  <Field label="Familiya" required error={errors.lastName}>
-                    <input value={lastName}
-                      onChange={(e) => { setLastName(e.target.value); setErrors((p) => ({ ...p, lastName: "" })); }}
-                      placeholder="Familiya" className={inputCls()} />
-                  </Field>
+              ) : photoUrl ? (
+                <img src={photoUrl} alt="Profil" className="w-20 h-20 rounded-2xl object-cover border-2 border-violet-100" />
+              ) : (
+                <div className="w-20 h-20 rounded-2xl bg-violet-50 border-2 border-violet-100 flex items-center justify-center">
+                  <span className="text-2xl font-black text-violet-400">
+                    {(user.firstName[0] ?? "") + (user.lastName[0] ?? "")}
+                  </span>
                 </div>
-                <Field label="Telefon raqami" hint="Kirish uchun ishlatiladi, o'zgartirib bo'lmaydi">
-                  <div className="w-full h-11 px-4 rounded-2xl border-2 border-gray-100 bg-gray-50 text-sm text-gray-500 flex items-center gap-2">
-                    <Lock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                    <span>{user.phone ?? "—"}</span>
-                    <span className="ml-auto text-[10px] text-gray-400 bg-gray-200 px-2 py-0.5 rounded-lg">O'zgartirib bo'lmaydi</span>
-                  </div>
-                </Field>
-              </div>
-            </>
-          ) : (
-            /* ── Provider photo + name (existing layout, unchanged) ── */
-            <div className="p-5">
-              <SectionHeader icon={User} title="Asosiy ma'lumotlar" />
-
-              <div ref={refName} className="flex items-center gap-4 mb-5">
-                <div className="relative flex-shrink-0">
-                  {photoLoading ? (
-                    <div className="w-20 h-20 rounded-2xl bg-violet-50 border-2 border-violet-100 flex items-center justify-center">
-                      <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
-                    </div>
-                  ) : photoUrl ? (
-                    <img src={photoUrl} alt="Profil" className="w-20 h-20 rounded-2xl object-cover border-2 border-violet-100" />
-                  ) : (
-                    <div className="w-20 h-20 rounded-2xl bg-violet-50 border-2 border-violet-100 flex items-center justify-center">
-                      <span className="text-2xl font-black text-violet-400">
-                        {(user.firstName[0] ?? "") + (user.lastName[0] ?? "")}
-                      </span>
-                    </div>
-                  )}
-                  <button onClick={() => photoInputRef.current?.click()}
-                    className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-xl flex items-center justify-center text-white shadow-md transition-colors"
-                    style={{ background: VIOLET }}>
-                    <Camera className="w-3.5 h-3.5" />
-                  </button>
-                  <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
-                </div>
-                <div>
-                  <p className="font-bold text-sm text-gray-900">{fullName || "—"}</p>
-                  <p className="text-xs text-gray-400 mb-2">Ijrochi</p>
-                  <button onClick={() => photoInputRef.current?.click()}
-                    className="text-xs font-bold text-violet-600 hover:text-violet-700 transition-colors">
-                    {photoUrl ? "Suratni o'zgartirish" : "+ Profil suratini yuklash (20%)"}
-                  </button>
-                  {!photoUrl && (
-                    <p className="text-[10px] text-violet-400 mt-0.5">Surat bilan mijozlarga iliqroq ko`rining</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <Field label="Ism" required error={errors.firstName}>
-                  <input value={firstName}
-                    onChange={(e) => { setFirstName(e.target.value); setErrors((p) => ({ ...p, firstName: "" })); }}
-                    placeholder="Ism" className={inputCls()} />
-                </Field>
-                <Field label="Familiya" required error={errors.lastName}>
-                  <input value={lastName}
-                    onChange={(e) => { setLastName(e.target.value); setErrors((p) => ({ ...p, lastName: "" })); }}
-                    placeholder="Familiya" className={inputCls()} />
-                </Field>
-              </div>
-
-              <Field label="Telefon raqami" hint="Kirish uchun ishlatiladi, o'zgartirib bo'lmaydi">
-                <div className="w-full h-11 px-4 rounded-2xl border-2 border-gray-100 bg-gray-50 text-sm text-gray-500 flex items-center gap-2">
-                  <Lock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                  <span>{user.phone ?? "—"}</span>
-                  <span className="ml-auto text-[10px] text-gray-400 bg-gray-200 px-2 py-0.5 rounded-lg">O'zgartirib bo'lmaydi</span>
-                </div>
-              </Field>
+              )}
+              <button onClick={() => photoInputRef.current?.click()}
+                className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-xl flex items-center justify-center text-white shadow-md transition-colors"
+                style={{ background: VIOLET }}>
+                <Camera className="w-3.5 h-3.5" />
+              </button>
+              <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
             </div>
-          )}
+            <div>
+              <p className="font-bold text-sm text-gray-900">{fullName || "—"}</p>
+              <p className="text-xs text-gray-400 mb-2">{isProvider ? "Ijrochi" : "Xaridor"}</p>
+              <button onClick={() => photoInputRef.current?.click()}
+                className="text-xs font-bold text-violet-600 hover:text-violet-700 transition-colors">
+                {photoUrl ? "Suratni o'zgartirish" : "+ Profil suratini yuklash"}
+              </button>
+              {!photoUrl && (
+                <p className="text-[10px] text-violet-400 mt-0.5">Surat bilan ko'proq ishonch qozonasiz</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <Field label="Ism" required error={errors.firstName}>
+              <input value={firstName}
+                onChange={(e) => { setFirstName(e.target.value); setErrors((p) => ({ ...p, firstName: "" })); }}
+                placeholder="Ism" className={inputCls()} />
+            </Field>
+            <Field label="Familiya" required error={errors.lastName}>
+              <input value={lastName}
+                onChange={(e) => { setLastName(e.target.value); setErrors((p) => ({ ...p, lastName: "" })); }}
+                placeholder="Familiya" className={inputCls()} />
+            </Field>
+          </div>
+
+          <Field label="Telefon raqami" hint="Kirish uchun ishlatiladi, o'zgartirib bo'lmaydi">
+            <div className="w-full h-11 px-4 rounded-2xl border-2 border-gray-100 bg-gray-50 text-sm text-gray-500 flex items-center gap-2">
+              <Lock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+              <span>{user.phone ?? "—"}</span>
+              <span className="ml-auto text-[10px] text-gray-400 bg-gray-200 px-2 py-0.5 rounded-lg">O'zgartirib bo'lmaydi</span>
+            </div>
+          </Field>
         </motion.div>
 
         {/* ── Region card ── */}
