@@ -627,7 +627,7 @@ export default function ProfileSettingsPage() {
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => setLocation(isProvider ? "/provider-home" : "/dashboard")}
+            onClick={() => setLocation(isProvider ? "/dashboard" : "/dashboard")}
             className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -759,10 +759,10 @@ export default function ProfileSettingsPage() {
               <p className="text-xs text-gray-400 mb-2">{isProvider ? "Ijrochi" : "Xaridor"}</p>
               <button onClick={() => photoInputRef.current?.click()}
                 className="text-xs font-bold text-violet-600 hover:text-violet-700 transition-colors">
-                {photoUrl ? "Suratni o'zgartirish" : "+ Surat yuklash (20%)"}
+                {photoUrl ? "Suratni o'zgartirish" : "+ Profil suratini yuklash (20%)"}
               </button>
               {!photoUrl && (
-                <p className="text-[10px] text-violet-400 mt-0.5">Surat bilan 4x ko'proq buyurtma</p>
+                <p className="text-[10px] text-violet-400 mt-0.5">Surat bilan mijozlarga iliqroq ko`rining</p>
               )}
             </div>
           </div>

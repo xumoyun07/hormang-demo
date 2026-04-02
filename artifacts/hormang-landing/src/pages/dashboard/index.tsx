@@ -20,6 +20,9 @@ import {
   getLocalProfile, getCompletionChecks, getCompletionPct,
   type LocalProfile,
 } from "@/lib/local-profile";
+import {
+  getMatchingRequests, getSeenIds,
+} from "@/lib/provider-store";
 
 const SERVICE_CATEGORIES = [
   "Tozalik", "Ta'mirlash / Usta", "Enaga / Bola parvarishi",
@@ -336,13 +339,19 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
   const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`;
   const hasPhoto = !!local.photoUrl;
 
+  const selectedCategories = providerProfile?.categories ?? [];
+  const requests = getMatchingRequests(selectedCategories);
+  const seen = getSeenIds();
+  const unseenCount = requests.filter((r) => !seen.includes(r.id) && r.status === "open").length;
+
   const menuItems = [
     {
       icon: Inbox,
       title: "Yangi so'rovlar",
       desc: "Kelayotgan buyurtma so'rovlarini ko'ring",
-      badge: "0",
+      badge: unseenCount.toString(),
       badgeColor: "bg-blue-600 text-white",
+      action: () => onNavigate("/provider/requests"),
     },
     {
       icon: TrendingUp,
