@@ -6,7 +6,7 @@ import logoImg from "/hormang-logo.png";
 import {
   Search, ClipboardList, Heart, Settings, LogOut, ChevronRight,
   Inbox, TrendingUp, Star, Eye, CheckCircle2, MapPin,
-  ShoppingBag, Briefcase, Loader2, ArrowRight,
+  ShoppingBag, Briefcase, Loader2, ArrowRight, X,
   Phone, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -93,6 +93,126 @@ function BecomeProviderCard({ onBecome }: { onBecome: () => void }) {
       >
         Ijrochi bo'lish <ArrowRight className="w-4 h-4" />
       </button>
+    </motion.div>
+  );
+}
+
+const PROVIDER_CATEGORIES = [
+  "Tozalash", "Ta'mirlash", "Enagalik", "Tadbir xizmatlari",
+  "Ko'chirish / yuk yetkazish", "Go'zallik", "Avto xizmat", "Repetitorlar", "Ustachilik",
+];
+
+function BecomeProviderModal({
+  onClose,
+  onSubmit,
+  loading,
+}: {
+  onClose: () => void;
+  onSubmit: (categories: string[]) => void;
+  loading: boolean;
+}) {
+  const [selected, setSelected] = useState<string[]>([]);
+
+  function toggle(cat: string) {
+    setSelected(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 40, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 40, scale: 0.97 }}
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-5 pt-5 pb-4 border-b border-gray-100 flex items-start justify-between gap-3">
+          <div>
+            <div
+              className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3"
+              style={{ background: VIOLET_GRAD }}
+            >
+              <Briefcase className="w-5 h-5 text-white" />
+            </div>
+            <h2 className="text-lg font-extrabold text-gray-900 leading-tight">Ijrochi bo'lish</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Faoliyat yuritish uchun kamida bitta xizmat turini tanlang
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors flex-shrink-0 mt-1"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Category grid */}
+        <div className="px-5 py-4">
+          <div className="flex flex-wrap gap-2">
+            {PROVIDER_CATEGORIES.map(cat => {
+              const active = selected.includes(cat);
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => toggle(cat)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${
+                    active
+                      ? "text-white border-transparent shadow-sm"
+                      : "bg-gray-50 border-gray-200 text-gray-600 hover:border-violet-300 hover:bg-violet-50"
+                  }`}
+                  style={active ? { background: VIOLET_GRAD } : {}}
+                >
+                  {active && <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />}
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+
+          {selected.length > 0 && (
+            <motion.p
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-xs text-violet-600 font-semibold mt-3"
+            >
+              {selected.length} ta xizmat tanlandi
+            </motion.p>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="px-5 pb-5 flex gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            className="flex-shrink-0 border-2 font-semibold"
+            disabled={loading}
+          >
+            Bekor qilish
+          </Button>
+          <Button
+            type="button"
+            disabled={selected.length === 0 || loading}
+            onClick={() => onSubmit(selected)}
+            className="flex-1 font-bold gap-2"
+            style={{ background: VIOLET_GRAD }}
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            {loading ? "Saqlanmoqda..." : "Davom etish"}
+          </Button>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }
@@ -487,6 +607,7 @@ export default function UnifiedDashboard() {
   const [, setLocation] = useLocation();
   const [logoHovered, setLogoHovered] = useState(false);
   const [headerLocal, setHeaderLocal] = useState<LocalProfile>({});
+  const [showBecomeModal, setShowBecomeModal] = useState(false);
   const [becomingProvider, setBecomingProvider] = useState(false);
 
   useEffect(() => {
@@ -505,14 +626,19 @@ export default function UnifiedDashboard() {
     setLocation("/");
   }
 
-  async function handleBecomeProvider() {
-    if (!user) return;
+  function handleBecomeProvider() {
+    setShowBecomeModal(true);
+  }
+
+  async function handleModalSubmit(categories: string[]) {
+    if (!user || categories.length === 0) return;
     setBecomingProvider(true);
     try {
-      const res = await saveProviderProfile({ categories: [] });
+      const res = await saveProviderProfile({ categories });
       setAuth(user, res.profile);
       switchRole("provider");
       sessionStorage.setItem("justBecameProvider", "1");
+      setShowBecomeModal(false);
       setLocation("/profile/settings");
     } catch (err: unknown) {
       toast({ title: err instanceof Error ? err.message : "Xatolik yuz berdi", variant: "destructive" });
@@ -681,6 +807,16 @@ export default function UnifiedDashboard() {
           </motion.div>
         </main>
       </div>
+
+      <AnimatePresence>
+        {showBecomeModal && (
+          <BecomeProviderModal
+            onClose={() => setShowBecomeModal(false)}
+            onSubmit={handleModalSubmit}
+            loading={becomingProvider}
+          />
+        )}
+      </AnimatePresence>
 
       <BottomNav />
     </>
