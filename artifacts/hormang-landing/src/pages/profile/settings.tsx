@@ -220,7 +220,7 @@ function ProfilePreviewModal({ onClose, firstName, lastName, bio, categories, re
           {/* Bio */}
           {bio && (
             <div>
-              <p className="text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Haqimda</p>
+              <p className="text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Bio</p>
               <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3">{bio}</p>
             </div>
           )}

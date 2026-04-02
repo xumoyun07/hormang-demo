@@ -8,6 +8,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { getProviderPublicProfile, type SafeUser, type ProviderProfile } from "@/lib/auth-client";
 import { useAuth } from "@/contexts/auth-context";
+import { useStoreRefresh } from "@/hooks/use-store-refresh";
+import { onStoreChange } from "@/lib/store-events";
 
 function InitialsAvatar({ name, size = "lg" }: { name: string; size?: "sm" | "md" | "lg" }) {
   const parts = name.trim().split(" ");
@@ -49,6 +51,7 @@ function RatingDisplay({ rating, count }: { rating?: number; count?: number }) {
 }
 
 export default function ProviderProfilePage() {
+  useStoreRefresh();
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { user: currentUser } = useAuth();
@@ -58,15 +61,35 @@ export default function ProviderProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  const fetchProfile = () => {
     if (!params.id) return;
     getProviderPublicProfile(params.id)
       .then(data => {
         setProvider(data.user);
         setProfile(data.providerProfile);
+        setError("");
+      })
+      .catch(() => setError("Ijrochi topilmadi"));
+  };
+
+  useEffect(() => {
+    if (!params.id) return;
+    setLoading(true);
+    getProviderPublicProfile(params.id)
+      .then(data => {
+        setProvider(data.user);
+        setProfile(data.providerProfile);
+        setError("");
       })
       .catch(() => setError("Ijrochi topilmadi"))
       .finally(() => setLoading(false));
+  }, [params.id]);
+
+  useEffect(() => {
+    const unsubscribe = onStoreChange(() => {
+      fetchProfile();
+    });
+    return unsubscribe;
   }, [params.id]);
 
   if (loading) {
