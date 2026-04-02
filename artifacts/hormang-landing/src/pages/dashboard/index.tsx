@@ -129,7 +129,6 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
 
   return (
     <div className="space-y-3">
-      {!providerProfile && <BecomeProviderCard onBecome={onBecome} />}
       {items.map(({ icon: Icon, title, desc, action, highlight, badge }, i) => (
         <motion.button
           key={title}
@@ -163,6 +162,7 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
           ) : null}
         </motion.button>
       ))}
+      {!providerProfile && <BecomeProviderCard onBecome={onBecome} />}
     </div>
   );
 }
