@@ -577,9 +577,10 @@ export default function ProfileSettingsPage() {
 
     setSaving(true);
     try {
+      const shouldUpdateProvider = isProvider && selectedServices.length > 0;
       const [userRes, profileRes] = await Promise.all([
         updateProfile({ firstName: firstName.trim(), lastName: lastName.trim() }),
-        selectedServices.length > 0
+        shouldUpdateProvider
           ? updateProviderProfile({
               categories: selectedServices,
               bio: bio || undefined,
@@ -627,8 +628,18 @@ export default function ProfileSettingsPage() {
   }
   if (!user) { setLocation("/auth/login"); return null; }
 
-  const isProvider = activeRole === "provider" || !!providerProfile;
+  const isProvider = activeRole === "provider";
   const fullName   = `${firstName} ${lastName}`.trim();
+
+  /* ── Customer completion (used when !isProvider) ── */
+  const customerChecks = [
+    { key: "photo",    label: "Profil surati",         weight: 30, done: !!photoUrl },
+    { key: "name",     label: "Ism va Familiya",        weight: 30, done: !!(firstName.trim().length >= 2 && lastName.trim().length >= 2) },
+    { key: "phone",    label: "Telefon raqami",         weight: 20, done: !!user.phone },
+    { key: "region",   label: "Asosiy manzil",          weight: 20, done: !!region },
+  ];
+  const customerPct     = customerChecks.reduce((acc, c) => acc + (c.done ? c.weight : 0), 0);
+  const customerMissing = customerChecks.filter((c) => !c.done);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-28">
@@ -695,60 +706,66 @@ export default function ProfileSettingsPage() {
         </AnimatePresence>
 
         {/* ── Completion Card ── */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl border border-violet-100 shadow-sm p-4">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative flex-shrink-0">
-              <CircularProgress pct={pct} />
-              <span className="absolute inset-0 flex items-center justify-center text-sm font-extrabold"
-                style={{ color: pct < 40 ? "#EF4444" : pct < 75 ? "#F97316" : VIOLET_SOLID }}>
-                {pct}%
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-extrabold text-gray-900 text-sm mb-0.5">
-                {pct === 100 ? "Profil to'liq to'ldirilgan! 🎉" : `Profil ${pct}% to'ldirilgan`}
-              </p>
-              {pct < 100 && (
-                <p className="text-xs text-gray-400 mb-1">{missing.length} ta maydon qoldi</p>
-              )}
-              {pct < 100 && (
-                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${pct}%`, background: VIOLET }} />
+        {(() => {
+          const displayPct     = isProvider ? pct : customerPct;
+          const displayMissing = isProvider ? missing : customerMissing;
+          return (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl border border-violet-100 shadow-sm p-4">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="relative flex-shrink-0">
+                  <CircularProgress pct={displayPct} />
+                  <span className="absolute inset-0 flex items-center justify-center text-sm font-extrabold"
+                    style={{ color: displayPct < 40 ? "#EF4444" : displayPct < 75 ? "#F97316" : VIOLET_SOLID }}>
+                    {displayPct}%
+                  </span>
                 </div>
-              )}
-              {pct === 100 && (
-                <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Barcha maydonlar to'ldirilgan
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Missing items with add-now buttons */}
-          {missing.length > 0 && (
-            <div className="border-t border-gray-50 pt-3 space-y-2">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tez to'ldiring</p>
-              {missing.slice(0, 4).map((m) => (
-                <div key={m.key} className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-5 h-5 rounded-full bg-violet-50 border border-violet-100 flex items-center justify-center flex-shrink-0">
-                      <span className="text-[9px] font-black text-violet-500">{m.weight}%</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-extrabold text-gray-900 text-sm mb-0.5">
+                    {displayPct === 100 ? "Profil to'liq to'ldirilgan! 🎉" : `Profil ${displayPct}% to'ldirilgan`}
+                  </p>
+                  {displayPct < 100 && (
+                    <p className="text-xs text-gray-400 mb-1">{displayMissing.length} ta maydon qoldi</p>
+                  )}
+                  {displayPct < 100 && (
+                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${displayPct}%`, background: VIOLET }} />
                     </div>
-                    <p className="text-xs text-gray-600 truncate">{m.label}</p>
-                  </div>
-                  <button
-                    onClick={() => scrollTo(m.key)}
-                    className="flex items-center gap-1 text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-100 px-2 py-1 rounded-lg hover:bg-violet-100 transition-colors flex-shrink-0"
-                  >
-                    <TrendingUp className="w-2.5 h-2.5" /> Qo'shish
-                  </button>
+                  )}
+                  {displayPct === 100 && (
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Barcha maydonlar to'ldirilgan
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </motion.div>
+              </div>
+
+              {/* Missing items with add-now buttons */}
+              {displayMissing.length > 0 && (
+                <div className="border-t border-gray-50 pt-3 space-y-2">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tez to'ldiring</p>
+                  {displayMissing.slice(0, 4).map((m) => (
+                    <div key={m.key} className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-5 h-5 rounded-full bg-violet-50 border border-violet-100 flex items-center justify-center flex-shrink-0">
+                          <span className="text-[9px] font-black text-violet-500">{m.weight}%</span>
+                        </div>
+                        <p className="text-xs text-gray-600 truncate">{m.label}</p>
+                      </div>
+                      <button
+                        onClick={() => scrollTo(m.key)}
+                        className="flex items-center gap-1 text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-100 px-2 py-1 rounded-lg hover:bg-violet-100 transition-colors flex-shrink-0"
+                      >
+                        <TrendingUp className="w-2.5 h-2.5" /> Qo'shish
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          );
+        })()}
 
         {/* ── Phone migration banner ── */}
         {!user.phone && (
@@ -838,11 +855,13 @@ export default function ProfileSettingsPage() {
         <motion.div ref={refRegion}
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
           className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <SectionHeader icon={MapPin} title="Hudud" sub="Yaqin atrofdagi buyurtmalar ko'rsatiladi" />
+          <SectionHeader icon={MapPin}
+            title={isProvider ? "Xizmat hududi" : "Asosiy manzilim"}
+            sub={isProvider ? "Yaqin atrofdagi buyurtmalar ko'rsatiladi" : "Yaqin atrofdagi xizmatlar ko'rsatiladi"} />
 
           <div className="space-y-3">
             <Field label="Shahar / tuman" required
-              boost="To'g'ri hudud → ko'proq tegishli buyurtmalar">
+              boost={isProvider ? "To'g'ri hudud → ko'proq tegishli buyurtmalar" : "Manzilingiz asosida yaqin xizmatchilar taklif etiladi"}>
               <div className="relative">
                 <select value={region} onChange={(e) => handleRegionChange(e.target.value)}
                   className="w-full h-11 px-4 pr-9 rounded-2xl border-2 border-gray-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 appearance-none">

@@ -224,7 +224,7 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
       icon: Search,
       title: "Xizmat qidirish",
       desc: "Mahalliy mutaxassislarni toping",
-      action: () => onNavigate("/"),
+      action: () => onNavigate("/questionnaire"),
       highlight: true,
     },
     {
