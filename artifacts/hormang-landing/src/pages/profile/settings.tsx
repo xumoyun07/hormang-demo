@@ -387,6 +387,15 @@ export default function ProfileSettingsPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
+  /* Welcome banner for new providers */
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(() =>
+    sessionStorage.getItem("justBecameProvider") === "1"
+  );
+  function dismissBanner() {
+    sessionStorage.removeItem("justBecameProvider");
+    setShowWelcomeBanner(false);
+  }
+
   /* Local profile state */
   const [local, setLocal] = useState<LocalProfile>({});
   useEffect(() => { if (user) setLocal(getLocalProfile(user.id)); }, [user?.id]);
@@ -650,6 +659,40 @@ export default function ProfileSettingsPage() {
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
+
+        {/* ── New provider welcome banner ── */}
+        <AnimatePresence>
+          {showWelcomeBanner && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.98 }}
+              transition={{ type: "spring", damping: 20, stiffness: 300 }}
+              className="rounded-2xl p-4 text-white shadow-md relative overflow-hidden"
+              style={{ background: VIOLET }}
+            >
+              <button
+                onClick={dismissBanner}
+                className="absolute top-3 right-3 w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+              <div className="flex items-start gap-3 pr-6">
+                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <Zap className="w-4.5 h-4.5 text-white" />
+                </div>
+                <div>
+                  <p className="font-extrabold text-sm leading-tight mb-1">
+                    Tabriklaymiz! Siz endi ijrochi sifatida ro'yxatdan o'tdingiz.
+                  </p>
+                  <p className="text-white/75 text-xs leading-relaxed">
+                    Profilingizni to'liq to'ldiring — bu mijozlarga sizni topishga yordam beradi.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── Completion Card ── */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}

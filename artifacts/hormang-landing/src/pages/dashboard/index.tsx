@@ -6,16 +6,13 @@ import logoImg from "/hormang-logo.png";
 import {
   Search, ClipboardList, Heart, Settings, LogOut, ChevronRight,
   Inbox, TrendingUp, Star, Eye, CheckCircle2, MapPin,
-  ShoppingBag, Briefcase, Loader2, ArrowRight, X,
+  ShoppingBag, Briefcase, Loader2, ArrowRight,
   Phone, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { saveProviderProfile } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   getLocalProfile, getCompletionChecks, getCompletionPct,
   type LocalProfile,
@@ -24,19 +21,8 @@ import {
   getMatchingRequests, getSeenIds,
 } from "@/lib/provider-store";
 
-const SERVICE_CATEGORIES = [
-  "Tozalik", "Ta'mirlash / Usta", "Enaga / Bola parvarishi",
-  "Ovqat pishirish", "Ko'chirish / Transport", "Go'zallik / Sartaroshlik",
-  "Avto xizmat", "Repetitor / O'qituvchi", "Elektr ishlari",
-  "Santexnika", "Dizayn / Yaratuvchanlik", "Boshqalar",
-];
-
-const setupSchema = z.object({
-  categories: z.array(z.string()).optional(),
-  bio: z.string().max(300).optional(),
-  preferredLocation: z.string().optional(),
-});
-type SetupForm = z.infer<typeof setupSchema>;
+const VIOLET_SOLID = "hsl(262,80%,54%)";
+const VIOLET_GRAD  = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 
 function RoleSwitcher() {
   const { activeRole, switchRole } = useAuth();
@@ -78,144 +64,41 @@ function RoleSwitcher() {
   );
 }
 
-function ProviderSetupModal({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
-  const { user, setAuth, providerProfile } = useAuth();
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<string[]>([]);
-
-  const { register, handleSubmit, formState: { errors } } = useForm<SetupForm>({
-    resolver: zodResolver(setupSchema),
-    defaultValues: { categories: [] },
-  });
-
-  function toggleCat(cat: string) {
-    setSelected(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
-  }
-
-  async function onSubmit(data: SetupForm) {
-    if (!selected.length) return;
-    setLoading(true);
-    try {
-      const res = await saveProviderProfile({
-        categories: selected,
-        bio: data.bio,
-        preferredLocation: data.preferredLocation,
-      });
-      setAuth(user!, res.profile);
-      toast({ title: "Ijrochi profili yaratildi!" });
-      onDone();
-    } catch (err: unknown) {
-      toast({ title: err instanceof Error ? err.message : "Xatolik", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  }
-
+function BecomeProviderCard({ onBecome }: { onBecome: () => void }) {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="rounded-2xl p-5 text-white mb-5 shadow-md"
+      style={{ background: VIOLET_GRAD }}
     >
-      <motion.div
-        initial={{ opacity: 0, y: 40, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 40, scale: 0.97 }}
-        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        className="bg-white rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl"
-      >
-        <div className="p-6">
-          <div className="flex items-start justify-between mb-5">
-            <div>
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3 shadow-sm"
-                style={{ background: "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)" }}>
-                <Briefcase className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-lg font-bold text-gray-900">Ijrochi profilingizni yarating</h2>
-              <p className="text-sm text-gray-500 mt-0.5">Xizmatlaringizni qo'shing va mijozlar toping</p>
-            </div>
-            <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition-colors mt-1">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wide">
-                Xizmat turlari <span className="text-red-500">*</span>
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {SERVICE_CATEGORIES.map(cat => {
-                  const active = selected.includes(cat);
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => toggleCat(cat)}
-                      className={`text-xs px-3 py-1.5 rounded-xl font-semibold border-2 transition-all flex items-center gap-1 ${
-                        active
-                          ? "text-white border-transparent shadow-sm"
-                          : "bg-gray-50 border-gray-200 text-gray-600 hover:border-violet-300"
-                      }`}
-                      style={active ? { background: "linear-gradient(135deg, hsl(262,80%,54%), hsl(236,76%,60%))" } : {}}
-                    >
-                      {active && <CheckCircle2 className="w-3 h-3" />}
-                      {cat}
-                    </button>
-                  );
-                })}
-              </div>
-              {errors.categories && <p className="text-red-500 text-xs mt-1.5">Kamida bitta tanlang</p>}
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">
-                Bio <span className="text-gray-400 font-normal normal-case">(ixtiyoriy)</span>
-              </label>
-              <textarea
-                {...register("bio")}
-                rows={2}
-                placeholder="O'zingiz haqida qisqacha..."
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wide">
-                Hudud
-              </label>
-              <input
-                {...register("preferredLocation")}
-                placeholder="Toshkent"
-                className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
-              />
-            </div>
-
-            <div className="flex gap-3 pt-1">
-              <Button type="button" variant="outline" onClick={onCancel} size="sm" className="border-2 font-semibold flex-shrink-0">
-                Bekor qilish
-              </Button>
-              <Button
-                type="submit"
-                disabled={loading || !selected.length}
-                size="sm"
-                className="flex-1 font-bold gap-2"
-                style={{ background: "linear-gradient(135deg, hsl(262,80%,54%), hsl(236,76%,60%))" }}
-              >
-                {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                {loading ? "Yaratilmoqda..." : "Profil yaratish"}
-              </Button>
-            </div>
-          </form>
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+          <Briefcase className="w-5 h-5 text-white" />
         </div>
-      </motion.div>
+        <div>
+          <h3 className="font-extrabold text-base leading-tight">Ijrochi bo'lishni istaysizmi?</h3>
+          <p className="text-white/75 text-xs mt-0.5">Profil to'ldiring va mijozlar toping</p>
+        </div>
+      </div>
+      <div className="flex flex-col gap-2 text-xs text-white/80 mb-4">
+        <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-white/60 flex-shrink-0" /> Xizmatlaringizni e'lon qiling</div>
+        <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-white/60 flex-shrink-0" /> Yangi buyurtmalar oling</div>
+        <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-white/60 flex-shrink-0" /> O'z jadvalingizda ishlang</div>
+      </div>
+      <button
+        onClick={onBecome}
+        className="w-full bg-white text-violet-700 font-extrabold py-2.5 rounded-xl text-sm hover:bg-white/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"
+      >
+        Ijrochi bo'lish <ArrowRight className="w-4 h-4" />
+      </button>
     </motion.div>
   );
 }
 
-function BuyerContent({ onNavigate }: { onNavigate: (path: string) => void }) {
+function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => void; onBecome: () => void }) {
+  const { providerProfile } = useAuth();
   const items = [
     {
       icon: Search,
@@ -246,6 +129,7 @@ function BuyerContent({ onNavigate }: { onNavigate: (path: string) => void }) {
 
   return (
     <div className="space-y-3">
+      {!providerProfile && <BecomeProviderCard onBecome={onBecome} />}
       {items.map(({ icon: Icon, title, desc, action, highlight, badge }, i) => (
         <motion.button
           key={title}
@@ -282,9 +166,6 @@ function BuyerContent({ onNavigate }: { onNavigate: (path: string) => void }) {
     </div>
   );
 }
-
-const VIOLET_SOLID = "hsl(262,80%,54%)";
-const VIOLET_GRAD  = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 
 function CircularProgress({ pct }: { pct: number }) {
   const r    = 34;
@@ -601,49 +482,51 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
 }
 
 export default function UnifiedDashboard() {
-  const { user, providerProfile, activeRole, switchRole, logout } = useAuth();
+  const { user, providerProfile, activeRole, switchRole, setAuth, logout } = useAuth();
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [showSetup, setShowSetup] = useState(false);
   const [logoHovered, setLogoHovered] = useState(false);
   const [headerLocal, setHeaderLocal] = useState<LocalProfile>({});
+  const [becomingProvider, setBecomingProvider] = useState(false);
 
   useEffect(() => {
     if (user?.id) setHeaderLocal(getLocalProfile(user.id));
   }, [user?.id]);
 
   const isProvider = activeRole === "provider";
+  const hasBothRoles = !!providerProfile;
+
+  const accentGradient = isProvider
+    ? "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)"
+    : "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)";
 
   async function handleLogout() {
     await logout();
     setLocation("/");
   }
 
-  function handleSwitchRole(role: "buyer" | "provider") {
-    if (role === "provider" && !providerProfile) {
-      setShowSetup(true);
-      return;
+  async function handleBecomeProvider() {
+    if (!user) return;
+    setBecomingProvider(true);
+    try {
+      const res = await saveProviderProfile({ categories: [] });
+      setAuth(user, res.profile);
+      switchRole("provider");
+      sessionStorage.setItem("justBecameProvider", "1");
+      setLocation("/profile/settings");
+    } catch (err: unknown) {
+      toast({ title: err instanceof Error ? err.message : "Xatolik yuz berdi", variant: "destructive" });
+    } finally {
+      setBecomingProvider(false);
     }
-    switchRole(role);
   }
-
-  function handleSetupDone() {
-    setShowSetup(false);
-    switchRole("provider");
-  }
-
-  function handleSetupCancel() {
-    setShowSetup(false);
-  }
-
-  const accentGradient = isProvider
-    ? "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)"
-    : "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)";
 
   return (
     <>
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-10 card-shadow">
           <div className="max-w-lg mx-auto flex items-center justify-between gap-3">
+            {/* Logo */}
             <button
               className="flex items-center gap-2.5 cursor-pointer"
               onClick={() => setLocation("/provider-home")}
@@ -662,39 +545,53 @@ export default function UnifiedDashboard() {
               <span className="font-bold text-gray-900 text-sm hidden sm:inline">Hormang</span>
             </button>
 
+            {/* Center: role switcher (both roles) OR "Ijrochi bo'lish" (buyer only) */}
             <div className="flex-1 flex justify-center">
-              <div className="relative flex items-center bg-gray-100 rounded-2xl p-1 gap-1">
-                {(["buyer", "provider"] as const).map((role) => {
-                  const active = activeRole === role;
-                  return (
-                    <button
-                      key={role}
-                      onClick={() => handleSwitchRole(role)}
-                      className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors duration-150 z-10 ${
-                        active ? "text-white" : "text-gray-500 hover:text-gray-700"
-                      }`}
-                    >
-                      {active && (
-                        <motion.div
-                          layoutId="role-pill"
-                          className="absolute inset-0 rounded-xl shadow-sm"
-                          style={{ background: accentGradient }}
-                          transition={{ type: "spring", stiffness: 500, damping: 35 }}
-                        />
-                      )}
-                      <span className="relative">
-                        {role === "buyer"
-                          ? <ShoppingBag className="w-3.5 h-3.5" />
-                          : <Briefcase className="w-3.5 h-3.5" />
-                        }
-                      </span>
-                      <span className="relative">{role === "buyer" ? "Xaridor" : "Ijrochi"}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              {hasBothRoles ? (
+                <div className="relative flex items-center bg-gray-100 rounded-2xl p-1 gap-1">
+                  {(["buyer", "provider"] as const).map((role) => {
+                    const active = activeRole === role;
+                    return (
+                      <button
+                        key={role}
+                        onClick={() => switchRole(role)}
+                        className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors duration-150 z-10 ${
+                          active ? "text-white" : "text-gray-500 hover:text-gray-700"
+                        }`}
+                      >
+                        {active && (
+                          <motion.div
+                            layoutId="role-pill"
+                            className="absolute inset-0 rounded-xl shadow-sm"
+                            style={{ background: accentGradient }}
+                            transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                          />
+                        )}
+                        <span className="relative">
+                          {role === "buyer" ? <ShoppingBag className="w-3.5 h-3.5" /> : <Briefcase className="w-3.5 h-3.5" />}
+                        </span>
+                        <span className="relative">{role === "buyer" ? "Xaridor" : "Ijrochi"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <button
+                  onClick={handleBecomeProvider}
+                  disabled={becomingProvider}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-extrabold text-white shadow-sm hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
+                  style={{ background: VIOLET_GRAD }}
+                >
+                  {becomingProvider
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Briefcase className="w-3.5 h-3.5" />
+                  }
+                  Ijrochi bo'lish
+                </button>
+              )}
             </div>
 
+            {/* Right: avatar + logout */}
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setLocation("/profile/settings")}
@@ -766,7 +663,7 @@ export default function UnifiedDashboard() {
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <BuyerContent onNavigate={setLocation} />
+                  <BuyerContent onNavigate={setLocation} onBecome={handleBecomeProvider} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -784,12 +681,6 @@ export default function UnifiedDashboard() {
           </motion.div>
         </main>
       </div>
-
-      <AnimatePresence>
-        {showSetup && (
-          <ProviderSetupModal onDone={handleSetupDone} onCancel={handleSetupCancel} />
-        )}
-      </AnimatePresence>
 
       <BottomNav />
     </>
