@@ -804,30 +804,6 @@ export default function UnifiedDashboard() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.3 }}
           >
-            {!isProvider && (
-              <div className="flex items-center gap-4 mb-7">
-                <div
-                  className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl font-black flex-shrink-0 shadow-md transition-all duration-500"
-                  style={{ background: accentGradient }}
-                >
-                  {user?.firstName?.[0]}{user?.lastName?.[0]}
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold text-gray-900">
-                    {user?.firstName} {user?.lastName}
-                  </h1>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span
-                      className="text-[11px] font-bold px-2.5 py-0.5 rounded-full text-white"
-                      style={{ background: accentGradient }}
-                    >
-                      Xaridor rejimi
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
             <AnimatePresence mode="wait">
               {isProvider ? (
                 <motion.div
