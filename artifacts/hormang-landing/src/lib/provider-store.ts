@@ -69,6 +69,7 @@ export interface ProviderChat {
   customerColor: string;
   categoryName: string;
   categoryEmoji: string;
+  avgResponseTime: number;
   messages: ProviderChatMessage[];
   unread: number;
   createdAt: string;
@@ -149,6 +150,7 @@ function chatToProviderChat(c: Chat): ProviderChat {
     customerColor: c.customerColor || "#7C3AED",
     categoryName: c.categoryName,
     categoryEmoji: c.categoryEmoji || "📋",
+    avgResponseTime: c.avgResponseTime ?? 14,
     messages: c.messages.map((m) => ({
       id: m.id,
       sender: m.sender === "customer" ? "customer" : "provider",
