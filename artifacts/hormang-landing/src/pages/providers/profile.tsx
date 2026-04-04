@@ -150,6 +150,7 @@ export default function ProviderProfilePage() {
   const portfolioItems: PortfolioItem[] = localData.portfolioItems ?? [];
   const bio = profile?.bio ?? "";
   const categories: string[] = profile?.categories ?? [];
+  const serviceAreas: string[] = localData.serviceAreas ?? [];
   const locationStr = district ? `${district}, ${region}` : region;
 
   return (
@@ -246,6 +247,19 @@ export default function ProviderProfilePage() {
               </div>
             </div>
           </div>
+
+          {serviceAreas.length > 0 && (
+            <div className="bg-white rounded-xl p-3.5 border border-gray-100 shadow-sm">
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-2">Xizmat hududlari</p>
+              <div className="flex flex-wrap gap-1.5">
+                {serviceAreas.map((area) => (
+                  <span key={area} className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-violet-50 text-violet-700 border border-violet-100">
+                    {area}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── Bio ── */}
           <AnimatePresence>

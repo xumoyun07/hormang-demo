@@ -417,8 +417,9 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
   const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`;
   const hasPhoto = !!local.photoUrl;
 
+  const serviceAreas = user?.id ? (getLocalProfile(user.id).serviceAreas ?? []) : [];
   const selectedCategories = providerProfile?.categories ?? [];
-  const requests = getMatchingRequests(selectedCategories);
+  const requests = getMatchingRequests(selectedCategories, serviceAreas);
   const seen = getSeenIds();
   const unseenCount = requests.filter((r) => !seen.includes(r.id) && r.status === "open").length;
 

@@ -351,9 +351,20 @@ function QuestionsScreen({
     const updated = { ...answers, [q.id]: currentValue };
     if (q.id === "budget") updated["budget_open"] = openToOffers;
     setAnswers(updated);
-    if (step < allQuestions.length - 1) {
+
+    let nextStep = step + 1;
+    while (nextStep < allQuestions.length) {
+      const nextQ = allQuestions[nextStep];
+      if (nextQ.id === "district" && updated["region"] !== "Toshkent shahri") {
+        nextStep++;
+        continue;
+      }
+      break;
+    }
+
+    if (nextStep < allQuestions.length) {
       setDirection(1);
-      setStep(step + 1);
+      setStep(nextStep);
     } else {
       onComplete(updated);
     }
@@ -361,8 +372,17 @@ function QuestionsScreen({
 
   function goBack() {
     if (step === 0) { onBack(); return; }
+    let prevStep = step - 1;
+    while (prevStep > 0) {
+      const prevQ = allQuestions[prevStep];
+      if (prevQ.id === "district" && answers["region"] !== "Toshkent shahri") {
+        prevStep--;
+        continue;
+      }
+      break;
+    }
     setDirection(-1);
-    setStep(step - 1);
+    setStep(prevStep);
   }
 
   const isLast = step === allQuestions.length - 1;

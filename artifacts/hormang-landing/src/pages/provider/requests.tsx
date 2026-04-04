@@ -16,6 +16,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { OfferForm } from "@/components/offer-form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
+import { getLocalProfile } from "@/lib/local-profile";
 import {
   getMatchingRequests, getUnseenRequests, markSeen, markAllSeen,
   updateProviderRequestStatus, getOfferByRequestId, getRequestOfferCount,
@@ -339,9 +340,11 @@ export default function ProviderRequestsPage() {
   const [offerRequest, setOfferRequest] = useState<ProviderRequest | null>(null);
   const [offerDetailRequest, setOfferDetailRequest] = useState<ProviderRequest | null>(null);
 
+  const { user } = useAuth();
+  const serviceAreas = user?.id ? (getLocalProfile(user.id).serviceAreas ?? []) : [];
   const selectedCategories = providerProfile?.categories ?? [];
-  const requests = getMatchingRequests(selectedCategories);
-  const unseen = getUnseenRequests(selectedCategories);
+  const requests = getMatchingRequests(selectedCategories, serviceAreas);
+  const unseen = getUnseenRequests(selectedCategories, serviceAreas);
 
   // Toast on new unseen matching requests
   const prevUnseenCount = useRef<number | null>(null);
@@ -368,7 +371,7 @@ export default function ProviderRequestsPage() {
   }
 
   function handleMarkAllSeen() {
-    markAllSeen(selectedCategories);
+    markAllSeen(selectedCategories, serviceAreas);
     toast({ title: "Barchasi ko'rilgan deb belgilandi" });
   }
 

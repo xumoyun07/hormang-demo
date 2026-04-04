@@ -421,15 +421,16 @@ function AvailableRequests() {
   const [modal, setModal] = useState<ModalType>(null);
   const [slideIndex, setSlideIndex] = useState(0);
   const { toast } = useToast();
-  const { providerProfile } = useAuth();
+  const { providerProfile, user: authUser } = useAuth();
 
   const selectedCategories = providerProfile?.categories ?? [];
-  const requests = getMatchingRequests(selectedCategories);
+  const serviceAreas = authUser?.id ? (getLocalProfile(authUser.id).serviceAreas ?? []) : [];
+  const requests = getMatchingRequests(selectedCategories, serviceAreas);
   const seen = getSeenIds();
 
   const openRequests  = requests.filter((r) => r.status === "open");
   const newUnseen     = openRequests.filter((r) => !seen.includes(r.id));
-  const zeroOffers    = getRequestsWithZeroOffers(selectedCategories);
+  const zeroOffers    = getRequestsWithZeroOffers(selectedCategories, serviceAreas);
 
   const newCount      = newUnseen.length;
   const totalOpen     = openRequests.length;
@@ -670,7 +671,8 @@ export default function ProviderHomePage() {
   }, [user?.id]);
 
   const selectedCategories = providerProfile?.categories ?? [];
-  const unseenCount = getMatchingRequests(selectedCategories).filter(
+  const headerServiceAreas = user?.id ? (getLocalProfile(user.id).serviceAreas ?? []) : [];
+  const unseenCount = getMatchingRequests(selectedCategories, headerServiceAreas).filter(
     (r) => !getSeenIds().includes(r.id) && r.status === "open"
   ).length;
 

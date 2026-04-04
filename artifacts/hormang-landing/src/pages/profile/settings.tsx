@@ -490,6 +490,7 @@ export default function ProfileSettingsPage() {
   const [lastName, setLastName]     = useState("");
   const [region, setRegion]         = useState("");
   const [district, setDistrict]     = useState("");
+  const [serviceAreas, setServiceAreas] = useState<string[]>([]);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [experience, setExperience] = useState("");
   const [bio, setBio]               = useState("");
@@ -509,6 +510,7 @@ export default function ProfileSettingsPage() {
   useEffect(() => {
     setRegion(local.region ?? "");
     setDistrict(local.district ?? "");
+    setServiceAreas(local.serviceAreas ?? []);
     setExperience(local.experience !== undefined ? String(local.experience) : "");
   }, [local]);
 
@@ -593,6 +595,7 @@ export default function ProfileSettingsPage() {
   const debouncedPortf   = useDebounce(portfolioItems, 800);
   const debouncedRegion  = useDebounce(region, 600);
   const debouncedDistrict = useDebounce(district, 600);
+  const debouncedServiceAreas = useDebounce(serviceAreas, 600);
   const [autoSaveAt, setAutoSaveAt] = useState<Date | null>(null);
 
   const persistLocal = useCallback(() => {
@@ -601,13 +604,14 @@ export default function ProfileSettingsPage() {
       photoUrl: debouncedPhoto,
       region: debouncedRegion,
       district: debouncedDistrict,
+      serviceAreas: debouncedServiceAreas,
       experience: debouncedExp ? Number(debouncedExp) : undefined,
       portfolioItems: debouncedPortf,
       portfolioImages: debouncedPortf.map((i) => i.url),
     };
     saveLocalProfile(user.id, next);
     setAutoSaveAt(new Date());
-  }, [user, debouncedPhoto, debouncedRegion, debouncedDistrict, debouncedExp, debouncedPortf]);
+  }, [user, debouncedPhoto, debouncedRegion, debouncedDistrict, debouncedServiceAreas, debouncedExp, debouncedPortf]);
 
   useEffect(() => { persistLocal(); }, [persistLocal]);
 
@@ -937,40 +941,81 @@ export default function ProfileSettingsPage() {
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
           className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <SectionHeader icon={MapPin}
-            title={isProvider ? "Xizmat hududi" : "Asosiy manzilim"}
-            sub={isProvider ? "Yaqin atrofdagi buyurtmalar ko'rsatiladi" : "Yaqin atrofdagi xizmatlar ko'rsatiladi"} />
+            title={isProvider ? "Xizmat hududlarim" : "Asosiy manzilim"}
+            sub={isProvider ? "Bir nechta hududni tanlashingiz mumkin" : "Yaqin atrofdagi xizmatlar ko'rsatiladi"} />
 
-          <div className="space-y-3">
-            <Field label="Shahar / tuman" required
-              boost={isProvider ? "To'g'ri hudud → ko'proq tegishli buyurtmalar" : "Manzilingiz asosida yaqin xizmatchilar taklif etiladi"}>
-              <div className="relative">
-                <select value={region} onChange={(e) => handleRegionChange(e.target.value)}
-                  className="w-full h-11 px-4 pr-9 rounded-2xl border-2 border-gray-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 appearance-none">
-                  <option value="">Hudud tanlang...</option>
-                  {regionsList.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              </div>
-            </Field>
-
-            <AnimatePresence>
-              {hasDistricts && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                  <Field label="Toshkent shahri tumani">
-                    <div className="relative">
-                      <select value={district} onChange={(e) => setDistrict(e.target.value)}
-                        className="w-full h-11 px-4 pr-9 rounded-2xl border-2 border-violet-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 appearance-none">
-                        <option value="">Tuman tanlang...</option>
-                        {selectedRegionObj?.districts?.map((d) => <option key={d} value={d}>{d}</option>)}
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                    </div>
-                  </Field>
-                </motion.div>
+          {isProvider ? (
+            <div className="space-y-3">
+              <Field label="Xizmat ko'rsatadigan hududlar" required
+                boost="To'g'ri hududlar → faqat tegishli buyurtmalar ko'rinadi">
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {serviceAreas.map((area) => (
+                    <span key={area}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-700 border border-violet-200">
+                      {area}
+                      <button type="button" onClick={() => setServiceAreas(serviceAreas.filter((a) => a !== area))}
+                        className="ml-0.5 hover:bg-violet-200 rounded-full p-0.5 transition-colors">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="relative">
+                  <select value="" onChange={(e) => {
+                    const val = e.target.value;
+                    if (val && !serviceAreas.includes(val)) {
+                      setServiceAreas([...serviceAreas, val]);
+                      if (!region) setRegion(val);
+                    }
+                  }}
+                    className="w-full h-11 px-4 pr-9 rounded-2xl border-2 border-gray-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 appearance-none">
+                    <option value="">Hudud qo'shish...</option>
+                    {regionsList.filter((r) => !serviceAreas.includes(r.value)).map((r) => (
+                      <option key={r.value} value={r.value}>{r.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
+              </Field>
+              {serviceAreas.length === 0 && (
+                <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-xl">
+                  Hech bo'lmasa bitta hudud tanlang — aks holda barcha so'rovlar ko'rinadi
+                </p>
               )}
-            </AnimatePresence>
-          </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <Field label="Shahar / tuman" required
+                boost="Manzilingiz asosida yaqin xizmatchilar taklif etiladi">
+                <div className="relative">
+                  <select value={region} onChange={(e) => handleRegionChange(e.target.value)}
+                    className="w-full h-11 px-4 pr-9 rounded-2xl border-2 border-gray-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 appearance-none">
+                    <option value="">Hudud tanlang...</option>
+                    {regionsList.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                </div>
+              </Field>
+
+              <AnimatePresence>
+                {hasDistricts && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                    <Field label="Toshkent shahri tumani">
+                      <div className="relative">
+                        <select value={district} onChange={(e) => setDistrict(e.target.value)}
+                          className="w-full h-11 px-4 pr-9 rounded-2xl border-2 border-violet-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 appearance-none">
+                          <option value="">Tuman tanlang...</option>
+                          {selectedRegionObj?.districts?.map((d) => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                      </div>
+                    </Field>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </motion.div>
 
         {/* ── Services card ── */}

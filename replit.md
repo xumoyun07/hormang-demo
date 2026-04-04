@@ -120,6 +120,15 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 - **Provider tabs**: Bosh sahifa(/provider-home), So'rovlar, Smart-Hormang (disabled—shows toast), Suhbatlarim, Profil
 - Badges: buyer gets offer count on Suhbatlarim; provider gets unseen request count on So'rovlar + unread count on Suhbatlarim
 - `provider-store.ts` — mock data store with 7 requests, 3 upcoming services, 3 chats; seeded once to localStorage
+- `matching.ts` — centralized category + location matching helpers (`doesCategoryMatch`, `doesLocationMatch`, `doesRequestMatch`); used by `provider-store.ts`
+
+**Category + Location Matching:**
+- `CustomerRequest` stores `region?`/`district?` (extracted from questionnaire answers or passed explicitly)
+- `LocalProfile` stores `serviceAreas?: string[]` (multi-select in provider settings)
+- `getMatchingRequests(categories, serviceAreas)` filters by both category AND location
+- Legacy profiles: if `serviceAreas` empty but `region` set, auto-seeds `serviceAreas=[region]`
+- Requests without region match all providers (backward compat for legacy requests)
+- Questionnaire adds region as a required common question; district shown only when "Toshkent shahri" selected
 
 **Auth System (Phone+OTP, no email/password):**
 - Primary auth: phone number + 6-digit SMS OTP (simulated in dev, `devCode` returned in API response)

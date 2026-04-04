@@ -10,6 +10,7 @@
 
 import { emitStoreChange } from "./store-events";
 import type { CustomerRequest } from "./requests-store";
+import { doesRequestMatch } from "./matching";
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -128,17 +129,7 @@ function clearLegacyData() {
 // Run once on module load
 clearLegacyData();
 
-/* ─── Category normalisation ─────────────────────────────────────── */
-
-function normalizeCategory(name: string): string {
-  return name.toLowerCase().replace(/[\s/]+/g, "").trim();
-}
-
-function categoryMatches(reqCategory: string, providerCategories: string[]): boolean {
-  if (providerCategories.length === 0) return true; // no filter set → show all
-  const norm = normalizeCategory(reqCategory);
-  return providerCategories.some((c) => normalizeCategory(c) === norm);
-}
+/* ─── Category normalisation (delegated to matching.ts) ──────────── */
 
 /* ─── Buyer-request → ProviderRequest adapter ────────────────────── */
 
@@ -210,15 +201,19 @@ function adaptBuyerRequest(req: CustomerRequest, actionStatus?: ProviderActionSt
 const BUYER_REQUESTS_KEY_CONST = "hormang_requests";
 
 /**
- * Returns all buyer requests that match the given provider categories,
+ * Returns all buyer requests that match the given provider categories AND service areas,
  * overlaid with the provider's own seen/responded/ignored state.
- * Pass [] to get ALL requests (no category filter — for admin/debug).
+ * Pass [] for categories to skip category filter (admin/debug).
+ * Pass [] for serviceAreas to skip location filter.
  */
-export function getMatchingRequests(selectedCategories: string[]): ProviderRequest[] {
+export function getMatchingRequests(
+  selectedCategories: string[],
+  serviceAreas: string[] = [],
+): ProviderRequest[] {
   const buyerReqs = readJSON<CustomerRequest[]>(BUYER_REQUESTS_KEY_CONST, []);
   const statuses = getProviderStatuses();
   return buyerReqs
-    .filter((r) => r.status === "open" && categoryMatches(r.categoryName, selectedCategories))
+    .filter((r) => r.status === "open" && doesRequestMatch(r.categoryName, r.region, selectedCategories, serviceAreas))
     .map((r) => adaptBuyerRequest(r, statuses[r.id]))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
@@ -249,16 +244,16 @@ export function markSeen(id: string): void {
   if (!seen.includes(id)) writeJSON(SEEN_KEY, [...seen, id]);
 }
 
-export function markAllSeen(selectedCategories: string[] = []): void {
-  const ids = getMatchingRequests(selectedCategories).map((r) => r.id);
+export function markAllSeen(selectedCategories: string[] = [], serviceAreas: string[] = []): void {
+  const ids = getMatchingRequests(selectedCategories, serviceAreas).map((r) => r.id);
   const existing = getSeenIds();
   const merged = Array.from(new Set([...existing, ...ids]));
   writeJSON(SEEN_KEY, merged);
 }
 
-export function getUnseenRequests(selectedCategories: string[] = []): ProviderRequest[] {
+export function getUnseenRequests(selectedCategories: string[] = [], serviceAreas: string[] = []): ProviderRequest[] {
   const seen = getSeenIds();
-  return getMatchingRequests(selectedCategories).filter(
+  return getMatchingRequests(selectedCategories, serviceAreas).filter(
     (r) => !seen.includes(r.id) && r.status === "open"
   );
 }
@@ -370,9 +365,9 @@ export function getRequestOfferCount(requestId: string): number {
   return getOffers().filter((o) => o.requestId === requestId).length;
 }
 
-export function getRequestsWithZeroOffers(selectedCategories: string[] = []): ProviderRequest[] {
+export function getRequestsWithZeroOffers(selectedCategories: string[] = [], serviceAreas: string[] = []): ProviderRequest[] {
   const offers = getOffers();
-  return getMatchingRequests(selectedCategories).filter(
+  return getMatchingRequests(selectedCategories, serviceAreas).filter(
     (r) => r.status === "open" && !offers.some((o) => o.requestId === r.id)
   );
 }

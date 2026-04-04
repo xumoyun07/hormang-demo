@@ -27,6 +27,7 @@ export interface LocalProfile {
   portfolioItems?: PortfolioItem[];
   region?: string;
   district?: string;
+  serviceAreas?: string[];
 }
 
 /* ─── Storage helpers ───────────────────────────────────────────── */
@@ -42,6 +43,10 @@ export function getLocalProfile(userId: string): LocalProfile {
     /* Migrate legacy portfolioImages → portfolioItems */
     if (!p.portfolioItems && p.portfolioImages?.length) {
       p.portfolioItems = p.portfolioImages.map((url) => ({ url }));
+    }
+    /* Migrate legacy region → serviceAreas for providers */
+    if ((!p.serviceAreas || p.serviceAreas.length === 0) && p.region) {
+      p.serviceAreas = [p.region];
     }
     return p;
   } catch {

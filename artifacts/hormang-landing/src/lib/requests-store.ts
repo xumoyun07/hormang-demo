@@ -21,6 +21,8 @@ export interface CustomerRequest {
   status: "open" | "accepted" | "completed" | "cancelled";
   createdAt: string;
   offerCount: number;
+  region?: string;
+  district?: string;
 }
 
 export interface Offer {
@@ -103,8 +105,12 @@ export function getRequestById(id: string): CustomerRequest | undefined {
 export function saveNewRequest(
   categoryId: string,
   categoryName: string,
-  answers: Record<string, unknown>
+  answers: Record<string, unknown>,
+  location?: { region?: string; district?: string },
 ): CustomerRequest {
+  const region = location?.region || (answers["region"] as string | undefined);
+  const district = location?.district || (answers["district"] as string | undefined);
+
   const req: CustomerRequest = {
     id: uid(),
     categoryId,
@@ -114,6 +120,8 @@ export function saveNewRequest(
     status: "open",
     createdAt: new Date().toISOString(),
     offerCount: 0,
+    region: region || undefined,
+    district: district || undefined,
   };
   const existing = readJSON<CustomerRequest[]>(REQUESTS_KEY, []);
   writeJSON(REQUESTS_KEY, [req, ...existing]);
