@@ -513,7 +513,7 @@ function SummaryScreen({
           onClick={onSeeProviders}
           className="w-full py-4 text-base font-bold bg-blue-600 hover:bg-blue-700 rounded-2xl gap-2"
         >
-          Mos keladigan ustalarni ko'rish
+          So`rov yuborish
           <ChevronRight className="w-5 h-5" />
         </Button>
       </div>

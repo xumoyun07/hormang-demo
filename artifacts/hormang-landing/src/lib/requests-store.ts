@@ -33,7 +33,11 @@ export interface Offer {
   masterInitials: string;
   masterColor: string;
   price: number;
+  priceLabel?: string;
   message: string;
+  completionTime?: string;
+  startDate?: string;
+  fileUrls?: string[];
   avgResponseTime: number; // minutes
   createdAt: string;
   status: "pending" | "accepted" | "rejected";

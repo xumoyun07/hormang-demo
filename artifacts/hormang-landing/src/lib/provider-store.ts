@@ -25,8 +25,12 @@ export interface ProviderRequest {
   urgency: "urgent" | "normal" | "flexible";
   location: string;
   customerName: string;
+  customerId: string;
   createdAt: string;
   status: "open" | "responded" | "ignored";
+  answers: Record<string, unknown>;
+  region?: string;
+  district?: string;
 }
 
 export interface UpcomingService {
@@ -189,10 +193,14 @@ function adaptBuyerRequest(req: CustomerRequest, actionStatus?: ProviderActionSt
     budget,
     budgetLabel,
     urgency: urgencyFrom(req.answers),
-    location: locationFrom(req.answers),
+    location: req.region ?? locationFrom(req.answers),
     customerName: "Foydalanuvchi",
+    customerId: req.id,
     createdAt: req.createdAt,
     status,
+    answers: req.answers,
+    region: req.region,
+    district: req.district,
   };
 }
 
@@ -318,7 +326,17 @@ export function getOfferByRequestId(requestId: string): ProviderOffer | undefine
   return getOffers().find((o) => o.requestId === requestId);
 }
 
-export function saveOffer(data: Omit<ProviderOffer, "id" | "createdAt" | "status">): ProviderOffer {
+export interface ProviderOfferExtra {
+  requestId: string;
+  providerName?: string;
+  providerInitials?: string;
+  providerColor?: string;
+}
+
+export function saveOffer(
+  data: Omit<ProviderOffer, "id" | "createdAt" | "status">,
+  providerMeta?: { name: string; initials: string; color: string; id: string },
+): ProviderOffer {
   const offers = getOffers();
   const offer: ProviderOffer = {
     ...data,
@@ -343,6 +361,33 @@ export function saveOffer(data: Omit<ProviderOffer, "id" | "createdAt" | "status
       }
     }
   } catch (_) {}
+
+  // Also write to buyer-side offers store (hormang_offers) so customer can see it
+  if (providerMeta) {
+    try {
+      const BUYER_OFFERS_KEY = "hormang_offers";
+      const existingRaw = localStorage.getItem(BUYER_OFFERS_KEY);
+      const existing = existingRaw ? JSON.parse(existingRaw) : [];
+      const buyerOffer = {
+        id: offer.id,
+        requestId: offer.requestId,
+        masterId: providerMeta.id,
+        masterName: providerMeta.name,
+        masterInitials: providerMeta.initials,
+        masterColor: providerMeta.color,
+        price: offer.price,
+        priceLabel: offer.priceLabel,
+        message: offer.message,
+        completionTime: offer.completionTime,
+        startDate: offer.startDate,
+        fileUrls: offer.fileUrls,
+        avgResponseTime: getAvgResponseMinutes(),
+        createdAt: offer.createdAt,
+        status: "pending",
+      };
+      localStorage.setItem(BUYER_OFFERS_KEY, JSON.stringify([...existing, buyerOffer]));
+    } catch (_) {}
+  }
 
   return offer;
 }

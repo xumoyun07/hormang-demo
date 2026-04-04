@@ -157,6 +157,28 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 
 **Design system:** Plus Jakarta Sans, `#2563EB` blue (buyer), `hsl(262,80%,54%)` violet (provider), `--brand-gradient` CSS var, `.card-shadow` / `.pill-label` / `.text-gradient` / `.hero-bg` utilities.
 
+## Offer Preview / Review System
+
+**ProviderRequest type** (`provider-store.ts`): now includes `answers`, `customerId`, `region`, `district` fields. `adaptBuyerRequest` populates all of these from `CustomerRequest`.
+
+**Offer Form** (`components/offer-form.tsx`):
+- Displays questionnaire Q&A pairs using `getAllQuestionsForCategory(categoryId)` + `request.answers`
+- Removed manual "avg response time" editor (was editable; now auto-populated)
+- Added "Mijoz profilini ko'rish" button → opens `CustomerProfileModal` (shows name, location, category, budget — no phone)
+- On submit: calls `saveOffer(data, providerMeta)` which syncs to both `hormang_provider_offers` AND `hormang_offers` (customer side)
+- Provider identity taken from `useAuth().user` at submit time
+
+**Offers Page** (`pages/offers.tsx`):
+- Each offer card has "Profil" link + clickable provider avatar → opens `ProviderProfileModal`
+- `ProviderProfileModal`: shows provider photo (from `getLocalProfile(masterId)`), name, avg response time, service areas, portfolio items
+- Displays `priceLabel`, `completionTime`, `startDate`, `fileUrls` from the enriched offer data
+- "Qaytarish" (restore rejected offer) works via direct localStorage mutation
+
+**Offer sync flow:**
+- Provider fills offer form → `saveOffer` in `provider-store` writes to `hormang_provider_offers` AND `hormang_offers`
+- Customer sees offers in `/offers` page from `hormang_offers`
+- offerCount on `CustomerRequest` is incremented in `hormang_requests` on each offer
+
 ## Admin Panels
 
 ### Main Admin Dashboard — `/admin`
