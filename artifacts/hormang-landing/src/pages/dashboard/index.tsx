@@ -259,51 +259,70 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
 
   return (
     <div className="space-y-3">
-      {/* ── Customer Profile Hero Card ── */}
+      {/* ── Customer Profile Header Card ── */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="rounded-2xl overflow-hidden shadow-sm"
-        style={{ background: "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)" }}
+        className="bg-white rounded-2xl border border-gray-100 card-shadow p-4"
       >
-        <div className="p-4 flex items-center gap-4">
+        <div className="flex items-start gap-4">
           {/* Avatar */}
-          {local.photoUrl ? (
-            <img src={local.photoUrl} alt={fullName} className="w-16 h-16 rounded-2xl object-cover border-2 border-white/30 flex-shrink-0" />
-          ) : (
-            <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center flex-shrink-0">
-              <span className="text-xl font-black text-white">{initials || "?"}</span>
-            </div>
-          )}
-
-          {/* Info */}
-          <div className="flex-1 min-w-0 text-white">
-            <h2 className="font-extrabold text-base leading-tight truncate">{fullName || "Mehmon"}</h2>
-            <div className="flex flex-wrap items-center gap-1.5 mt-1">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 border border-white/25 rounded-lg text-[11px] font-bold">
-                <ShoppingBag className="w-2.5 h-2.5" /> Xaridor
-              </span>
-              {location && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-white/80">
-                  <MapPin className="w-2.5 h-2.5" /> {location}
-                </span>
-              )}
-            </div>
-            {user?.phone && (
-              <p className="flex items-center gap-1 text-[11px] text-white/70 mt-1">
-                <Phone className="w-2.5 h-2.5" /> {user.phone}
-              </p>
+          <div className="relative flex-shrink-0">
+            {local.photoUrl ? (
+              <img
+                src={local.photoUrl}
+                alt={fullName}
+                className="w-[72px] h-[72px] rounded-2xl object-cover ring-2 ring-blue-100"
+              />
+            ) : (
+              <div
+                className="w-[72px] h-[72px] rounded-2xl flex items-center justify-center text-white text-xl font-black ring-2 ring-blue-100"
+                style={{ background: "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)" }}
+              >
+                {initials || "?"}
+              </div>
             )}
           </div>
 
-          {/* Edit button */}
-          <button
-            onClick={() => onNavigate("/profile/settings")}
-            className="flex-shrink-0 w-8 h-8 rounded-xl bg-white/20 hover:bg-white/30 border border-white/25 flex items-center justify-center transition-colors"
-          >
-            <Settings className="w-4 h-4 text-white" />
-          </button>
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+              <h2 className="text-base font-bold text-gray-900 truncate">
+                {fullName || "Mehmon"}
+              </h2>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white flex-shrink-0"
+                style={{ background: "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)" }}>
+                Xaridor
+              </span>
+            </div>
+
+            {location && (
+              <p className="flex items-center gap-1 text-xs text-gray-400 mb-2">
+                <MapPin className="w-3 h-3" />
+                {location}
+              </p>
+            )}
+
+            {user?.phone && (
+              <p className="flex items-center gap-1 text-xs text-gray-600">
+                <Phone className="w-3 h-3" />
+                {user.phone}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Verification badge */}
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
+          {user?.phone ? (
+            <span className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-green-50 text-green-700 border border-green-100">
+              <Phone className="w-3 h-3" /> Telefon tasdiqlangan
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-amber-50 text-amber-700 border border-amber-100">
+              <Phone className="w-3 h-3" /> Telefon tasdiqlanmagan
+            </span>
+          )}
         </div>
       </motion.div>
 
