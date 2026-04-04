@@ -256,7 +256,12 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
 
     updateProviderRequestStatus(request.id, "responded");
     markSeen(request.id);
-    createChatFromOffer(request, offer);
+    createChatFromOffer(
+      request,
+      offer,
+      user?.id ?? "anon",
+      user ? { name: fullName, initials, color } : undefined,
+    );
 
     setTimeout(() => {
       setSubmitting(false);

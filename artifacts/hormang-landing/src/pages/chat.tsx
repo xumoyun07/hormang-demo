@@ -1,14 +1,14 @@
 /**
- * /chat/:chatId — One-on-one chat with a master
- * Messages persist in localStorage. Responsive, mobile-first layout.
+ * /chat/:chatId — One-on-one chat with a master.
+ * Messages persist in localStorage (unified hormang_chats store).
+ * useStoreRefresh() ensures the page re-renders when the provider sends a message.
  */
 import { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  ChevronLeft, Send, Circle,
-} from "lucide-react";
+import { ChevronLeft, Send, Circle } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
+import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import {
   getChatById, sendMessage,
   type Chat, type ChatMessage,
@@ -45,7 +45,7 @@ function MessageBubble({ msg, isFirst }: { msg: ChatMessage; isFirst: boolean })
             : "bg-white text-gray-900 border border-gray-100 rounded-bl-md shadow-sm"
         }`}
       >
-        <p>{msg.text}</p>
+        <p style={{ whiteSpace: "pre-wrap" }}>{msg.text}</p>
         <p className={`text-[10px] mt-1 text-right ${isCustomer ? "text-blue-200" : "text-gray-400"}`}>
           {formatTime(msg.timestamp)}
         </p>
@@ -65,53 +65,26 @@ function DaySeparator({ label }: { label: string }) {
   );
 }
 
-/* ─── Typing Indicator ───────────────────────────────────────────── */
-function TypingIndicator() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 8 }}
-      className="flex justify-start"
-    >
-      <div className="bg-white border border-gray-100 shadow-sm rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-1">
-        {[0, 1, 2].map((i) => (
-          <motion.div
-            key={i}
-            className="w-2 h-2 rounded-full bg-gray-400"
-            animate={{ y: [0, -4, 0] }}
-            transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
-          />
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function ChatPage() {
   const [, setLocation] = useLocation();
   const [match, params] = useRoute("/chat/:chatId");
   const chatId = params?.chatId ?? "";
 
-  const [chat, setChat] = useState<Chat | null>(null);
+  // Re-render whenever any store write happens (includes provider sending a message)
+  const version = useStoreRefresh();
+
   const [input, setInput] = useState("");
-  const [typing, setTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load chat
-  useEffect(() => {
-    if (chatId) {
-      const c = getChatById(chatId);
-      setChat(c ?? null);
-    }
-  }, [chatId]);
+  // Always read fresh from store — version bump triggers re-render
+  const chat: Chat | undefined = chatId ? getChatById(chatId) : undefined;
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chat?.messages.length, typing]);
+  }, [chat?.messages.length]);
 
   if (!match || !chat) {
     return (
@@ -133,28 +106,8 @@ export default function ChatPage() {
     if (!input.trim()) return;
     const text = input.trim();
     setInput("");
-
-    const updated = sendMessage(chatId, "customer", text);
-    if (updated) setChat({ ...updated });
-
-    // Simulate master typing then replying
-    setTyping(true);
-    const delay = 800 + Math.random() * 1500;
-    setTimeout(() => {
-      setTyping(false);
-      const replies = [
-        "Yaxshi, tushundim. Batafsil aytib bering.",
-        "Ha, bu haqda ko'rib chiqaman.",
-        "Mayli, kelishib olamiz.",
-        "Tushundim! Qachon qulay?",
-        "Xop, men tayyorman.",
-        "Narx bo'yicha kelishishimiz mumkin.",
-        "Yaxshi, xabaringiz uchun rahmat.",
-      ];
-      const reply = replies[Math.floor(Math.random() * replies.length)];
-      const final = sendMessage(chatId, "master", reply);
-      if (final) setChat({ ...final });
-    }, delay);
+    sendMessage(chatId, "customer", text);
+    // store-change event fires → useStoreRefresh bumps → component re-renders with fresh data
   }
 
   function handleKey(e: React.KeyboardEvent) {
@@ -195,7 +148,6 @@ export default function ChatPage() {
 
           <div className="flex-1 min-w-0">
             <p className="font-extrabold text-sm text-gray-900">{chat.masterName}</p>
-            {/* Average response time */}
             <div className="flex items-center gap-1.5">
               <Circle className="w-2 h-2 fill-emerald-500 text-emerald-500 flex-shrink-0" />
               <p className="text-[11px] text-gray-400">
@@ -214,6 +166,12 @@ export default function ChatPage() {
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto max-w-lg mx-auto w-full px-4 pt-4 pb-4">
+        {grouped.length === 0 && (
+          <div className="text-center py-8 text-gray-400 text-sm">
+            Hozircha xabar yo'q
+          </div>
+        )}
+
         {grouped.map((group) => (
           <div key={group.day}>
             <DaySeparator label={group.day} />
@@ -228,14 +186,6 @@ export default function ChatPage() {
             </div>
           </div>
         ))}
-
-        <AnimatePresence>
-          {typing && (
-            <div className="mt-3">
-              <TypingIndicator />
-            </div>
-          )}
-        </AnimatePresence>
 
         <div ref={messagesEndRef} className="h-1" />
       </div>

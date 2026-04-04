@@ -5,7 +5,7 @@
  * - Chat rows with last message + unread badge
  * - Click opens the chat
  */
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
@@ -41,13 +41,11 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   useStoreRefresh();
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const markedRef = useRef(false);
 
-  // Mark read once on first render
-  if (!markedRef.current) {
-    markedRef.current = true;
+  // Mark read on mount and whenever chatId changes — must be in useEffect to avoid setState-during-render
+  useEffect(() => {
     markChatRead(chatId);
-  }
+  }, [chatId]);
 
   const chat = getProviderChatById(chatId) ?? null;
 

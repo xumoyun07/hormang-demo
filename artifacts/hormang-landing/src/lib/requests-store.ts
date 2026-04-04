@@ -4,8 +4,8 @@
  *
  * Keys:
  *   hormang_requests  — CustomerRequest[]
- *   hormang_offers    — Offer[]
- *   hormang_chats     — Chat[]
+ *   hormang_offers    — Offer[]            (shared with provider side)
+ *   hormang_chats     — Chat[]             (shared with provider side)
  */
 
 import { emitStoreChange } from "./store-events";
@@ -45,11 +45,16 @@ export interface Offer {
 
 export interface ChatMessage {
   id: string;
-  sender: "customer" | "master";
+  sender: "customer" | "master"; // master = provider/ijrochi
   text: string;
   timestamp: string;
 }
 
+/**
+ * Unified chat format — shared by customer and provider sides.
+ * Both sides read/write to hormang_chats using this structure.
+ * ID is deterministic: `${requestId}_${masterId}`
+ */
 export interface Chat {
   id: string;
   requestId: string;
@@ -59,6 +64,11 @@ export interface Chat {
   masterColor: string;
   avgResponseTime: number;
   categoryName: string;
+  categoryEmoji: string;      // shown on provider side
+  customerName: string;       // shown on provider side
+  customerInitials: string;   // shown on provider side
+  customerColor: string;      // shown on provider side
+  providerUnread: number;     // messages customer sent that provider hasn't read
   messages: ChatMessage[];
   createdAt: string;
 }
@@ -132,11 +142,6 @@ export function saveNewRequest(
   return req;
 }
 
-function updateRequestOfferCount(requestId: string, count: number): void {
-  const reqs = readJSON<CustomerRequest[]>(REQUESTS_KEY, []);
-  writeJSON(REQUESTS_KEY, reqs.map((r) => r.id === requestId ? { ...r, offerCount: count } : r));
-}
-
 export function updateRequestStatus(requestId: string, status: CustomerRequest["status"]): void {
   const reqs = readJSON<CustomerRequest[]>(REQUESTS_KEY, []);
   writeJSON(REQUESTS_KEY, reqs.map((r) => r.id === requestId ? { ...r, status } : r));
@@ -157,20 +162,28 @@ export function updateOfferStatus(offerId: string, status: "accepted" | "rejecte
   writeJSON(OFFERS_KEY, offers);
 }
 
-
 /* ─── Chats ──────────────────────────────────────────────────────── */
 
 export function getChats(): Chat[] {
   return readJSON<Chat[]>(CHATS_KEY, []).sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    (a, b) => {
+      const aLast = a.messages[a.messages.length - 1]?.timestamp ?? a.createdAt;
+      const bLast = b.messages[b.messages.length - 1]?.timestamp ?? b.createdAt;
+      return new Date(bLast).getTime() - new Date(aLast).getTime();
+    }
   );
 }
 
 export function getChatById(id: string): Chat | undefined {
-  return getChats().find((c) => c.id === id);
+  return readJSON<Chat[]>(CHATS_KEY, []).find((c) => c.id === id);
 }
 
-/** Create or return an existing chat for a request+master pair */
+/**
+ * Create or return an existing chat for a request+master pair.
+ * ID is deterministic: `${requestId}_${masterId}`.
+ * customerMeta is optional — used when creating chat from customer side
+ * before provider has set up the chat (rare case).
+ */
 export function getOrCreateChat(
   requestId: string,
   masterId: string,
@@ -178,7 +191,13 @@ export function getOrCreateChat(
   masterInitials: string,
   masterColor: string,
   avgResponseTime: number,
-  categoryName: string
+  categoryName: string,
+  customerMeta?: {
+    name?: string;
+    initials?: string;
+    color?: string;
+    emoji?: string;
+  }
 ): Chat {
   const chatId = `${requestId}_${masterId}`;
   const existing = getChatById(chatId);
@@ -193,6 +212,11 @@ export function getOrCreateChat(
     masterColor,
     avgResponseTime,
     categoryName,
+    categoryEmoji: customerMeta?.emoji ?? "📋",
+    customerName: customerMeta?.name ?? "Foydalanuvchi",
+    customerInitials: customerMeta?.initials ?? "FO",
+    customerColor: customerMeta?.color ?? "#2563EB",
+    providerUnread: 0,
     messages: [],
     createdAt: new Date().toISOString(),
   };
@@ -202,16 +226,41 @@ export function getOrCreateChat(
   return chat;
 }
 
-/** Send a message and return the updated chat */
+/**
+ * Send a message and return the updated chat.
+ * - "customer" sends → providerUnread++  (provider has unread message)
+ * - "master" sends   → providerUnread unchanged (provider just sent, not unread for them)
+ */
 export function sendMessage(chatId: string, sender: "customer" | "master", text: string): Chat | null {
   const chats = readJSON<Chat[]>(CHATS_KEY, []);
   const idx = chats.findIndex((c) => c.id === chatId);
   if (idx === -1) return null;
 
   const msg: ChatMessage = { id: uid(), sender, text, timestamp: new Date().toISOString() };
-  chats[idx] = { ...chats[idx], messages: [...chats[idx].messages, msg] };
+  const prevUnread = chats[idx].providerUnread ?? 0;
+  const providerUnread = sender === "customer" ? prevUnread + 1 : prevUnread;
+  chats[idx] = { ...chats[idx], messages: [...chats[idx].messages, msg], providerUnread };
   writeJSON(CHATS_KEY, chats);
   return chats[idx];
+}
+
+/**
+ * Mark all messages in this chat as read by the provider.
+ * Called when provider opens the chat thread.
+ */
+export function markProviderChatRead(chatId: string): void {
+  const chats = readJSON<Chat[]>(CHATS_KEY, []);
+  const idx = chats.findIndex((c) => c.id === chatId);
+  if (idx === -1) return;
+  chats[idx] = { ...chats[idx], providerUnread: 0 };
+  writeJSON(CHATS_KEY, chats);
+}
+
+/**
+ * Total unread messages across all chats for the provider.
+ */
+export function getTotalProviderUnread(): number {
+  return readJSON<Chat[]>(CHATS_KEY, []).reduce((s, c) => s + (c.providerUnread ?? 0), 0);
 }
 
 /** Get the latest chat across all requests (for bottom nav redirect) */

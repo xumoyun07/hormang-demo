@@ -1,15 +1,22 @@
 /**
  * provider-store.ts
- * localStorage persistence + mock data for provider (ijrochi) side.
- * Keys:
- *   hormang_provider_requests  — ProviderRequest[]  (requests visible to this provider)
- *   hormang_provider_services  — UpcomingService[]  (accepted/upcoming jobs)
- *   hormang_provider_chats     — ProviderChat[]     (provider's chat threads)
- *   hormang_provider_seen      — string[]           (IDs of seen request IDs)
+ * localStorage persistence for provider (ijrochi) side.
+ *
+ * Keys used:
+ *   hormang_provider_requests  — provider action statuses (seen/ignored/responded)
+ *   hormang_provider_services  — UpcomingService[]
+ *   hormang_provider_seen      — string[] (seen request IDs)
+ *   hormang_provider_offers    — ProviderOffer[] (provider's own submitted offers)
+ *   hormang_offers             — Offer[] (shared; customer reads here, provider syncs status from here)
+ *   hormang_chats              — Chat[]  (SHARED with customer side — unified store)
  */
 
 import { emitStoreChange } from "./store-events";
-import type { CustomerRequest } from "./requests-store";
+import type { CustomerRequest, Chat } from "./requests-store";
+import {
+  getChatById, sendMessage, markProviderChatRead,
+  getTotalProviderUnread, getChats,
+} from "./requests-store";
 import { doesRequestMatch } from "./matching";
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -46,6 +53,7 @@ export interface UpcomingService {
   status: "upcoming" | "done";
 }
 
+/** Provider-side view of a chat (adapted from unified Chat) */
 export interface ProviderChatMessage {
   id: string;
   sender: "provider" | "customer";
@@ -84,12 +92,12 @@ export interface ProviderOffer {
 
 const REQUESTS_KEY = "hormang_provider_requests";
 const SERVICES_KEY = "hormang_provider_services";
-const CHATS_KEY = "hormang_provider_chats";
 const SEEN_KEY = "hormang_provider_seen";
-const OFFERS_KEY = "hormang_provider_offers";
+const OFFERS_KEY = "hormang_provider_offers";   // provider's own offer records
+const SHARED_OFFERS_KEY = "hormang_offers";     // shared with customer
 const AVG_RESPONSE_KEY = "hormang_provider_avg_response";
 const SEED_VERSION_KEY = "hormang_provider_seed_version";
-const SEED_VERSION = "v2";
+const SEED_VERSION = "v4";
 
 /* ─── Storage helpers ─────────────────────────────────────────────── */
 
@@ -112,28 +120,45 @@ function uid(): string {
 
 /* ─── Legacy Data Cleanup ─────────────────────────────────────────── */
 
-const CLEAN_VERSION = "v3";
-
 function clearLegacyData() {
   const version = localStorage.getItem(SEED_VERSION_KEY);
-  if (version !== CLEAN_VERSION) {
-    // Wipe all mock-seeded data from previous versions (both provider and buyer side)
-    localStorage.removeItem(REQUESTS_KEY);       // hormang_provider_requests
-    localStorage.removeItem(SERVICES_KEY);       // hormang_provider_services
-    localStorage.removeItem(CHATS_KEY);          // hormang_provider_chats
-    localStorage.removeItem(OFFERS_KEY);         // hormang_provider_offers
-    localStorage.removeItem(SEEN_KEY);           // hormang_provider_seen
-    localStorage.removeItem("hormang_requests"); // buyer requests
-    localStorage.removeItem("hormang_offers");   // buyer offers
-    localStorage.removeItem("hormang_chats");    // buyer chats
-    localStorage.setItem(SEED_VERSION_KEY, CLEAN_VERSION);
+  if (version !== SEED_VERSION) {
+    localStorage.removeItem(REQUESTS_KEY);
+    localStorage.removeItem(SERVICES_KEY);
+    localStorage.removeItem(OFFERS_KEY);
+    localStorage.removeItem(SEEN_KEY);
+    localStorage.removeItem("hormang_provider_chats"); // old key
+    localStorage.removeItem("hormang_requests");
+    localStorage.removeItem("hormang_offers");
+    localStorage.removeItem("hormang_chats");
+    localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
   }
 }
 
-// Run once on module load
 clearLegacyData();
 
-/* ─── Category normalisation (delegated to matching.ts) ──────────── */
+/* ─── Chat conversion helpers ─────────────────────────────────────── */
+
+/** Convert unified Chat → ProviderChat (for provider UI) */
+function chatToProviderChat(c: Chat): ProviderChat {
+  return {
+    id: c.id,
+    customerId: c.requestId,
+    customerName: c.customerName || "Foydalanuvchi",
+    customerInitials: c.customerInitials || "FO",
+    customerColor: c.customerColor || "#7C3AED",
+    categoryName: c.categoryName,
+    categoryEmoji: c.categoryEmoji || "📋",
+    messages: c.messages.map((m) => ({
+      id: m.id,
+      sender: m.sender === "customer" ? "customer" : "provider",
+      text: m.text,
+      timestamp: m.timestamp,
+    })),
+    unread: c.providerUnread ?? 0,
+    createdAt: c.createdAt,
+  };
+}
 
 /* ─── Buyer-request → ProviderRequest adapter ────────────────────── */
 
@@ -208,12 +233,6 @@ function adaptBuyerRequest(req: CustomerRequest, actionStatus?: ProviderActionSt
 
 const BUYER_REQUESTS_KEY_CONST = "hormang_requests";
 
-/**
- * Returns all buyer requests that match the given provider categories AND service areas,
- * overlaid with the provider's own seen/responded/ignored state.
- * Pass [] for categories to skip category filter (admin/debug).
- * Pass [] for serviceAreas to skip location filter.
- */
 export function getMatchingRequests(
   selectedCategories: string[],
   serviceAreas: string[] = [],
@@ -226,7 +245,6 @@ export function getMatchingRequests(
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-/** Backward-compat: returns all buyer requests, no category filter. */
 export function getProviderRequests(): ProviderRequest[] {
   return getMatchingRequests([]);
 }
@@ -279,41 +297,35 @@ export function markServiceDone(id: string): void {
   writeJSON(SERVICES_KEY, services.map((s) => s.id === id ? { ...s, status: "done" as const } : s));
 }
 
-/* ─── Provider Chats ─────────────────────────────────────────────── */
+/* ─── Provider Chats (unified — reads from hormang_chats) ─────────── */
 
 export function getProviderChats(): ProviderChat[] {
-  return readJSON<ProviderChat[]>(CHATS_KEY, []).sort(
-    (a, b) => {
-      const aLast = a.messages[a.messages.length - 1]?.timestamp ?? a.createdAt;
-      const bLast = b.messages[b.messages.length - 1]?.timestamp ?? b.createdAt;
-      return new Date(bLast).getTime() - new Date(aLast).getTime();
-    }
-  );
+  return getChats().map(chatToProviderChat);
 }
 
 export function getProviderChatById(id: string): ProviderChat | undefined {
-  return getProviderChats().find((c) => c.id === id);
+  const chat = getChatById(id);
+  return chat ? chatToProviderChat(chat) : undefined;
 }
 
+/**
+ * Send a message as provider ("master" in unified store).
+ * Triggers store change event so customer chat page refreshes.
+ */
 export function sendProviderMessage(chatId: string, sender: "provider" | "customer", text: string): ProviderChat | null {
-  const chats = readJSON<ProviderChat[]>(CHATS_KEY, []);
-  const idx = chats.findIndex((c) => c.id === chatId);
-  if (idx === -1) return null;
-
-  const msg: ProviderChatMessage = { id: uid(), sender, text, timestamp: new Date().toISOString() };
-  const unread = sender === "customer" ? chats[idx].unread + 1 : 0;
-  chats[idx] = { ...chats[idx], messages: [...chats[idx].messages, msg], unread };
-  writeJSON(CHATS_KEY, chats);
-  return chats[idx];
+  const unifiedSender = sender === "provider" ? "master" : "customer";
+  const updated = sendMessage(chatId, unifiedSender, text);
+  return updated ? chatToProviderChat(updated) : null;
 }
 
+/** Mark all provider-unread messages in this chat as read */
 export function markChatRead(chatId: string): void {
-  const chats = readJSON<ProviderChat[]>(CHATS_KEY, []);
-  writeJSON(CHATS_KEY, chats.map((c) => c.id === chatId ? { ...c, unread: 0 } : c));
+  markProviderChatRead(chatId);
 }
 
+/** Total unread messages for provider across all chats */
 export function getTotalUnread(): number {
-  return getProviderChats().reduce((sum, c) => sum + c.unread, 0);
+  return getTotalProviderUnread();
 }
 
 /* ─── Offers ─────────────────────────────────────────────────────── */
@@ -323,7 +335,21 @@ export function getOffers(): ProviderOffer[] {
 }
 
 export function getOfferByRequestId(requestId: string): ProviderOffer | undefined {
-  return getOffers().find((o) => o.requestId === requestId);
+  const providerOffer = readJSON<ProviderOffer[]>(OFFERS_KEY, []).find(
+    (o) => o.requestId === requestId
+  );
+  if (!providerOffer) return undefined;
+
+  // Overlay status from shared hormang_offers so customer acceptance is visible instantly
+  try {
+    const sharedOffer = readJSON<Array<{ id: string; status: string }>>(SHARED_OFFERS_KEY, [])
+      .find((o) => o.id === providerOffer.id);
+    if (sharedOffer && sharedOffer.status !== providerOffer.status) {
+      return { ...providerOffer, status: sharedOffer.status as ProviderOffer["status"] };
+    }
+  } catch (_) {}
+
+  return providerOffer;
 }
 
 export interface ProviderOfferExtra {
@@ -347,26 +373,24 @@ export function saveOffer(
   const allOffers = [...offers, offer];
   writeJSON(OFFERS_KEY, allOffers);
 
-  // Sync offer count to the buyer-side CustomerRequest (hormang_requests key)
+  // Sync offer count to the buyer-side CustomerRequest
   try {
-    const BUYER_REQUESTS_KEY = "hormang_requests";
-    const raw = localStorage.getItem(BUYER_REQUESTS_KEY);
+    const raw = localStorage.getItem(BUYER_REQUESTS_KEY_CONST);
     if (raw) {
       const buyerReqs = JSON.parse(raw) as Array<{ id: string; offerCount?: number }>;
       const idx = buyerReqs.findIndex((r) => r.id === data.requestId);
       if (idx !== -1) {
         const count = allOffers.filter((o) => o.requestId === data.requestId).length;
         buyerReqs[idx] = { ...buyerReqs[idx], offerCount: count };
-        localStorage.setItem(BUYER_REQUESTS_KEY, JSON.stringify(buyerReqs));
+        localStorage.setItem(BUYER_REQUESTS_KEY_CONST, JSON.stringify(buyerReqs));
       }
     }
   } catch (_) {}
 
-  // Also write to buyer-side offers store (hormang_offers) so customer can see it
+  // Write to shared hormang_offers so customer can see and accept/reject
   if (providerMeta) {
     try {
-      const BUYER_OFFERS_KEY = "hormang_offers";
-      const existingRaw = localStorage.getItem(BUYER_OFFERS_KEY);
+      const existingRaw = localStorage.getItem(SHARED_OFFERS_KEY);
       const existing = existingRaw ? JSON.parse(existingRaw) : [];
       const buyerOffer = {
         id: offer.id,
@@ -385,7 +409,7 @@ export function saveOffer(
         createdAt: offer.createdAt,
         status: "pending",
       };
-      localStorage.setItem(BUYER_OFFERS_KEY, JSON.stringify([...existing, buyerOffer]));
+      localStorage.setItem(SHARED_OFFERS_KEY, JSON.stringify([...existing, buyerOffer]));
     } catch (_) {}
   }
 
@@ -417,45 +441,62 @@ export function getRequestsWithZeroOffers(selectedCategories: string[] = [], ser
   );
 }
 
-/* ─── Create chat from offer ─────────────────────────────────────── */
+/* ─── Create chat from offer (unified store) ──────────────────────── */
 
-export function createChatFromOffer(request: ProviderRequest, offer: ProviderOffer): ProviderChat {
-  const chats = readJSON<ProviderChat[]>(CHATS_KEY, []);
-  const existing = chats.find((c) => c.customerId === `req_${request.id}`);
-  if (existing) return existing;
+/**
+ * Creates the chat thread in the unified hormang_chats store.
+ * Uses deterministic ID `${requestId}_${masterId}` so customer can find it.
+ * Called after provider submits offer form.
+ */
+export function createChatFromOffer(
+  request: ProviderRequest,
+  offer: ProviderOffer,
+  masterId: string,
+  providerMeta?: { name: string; initials: string; color: string },
+): void {
+  const chatId = `${request.id}_${masterId}`;
+  const CHATS_KEY = "hormang_chats";
 
-  const initials = request.customerName
+  const existing = readJSON<Chat[]>(CHATS_KEY, []).find((c) => c.id === chatId);
+  if (existing) return;
+
+  const custInitials = request.customerName
     .split(" ")
     .map((p) => p[0] ?? "")
     .join("")
     .toUpperCase()
-    .slice(0, 2);
+    .slice(0, 2) || "FO";
 
   const palette = ["#2563EB", "#7C3AED", "#059669", "#D97706", "#DC2626", "#0891B2"];
   const color = palette[Math.floor(Math.random() * palette.length)];
 
   const offerText = `Taklif narxi: ${offer.priceLabel}\nBajarish muddati: ${offer.completionTime}\n\n${offer.message}`;
 
-  const newChat: ProviderChat = {
-    id: uid(),
-    customerId: `req_${request.id}`,
-    customerName: request.customerName,
-    customerInitials: initials,
-    customerColor: color,
+  const newChat: Chat = {
+    id: chatId,
+    requestId: request.id,
+    masterId,
+    masterName: providerMeta?.name ?? "Ijrochi",
+    masterInitials: providerMeta?.initials ?? "IJ",
+    masterColor: providerMeta?.color ?? "#7C3AED",
+    avgResponseTime: getAvgResponseMinutes(),
     categoryName: request.categoryName,
     categoryEmoji: request.emoji,
+    customerName: request.customerName,
+    customerInitials: custInitials,
+    customerColor: color,
+    providerUnread: 0,
     messages: [
       {
         id: uid(),
-        sender: "provider",
+        sender: "master",
         text: offerText,
         timestamp: new Date().toISOString(),
       },
     ],
-    unread: 0,
     createdAt: new Date().toISOString(),
   };
 
+  const chats = readJSON<Chat[]>(CHATS_KEY, []);
   writeJSON(CHATS_KEY, [...chats, newChat]);
-  return newChat;
 }
