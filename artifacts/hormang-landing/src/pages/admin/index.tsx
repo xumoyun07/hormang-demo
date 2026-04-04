@@ -29,7 +29,7 @@ import {
   Shield, Trash2, Ban, CheckCircle2, Inbox, DollarSign,
   Bell, Menu, ChevronLeft, Plus, MapPin, Clock, Wallet,
 } from "lucide-react";
-import { onStoreChange } from "@/lib/store-events";
+import { onStoreChange, emitStoreChange } from "@/lib/store-events";
 
 /* ─── Credentials ───────────────────────────────────────────────── */
 const ADMIN_USER = "hormangVIP";
@@ -47,6 +47,32 @@ const K = {
   ADMIN_LOG:       "hormang_admin_log",
   PROFILE_PREFIX:  "hormang_local_profile_",
 } as const;
+
+/* ─── Platform reset ─────────────────────────────────────────────── */
+const RESET_KEYS = [
+  "hormang_requests",
+  "hormang_offers",
+  "hormang_provider_offers",
+  "hormang_provider_chats",
+  "hormang_chats",
+  "hormang_provider_requests",
+  "hormang_provider_seen",
+  "hormang_provider_statuses",
+  "hormang_provider_avg_response",
+  "hormang_provider_seed_version",
+];
+
+function resetPlatformData(): boolean {
+  if (!confirm("⚠️ Barcha so'rovlar, takliflar va chatlar o'chiriladi.\nFaqat joriy foydalanuvchining sessiyasi saqlanib qoladi.\n\nDavom etasizmi?")) return false;
+  RESET_KEYS.forEach((key) => localStorage.removeItem(key));
+  // initialize arrays to empty
+  ["hormang_requests","hormang_offers","hormang_provider_offers","hormang_provider_chats","hormang_chats"].forEach((key) => {
+    localStorage.setItem(key, "[]");
+  });
+  logAction("PLATFORM_RESET", "all", "Barcha platform ma'lumotlari tozalandi");
+  emitStoreChange();
+  return true;
+}
 
 /* ─── 9 canonical categories ─────────────────────────────────────── */
 const CATEGORIES = [
@@ -485,6 +511,54 @@ function OverviewSection({ refreshKey }: { refreshKey: number }) {
           </ResponsiveContainer>
         </div>
       )}
+
+      {/* ── Danger Zone ─────────────────────────────────────────── */}
+      <DangerZone />
+    </div>
+  );
+}
+
+function DangerZone() {
+  const [done, setDone] = useState(false);
+
+  function handleReset() {
+    const ok = resetPlatformData();
+    if (ok) setDone(true);
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-red-100 p-5 shadow-sm">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+        </div>
+        <div>
+          <h3 className="font-bold text-gray-900 text-sm">Xavfli zona</h3>
+          <p className="text-xs text-gray-500 mt-0.5">Bu amalni qaytarib bo'lmaydi. Ehtiyotkorlik bilan foydalaning.</p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-4 bg-red-50 rounded-xl px-4 py-3 border border-red-100">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-red-800">Platforma ma'lumotlarini tozalash</p>
+          <p className="text-xs text-red-500 mt-0.5">
+            Barcha so'rovlar, takliflar va chatlar o'chiriladi. Sessiya va profil ma'lumotlari saqlanib qoladi.
+          </p>
+        </div>
+        {done ? (
+          <div className="flex items-center gap-1.5 text-xs font-bold text-green-700 bg-green-50 border border-green-100 px-3 py-1.5 rounded-xl flex-shrink-0">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Tozalandi
+          </div>
+        ) : (
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-1.5 text-xs font-bold text-white px-3 py-1.5 rounded-xl flex-shrink-0 transition-all hover:opacity-90 active:scale-95"
+            style={{ background: "linear-gradient(135deg, #DC2626 0%, #991B1B 100%)" }}
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Tozalash
+          </button>
+        )}
+      </div>
     </div>
   );
 }
