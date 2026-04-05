@@ -160,6 +160,8 @@ export function getOffersByRequestId(requestId: string): Offer[] {
 export function updateOfferStatus(offerId: string, status: "accepted" | "rejected"): void {
   const offers = getOffers().map((o) => o.id === offerId ? { ...o, status } : o);
   writeJSON(OFFERS_KEY, offers);
+  console.log(`[Hormang] ✅ Offer ${status === "accepted" ? "qabul qilindi" : "rad etildi"}`, { offerId, status });
+  emitStoreChange();
 }
 
 /* ─── Chats ──────────────────────────────────────────────────────── */
@@ -241,6 +243,7 @@ export function sendMessage(chatId: string, sender: "customer" | "master", text:
   const providerUnread = sender === "customer" ? prevUnread + 1 : prevUnread;
   chats[idx] = { ...chats[idx], messages: [...chats[idx].messages, msg], providerUnread };
   writeJSON(CHATS_KEY, chats);
+  console.log(`[Hormang] 💬 Xabar yuborildi`, { chatId, sender, text: text.slice(0, 50) });
   return chats[idx];
 }
 

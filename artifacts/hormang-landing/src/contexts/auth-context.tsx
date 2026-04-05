@@ -78,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const switchRole = useCallback((role: Role) => {
     setActiveRoleState(role);
     localStorage.setItem(ACTIVE_ROLE_KEY, role);
+    console.log(`[Hormang] 🔄 Rol almashtirildi → ${role === "provider" ? "Ijrochi" : "Xaridor"}`);
   }, []);
 
   const logout = useCallback(async () => {

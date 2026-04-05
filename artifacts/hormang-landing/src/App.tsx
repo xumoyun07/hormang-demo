@@ -23,6 +23,7 @@ import MigratePage from "@/pages/auth/migrate";
 import ProviderHomePage from "@/pages/provider/home";
 import ProviderRequestsPage from "@/pages/provider/requests";
 import ProviderChatsPage from "@/pages/provider/chats";
+import TestPage from "@/pages/test";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,8 +120,24 @@ function Router() {
       <Route path="/provider/chats">
         {() => <ProtectedRoute component={ProviderChatsPage} />}
       </Route>
+      <Route path="/test" component={TestPage} />
       <Route component={NotFound} />
     </Switch>
+  );
+}
+
+/* Floating dev button — only visible outside /test */
+function DevTestButton() {
+  const [loc, nav] = useLocation();
+  if (loc === "/test") return null;
+  return (
+    <button
+      onClick={() => nav("/test")}
+      title="Test paneli"
+      className="fixed top-3 right-3 z-[9999] w-8 h-8 rounded-xl bg-gray-900/80 backdrop-blur border border-gray-700 text-white flex items-center justify-center text-base shadow-lg hover:bg-gray-800 transition-colors"
+    >
+      🧪
+    </button>
   );
 }
 
@@ -131,6 +148,7 @@ function App() {
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <AuthProvider>
             <Router />
+            <DevTestButton />
           </AuthProvider>
         </WouterRouter>
         <Toaster />
