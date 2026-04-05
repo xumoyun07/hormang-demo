@@ -149,7 +149,7 @@ function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; 
             {joined && (
               <>
                 <span className="text-blue-200 text-xs">·</span>
-                <span className="text-blue-100 text-xs">{joined} dan beri</span>
+                <span className="text-blue-100 text-xs">{joined}</span>
               </>
             )}
           </div>

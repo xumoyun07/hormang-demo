@@ -358,13 +358,14 @@ function RequestsModal({
               requests.map((r, i) => {
                 const urg = urgencyLabel(r.urgency);
                 const offerCnt = getRequestOfferCount(r.id);
+                const isResponded = r.status === "responded";
                 return (
                   <motion.div
                     key={r.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04 }}
-                    className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+                    className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${isResponded ? "border-emerald-100" : "border-gray-100"}`}
                   >
                     {/* Card header */}
                     <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-gray-50">
@@ -373,9 +374,16 @@ function RequestsModal({
                         <p className="font-bold text-sm text-gray-900">{r.categoryName}</p>
                         <p className="text-xs text-gray-400">{r.customerName} · {timeAgo(r.createdAt)}</p>
                       </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${urg.color}`}>
-                        {urg.label}
-                      </span>
+                      {isResponded ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 flex items-center gap-1">
+                          <Check className="w-2.5 h-2.5" />
+                          Taklif yuborildi
+                        </span>
+                      ) : (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${urg.color}`}>
+                          {urg.label}
+                        </span>
+                      )}
                     </div>
 
                     {/* Card body */}
@@ -403,22 +411,29 @@ function RequestsModal({
                       </div>
 
                       {/* Actions */}
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => onIgnore(r.id)}
-                          className="flex-1 h-9 rounded-xl border-2 border-red-100 bg-red-50 text-red-600 font-bold text-xs flex items-center justify-center gap-1 transition-all active:scale-95 hover:bg-red-100"
-                        >
-                          O'tkazish
-                        </button>
-                        <button
-                          onClick={() => onRespond(r.id)}
-                          className="flex-1 h-9 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-sm"
-                          style={{ background: VIOLET }}
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                          Javob berish
-                        </button>
-                      </div>
+                      {isResponded ? (
+                        <div className="h-9 rounded-xl border-2 border-emerald-100 bg-emerald-50 text-emerald-700 font-bold text-xs flex items-center justify-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Taklif yuborilgan — javob kutilmoqda
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => onIgnore(r.id)}
+                            className="flex-1 h-9 rounded-xl border-2 border-red-100 bg-red-50 text-red-600 font-bold text-xs flex items-center justify-center gap-1 transition-all active:scale-95 hover:bg-red-100"
+                          >
+                            O'tkazish
+                          </button>
+                          <button
+                            onClick={() => onRespond(r.id)}
+                            className="flex-1 h-9 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-sm"
+                            style={{ background: VIOLET }}
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            Javob berish
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 );
@@ -447,12 +462,14 @@ function AvailableRequests() {
   const requests = getMatchingRequests(selectedCategories, serviceAreas);
   const seen = getSeenIds();
 
-  const openRequests  = requests.filter((r) => r.status === "open");
-  const newUnseen     = openRequests.filter((r) => !seen.includes(r.id));
-  const zeroOffers    = getRequestsWithZeroOffers(selectedCategories, serviceAreas);
+  // All non-ignored requests (open + responded) — visible to every provider
+  const visibleRequests = requests.filter((r) => r.status !== "ignored");
+  // New/unseen = only open requests the provider hasn't seen yet
+  const newUnseen       = requests.filter((r) => !seen.includes(r.id) && r.status === "open");
+  const zeroOffers      = getRequestsWithZeroOffers(selectedCategories, serviceAreas);
 
   const newCount      = newUnseen.length;
-  const totalOpen     = openRequests.length;
+  const totalOpen     = visibleRequests.length;
   const zeroCount     = zeroOffers.length;
 
   // Toast when new matching requests arrive
@@ -496,7 +513,7 @@ function AvailableRequests() {
 
   // Determine modal request list
   const modalRequests =
-    modal === "all"  ? openRequests :
+    modal === "all"  ? visibleRequests :
     modal === "new"  ? newUnseen :
     modal === "zero" ? zeroOffers :
     [];

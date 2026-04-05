@@ -314,7 +314,7 @@ export default function ChatOffersPage() {
                   </div>
                   <p className="font-bold text-gray-600 mb-1">Takliflar yo'q</p>
                   <p className="text-sm text-gray-400">
-                    So'rov yuborganingizdan keyin ustalar taklif yuborishadi.
+                    So'rov yuborganingizdan keyin ijrochilar taklif yuborishadi.
                   </p>
                 </div>
               ) : (

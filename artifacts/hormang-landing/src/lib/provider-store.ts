@@ -439,7 +439,7 @@ export function getRequestOfferCount(requestId: string): number {
 export function getRequestsWithZeroOffers(selectedCategories: string[] = [], serviceAreas: string[] = []): ProviderRequest[] {
   const offers = getOffers();
   return getMatchingRequests(selectedCategories, serviceAreas).filter(
-    (r) => r.status === "open" && !offers.some((o) => o.requestId === r.id)
+    (r) => r.status !== "ignored" && !offers.some((o) => o.requestId === r.id)
   );
 }
 

@@ -437,7 +437,7 @@ export default function OffersPage() {
             </div>
             <h2 className="font-extrabold text-gray-800 text-lg mb-2">Takliflar yo'q</h2>
             <p className="text-gray-500 text-sm mb-6 max-w-xs mx-auto">
-              So'rov yuborganingizdan so'ng ustalar takliflar yuborishadi.
+              So'rov yuborganingizdan so'ng ijrochilar takliflar yuborishadi.
             </p>
             <Button
               onClick={() => setLocation("/questionnaire")}
