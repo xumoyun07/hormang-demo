@@ -7,12 +7,12 @@
  *  - "Mijoz profilini ko'rish" profile preview button
  *  - No editable avg-response-time field (removed)
  */
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, ChevronLeft, Send, Clock, MapPin, Calendar, FileImage,
   ChevronDown, CheckCircle2, AlertCircle, User,
-  DollarSign,
+  DollarSign, Star, ShoppingBag, CheckCheck, MessageSquare,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -21,6 +21,7 @@ import {
   getAvgResponseMinutes,
   type ProviderRequest,
 } from "@/lib/provider-store";
+import { getRequests, getOffers } from "@/lib/requests-store";
 import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
 
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -60,9 +61,44 @@ function formatAnswerValue(value: unknown): string {
 
 const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district"]);
 
+/* ─── helpers ────────────────────────────────────────────────────── */
+function memberSince(iso: string): string {
+  const d = new Date(iso);
+  const months = [
+    "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+    "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr",
+  ];
+  return `${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function urgencyBadge(u: ProviderRequest["urgency"]): { label: string; cls: string } {
+  if (u === "urgent") return { label: "Shoshilinch", cls: "bg-red-50 text-red-600 border border-red-100" };
+  if (u === "normal") return { label: "Oddiy", cls: "bg-blue-50 text-blue-600 border border-blue-100" };
+  return { label: "Moslashuvchan", cls: "bg-gray-100 text-gray-500 border border-gray-200" };
+}
+
 /* ─── Customer Profile Preview Modal ────────────────────────────── */
 function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; onClose: () => void }) {
-  const initials = request.customerName
+  const { user } = useAuth();
+
+  /* Live stats from localStorage */
+  const stats = useMemo(() => {
+    const reqs = getRequests();
+    const offers = getOffers();
+    const total = reqs.length;
+    const active = reqs.filter((r) => r.status === "open").length;
+    const completed = reqs.filter((r) => r.status === "completed").length;
+    const offersReceived = offers.length;
+    const accepted = offers.filter((o) => o.status === "accepted").length;
+    return { total, active, completed, offersReceived, accepted };
+  }, []);
+
+  /* Name: prefer real user name, fall back to request field */
+  const fullName = user
+    ? `${user.firstName} ${user.lastName}`.trim()
+    : request.customerName;
+
+  const initials = fullName
     .split(" ")
     .map((p) => p[0] ?? "")
     .join("")
@@ -72,6 +108,9 @@ function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; 
   const location = request.district
     ? `${request.district}, ${request.region}`
     : (request.region ?? request.location ?? "");
+
+  const joined = user?.createdAt ? memberSince(user.createdAt) : null;
+  const urgency = urgencyBadge(request.urgency);
 
   return (
     <motion.div
@@ -86,10 +125,10 @@ function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; 
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", stiffness: 420, damping: 38 }}
-        className="bg-white w-full max-w-lg rounded-t-3xl overflow-hidden"
+        className="bg-white w-full max-w-lg rounded-t-3xl overflow-hidden max-h-[90vh] flex flex-col"
       >
         {/* Hero */}
-        <div className="px-5 pt-6 pb-5 text-center" style={{ background: BLUE }}>
+        <div className="px-5 pt-6 pb-5 text-center flex-shrink-0" style={{ background: BLUE }}>
           <div className="flex justify-end mb-2">
             <button
               onClick={onClose}
@@ -101,11 +140,36 @@ function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; 
           <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center mx-auto mb-3">
             <span className="text-2xl font-black text-white">{initials}</span>
           </div>
-          <h3 className="font-extrabold text-white text-lg">{request.customerName}</h3>
-          <p className="text-blue-100 text-sm mt-0.5">Xaridor</p>
+          <h3 className="font-extrabold text-white text-lg">{fullName}</h3>
+          <div className="flex items-center justify-center gap-2 mt-1">
+            <span className="text-blue-100 text-xs font-semibold">Xaridor</span>
+            {joined && (
+              <>
+                <span className="text-blue-200 text-xs">·</span>
+                <span className="text-blue-100 text-xs">{joined} dan beri</span>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="px-5 py-4 space-y-3 max-h-[50vh] overflow-y-auto">
+        {/* Scrollable body */}
+        <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
+
+          {/* Stats grid */}
+          <div className="grid grid-cols-3 gap-2.5">
+            {[
+              { icon: <ShoppingBag className="w-4 h-4 text-blue-500" />, value: stats.total, label: "Jami so'rov" },
+              { icon: <CheckCheck className="w-4 h-4 text-green-500" />, value: stats.completed, label: "Bajarilgan" },
+              { icon: <MessageSquare className="w-4 h-4 text-violet-500" />, value: stats.offersReceived, label: "Taklif olgan" },
+            ].map(({ icon, value, label }) => (
+              <div key={label} className="bg-gray-50 rounded-2xl p-3 border border-gray-100 text-center">
+                <div className="flex justify-center mb-1">{icon}</div>
+                <p className="text-xl font-black text-gray-900">{value}</p>
+                <p className="text-[10px] text-gray-400 font-semibold leading-tight mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
+
           {/* Location */}
           {location && (
             <div className="flex items-center gap-3 bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
@@ -117,33 +181,49 @@ function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; 
             </div>
           )}
 
-          {/* Category */}
-          <div className="flex items-center gap-3 bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
-            <span className="text-lg">{request.emoji}</span>
-            <div>
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">So'rov kategoriyasi</p>
-              <p className="text-sm font-bold text-gray-800">{request.categoryName}</p>
+          {/* Current request info */}
+          <div className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-gray-100">
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Joriy so'rov</p>
             </div>
+            <div className="px-4 py-3 flex items-center gap-3">
+              <span className="text-xl">{request.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-gray-800 truncate">{request.categoryName}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{timeAgo(request.createdAt)}</p>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${urgency.cls}`}>
+                {urgency.label}
+              </span>
+            </div>
+            {request.budgetLabel && request.budgetLabel !== "Taklifga ochiq" && (
+              <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2.5">
+                <DollarSign className="w-4 h-4 text-violet-500 flex-shrink-0" />
+                <div>
+                  <p className="text-[10px] text-violet-500 font-semibold uppercase tracking-wide">Byudjet</p>
+                  <p className="text-sm font-bold text-violet-800">{request.budgetLabel}</p>
+                </div>
+              </div>
+            )}
+            {stats.accepted > 0 && (
+              <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2.5">
+                <Star className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                <div>
+                  <p className="text-[10px] text-amber-600 font-semibold uppercase tracking-wide">Qabul qilingan takliflar</p>
+                  <p className="text-sm font-bold text-gray-800">{stats.accepted} ta</p>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Budget */}
-          {request.budgetLabel && request.budgetLabel !== "Taklifga ochiq" && (
-            <div className="flex items-center gap-3 bg-violet-50 rounded-2xl p-3.5 border border-violet-100">
-              <DollarSign className="w-4 h-4 text-violet-500 flex-shrink-0" />
-              <div>
-                <p className="text-[10px] text-violet-500 font-semibold uppercase tracking-wide">Byudjet</p>
-                <p className="text-sm font-bold text-violet-800">{request.budgetLabel}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Note */}
-          <p className="text-center text-xs text-gray-400 pt-1">
-            Telefon raqam ko'rsatilmaydi — faqat platforma orqali aloqa
+          {/* Privacy note */}
+          <p className="text-center text-xs text-gray-400 pb-1">
+            📵 Telefon raqam ko'rsatilmaydi — faqat platforma orqali aloqa
           </p>
         </div>
 
-        <div className="px-5 pb-6">
+        {/* Footer */}
+        <div className="px-5 pb-6 flex-shrink-0">
           <button
             onClick={onClose}
             className="w-full h-11 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-600 hover:bg-gray-50 transition-colors"
