@@ -693,7 +693,16 @@ export default function UnifiedDashboard() {
   }, [user?.id]);
 
   const isProvider = activeRole === "provider";
-  const hasBothRoles = !!(providerProfile && providerProfile.categories && providerProfile.categories.length > 0);
+  // Show the role-switcher when the user has a provider account.
+  // Sources of truth (any one is sufficient):
+  //   1. Server providerProfile has categories (full server-side provider)
+  //   2. user.role === "provider" (server marks them as provider)
+  //   3. activeRole === "provider" (already switched — they went through onboarding)
+  const hasBothRoles = !!(
+    (providerProfile && providerProfile.categories && providerProfile.categories.length > 0) ||
+    user?.role === "provider" ||
+    activeRole === "provider"
+  );
 
   const accentGradient = isProvider
     ? "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)"
