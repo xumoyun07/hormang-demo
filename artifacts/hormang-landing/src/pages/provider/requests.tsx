@@ -362,14 +362,14 @@ export default function ProviderRequestsPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.split("?")[1] || "");
     const requestId = params.get("requestId");
-    if (requestId && requestId !== processedRequestId.current) {
+    if (requestId && requestId !== processedRequestId.current && requests.length > 0) {
       processedRequestId.current = requestId;
       const req = requests.find((r) => r.id === requestId);
       if (req) {
         setOfferRequest(req);
       }
     }
-  }, []);
+  }, [location, requests]);
 
   const allOpen = requests.filter((r) => r.status === "open");
   const allResponded = requests.filter((r) => r.status === "responded");
