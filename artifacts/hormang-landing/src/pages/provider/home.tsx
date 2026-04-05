@@ -294,6 +294,7 @@ function RequestsModal({
   onRespond,
   onIgnore,
   onMarkAllSeen,
+  isNewModal,
 }: {
   title: string;
   requests: ProviderRequest[];
@@ -301,6 +302,7 @@ function RequestsModal({
   onRespond: (id: string) => void;
   onIgnore: (id: string) => void;
   onMarkAllSeen: () => void;
+  isNewModal: boolean;
 }) {
   return (
     <AnimatePresence>
@@ -322,9 +324,11 @@ function RequestsModal({
           <div className="flex items-center justify-between px-5 py-4 bg-white border-b border-gray-100 rounded-t-3xl">
             <h2 className="font-black text-base text-gray-900">{title}</h2>
             <div className="flex items-center gap-2">
-              {requests.length > 0 && (
+              {isNewModal && requests.length > 0 && (
                 <button
-                  onClick={onMarkAllSeen}
+                  onClick={() => {
+                    onMarkAllSeen();
+                  }}
                   className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors"
                   title="Barchasini ko'rilgan deb belgilash"
                 >
@@ -600,8 +604,9 @@ function AvailableRequests() {
           onClose={() => setModal(null)}
           onRespond={(id) => { handleRespondFromModal(id); }}
           onIgnore={(id) => { handleIgnoreFromModal(id); }}
+          isNewModal={modal === "new"}
           onMarkAllSeen={() => {
-            markAllSeen(modalRequests.map((r) => r.id));
+            modalRequests.forEach((r) => markSeen(r.id));
           }}
         />
       )}
