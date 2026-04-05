@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X, ChevronLeft, Send, Clock, MapPin, Calendar, FileImage,
   ChevronDown, CheckCircle2, AlertCircle, User,
-  DollarSign, Star, ShoppingBag, CheckCheck, MessageSquare,
+  DollarSign, Star, MessageCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -22,6 +22,7 @@ import {
   type ProviderRequest,
 } from "@/lib/provider-store";
 import { getRequests, getOffers } from "@/lib/requests-store";
+import { getLocalProfile } from "@/lib/local-profile";
 import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
 
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -80,18 +81,13 @@ function urgencyBadge(u: ProviderRequest["urgency"]): { label: string; cls: stri
 /* ─── Customer Profile Preview Modal ────────────────────────────── */
 function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; onClose: () => void }) {
   const { user } = useAuth();
+  const [showReviewsSheet, setShowReviewsSheet] = useState(false);
 
-  /* Live stats from localStorage */
-  const stats = useMemo(() => {
-    const reqs = getRequests();
-    const offers = getOffers();
-    const total = reqs.length;
-    const active = reqs.filter((r) => r.status === "open").length;
-    const completed = reqs.filter((r) => r.status === "completed").length;
-    const offersReceived = offers.length;
-    const accepted = offers.filter((o) => o.status === "accepted").length;
-    return { total, active, completed, offersReceived, accepted };
-  }, []);
+  /* Get profile picture */
+  const localProfile = useMemo(
+    () => user ? getLocalProfile(user.id) : {},
+    [user?.id],
+  );
 
   /* Name: prefer real user name, fall back to request field */
   const fullName = user
@@ -110,7 +106,6 @@ function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; 
     : (request.region ?? request.location ?? "");
 
   const joined = user?.createdAt ? memberSince(user.createdAt) : null;
-  const urgency = urgencyBadge(request.urgency);
 
   return (
     <motion.div
@@ -137,9 +132,17 @@ function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; 
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center mx-auto mb-3">
-            <span className="text-2xl font-black text-white">{initials}</span>
-          </div>
+          {localProfile.photoUrl ? (
+            <img
+              src={localProfile.photoUrl}
+              alt={fullName}
+              className="w-16 h-16 rounded-2xl mx-auto mb-3 object-cover border-2 border-white/30"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center mx-auto mb-3">
+              <span className="text-2xl font-black text-white">{initials}</span>
+            </div>
+          )}
           <h3 className="font-extrabold text-white text-lg">{fullName}</h3>
           <div className="flex items-center justify-center gap-2 mt-1">
             <span className="text-blue-100 text-xs font-semibold">Xaridor</span>
@@ -155,21 +158,6 @@ function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; 
         {/* Scrollable body */}
         <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
 
-          {/* Stats grid */}
-          <div className="grid grid-cols-3 gap-2.5">
-            {[
-              { icon: <ShoppingBag className="w-4 h-4 text-blue-500" />, value: stats.total, label: "Jami so'rov" },
-              { icon: <CheckCheck className="w-4 h-4 text-green-500" />, value: stats.completed, label: "Bajarilgan" },
-              { icon: <MessageSquare className="w-4 h-4 text-violet-500" />, value: stats.offersReceived, label: "Taklif olgan" },
-            ].map(({ icon, value, label }) => (
-              <div key={label} className="bg-gray-50 rounded-2xl p-3 border border-gray-100 text-center">
-                <div className="flex justify-center mb-1">{icon}</div>
-                <p className="text-xl font-black text-gray-900">{value}</p>
-                <p className="text-[10px] text-gray-400 font-semibold leading-tight mt-0.5">{label}</p>
-              </div>
-            ))}
-          </div>
-
           {/* Location */}
           {location && (
             <div className="flex items-center gap-3 bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
@@ -181,40 +169,27 @@ function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; 
             </div>
           )}
 
-          {/* Current request info */}
-          <div className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-gray-100">
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Joriy so'rov</p>
+          {/* Reviews section */}
+          <button
+            onClick={() => setShowReviewsSheet(true)}
+            className="w-full bg-gray-50 rounded-2xl p-4 border border-gray-100 hover:border-blue-300 transition-all hover:bg-blue-50/50 group text-left"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide group-hover:text-blue-600">Fikrlar</span>
+              <div className="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star key={i} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                ))}
+              </div>
             </div>
-            <div className="px-4 py-3 flex items-center gap-3">
-              <span className="text-xl">{request.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-800 truncate">{request.categoryName}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{timeAgo(request.createdAt)}</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-lg font-black text-gray-900">0.0</p>
+                <p className="text-xs text-gray-500 mt-0.5">0 ta fikr</p>
               </div>
-              <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${urgency.cls}`}>
-                {urgency.label}
-              </span>
+              <MessageCircle className="w-5 h-5 text-gray-300 group-hover:text-blue-400 transition-colors" />
             </div>
-            {request.budgetLabel && request.budgetLabel !== "Taklifga ochiq" && (
-              <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2.5">
-                <DollarSign className="w-4 h-4 text-violet-500 flex-shrink-0" />
-                <div>
-                  <p className="text-[10px] text-violet-500 font-semibold uppercase tracking-wide">Byudjet</p>
-                  <p className="text-sm font-bold text-violet-800">{request.budgetLabel}</p>
-                </div>
-              </div>
-            )}
-            {stats.accepted > 0 && (
-              <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2.5">
-                <Star className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                <div>
-                  <p className="text-[10px] text-amber-600 font-semibold uppercase tracking-wide">Qabul qilingan takliflar</p>
-                  <p className="text-sm font-bold text-gray-800">{stats.accepted} ta</p>
-                </div>
-              </div>
-            )}
-          </div>
+          </button>
 
           {/* Privacy note */}
           <p className="text-center text-xs text-gray-400 pb-1">
