@@ -180,7 +180,7 @@ function FullscreenSlider({
               onClick={handleIgnore}
               className="flex-1 h-11 rounded-xl border-2 border-red-100 bg-red-50 text-red-600 font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 hover:bg-red-100 transition-all"
             >
-              O'tkazish
+              O'chirish
             </button>
             <button
               onClick={() => onOpenOffer(current)}
@@ -535,7 +535,7 @@ export default function ProviderRequestsPage() {
                         }}
                         className="flex-1 h-9 rounded-xl border-2 border-red-100 bg-red-50 text-red-500 font-bold text-xs flex items-center justify-center active:scale-95 hover:bg-red-100 transition-all"
                       >
-                        O'tkazish
+                        O'chirish
                       </button>
                       <button
                         onClick={() => openOfferForm(r)}
@@ -601,7 +601,7 @@ export default function ProviderRequestsPage() {
         {allIgnored.length > 0 && (
           <div>
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">
-              E'tiborsiz qoldirilganlar ({allIgnored.length})
+              O'chirilgan so'rovlar ({allIgnored.length})
             </p>
             <div className="space-y-2">
               {allIgnored.map((r, i) => (
@@ -623,7 +623,7 @@ export default function ProviderRequestsPage() {
                     <div className="flex flex-col items-end gap-1">
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
                         <AlertOctagon className="w-3 h-3" />
-                        O'tkazib yuborilgan
+                        O'chirilgan
                       </span>
                     </div>
                   </div>
