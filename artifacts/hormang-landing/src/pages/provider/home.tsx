@@ -433,7 +433,7 @@ function RequestsModal({
 /* ─── Available Requests ─────────────────────────────────────────── */
 type ModalType = "all" | "new" | "zero" | null;
 
-function AvailableRequests() {
+function AvailableRequests({ onNavigate }: { onNavigate: (path: string) => void }) {
   useStoreRefresh();
   const [modal, setModal] = useState<ModalType>(null);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -481,9 +481,8 @@ function AvailableRequests() {
   }
 
   function handleRespondFromModal(id: string) {
-    updateProviderRequestStatus(id, "responded");
     markSeen(id);
-    toast({ title: "Javob yuborildi!", description: "Buyurtmachi siz bilan bog'lanadi." });
+    onNavigate(`/provider/requests?requestId=${id}`);
   }
 
   function handleIgnoreFromModal(id: string) {
@@ -748,7 +747,7 @@ export default function ProviderHomePage() {
         <ProfileCompletion />
         <UpcomingServices />
         <EventsSection />
-        <AvailableRequests />
+        <AvailableRequests onNavigate={setLocation} />
         <ShareProfile />
       </div>
 

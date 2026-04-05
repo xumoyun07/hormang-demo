@@ -327,7 +327,7 @@ function OfferDetailModal({
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function ProviderRequestsPage() {
   useStoreRefresh();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const { providerProfile } = useAuth();
   const [activeCategory, setActiveCategory] = useState("Barchasi");
@@ -356,6 +356,20 @@ export default function ProviderRequestsPage() {
     }
     prevUnseenCount.current = unseen.length;
   }, [unseen.length]);
+
+  // Auto-open offer form if requestId query param is present
+  useEffect(() => {
+    const params = new URLSearchParams(location.split("?")[1] || "");
+    const requestId = params.get("requestId");
+    if (requestId) {
+      const req = requests.find((r) => r.id === requestId);
+      if (req) {
+        setOfferRequest(req);
+        // Clean up the URL
+        setLocation("/provider/requests");
+      }
+    }
+  }, [location, requests]);
 
   const allOpen = requests.filter((r) => r.status === "open");
   const allResponded = requests.filter((r) => r.status === "responded");
