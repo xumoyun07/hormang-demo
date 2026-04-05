@@ -293,12 +293,14 @@ function RequestsModal({
   onClose,
   onRespond,
   onIgnore,
+  onMarkAllSeen,
 }: {
   title: string;
   requests: ProviderRequest[];
   onClose: () => void;
   onRespond: (id: string) => void;
   onIgnore: (id: string) => void;
+  onMarkAllSeen: () => void;
 }) {
   return (
     <AnimatePresence>
@@ -319,12 +321,23 @@ function RequestsModal({
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 bg-white border-b border-gray-100 rounded-t-3xl">
             <h2 className="font-black text-base text-gray-900">{title}</h2>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
-            >
-              <X className="w-4 h-4 text-gray-600" />
-            </button>
+            <div className="flex items-center gap-2">
+              {requests.length > 0 && (
+                <button
+                  onClick={onMarkAllSeen}
+                  className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors"
+                  title="Barchasini ko'rilgan deb belgilash"
+                >
+                  Barchasini ko'rilgan deb belgilash
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+              >
+                <X className="w-4 h-4 text-gray-600" />
+              </button>
+            </div>
           </div>
 
           {/* Content */}
@@ -587,6 +600,9 @@ function AvailableRequests() {
           onClose={() => setModal(null)}
           onRespond={(id) => { handleRespondFromModal(id); }}
           onIgnore={(id) => { handleIgnoreFromModal(id); }}
+          onMarkAllSeen={() => {
+            markAllSeen(modalRequests.map((r) => r.id));
+          }}
         />
       )}
     </>
