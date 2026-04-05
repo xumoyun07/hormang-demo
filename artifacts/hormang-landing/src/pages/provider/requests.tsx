@@ -358,18 +358,18 @@ export default function ProviderRequestsPage() {
   }, [unseen.length]);
 
   // Auto-open offer form if requestId query param is present
+  const processedRequestId = useRef<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(location.split("?")[1] || "");
     const requestId = params.get("requestId");
-    if (requestId) {
+    if (requestId && requestId !== processedRequestId.current) {
+      processedRequestId.current = requestId;
       const req = requests.find((r) => r.id === requestId);
       if (req) {
         setOfferRequest(req);
-        // Clean up the URL
-        setLocation("/provider/requests");
       }
     }
-  }, [location, requests]);
+  }, []);
 
   const allOpen = requests.filter((r) => r.status === "open");
   const allResponded = requests.filter((r) => r.status === "responded");
