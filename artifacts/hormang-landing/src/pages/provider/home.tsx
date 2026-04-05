@@ -16,6 +16,7 @@ import {
   CheckCircle2, Clock, MapPin, AlertCircle, Inbox, Send, Check, X,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
+import { OfferForm } from "@/components/offer-form";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -433,10 +434,11 @@ function RequestsModal({
 /* ─── Available Requests ─────────────────────────────────────────── */
 type ModalType = "all" | "new" | "zero" | null;
 
-function AvailableRequests({ onNavigate }: { onNavigate: (path: string) => void }) {
+function AvailableRequests() {
   useStoreRefresh();
   const [modal, setModal] = useState<ModalType>(null);
   const [slideIndex, setSlideIndex] = useState(0);
+  const [offerRequest, setOfferRequest] = useState<ProviderRequest | null>(null);
   const { toast } = useToast();
   const { providerProfile, user: authUser } = useAuth();
 
@@ -482,7 +484,9 @@ function AvailableRequests({ onNavigate }: { onNavigate: (path: string) => void 
 
   function handleRespondFromModal(id: string) {
     markSeen(id);
-    onNavigate(`/provider/requests?requestId=${id}`);
+    const req = requests.find((r) => r.id === id) ?? null;
+    setOfferRequest(req);
+    setModal(null);
   }
 
   function handleIgnoreFromModal(id: string) {
@@ -609,6 +613,17 @@ function AvailableRequests({ onNavigate }: { onNavigate: (path: string) => void 
           }}
         />
       )}
+
+      {/* ── Inline Offer Form ── */}
+      <AnimatePresence>
+        {offerRequest && (
+          <OfferForm
+            request={offerRequest}
+            onClose={() => setOfferRequest(null)}
+            onSubmitted={() => setOfferRequest(null)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }
@@ -747,7 +762,7 @@ export default function ProviderHomePage() {
         <ProfileCompletion />
         <UpcomingServices />
         <EventsSection />
-        <AvailableRequests onNavigate={setLocation} />
+        <AvailableRequests />
         <ShareProfile />
       </div>
 
