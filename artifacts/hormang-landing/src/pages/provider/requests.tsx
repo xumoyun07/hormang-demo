@@ -42,10 +42,6 @@ function urgencyLabel(u: ProviderRequest["urgency"]): { label: string; color: st
 
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 
-const CATEGORIES = [
-  "Barchasi", "Tozalash", "Ta'mirlash", "Enagalik", "Tadbir xizmatlari",
-  "Ko'chirish / yuk yetkazish", "Go'zallik", "Avto xizmat", "Repetitorlar", "Ustachilik",
-];
 
 /* ─── Fullscreen Sliding Modal ───────────────────────────────────── */
 function FullscreenSlider({
@@ -343,6 +339,11 @@ export default function ProviderRequestsPage() {
   const { user } = useAuth();
   const serviceAreas = user?.id ? (getLocalProfile(user.id).serviceAreas ?? []) : [];
   const selectedCategories = providerProfile?.categories ?? [];
+  // Build filter tabs from the provider's own chosen categories.
+  // Only show tabs (including "Barchasi") when provider has 2+ categories.
+  const filterCategories: string[] = selectedCategories.length > 1
+    ? ["Barchasi", ...selectedCategories]
+    : [];
   const requests = getMatchingRequests(selectedCategories, serviceAreas);
   const unseen = getUnseenRequests(selectedCategories, serviceAreas);
 
@@ -436,24 +437,26 @@ export default function ProviderRequestsPage() {
           </motion.div>
         )}
 
-        {/* Category filter */}
-        <div className="flex items-center gap-1 mb-4 -mx-4 px-4 overflow-x-auto pb-1 no-scrollbar">
-          <Filter className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activeCategory === cat
-                  ? "text-white shadow-sm"
-                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-              }`}
-              style={activeCategory === cat ? { background: VIOLET } : {}}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
+        {/* Category filter — only shown when provider has 2+ categories */}
+        {filterCategories.length > 0 && (
+          <div className="flex items-center gap-1 mb-4 -mx-4 px-4 overflow-x-auto pb-1 no-scrollbar">
+            <Filter className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            {filterCategories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  activeCategory === cat
+                    ? "text-white shadow-sm"
+                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                }`}
+                style={activeCategory === cat ? { background: VIOLET } : {}}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Open requests list */}
         {filtered.length === 0 ? (
