@@ -182,7 +182,7 @@ function budgetFrom(answers: Record<string, unknown>): { budget: number | null; 
   const b = answers["budget"] as number | undefined;
   const open = answers["budget_open"] as boolean | undefined;
   if (b && b > 0) return { budget: b, budgetLabel: `${b.toLocaleString()} so'm` };
-  if (open) return { budget: null, budgetLabel: "Murosalashtirish mumkin" };
+  if (open) return { budget: null, budgetLabel: "Taklifga ochiq" };
   return { budget: null, budgetLabel: "Kelishiladi" };
 }
 

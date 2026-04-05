@@ -948,38 +948,72 @@ export default function ProfileSettingsPage() {
             <div className="space-y-3">
               <Field label="Xizmat ko'rsatadigan hududlar" required
                 boost="To'g'ri hududlar → faqat tegishli buyurtmalar ko'rinadi">
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {serviceAreas.map((area) => (
-                    <span key={area}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-700 border border-violet-200">
-                      {area}
-                      <button type="button" onClick={() => setServiceAreas(serviceAreas.filter((a) => a !== area))}
-                        className="ml-0.5 hover:bg-violet-200 rounded-full p-0.5 transition-colors">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <div className="relative">
-                  <select value="" onChange={(e) => {
-                    const val = e.target.value;
-                    if (val && !serviceAreas.includes(val)) {
-                      setServiceAreas([...serviceAreas, val]);
-                      if (!region) setRegion(val);
-                    }
-                  }}
-                    className="w-full h-11 px-4 pr-9 rounded-2xl border-2 border-gray-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 appearance-none">
-                    <option value="">Hudud qo'shish...</option>
-                    {regionsList.filter((r) => !serviceAreas.includes(r.value)).map((r) => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
+                {/* Selected area chips */}
+                {serviceAreas.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {serviceAreas.map((area) => (
+                      <span key={area}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-700 border border-violet-200">
+                        {area}
+                        <button type="button" onClick={() => setServiceAreas(serviceAreas.filter((a) => a !== area))}
+                          className="ml-0.5 hover:bg-violet-200 rounded-full p-0.5 transition-colors">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
                     ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
+                )}
+
+                {/* Dropdown + Select All row */}
+                <div className="flex gap-2 items-center">
+                  <div className="relative flex-1">
+                    <select value="" onChange={(e) => {
+                      const val = e.target.value;
+                      if (val && !serviceAreas.includes(val)) {
+                        setServiceAreas([...serviceAreas, val]);
+                        if (!region) setRegion(val);
+                      }
+                    }}
+                      className="w-full h-11 px-4 pr-9 rounded-2xl border-2 border-gray-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 appearance-none">
+                      <option value="">Hudud qo'shish...</option>
+                      {regionsList.filter((r) => !serviceAreas.includes(r.value)).map((r) => (
+                        <option key={r.value} value={r.value}>{r.label}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  </div>
+
+                  {/* Select All button */}
+                  {serviceAreas.length < regionsList.length && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const all = regionsList.map((r) => r.value);
+                        setServiceAreas(all);
+                        if (!region && all.length > 0) setRegion(all[0]);
+                      }}
+                      className="h-11 px-3 rounded-2xl border-2 border-violet-200 bg-violet-50 text-xs font-bold text-violet-700 hover:bg-violet-100 hover:border-violet-300 transition-colors flex-shrink-0 whitespace-nowrap"
+                    >
+                      Barchasini tanlash
+                    </button>
+                  )}
+
+                  {/* Clear All button */}
+                  {serviceAreas.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setServiceAreas([])}
+                      className="h-11 px-3 rounded-2xl border-2 border-red-100 bg-red-50 text-xs font-bold text-red-500 hover:bg-red-100 hover:border-red-200 transition-colors flex-shrink-0 whitespace-nowrap"
+                    >
+                      Tozalash
+                    </button>
+                  )}
                 </div>
               </Field>
+
               {serviceAreas.length === 0 && (
-                <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-xl">
-                  Hech bo'lmasa bitta hudud tanlang — aks holda barcha so'rovlar ko'rinadi
+                <p className="text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl font-medium">
+                  ⚠️ Hech bo'lmasa bitta hudud tanlang — aks holda hech qanday so'rov ko'rinmaydi
                 </p>
               )}
             </div>

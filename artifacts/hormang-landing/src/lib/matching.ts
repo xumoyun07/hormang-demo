@@ -25,7 +25,9 @@ export function doesLocationMatch(
   requestRegion: string | undefined | null,
   providerServiceAreas: string[],
 ): boolean {
-  if (!providerServiceAreas || providerServiceAreas.length === 0) return true;
+  // Provider must select at least one area; no selection → show nothing
+  if (!providerServiceAreas || providerServiceAreas.length === 0) return false;
+  // Request without a region is visible to all providers who have at least one area
   if (!requestRegion) return true;
 
   const normReq = requestRegion.toLowerCase().trim();
