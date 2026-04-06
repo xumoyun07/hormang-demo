@@ -626,7 +626,8 @@ export default function QuestionnairePage() {
 
   function handleSeeProviders() {
     const cat = getCategoryById(categoryId);
-    const req = saveNewRequest(categoryId, cat?.name ?? categoryId, answers, undefined, user?.id);
+    const customerName = user ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || undefined : undefined;
+    const req = saveNewRequest(categoryId, cat?.name ?? categoryId, answers, undefined, user?.id, customerName);
     setCurrentRequestId(req.id);
     setStage("recommendations");
   }

@@ -15,6 +15,7 @@ import { emitStoreChange } from "./store-events";
 export interface CustomerRequest {
   id: string;
   customerId?: string;       // The user.id of the customer who created this request
+  customerName?: string;     // Display name of the customer (shown on provider side)
   categoryId: string;
   categoryName: string;
   emoji: string;
@@ -123,6 +124,7 @@ export function saveNewRequest(
   answers: Record<string, unknown>,
   location?: { region?: string; district?: string },
   customerId?: string,
+  customerName?: string,
 ): CustomerRequest {
   const region = location?.region || (answers["region"] as string | undefined);
   const district = location?.district || (answers["district"] as string | undefined);
@@ -130,6 +132,7 @@ export function saveNewRequest(
   const req: CustomerRequest = {
     id: uid(),
     customerId: customerId || undefined,
+    customerName: customerName || undefined,
     categoryId,
     categoryName,
     emoji: CATEGORY_EMOJIS[categoryId] ?? "📋",
