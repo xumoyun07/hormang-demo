@@ -10,10 +10,10 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, Send, Inbox, MapPin, Filter, X, Check, CheckCircle2,
-  Eye, Clock, DollarSign, Calendar, FileText, AlertOctagon,
+  Eye, Clock, DollarSign, Calendar, FileText, AlertOctagon, User,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
-import { OfferForm } from "@/components/offer-form";
+import { OfferForm, CustomerProfileModal } from "@/components/offer-form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { getLocalProfile } from "@/lib/local-profile";
@@ -22,6 +22,7 @@ import {
   updateProviderRequestStatus, getOfferByRequestId, getRequestOfferCount,
   type ProviderRequest, type ProviderOffer,
 } from "@/lib/provider-store";
+import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
@@ -41,7 +42,15 @@ function urgencyLabel(u: ProviderRequest["urgency"]): { label: string; color: st
 }
 
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
+const BLUE   = "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)";
 
+const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district"]);
+
+function formatAnswerValue(value: unknown): string {
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "boolean") return value ? "Ha" : "Yo'q";
+  return String(value ?? "");
+}
 
 /* ─── Fullscreen Sliding Modal ───────────────────────────────────── */
 function FullscreenSlider({
@@ -214,112 +223,229 @@ function OfferDetailModal({
   offer: ProviderOffer;
   onClose: () => void;
 }) {
+  const [showCustomerProfile, setShowCustomerProfile] = useState(false);
+
+  const urg = urgencyLabel(request.urgency);
+
+  /* Build Q&A pairs the same way the offer form does */
+  const allQuestions = getAllQuestionsForCategory(request.categoryId);
+  const qaPairs = allQuestions
+    .filter((q) => !SKIP_ANSWER_KEYS.has(q.id))
+    .map((q) => {
+      const raw = request.answers?.[q.id];
+      if (raw === null || raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0)) return null;
+      return { label: q.label, value: formatAnswerValue(raw) };
+    })
+    .filter(Boolean) as { label: string; value: string }[];
+
   return (
-    <div
-      className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
+    <>
       <motion.div
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", stiffness: 400, damping: 40 }}
-        className="w-full max-w-lg bg-white rounded-t-3xl overflow-hidden"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center"
+        onClick={(e) => e.target === e.currentTarget && onClose()}
       >
-        {/* Header */}
-        <div className="px-5 pt-5 pb-3 border-b border-gray-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{request.emoji}</span>
-            <div>
-              <p className="font-extrabold text-sm text-gray-900">Yuborilgan taklif</p>
-              <p className="text-xs text-gray-400">{request.categoryName} · {request.customerName}</p>
+        <motion.div
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "spring", stiffness: 400, damping: 40 }}
+          className="w-full max-w-lg bg-white rounded-t-3xl max-h-[96vh] flex flex-col"
+        >
+          {/* Header */}
+          <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-gray-100 flex-shrink-0">
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="flex-1">
+              <h2 className="font-extrabold text-base text-gray-900">Yuborilgan taklif</h2>
+              <p className="text-xs text-gray-400">Ko'rish rejimi · o'zgartirib bo'lmaydi</p>
             </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Offer details */}
-        <div className="px-5 py-4 space-y-3 max-h-[70vh] overflow-y-auto">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-violet-50 rounded-2xl p-3">
-              <div className="flex items-center gap-1.5 mb-1">
-                <DollarSign className="w-3.5 h-3.5 text-violet-600" />
-                <p className="text-[10px] font-bold text-violet-600 uppercase tracking-wide">Taklif narxi</p>
-              </div>
-              <p className="text-sm font-extrabold text-violet-800">{offer.priceLabel}</p>
-            </div>
-            <div className="bg-gray-50 rounded-2xl p-3">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Clock className="w-3.5 h-3.5 text-gray-500" />
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Bajarish muddati</p>
-              </div>
-              <p className="text-sm font-bold text-gray-800">{offer.completionTime}</p>
-            </div>
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
-          {offer.startDate && (
-            <div className="bg-gray-50 rounded-2xl p-3">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Calendar className="w-3.5 h-3.5 text-gray-500" />
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Boshlanish sanasi</p>
-              </div>
-              <p className="text-sm font-bold text-gray-800">{offer.startDate}</p>
-            </div>
-          )}
+          {/* Scrollable body */}
+          <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
 
-          <div className="bg-gray-50 rounded-2xl p-4">
-            <div className="flex items-center gap-1.5 mb-2">
-              <FileText className="w-3.5 h-3.5 text-gray-500" />
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Xabar</p>
+            {/* ── Section label ── */}
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mijoz so'rovi</p>
+
+            {/* ── Request Summary ── */}
+            <div className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
+              {/* Top bar */}
+              <div className="px-4 pt-4 pb-3 border-b border-gray-100">
+                <div className="flex items-start gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-violet-50 flex items-center justify-center flex-shrink-0 text-2xl">
+                    {request.emoji}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-extrabold text-sm text-gray-900">{request.categoryName}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{request.customerName} · {timeAgo(request.createdAt)}</p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${urg.color}`}>
+                    {urg.label}
+                  </span>
+                </div>
+
+                {/* Key details row */}
+                <div className="flex flex-wrap gap-3 mt-3">
+                  {request.location && (
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <MapPin className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
+                      <span>{request.location}</span>
+                    </div>
+                  )}
+                  {request.budgetLabel && (
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-violet-700">
+                      <DollarSign className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{request.budgetLabel}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <Clock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                    <span>{timeAgo(request.createdAt)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Q&A */}
+              {qaPairs.length > 0 && (
+                <div className="px-4 py-3 space-y-2.5 border-b border-gray-100">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Savol · Javob</p>
+                  {qaPairs.map((pair, i) => (
+                    <div key={i} className="flex gap-2 text-xs">
+                      <div className="flex-shrink-0 w-1 rounded-full bg-violet-200 self-stretch" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-gray-400 font-medium">{pair.label}:</span>
+                        <span className="font-bold text-gray-800 ml-1">{pair.value}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Customer profile link */}
+              <div className="px-4 py-3">
+                <button
+                  onClick={() => setShowCustomerProfile(true)}
+                  className="flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  Mijoz profilini ko'rish
+                </button>
+              </div>
             </div>
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{offer.message}</p>
+
+            {/* ── Divider ── */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-gray-200" />
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mening taklifim</p>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+
+            {/* ── Offer status badge ── */}
+            <div className={`flex items-center gap-2.5 rounded-2xl px-4 py-3 border ${
+              offer.status === "accepted" ? "bg-emerald-50 border-emerald-200" :
+              offer.status === "rejected" ? "bg-red-50 border-red-200" :
+              "bg-amber-50 border-amber-200"
+            }`}>
+              <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                offer.status === "accepted" ? "bg-emerald-500" :
+                offer.status === "rejected" ? "bg-red-500" : "bg-amber-400"
+              }`} />
+              <p className={`text-xs font-bold ${
+                offer.status === "accepted" ? "text-emerald-700" :
+                offer.status === "rejected" ? "text-red-700" : "text-amber-700"
+              }`}>
+                {offer.status === "accepted" ? "Taklif qabul qilindi" :
+                 offer.status === "rejected" ? "Taklif rad etildi" : "Javob kutilmoqda"}
+              </p>
+            </div>
+
+            {/* ── Price + Time grid ── */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-violet-50 rounded-2xl p-3 border border-violet-100">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <DollarSign className="w-3.5 h-3.5 text-violet-600" />
+                  <p className="text-[10px] font-bold text-violet-600 uppercase tracking-wide">Taklif narxi</p>
+                </div>
+                <p className="text-sm font-extrabold text-violet-800">{offer.priceLabel}</p>
+              </div>
+              <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Clock className="w-3.5 h-3.5 text-gray-500" />
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Bajarish muddati</p>
+                </div>
+                <p className="text-sm font-bold text-gray-800">{offer.completionTime}</p>
+              </div>
+            </div>
+
+            {/* ── Start date ── */}
+            {offer.startDate && (
+              <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Calendar className="w-3.5 h-3.5 text-gray-500" />
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Boshlanish sanasi</p>
+                </div>
+                <p className="text-sm font-bold text-gray-800">{offer.startDate}</p>
+              </div>
+            )}
+
+            {/* ── Message ── */}
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+              <div className="flex items-center gap-1.5 mb-2">
+                <FileText className="w-3.5 h-3.5 text-gray-500" />
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Xabar</p>
+              </div>
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{offer.message}</p>
+            </div>
+
+            {/* ── Attached files ── */}
+            {offer.fileUrls && offer.fileUrls.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Biriktirilgan fayllar</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {offer.fileUrls.map((url, i) => (
+                    <img key={i} src={url} alt={`Fayl ${i + 1}`}
+                      className="aspect-square object-cover rounded-xl border border-gray-200" />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {offer.fileUrls && offer.fileUrls.length > 0 && (
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Biriktirilgan fayllar</p>
-              <div className="grid grid-cols-3 gap-2">
-                {offer.fileUrls.map((url, i) => (
-                  <img key={i} src={url} alt={`Fayl ${i + 1}`}
-                    className="aspect-square object-cover rounded-xl border border-gray-200" />
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 py-2">
-            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-              offer.status === "accepted" ? "bg-emerald-500" :
-              offer.status === "rejected" ? "bg-red-500" : "bg-amber-400"
-            }`} />
-            <p className="text-xs font-semibold text-gray-600">
-              Holat:{" "}
-              <span className={
-                offer.status === "accepted" ? "text-emerald-600" :
-                offer.status === "rejected" ? "text-red-600" : "text-amber-600"
-              }>
-                {offer.status === "accepted" ? "Qabul qilindi" :
-                 offer.status === "rejected" ? "Rad etildi" : "Kutilmoqda"}
-              </span>
-            </p>
+          {/* Footer */}
+          <div className="px-5 pb-6 pt-2 flex-shrink-0 border-t border-gray-100">
+            <button
+              onClick={onClose}
+              className="w-full h-11 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              Yopish
+            </button>
           </div>
-        </div>
-
-        <div className="px-5 pb-6">
-          <button
-            onClick={onClose}
-            className="w-full h-11 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-600 hover:bg-gray-50"
-          >
-            Yopish
-          </button>
-        </div>
+        </motion.div>
       </motion.div>
-    </div>
+
+      {/* Customer profile overlay */}
+      <AnimatePresence>
+        {showCustomerProfile && (
+          <CustomerProfileModal
+            request={request}
+            onClose={() => setShowCustomerProfile(false)}
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 

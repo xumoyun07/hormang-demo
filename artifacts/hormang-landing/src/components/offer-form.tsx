@@ -7,7 +7,7 @@
  *  - "Mijoz profilini ko'rish" profile preview button
  *  - No editable avg-response-time field (removed)
  */
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, ChevronLeft, Send, Clock, MapPin, Calendar, FileImage,
@@ -22,7 +22,6 @@ import {
   type ProviderRequest,
 } from "@/lib/provider-store";
 import { getRequests, getOffers } from "@/lib/requests-store";
-import { getLocalProfile } from "@/lib/local-profile";
 import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
 
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -79,33 +78,25 @@ function urgencyBadge(u: ProviderRequest["urgency"]): { label: string; cls: stri
 }
 
 /* ─── Customer Profile Preview Modal ────────────────────────────── */
-function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; onClose: () => void }) {
-  const { user } = useAuth();
+export function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; onClose: () => void }) {
   const [showReviewsSheet, setShowReviewsSheet] = useState(false);
 
-  /* Get profile picture */
-  const localProfile = useMemo(
-    () => user ? getLocalProfile(user.id) : {},
-    [user?.id],
-  );
-
-  /* Name: prefer real user name, fall back to request field */
-  const fullName = user
-    ? `${user.firstName} ${user.lastName}`.trim()
-    : request.customerName;
+  /* Customer name — use request field (provider never sees real customer account data) */
+  const fullName = request.customerName?.trim() || "Foydalanuvchi";
 
   const initials = fullName
     .split(" ")
     .map((p) => p[0] ?? "")
     .join("")
     .toUpperCase()
-    .slice(0, 2) || "M";
+    .slice(0, 2) || "FO";
 
   const location = request.district
     ? `${request.district}, ${request.region}`
     : (request.region ?? request.location ?? "");
 
-  const joined = user?.createdAt ? memberSince(user.createdAt) : null;
+  /* Use request creation date as "member since" proxy */
+  const joined = request.createdAt ? memberSince(request.createdAt) : null;
 
   return (
     <motion.div
@@ -132,17 +123,9 @@ function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; 
               <X className="w-4 h-4" />
             </button>
           </div>
-          {localProfile.photoUrl ? (
-            <img
-              src={localProfile.photoUrl}
-              alt={fullName}
-              className="w-16 h-16 rounded-2xl mx-auto mb-3 object-cover border-2 border-white/30"
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center mx-auto mb-3">
-              <span className="text-2xl font-black text-white">{initials}</span>
-            </div>
-          )}
+          <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center mx-auto mb-3">
+            <span className="text-2xl font-black text-white">{initials}</span>
+          </div>
           <h3 className="font-extrabold text-white text-lg">{fullName}</h3>
           <div className="flex items-center justify-center gap-2 mt-1">
             <span className="text-blue-100 text-xs font-semibold">Xaridor</span>
