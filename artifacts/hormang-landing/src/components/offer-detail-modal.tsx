@@ -193,6 +193,7 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
   const req = getRequestById(offer.requestId);
   const isAccepted = offer.status === "accepted";
   const isRejected = offer.status === "rejected";
+  const providerLocal = getLocalProfile(offer.masterId);
 
   /* Build Q&A pairs from request */
   const allQuestions = req ? getAllQuestionsForCategory(req.categoryId) : [];
@@ -282,12 +283,20 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
               {/* Provider header */}
               <div className="px-4 pt-4 pb-3 border-b border-gray-100">
                 <div className="flex items-start gap-3">
-                  <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
-                    style={{ background: offer.masterColor }}
-                  >
-                    {offer.masterInitials}
-                  </div>
+                  {providerLocal.photoUrl ? (
+                    <img
+                      src={providerLocal.photoUrl}
+                      alt={offer.masterName}
+                      className="w-12 h-12 rounded-2xl object-cover border border-gray-200 flex-shrink-0 shadow-sm"
+                    />
+                  ) : (
+                    <div
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
+                      style={{ background: offer.masterColor }}
+                    >
+                      {offer.masterInitials}
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="font-extrabold text-sm text-gray-900">{offer.masterName}</p>
                     <div className="flex items-center gap-1 mt-0.5">
