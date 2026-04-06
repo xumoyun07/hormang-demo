@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { getMe, logoutUser, refreshToken, type SafeUser, type ProviderProfile } from "@/lib/auth-client";
+import { saveCustomerToRegistry } from "@/lib/requests-store";
 
 type Role = "buyer" | "provider";
 
@@ -20,6 +21,19 @@ function getSavedRole(fallback: Role): Role {
   const saved = localStorage.getItem(ACTIVE_ROLE_KEY);
   if (saved === "buyer" || saved === "provider") return saved;
   return fallback;
+}
+
+function registryName(u: SafeUser): string {
+  return `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim();
+}
+
+function registryInitials(u: SafeUser): string {
+  return `${u.firstName?.[0] ?? ""}${u.lastName?.[0] ?? ""}`.toUpperCase() || "?";
+}
+
+function persistUserToRegistry(u: SafeUser) {
+  const name = registryName(u);
+  if (name) saveCustomerToRegistry(u.id, name, registryInitials(u));
 }
 
 const AuthContext = createContext<AuthState>({
@@ -45,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     getMe()
       .then(({ user, providerProfile }) => {
+        persistUserToRegistry(user);
         setUser(user);
         setProviderProfileState(providerProfile);
         setActiveRoleState(getSavedRole(user.role));
@@ -54,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (newToken) {
           getMe()
             .then(({ user, providerProfile }) => {
+              persistUserToRegistry(user);
               setUser(user);
               setProviderProfileState(providerProfile);
               setActiveRoleState(getSavedRole(user.role));
@@ -65,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setAuth = useCallback((u: SafeUser, profile?: ProviderProfile | null) => {
+    persistUserToRegistry(u);
     setUser(u);
     setProviderProfileState(profile ?? null);
     const saved = getSavedRole(u.role);

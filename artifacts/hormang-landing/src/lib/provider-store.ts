@@ -14,8 +14,9 @@
 import { emitStoreChange } from "./store-events";
 import type { CustomerRequest, Chat } from "./requests-store";
 import {
+  getCustomerFromRegistry,
   getChatById, sendMessage, markProviderChatRead,
-  getChats,
+  getChats, getRequestById,
 } from "./requests-store";
 import { doesRequestMatch } from "./matching";
 
@@ -151,11 +152,17 @@ clearLegacyData();
 
 /** Convert unified Chat → ProviderChat (for provider UI) */
 function chatToProviderChat(c: Chat): ProviderChat {
+  /* Try registry first (real-time name if customer has logged in on this device) */
+  const req = getRequestById(c.requestId);
+  const reg = req?.customerId ? getCustomerFromRegistry(req.customerId) : null;
+  const customerName = reg?.name || c.customerName || "Xaridor";
+  const customerInitials = reg?.initials || c.customerInitials || "X";
+
   return {
     id: c.id,
-    customerId: c.requestId,
-    customerName: c.customerName || "Foydalanuvchi",
-    customerInitials: c.customerInitials || "FO",
+    customerId: req?.customerId ?? c.requestId,
+    customerName,
+    customerInitials,
     customerColor: c.customerColor || "#7C3AED",
     categoryName: c.categoryName,
     categoryEmoji: c.categoryEmoji || "📋",
@@ -229,7 +236,10 @@ function adaptBuyerRequest(req: CustomerRequest, actionStatus?: ProviderActionSt
     budgetLabel,
     urgency: urgencyFrom(req.answers),
     location: req.region ?? locationFrom(req.answers),
-    customerName: req.customerName || "Foydalanuvchi",
+    customerName: (() => {
+      const reg = req.customerId ? getCustomerFromRegistry(req.customerId) : null;
+      return reg?.name || req.customerName || "Xaridor";
+    })(),
     customerId: req.customerId ?? "",
     createdAt: req.createdAt,
     status,
@@ -506,12 +516,15 @@ export function createChatFromOffer(
   const existing = readJSON<Chat[]>(CHATS_KEY, []).find((c) => c.id === chatId);
   if (existing) return;
 
-  const custInitials = request.customerName
+  /* Resolve real customer name from registry (covers old requests without stored name) */
+  const regEntry = request.customerId ? getCustomerFromRegistry(request.customerId) : null;
+  const resolvedCustomerName = regEntry?.name || request.customerName || "Xaridor";
+  const custInitials = regEntry?.initials || (resolvedCustomerName
     .split(" ")
     .map((p) => p[0] ?? "")
     .join("")
     .toUpperCase()
-    .slice(0, 2) || "FO";
+    .slice(0, 2) || "X");
 
   const palette = ["#2563EB", "#7C3AED", "#059669", "#D97706", "#DC2626", "#0891B2"];
   const color = palette[Math.floor(Math.random() * palette.length)];
@@ -528,7 +541,7 @@ export function createChatFromOffer(
     avgResponseTime: getAvgResponseMinutes(),
     categoryName: request.categoryName,
     categoryEmoji: request.emoji,
-    customerName: request.customerName,
+    customerName: resolvedCustomerName,
     customerInitials: custInitials,
     customerColor: color,
     providerUnread: 0,

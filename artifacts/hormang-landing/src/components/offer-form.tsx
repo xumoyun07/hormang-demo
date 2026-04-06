@@ -82,7 +82,7 @@ export function CustomerProfileModal({ request, onClose }: { request: ProviderRe
   const [showReviewsSheet, setShowReviewsSheet] = useState(false);
 
   /* Customer name — use request field (provider never sees real customer account data) */
-  const fullName = request.customerName?.trim() || "Foydalanuvchi";
+  const fullName = request.customerName?.trim() || "Xaridor";
 
   const initials = fullName
     .split(" ")

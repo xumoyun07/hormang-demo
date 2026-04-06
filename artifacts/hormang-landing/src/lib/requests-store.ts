@@ -80,6 +80,28 @@ export interface Chat {
 const REQUESTS_KEY = "hormang_requests";
 const OFFERS_KEY = "hormang_offers";
 const CHATS_KEY = "hormang_chats";
+const CUSTOMER_REGISTRY_KEY = "hormang_customer_registry";
+
+/* ─── Customer Name Registry ─────────────────────────────────────── */
+/**
+ * A lightweight userId → { name, initials } map written to localStorage
+ * whenever a user logs in. Providers use this to show real customer names
+ * on requests and chats without a server round-trip.
+ */
+interface CustomerEntry { name: string; initials: string }
+
+export function saveCustomerToRegistry(userId: string, name: string, initials: string): void {
+  if (!userId || !name) return;
+  const reg = readJSON<Record<string, CustomerEntry>>(CUSTOMER_REGISTRY_KEY, {});
+  reg[userId] = { name, initials };
+  localStorage.setItem(CUSTOMER_REGISTRY_KEY, JSON.stringify(reg));
+}
+
+export function getCustomerFromRegistry(userId: string): CustomerEntry | null {
+  if (!userId) return null;
+  const reg = readJSON<Record<string, CustomerEntry>>(CUSTOMER_REGISTRY_KEY, {});
+  return reg[userId] ?? null;
+}
 
 /** Category emoji map */
 const CATEGORY_EMOJIS: Record<string, string> = {
@@ -249,8 +271,8 @@ export function getOrCreateChat(
     avgResponseTime,
     categoryName,
     categoryEmoji: customerMeta?.emoji ?? "📋",
-    customerName: customerMeta?.name ?? "Foydalanuvchi",
-    customerInitials: customerMeta?.initials ?? "FO",
+    customerName: customerMeta?.name ?? "Xaridor",
+    customerInitials: customerMeta?.initials ?? "X",
     customerColor: customerMeta?.color ?? "#2563EB",
     providerUnread: 0,
     messages: [],
