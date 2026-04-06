@@ -8,16 +8,17 @@ import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageCircle, Clock, ChevronRight, Check, X,
-  Inbox, LayoutList, ChevronLeft,
+  Inbox, LayoutList, ChevronLeft, FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import {
-  getOffersByCustomer, getChatsByCustomer, getRequestById, getOrCreateChat,
+  getOffersByCustomer, getChatsByCustomer, getRequestById,
   updateOfferStatus,
   type Offer, type Chat,
 } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
+import { OfferDetailModal } from "@/components/offer-detail-modal";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Tab type ───────────────────────────────────────────────────── */
@@ -38,133 +39,144 @@ function OfferCard({ offer, index }: {
   offer: Offer;
   index: number;
 }) {
-  const [, setLocation] = useLocation();
+  const [showDetail, setShowDetail] = useState(false);
+
   const req = getRequestById(offer.requestId);
   const isAccepted = offer.status === "accepted";
   const isRejected = offer.status === "rejected";
 
-  function openChat() {
-    const chat = getOrCreateChat(
-      offer.requestId, offer.masterId, offer.masterName,
-      offer.masterInitials, offer.masterColor,
-      offer.avgResponseTime, req?.categoryName ?? ""
-    );
-    setLocation(`/chat/${chat.id}`);
-  }
-
-  function accept() {
+  function accept(e: React.MouseEvent) {
+    e.stopPropagation();
     updateOfferStatus(offer.id, "accepted");
   }
 
-  function reject() {
+  function reject(e: React.MouseEvent) {
+    e.stopPropagation();
     updateOfferStatus(offer.id, "rejected");
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, duration: 0.35 }}
-      className={`bg-white rounded-2xl border overflow-hidden transition-all duration-200 ${
-        isAccepted ? "border-emerald-200"
-        : isRejected ? "border-gray-100 opacity-55"
-        : "border-gray-100 hover:border-blue-100 hover:shadow-sm"
-      }`}
-    >
-      {/* Request context strip */}
-      {req && (
-        <div className="px-4 pt-3 pb-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-          <span className="text-sm">{req.emoji}</span>
-          <p className="text-xs font-semibold text-gray-500 flex-1 truncate">{req.categoryName}</p>
-          <span className="text-[10px] text-gray-400">{formatDate(offer.createdAt)}</span>
-        </div>
-      )}
-
-      <div className="p-4">
-        {/* Master row */}
-        <div className="flex items-start gap-3 mb-3">
-          <div
-            className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
-            style={{ background: offer.masterColor }}
-          >
-            {offer.masterInitials}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-bold text-sm text-gray-900">{offer.masterName}</p>
-              {isAccepted && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600">
-                  Qabul qilingan
-                </span>
-              )}
-              {isRejected && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                  Rad etilgan
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1 mt-0.5">
-              <Clock className="w-3 h-3 text-gray-400" />
-              <span className="text-[11px] text-gray-400 font-medium">
-                ~{offer.avgResponseTime} daqiqa
-              </span>
-            </div>
-          </div>
-          {/* Price */}
-          <div className="flex-shrink-0 text-right">
-            <p className="font-extrabold text-base text-blue-600">{offer.price.toLocaleString()}</p>
-            <p className="text-[10px] text-gray-400">so'm</p>
-          </div>
-        </div>
-
-        {/* Message */}
-        <div className="bg-gray-50 rounded-xl px-3 py-2.5 mb-3">
-          <p className="text-sm text-gray-600 leading-relaxed">{offer.message}</p>
-        </div>
-
-        {/* Actions */}
-        {!isRejected && (
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={openChat}
-              className="flex-1 h-9 text-xs font-bold border-gray-200 gap-1.5"
-            >
-              <MessageCircle className="w-3.5 h-3.5" />
-              Chat ochish
-            </Button>
-            {!isAccepted ? (
-              <>
-                <Button
-                  size="sm"
-                  onClick={accept}
-                  className="flex-1 h-9 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 gap-1.5"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  Qabul
-                </Button>
-                <button
-                  onClick={reject}
-                  className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </>
-            ) : (
-              <Button
-                size="sm"
-                onClick={openChat}
-                className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                Chatga o'tish
-              </Button>
-            )}
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.05, duration: 0.35 }}
+        onClick={() => setShowDetail(true)}
+        className={`bg-white rounded-2xl border overflow-hidden transition-all duration-200 cursor-pointer ${
+          isAccepted ? "border-emerald-200"
+          : isRejected ? "border-gray-100 opacity-55"
+          : "border-gray-100 hover:border-blue-100 hover:shadow-md"
+        }`}
+      >
+        {/* Request context strip */}
+        {req && (
+          <div className="px-4 pt-3 pb-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+            <span className="text-sm">{req.emoji}</span>
+            <p className="text-xs font-semibold text-gray-500 flex-1 truncate">{req.categoryName}</p>
+            <span className="text-[10px] text-gray-400">{formatDate(offer.createdAt)}</span>
           </div>
         )}
-      </div>
-    </motion.div>
+
+        <div className="p-4">
+          {/* Provider row */}
+          <div className="flex items-start gap-3 mb-3">
+            <div
+              className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
+              style={{ background: offer.masterColor }}
+            >
+              {offer.masterInitials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-bold text-sm text-gray-900">{offer.masterName}</p>
+                {isAccepted && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600">
+                    Qabul qilingan
+                  </span>
+                )}
+                {isRejected && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                    Rad etilgan
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <Clock className="w-3 h-3 text-gray-400" />
+                <span className="text-[11px] text-gray-400 font-medium">
+                  ~{offer.avgResponseTime} daqiqa
+                </span>
+              </div>
+            </div>
+            {/* Price */}
+            <div className="flex-shrink-0 text-right">
+              <p className="font-extrabold text-base text-blue-600">{offer.price.toLocaleString()}</p>
+              <p className="text-[10px] text-gray-400">so'm</p>
+            </div>
+          </div>
+
+          {/* Message preview */}
+          <div className="bg-gray-50 rounded-xl px-3 py-2.5 mb-3">
+            <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">{offer.message}</p>
+          </div>
+
+          {/* File indicator */}
+          {offer.fileUrls && offer.fileUrls.length > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-3">
+              <FileText className="w-3.5 h-3.5" />
+              <span>{offer.fileUrls.length} ta fayl ilova qilingan</span>
+            </div>
+          )}
+
+          {/* Actions */}
+          {!isRejected && (
+            <div className="flex gap-2">
+              {/* "Batafsil" opens detail modal */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => { e.stopPropagation(); setShowDetail(true); }}
+                className="flex-1 h-9 text-xs font-bold border-blue-200 text-blue-600 hover:bg-blue-50 gap-1.5"
+              >
+                Batafsil
+              </Button>
+              {!isAccepted ? (
+                <>
+                  <Button
+                    size="sm"
+                    onClick={accept}
+                    className="flex-1 h-9 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 gap-1.5"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    Qabul
+                  </Button>
+                  <button
+                    onClick={reject}
+                    className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-colors flex-shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); setShowDetail(true); }}
+                  className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  Batafsil
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </motion.div>
+
+      <AnimatePresence>
+        {showDetail && (
+          <OfferDetailModal offer={offer} onClose={() => setShowDetail(false)} />
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 

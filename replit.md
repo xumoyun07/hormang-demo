@@ -168,11 +168,16 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 - On submit: calls `saveOffer(data, providerMeta)` which syncs to both `hormang_provider_offers` AND `hormang_offers` (customer side)
 - Provider identity taken from `useAuth().user` at submit time
 
-**Offers Page** (`pages/offers.tsx`):
-- Each offer card has "Profil" link + clickable provider avatar → opens `ProviderProfileModal`
-- `ProviderProfileModal`: shows provider photo (from `getLocalProfile(masterId)`), name, avg response time, service areas, portfolio items
-- Displays `priceLabel`, `completionTime`, `startDate`, `fileUrls` from the enriched offer data
-- "Qaytarish" (restore rejected offer) works via direct localStorage mutation
+**Shared Offer Detail Modal** (`components/offer-detail-modal.tsx`):
+- `OfferDetailModal`: customer-side read-only view of a received offer. Two sections: "Ijrochi taklifi" (price/time grid, message, files, date) + "Mijoz so'rovi" (full Q&A from questionnaire). Footer has "Chat ochish" + Accept/Reject actions.
+- `ProviderProfileModal`: moved here from `offers.tsx`. Shows provider photo (`getLocalProfile(masterId)`), avg response time, service areas, portfolio. Opened via "Ijrochi profilini ko'rish" button inside `OfferDetailModal`.
+- Both exported for use in `offers.tsx` and `chat-offers.tsx`.
+
+**Offers Page** (`pages/offers.tsx`) & **Chat-Offers Page** (`pages/chat-offers.tsx`):
+- Offer cards are fully clickable → opens `OfferDetailModal`
+- "Chat ochish" button renamed to "Batafsil" → also opens `OfferDetailModal`
+- Accept/Reject buttons on card use `e.stopPropagation()` so they don't trigger the modal
+- "Qaytarish" (restore rejected offer) still works via direct localStorage mutation
 
 **Offer sync flow:**
 - Provider fills offer form → `saveOffer` in `provider-store` writes to `hormang_provider_offers` AND `hormang_offers`
