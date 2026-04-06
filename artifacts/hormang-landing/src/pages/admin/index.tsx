@@ -60,15 +60,17 @@ const RESET_KEYS = [
   "hormang_provider_statuses",
   "hormang_provider_avg_response",
   "hormang_provider_seed_version",
+  "hormang_customer_registry",
+];
+const RESET_INIT_EMPTY = [
+  "hormang_requests","hormang_offers","hormang_provider_offers",
+  "hormang_provider_chats","hormang_chats",
 ];
 
 function resetPlatformData(): boolean {
-  if (!confirm("⚠️ Barcha so'rovlar, takliflar va chatlar o'chiriladi.\nFaqat joriy foydalanuvchining sessiyasi saqlanib qoladi.\n\nDavom etasizmi?")) return false;
+  if (!confirm("⚠️ Barcha so'rovlar, takliflar, chatlar va foydalanuvchi ro'yxati o'chiriladi.\nFaqat joriy admin sessiyasi saqlanib qoladi.\n\nDavom etasizmi?")) return false;
   RESET_KEYS.forEach((key) => localStorage.removeItem(key));
-  // initialize arrays to empty
-  ["hormang_requests","hormang_offers","hormang_provider_offers","hormang_provider_chats","hormang_chats"].forEach((key) => {
-    localStorage.setItem(key, "[]");
-  });
+  RESET_INIT_EMPTY.forEach((key) => localStorage.setItem(key, "[]"));
   logAction("PLATFORM_RESET", "all", "Barcha platform ma'lumotlari tozalandi");
   emitStoreChange();
   return true;
@@ -91,15 +93,14 @@ interface AdminLogEntry {
 interface CustomerRequest {
   id: string; categoryId: string; categoryName: string; emoji: string;
   answers: Record<string, unknown>; status: string; createdAt: string; offerCount: number;
+  customerId?: string; customerName?: string;
+  region?: string; district?: string;
 }
 interface BuyerOffer {
   id: string; requestId: string; masterId: string; masterName: string;
   masterInitials: string; masterColor: string; price: number; message: string;
+  priceLabel?: string; completionTime?: string; startDate?: string;
   avgResponseTime: number; createdAt: string; status: string;
-}
-interface ProviderOffer {
-  id: string; requestId: string; price: number; priceLabel: string;
-  message: string; completionTime: string; createdAt: string; status: string;
 }
 interface PricingTier {
   id: string; name: string; credits: number; price: number;
@@ -396,23 +397,34 @@ function MetricCard({ label, value, sub, icon: Icon, accent }: {
 /* ════════════════════════════════════════════════════════════════════
    OVERVIEW SECTION
    ════════════════════════════════════════════════════════════════════ */
+const DAY_NAMES = ["Ya", "Du", "Se", "Ch", "Pa", "Ju", "Sh"];
+
 function OverviewSection({ refreshKey }: { refreshKey: number }) {
-  const requests      = readKey<CustomerRequest[]>(K.REQUESTS, []);
-  const buyerOffers   = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
-  const providerOffers = readKey<ProviderOffer[]>(K.OFFERS_PROVIDER, []);
-  const providerChats  = readKey<{ id: string }[]>(K.CHATS_PROVIDER, []);
-  const buyerChats     = readKey<{ id: string }[]>(K.CHATS_BUYER, []);
+  void refreshKey;
 
-  const totalOffers  = buyerOffers.length + providerOffers.length;
-  const totalChats   = providerChats.length + buyerChats.length;
-  const totalRevenue = providerOffers.filter((o) => o.status === "accepted").reduce((s, o) => s + o.price, 0);
+  const requests       = readKey<CustomerRequest[]>(K.REQUESTS, []);
+  const buyerOffers    = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
+  const chats          = readKey<{ id: string }[]>(K.CHATS_BUYER, []);
 
-  const days = ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"];
-  const activityData = days.map((name, i) => ({
-    name,
-    sorovlar:  Math.max(0, requests.length + Math.floor(Math.sin(i) * 2)),
-    takliflar: Math.max(0, totalOffers + Math.floor(Math.cos(i) * 1.5)),
-  }));
+  // Count unique provider IDs from offers
+  const uniqueProviderIds = new Set(buyerOffers.map((o) => o.masterId));
+  const totalProviders = uniqueProviderIds.size;
+
+  // Real accepted revenue from buyer offers
+  const totalRevenue = buyerOffers
+    .filter((o) => o.status === "accepted")
+    .reduce((s, o) => s + (o.price ?? 0), 0);
+
+  // Real activity for last 7 days — no fake sin/cos
+  const activityData = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.now() - (6 - i) * 86400000);
+    const dayStr = d.toISOString().slice(0, 10);
+    return {
+      name: DAY_NAMES[d.getDay()],
+      sorovlar:  requests.filter((r) => r.createdAt?.slice(0, 10) === dayStr).length,
+      takliflar: buyerOffers.filter((o) => o.createdAt?.slice(0, 10) === dayStr).length,
+    };
+  });
 
   const catMap: Record<string, number> = {};
   requests.forEach((r) => { catMap[r.categoryName] = (catMap[r.categoryName] ?? 0) + 1; });
@@ -421,9 +433,6 @@ function OverviewSection({ refreshKey }: { refreshKey: number }) {
   const statusMap: Record<string, number> = {};
   requests.forEach((r) => { statusMap[r.status] = (statusMap[r.status] ?? 0) + 1; });
   const statusData = Object.entries(statusMap).map(([name, value]) => ({ name, value }));
-
-  // suppress unused warning
-  void refreshKey;
 
   return (
     <div className="space-y-6">
@@ -435,10 +444,12 @@ function OverviewSection({ refreshKey }: { refreshKey: number }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard label="Jami so'rovlar" value={requests.length}
           sub={`${requests.filter(r => r.status === "open").length} ta ochiq`} icon={ClipboardList} accent />
-        <MetricCard label="Jami takliflar" value={totalOffers}
-          sub={`${providerOffers.filter(o => o.status === "accepted").length} ta qabul`} icon={MessageSquare} />
-        <MetricCard label="Suhbatlar" value={totalChats} sub="Faol muhokamalar" icon={TrendingUp} />
-        <MetricCard label="Daromad" value={fmtMoney(totalRevenue)} sub="Qabul qilingan takliflar" icon={DollarSign} />
+        <MetricCard label="Jami takliflar" value={buyerOffers.length}
+          sub={`${buyerOffers.filter(o => o.status === "accepted").length} ta qabul qilindi`} icon={MessageSquare} />
+        <MetricCard label="Suhbatlar / Ijrochilar" value={`${chats.length} / ${totalProviders}`}
+          sub="Faol chatlar · Noyob ijrochilar" icon={TrendingUp} />
+        <MetricCard label="Qabul qilingan summa" value={totalRevenue > 0 ? fmtMoney(totalRevenue) : "—"}
+          sub="Qabul qilingan takliflar asosida" icon={DollarSign} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -568,9 +579,9 @@ function DangerZone() {
    ════════════════════════════════════════════════════════════════════ */
 function RequestsSection({ refreshKey }: { refreshKey: number }) {
   const [requests, setRequests] = useState<CustomerRequest[]>([]);
-  const [search, setSearch]         = useState("");
+  const [search, setSearch]             = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [filterCat, setFilterCat]   = useState("all");
+  const [filterCat, setFilterCat]       = useState("all");
 
   const load = useCallback(() => {
     setRequests(
@@ -585,21 +596,26 @@ function RequestsSection({ refreshKey }: { refreshKey: number }) {
     const updated = requests.map((r) => r.id === id ? { ...r, status } : r);
     writeKey(K.REQUESTS, updated);
     setRequests(updated);
+    emitStoreChange();
     logAction("UPDATE_REQUEST_STATUS", id, `Status: ${status}`);
   }
   function deleteRequest(id: string) {
-    if (!confirm("Bu so'rovni o'chirishni tasdiqlaysizmi?")) return;
+    if (!confirm("Bu so'rovni o'chirishni tasdiqlaysizmi?\nBarcha bog'liq takliflar ham ko'rinmay qoladi.")) return;
     const updated = requests.filter((r) => r.id !== id);
     writeKey(K.REQUESTS, updated);
     setRequests(updated);
+    emitStoreChange();
     logAction("DELETE_REQUEST", id, "So'rov o'chirildi");
   }
 
   const filtered = requests.filter((r) => {
     const q = search.toLowerCase();
-    return (!q || r.categoryName.toLowerCase().includes(q) || r.id.includes(q))
+    const name = (r.customerName ?? "").toLowerCase();
+    return (
+      (!q || r.categoryName.toLowerCase().includes(q) || r.id.includes(q) || name.includes(q))
       && (filterStatus === "all" || r.status === filterStatus)
-      && (filterCat === "all" || r.categoryName === filterCat);
+      && (filterCat === "all" || r.categoryName === filterCat)
+    );
   });
 
   return (
@@ -607,7 +623,7 @@ function RequestsSection({ refreshKey }: { refreshKey: number }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-extrabold text-gray-900">So'rovlar</h2>
-          <p className="text-sm text-gray-500">{filtered.length} ta natija</p>
+          <p className="text-sm text-gray-500">{filtered.length} / {requests.length} ta natija</p>
         </div>
         <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100 transition-colors border border-red-100">
           <RefreshCw className="w-3.5 h-3.5" /> Yangilash
@@ -617,7 +633,8 @@ function RequestsSection({ refreshKey }: { refreshKey: number }) {
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[180px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Qidirish..."
+          <input value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Toifa, mijoz yoki ID..."
             className={`${inputCls} w-full pl-9`} />
         </div>
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={inputCls}>
@@ -637,15 +654,21 @@ function RequestsSection({ refreshKey }: { refreshKey: number }) {
         {filtered.length === 0 ? (
           <div className="p-12 text-center">
             <Inbox className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400 font-semibold">So'rovlar topilmadi</p>
-            <p className="text-gray-300 text-sm mt-1">Foydalanuvchilar so'rov yuborishi kerak</p>
+            <p className="text-gray-400 font-semibold">
+              {requests.length === 0 ? "Hali hech qanday so'rov yo'q" : "So'rovlar topilmadi"}
+            </p>
+            <p className="text-gray-300 text-sm mt-1">
+              {requests.length === 0
+                ? "Xaridorlar so'rov yuborganda bu yerda ko'rinadi"
+                : "Filtrlash parametrlarini o'zgartiring"}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-red-50/40">
-                  {["Toifa", "Joylashuv", "Shoshilinchlik", "Byudjet", "Holat", "Takliflar", "Sana", "Amallar"].map((h) => (
+                  {["Toifa", "Mijoz", "Joylashuv", "Shoshilinchlik", "Byudjet", "Holat", "Takliflar", "Sana", "Amallar"].map((h) => (
                     <th key={h} className="text-left text-[10px] font-bold text-red-400 uppercase tracking-widest px-4 py-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -663,9 +686,16 @@ function RequestsSection({ refreshKey }: { refreshKey: number }) {
                       </div>
                     </td>
                     <td className="px-4 py-3">
+                      <p className="text-xs font-semibold text-gray-700 max-w-[90px] truncate">
+                        {r.customerName ?? <span className="text-gray-300 italic">Noma'lum</span>}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-1 text-xs text-gray-500">
                         <MapPin className="w-3 h-3 text-red-400 flex-shrink-0" />
-                        <span className="max-w-[90px] truncate">{locationFrom(r.answers)}</span>
+                        <span className="max-w-[90px] truncate">
+                          {r.district ?? r.region ?? locationFrom(r.answers)}
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -689,13 +719,13 @@ function RequestsSection({ refreshKey }: { refreshKey: number }) {
                       <div className="flex items-center gap-1">
                         {r.status === "open" && (
                           <button onClick={() => updateStatus(r.id, "completed")}
-                            className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors" title="Tugallangan">
+                            className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors" title="Tugallangan deb belgilash">
                             <Check className="w-3.5 h-3.5" />
                           </button>
                         )}
                         {r.status === "open" && (
                           <button onClick={() => updateStatus(r.id, "cancelled")}
-                            className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors" title="Bekor">
+                            className="p-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors" title="Bekor qilish">
                             <Ban className="w-3.5 h-3.5" />
                           </button>
                         )}
@@ -718,52 +748,67 @@ function RequestsSection({ refreshKey }: { refreshKey: number }) {
 
 /* ════════════════════════════════════════════════════════════════════
    OFFERS SECTION
+   Reads from hormang_offers (canonical shared key) — same as main app.
    ════════════════════════════════════════════════════════════════════ */
 function OffersSection({ refreshKey }: { refreshKey: number }) {
-  const [provOffers, setProvOffers] = useState<ProviderOffer[]>([]);
-  const [buyOffers, setBuyOffers]   = useState<BuyerOffer[]>([]);
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [tab, setTab] = useState<"provider" | "buyer">("provider");
+  const [offers, setOffers]               = useState<BuyerOffer[]>([]);
+  const [filterStatus, setFilterStatus]   = useState("all");
+  const [search, setSearch]               = useState("");
 
   const load = useCallback(() => {
-    setProvOffers(readKey<ProviderOffer[]>(K.OFFERS_PROVIDER, [])
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    setBuyOffers(readKey<BuyerOffer[]>(K.OFFERS_BUYER, []));
+    setOffers(
+      readKey<BuyerOffer[]>(K.OFFERS_BUYER, [])
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    );
   }, []);
 
   useEffect(() => { load(); }, [load, refreshKey]);
 
-  function updateProvStatus(id: string, status: string) {
-    const updated = provOffers.map((o) => o.id === id ? { ...o, status } : o);
-    writeKey(K.OFFERS_PROVIDER, updated);
-    setProvOffers(updated);
-    logAction("UPDATE_OFFER_STATUS", id, `Taklif holati: ${status}`);
-  }
+  const filtered = offers.filter((o) => {
+    const q = search.toLowerCase();
+    return (
+      (!q || o.masterName.toLowerCase().includes(q) || o.id.includes(q) || o.requestId.includes(q))
+      && (filterStatus === "all" || o.status === filterStatus)
+    );
+  });
 
-  const filteredProv = provOffers.filter((o) => filterStatus === "all" || o.status === filterStatus);
-  const filteredBuy  = buyOffers.filter((o)  => filterStatus === "all" || o.status === filterStatus);
-
-  const tableHeaders = tab === "provider"
-    ? ["ID", "Narx", "Holat", "Muddat", "Sana", "Amallar"]
-    : ["Usta", "Narx", "Holat", "Javob vaqti", "Sana"];
+  // aggregate stats
+  const pending  = offers.filter((o) => o.status === "pending").length;
+  const accepted = offers.filter((o) => o.status === "accepted").length;
+  const rejected = offers.filter((o) => o.status === "rejected").length;
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-extrabold text-gray-900">Takliflar</h2>
-        <p className="text-sm text-gray-500">Barcha platforma takliflari</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-extrabold text-gray-900">Takliflar</h2>
+          <p className="text-sm text-gray-500">{filtered.length} / {offers.length} ta natija</p>
+        </div>
+        <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100 transition-colors border border-red-100">
+          <RefreshCw className="w-3.5 h-3.5" /> Yangilash
+        </button>
       </div>
 
-      <div className="flex flex-wrap gap-2 items-center justify-between">
-        <div className="flex gap-1 bg-red-50 border border-red-100 p-1 rounded-xl">
-          {(["provider", "buyer"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                tab === t ? "bg-white text-red-700 shadow-sm border border-red-100" : "text-red-400 hover:text-red-600"
-              }`}>
-              {t === "provider" ? `Ijrochi (${provOffers.length})` : `Xaridor (${buyOffers.length})`}
-            </button>
-          ))}
+      {/* Stats strip */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Kutmoqda", value: pending,  color: "text-amber-600",   bg: "bg-amber-50 border-amber-100"   },
+          { label: "Qabul",    value: accepted, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-100" },
+          { label: "Rad",      value: rejected, color: "text-rose-600",    bg: "bg-rose-50 border-rose-100"     },
+        ].map((s) => (
+          <div key={s.label} className={`rounded-xl border p-3 ${s.bg}`}>
+            <p className={`text-xl font-extrabold ${s.color}`}>{s.value}</p>
+            <p className="text-xs text-gray-500 font-semibold mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Usta nomi, taklif ID yoki so'rov ID..."
+            className={`${inputCls} w-full pl-9`} />
         </div>
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={inputCls}>
           <option value="all">Barcha holatlar</option>
@@ -774,52 +819,52 @@ function OffersSection({ refreshKey }: { refreshKey: number }) {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {((tab === "provider" ? filteredProv : filteredBuy).length === 0) ? (
+        {filtered.length === 0 ? (
           <div className="p-12 text-center">
             <Inbox className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400">Takliflar yo'q</p>
+            <p className="text-gray-400 font-semibold">
+              {offers.length === 0 ? "Hali hech qanday taklif yo'q" : "Takliflar topilmadi"}
+            </p>
+            <p className="text-gray-300 text-sm mt-1">
+              {offers.length === 0 ? "Ijrochilar taklif yuboргanда bu yerda ko'rinadi" : "Qidiruv parametrlarini o'zgartiring"}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-red-50/40">
-                  {tableHeaders.map((h) => (
-                    <th key={h} className="text-left text-[10px] font-bold text-red-400 uppercase tracking-widest px-4 py-3">{h}</th>
+                  {["Ijrochi", "Narx", "Muddat", "Holat", "So'rov ID", "Javob vaqti", "Sana"].map((h) => (
+                    <th key={h} className="text-left text-[10px] font-bold text-red-400 uppercase tracking-widest px-4 py-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {tab === "provider" ? filteredProv.map((o) => (
-                  <tr key={o.id} className="hover:bg-red-50/20 transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs text-gray-400">{o.id.slice(0, 8)}</td>
-                    <td className="px-4 py-3 font-bold text-red-600">{o.priceLabel}</td>
-                    <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
-                    <td className="px-4 py-3 text-xs text-gray-600">{o.completionTime}</td>
-                    <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{timeAgo(o.createdAt)}</td>
-                    <td className="px-4 py-3">
-                      {o.status === "pending" && (
-                        <div className="flex gap-1">
-                          <button onClick={() => updateProvStatus(o.id, "accepted")}
-                            className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100"><Check className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => updateProvStatus(o.id, "rejected")}
-                            className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100"><X className="w-3.5 h-3.5" /></button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                )) : filteredBuy.map((o) => (
+                {filtered.map((o) => (
                   <tr key={o.id} className="hover:bg-red-50/20 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                          style={{ background: o.masterColor }}>{o.masterInitials}</div>
-                        <span className="font-semibold text-gray-800 text-xs">{o.masterName}</span>
+                          style={{ background: o.masterColor ?? "#DC2626" }}>
+                          {o.masterInitials}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-800 text-xs">{o.masterName}</p>
+                          <p className="text-[10px] text-gray-400 font-mono">{o.masterId?.slice(0, 8)}</p>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-bold text-red-600">{fmtMoney(o.price)}</td>
+                    <td className="px-4 py-3 font-bold text-red-600">
+                      {o.priceLabel ?? fmtMoney(o.price)}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-600">
+                      {o.completionTime ?? "—"}
+                    </td>
                     <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
-                    <td className="px-4 py-3 text-xs text-gray-500">~{o.avgResponseTime} daqiqa</td>
+                    <td className="px-4 py-3 font-mono text-[10px] text-gray-400">{o.requestId?.slice(0, 8)}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {o.avgResponseTime ? `~${o.avgResponseTime} daqiqa` : "—"}
+                    </td>
                     <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{timeAgo(o.createdAt)}</td>
                   </tr>
                 ))}
@@ -833,18 +878,37 @@ function OffersSection({ refreshKey }: { refreshKey: number }) {
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   USERS SECTION — reads real hormang_local_profile_* keys
+   USERS SECTION
+   Combines:
+     • Provider profiles  — hormang_local_profile_* keys
+     • Customer accounts  — hormang_customer_registry (userId → { name, initials })
    ════════════════════════════════════════════════════════════════════ */
+interface AdminUser {
+  userId: string;
+  name: string;
+  initials: string;
+  role: "provider" | "customer";
+  categories?: string[];
+  phone?: string;
+  rating?: number;
+  reviewCount?: number;
+  verified?: boolean;
+  createdAt?: string;
+}
+
 function UsersSection({ refreshKey }: { refreshKey: number }) {
-  const [profiles, setProfiles] = useState<LocalProfile[]>([]);
+  const [users, setUsers]         = useState<AdminUser[]>([]);
   const [suspended, setSuspended] = useState<Set<string>>(() =>
     new Set(readKey<string[]>("hormang_admin_suspended_users", []))
   );
-  const [search, setSearch]     = useState("");
-  const [filterCat, setFilterCat] = useState("all");
+  const [search, setSearch]         = useState("");
+  const [filterRole, setFilterRole] = useState<"all" | "provider" | "customer">("all");
+  const [filterCat, setFilterCat]   = useState("all");
 
   const load = useCallback(() => {
-    const found: LocalProfile[] = [];
+    const result: AdminUser[] = [];
+
+    // 1. Provider profiles (hormang_local_profile_*)
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (!key?.startsWith(K.PROFILE_PREFIX)) continue;
@@ -852,10 +916,39 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
         const raw = localStorage.getItem(key);
         if (!raw) continue;
         const p = JSON.parse(raw) as LocalProfile;
-        found.push({ ...p, userId: p.userId ?? key.replace(K.PROFILE_PREFIX, "") });
-      } catch { /* ignore malformed */ }
+        const userId = p.userId ?? key.replace(K.PROFILE_PREFIX, "");
+        const nameParts = (p.name ?? "?").split(" ");
+        result.push({
+          userId,
+          name: p.name ?? "Noma'lum",
+          initials: nameParts.map((n) => n[0]).join("").slice(0, 2).toUpperCase(),
+          role: "provider",
+          categories: p.categories,
+          phone: p.phone,
+          rating: p.rating,
+          reviewCount: p.reviewCount,
+          verified: p.verified,
+          createdAt: p.createdAt,
+        });
+      } catch { /* skip malformed */ }
     }
-    setProfiles(found.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")));
+
+    // 2. Customer registry (hormang_customer_registry)
+    const registry = readKey<Record<string, { name: string; initials: string }>>(
+      "hormang_customer_registry", {}
+    );
+    const providerIds = new Set(result.map((u) => u.userId));
+    for (const [userId, entry] of Object.entries(registry)) {
+      if (providerIds.has(userId)) continue; // already added as provider
+      result.push({
+        userId,
+        name: entry.name ?? "Xaridor",
+        initials: entry.initials ?? "X",
+        role: "customer",
+      });
+    }
+
+    setUsers(result.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")));
   }, []);
 
   useEffect(() => { load(); }, [load, refreshKey]);
@@ -866,42 +959,54 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
     else next.add(userId);
     setSuspended(next);
     writeKey("hormang_admin_suspended_users", Array.from(next));
-    const p = profiles.find((x) => x.userId === userId);
-    logAction("TOGGLE_USER_STATUS", userId, `${p?.name ?? userId} holati o'zgartirildi`);
+    const u = users.find((x) => x.userId === userId);
+    logAction("TOGGLE_USER_STATUS", userId, `${u?.name ?? userId} holati o'zgartirildi`);
   }
 
-  const filtered = profiles.filter((p) => {
+  const filtered = users.filter((u) => {
     const q = search.toLowerCase();
-    const matchSearch = !q || p.name?.toLowerCase().includes(q) || p.userId.includes(q);
-    const matchCat = filterCat === "all" || p.categories?.includes(filterCat);
-    return matchSearch && matchCat;
+    return (
+      (!q || u.name.toLowerCase().includes(q) || u.userId.includes(q))
+      && (filterRole === "all" || u.role === filterRole)
+      && (filterCat === "all" || u.categories?.includes(filterCat))
+    );
   });
+
+  const providers = users.filter((u) => u.role === "provider").length;
+  const customers = users.filter((u) => u.role === "customer").length;
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-extrabold text-gray-900">Foydalanuvchilar</h2>
-        <p className="text-sm text-gray-500">
-          {profiles.length > 0
-            ? `${profiles.length} ta ro'yxatdan o'tgan ijrochi`
-            : "Ro'yxatdan o'tgan ijrochilar yo'q"}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-extrabold text-gray-900">Foydalanuvchilar</h2>
+          <p className="text-sm text-gray-500">
+            {providers} ta ijrochi · {customers} ta xaridor
+          </p>
+        </div>
+        <button onClick={load}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100 transition-colors border border-red-100">
+          <RefreshCw className="w-3.5 h-3.5" /> Yangilash
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-[180px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Ism yoki ID..."
-            className={`${inputCls} w-full pl-9`} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Ism yoki ID..." className={`${inputCls} w-full pl-9`} />
         </div>
-        <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)} className={inputCls}>
-          <option value="all">Barcha toifalar</option>
-          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+        <select value={filterRole} onChange={(e) => setFilterRole(e.target.value as "all" | "provider" | "customer")} className={inputCls}>
+          <option value="all">Barcha rollar</option>
+          <option value="provider">Ijrochilar</option>
+          <option value="customer">Xaridorlar</option>
         </select>
-        <button onClick={load}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100 transition-colors border border-red-100">
-          <RefreshCw className="w-3.5 h-3.5" /> Yangilash
-        </button>
+        {filterRole !== "customer" && (
+          <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)} className={inputCls}>
+            <option value="all">Barcha toifalar</option>
+            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -909,63 +1014,94 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
           <div className="p-12 text-center">
             <Users className="w-10 h-10 text-gray-200 mx-auto mb-3" />
             <p className="text-gray-400 font-semibold">
-              {profiles.length === 0 ? "Hali ijrochilar yo'q" : "Topilmadi"}
+              {users.length === 0 ? "Hali foydalanuvchilar yo'q" : "Topilmadi"}
             </p>
-            <p className="text-gray-300 text-sm mt-1">Ijrochi profillar bu yerda ko'rinadi</p>
+            <p className="text-gray-300 text-sm mt-1">
+              {users.length === 0
+                ? "Tizimga kirgan foydalanuvchilar bu yerda ko'rinadi"
+                : "Qidiruv yoki filtrlash parametrlarini o'zgartiring"}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-red-50/40">
-                  {["Ijrochi", "ID", "Toifalar", "Reyting", "Holat", "Amallar"].map((h) => (
-                    <th key={h} className="text-left text-[10px] font-bold text-red-400 uppercase tracking-widest px-4 py-3">{h}</th>
+                  {["Foydalanuvchi", "Rol", "Toifalar", "Reyting", "Telefon", "Holat", "Amallar"].map((h) => (
+                    <th key={h} className="text-left text-[10px] font-bold text-red-400 uppercase tracking-widest px-4 py-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filtered.map((p) => {
-                  const isSuspended = suspended.has(p.userId);
-                  const initials = (p.name ?? "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+                {filtered.map((u) => {
+                  const isSuspended = suspended.has(u.userId);
+                  const avatarBg = u.role === "provider"
+                    ? "bg-violet-100 text-violet-700"
+                    : "bg-blue-100 text-blue-700";
                   return (
-                    <tr key={p.userId} className="hover:bg-red-50/20 transition-colors">
+                    <tr key={u.userId} className="hover:bg-red-50/20 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-700 text-xs font-bold flex-shrink-0">{initials}</div>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${avatarBg}`}>
+                            {u.initials}
+                          </div>
                           <div>
-                            <p className="font-semibold text-gray-800">{p.name ?? "—"}</p>
-                            {p.verified && <p className="text-[10px] text-emerald-600 font-bold">✓ Tasdiqlangan</p>}
+                            <p className="font-semibold text-gray-800 text-sm leading-tight">{u.name}</p>
+                            <p className="text-[10px] text-gray-400 font-mono">{u.userId.slice(0, 12)}</p>
+                            {u.verified && (
+                              <p className="text-[10px] text-emerald-600 font-bold">✓ Tasdiqlangan</p>
+                            )}
                           </div>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs text-gray-400">{p.userId.slice(0, 12)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1 max-w-[180px]">
-                          {(p.categories ?? []).slice(0, 2).map((c) => (
-                            <span key={c} className="px-1.5 py-0.5 bg-red-50 text-red-600 text-[10px] font-semibold rounded-md border border-red-100">{c}</span>
-                          ))}
-                          {(p.categories?.length ?? 0) > 2 && (
-                            <span className="text-[10px] text-gray-400">+{(p.categories?.length ?? 0) - 2}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {p.rating ? (
-                          <div className="flex items-center gap-1 text-xs font-semibold text-amber-500">
-                            ★ {p.rating.toFixed(1)}
-                            <span className="text-gray-400 font-normal">({p.reviewCount ?? 0})</span>
-                          </div>
-                        ) : <span className="text-xs text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                          isSuspended ? "bg-red-100 text-red-700 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-100"
+                          u.role === "provider"
+                            ? "bg-violet-50 text-violet-700 border-violet-100"
+                            : "bg-blue-50 text-blue-700 border-blue-100"
+                        }`}>
+                          {u.role === "provider" ? "Ijrochi" : "Xaridor"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {u.role === "provider" ? (
+                          <div className="flex flex-wrap gap-1 max-w-[160px]">
+                            {(u.categories ?? []).slice(0, 2).map((c) => (
+                              <span key={c} className="px-1.5 py-0.5 bg-red-50 text-red-600 text-[10px] font-semibold rounded-md border border-red-100">{c}</span>
+                            ))}
+                            {(u.categories?.length ?? 0) > 2 && (
+                              <span className="text-[10px] text-gray-400">+{(u.categories?.length ?? 0) - 2}</span>
+                            )}
+                            {(u.categories?.length ?? 0) === 0 && (
+                              <span className="text-xs text-gray-300">—</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {u.rating ? (
+                          <div className="flex items-center gap-1 text-xs font-semibold text-amber-500">
+                            ★ {u.rating.toFixed(1)}
+                            <span className="text-gray-400 font-normal">({u.reviewCount ?? 0})</span>
+                          </div>
+                        ) : <span className="text-xs text-gray-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500">
+                        {u.phone ?? <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          isSuspended
+                            ? "bg-red-100 text-red-700 border-red-200"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-100"
                         }`}>
                           {isSuspended ? "To'xtatilgan" : "Faol"}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <button onClick={() => toggleSuspend(p.userId)}
+                        <button onClick={() => toggleSuspend(u.userId)}
                           className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                             isSuspended
                               ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100"
@@ -1000,15 +1136,21 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
 
   void refreshKey;
 
-  const providerOffers = readKey<ProviderOffer[]>(K.OFFERS_PROVIDER, []);
-  const totalRevenue   = providerOffers.filter((o) => o.status === "accepted").reduce((s, o) => s + o.price, 0);
-  const commission     = Math.round(totalRevenue * 0.15);
+  const allOffers    = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
+  const totalRevenue = allOffers.filter((o) => o.status === "accepted").reduce((s, o) => s + (o.price ?? 0), 0);
+  const commission   = Math.round(totalRevenue * 0.15);
 
-  const revenueData = [
-    { name: "Yanvar", daromad: 280000, komissiya: 42000 },
-    { name: "Fevral", daromad: 420000, komissiya: 63000 },
-    { name: "Mart",   daromad: 615000 + totalRevenue, komissiya: 92250 + commission },
-  ];
+  // Real monthly breakdowns from accepted offers
+  const monthlyMap: Record<string, number> = {};
+  allOffers.filter((o) => o.status === "accepted").forEach((o) => {
+    const month = new Date(o.createdAt).toLocaleString("ru", { month: "long", year: "numeric" });
+    monthlyMap[month] = (monthlyMap[month] ?? 0) + (o.price ?? 0);
+  });
+  const revenueData = Object.entries(monthlyMap).map(([name, daromad]) => ({
+    name, daromad, komissiya: Math.round(daromad * 0.15),
+  }));
+  // If no real data yet, show an informative placeholder
+  const showRevenueChart = revenueData.length > 0;
 
   function saveTiers(updated: PricingTier[]) {
     setTiers(updated);
@@ -1063,18 +1205,26 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-        <h3 className="font-bold text-gray-900 text-sm mb-4">Oylik daromad</h3>
-        <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={revenueData}>
-            <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false}
-              tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-            <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #FEE2E2", fontSize: 11 }} formatter={(v: number) => fmtMoney(v)} />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="daromad"   name="Tranzaksiyalar" fill={RED_HEX}   radius={[4, 4, 0, 0]} />
-            <Bar dataKey="komissiya" name="Komissiya"       fill="#10B981"   radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        <h3 className="font-bold text-gray-900 text-sm mb-4">Oylik daromad (qabul qilingan takliflar)</h3>
+        {showRevenueChart ? (
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={revenueData}>
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false}
+                tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #FEE2E2", fontSize: 11 }} formatter={(v: number) => fmtMoney(v)} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="daromad"   name="Tranzaksiyalar" fill={RED_HEX} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="komissiya" name="Komissiya"       fill="#10B981" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-[180px]">
+            <DollarSign className="w-8 h-8 text-red-100 mb-2" />
+            <p className="text-sm text-gray-400 font-semibold">Hali qabul qilingan takliflar yo'q</p>
+            <p className="text-xs text-gray-300 mt-1">Xaridorlar taklif qabul qilganda daromad ko'rinadi</p>
+          </div>
+        )}
       </div>
 
       <div>
@@ -1301,7 +1451,17 @@ function CategoriesSection() {
 /* ════════════════════════════════════════════════════════════════════
    TOP BAR
    ════════════════════════════════════════════════════════════════════ */
-function TopBar({ section, unseenAlerts }: { section: Section; unseenAlerts: number }) {
+function TopBar({ section, unseenAlerts, onRefresh }: {
+  section: Section; unseenAlerts: number; onRefresh: () => void;
+}) {
+  const [spinning, setSpinning] = useState(false);
+
+  function handleRefresh() {
+    setSpinning(true);
+    onRefresh();
+    setTimeout(() => setSpinning(false), 700);
+  }
+
   return (
     <div className="bg-white border-b border-gray-100 px-6 py-3.5 flex items-center justify-between sticky top-0 z-10 shadow-sm">
       <div>
@@ -1315,6 +1475,13 @@ function TopBar({ section, unseenAlerts }: { section: Section; unseenAlerts: num
             <span className="text-xs font-bold text-red-600">{unseenAlerts} ta taklif kutmoqda</span>
           </div>
         )}
+        <button onClick={handleRefresh}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-all active:scale-95"
+          style={{ background: "linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)", color: "white", boxShadow: "0 2px 8px rgba(220,38,38,0.3)" }}
+          title="Barcha ma'lumotlarni yangilash">
+          <RefreshCw className={`w-3.5 h-3.5 ${spinning ? "animate-spin" : ""}`} />
+          <span className="hidden sm:inline">Yangilash</span>
+        </button>
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
           style={{ background: "linear-gradient(135deg, #DC2626, #991B1B)" }}>A</div>
       </div>
@@ -1361,7 +1528,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <TopBar section={section} unseenAlerts={unseenAlerts} />
+        <TopBar section={section} unseenAlerts={unseenAlerts} onRefresh={() => setRefreshKey((k) => k + 1)} />
 
         <div className="flex-1 p-6 overflow-auto">
           <AnimatePresence mode="wait">
