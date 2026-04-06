@@ -19,6 +19,7 @@ import {
   getProviderChats, markChatRead, sendProviderMessage, getProviderChatById,
   type ProviderChat, type ProviderChatMessage,
 } from "@/lib/provider-store";
+import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Constants ──────────────────────────────────────────────────── */
@@ -363,8 +364,10 @@ export default function ProviderChatsPage() {
   const [openChatId, setOpenChatId] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [showServiceMenu, setShowServiceMenu] = useState(false);
+  const { user } = useAuth();
+  const masterId = user?.id ?? "";
 
-  const chats = getProviderChats();
+  const chats = getProviderChats(masterId);
   const totalUnread = chats.reduce((s, c) => s + c.unread, 0);
   const services = SERVICE_CATEGORIES;
 

@@ -459,14 +459,15 @@ function AvailableRequests() {
 
   const selectedCategories = providerProfile?.categories ?? [];
   const serviceAreas = authUser?.id ? (getLocalProfile(authUser.id).serviceAreas ?? []) : [];
-  const requests = getMatchingRequests(selectedCategories, serviceAreas);
+  const providerId = authUser?.id ?? "";
+  const requests = getMatchingRequests(selectedCategories, serviceAreas, providerId);
   const seen = getSeenIds();
 
   // All non-ignored requests (open + responded) — visible to every provider
   const visibleRequests = requests.filter((r) => r.status !== "ignored");
   // New/unseen = only open requests the provider hasn't seen yet
   const newUnseen       = requests.filter((r) => !seen.includes(r.id) && r.status === "open");
-  const zeroOffers      = getRequestsWithZeroOffers(selectedCategories, serviceAreas);
+  const zeroOffers      = getRequestsWithZeroOffers(selectedCategories, serviceAreas, providerId);
 
   const newCount      = newUnseen.length;
   const totalOpen     = visibleRequests.length;
@@ -487,14 +488,14 @@ function AvailableRequests() {
   const current   = slideReqs[slideIndex];
 
   function handleRespond(id: string) {
-    updateProviderRequestStatus(id, "responded");
+    updateProviderRequestStatus(id, "responded", providerId);
     markSeen(id);
     toast({ title: "Javob yuborildi!", description: "Buyurtmachi siz bilan bog'lanadi." });
     if (slideIndex >= slideReqs.length - 1) setSlideIndex(Math.max(0, slideReqs.length - 2));
   }
 
   function handleIgnore(id: string) {
-    updateProviderRequestStatus(id, "ignored");
+    updateProviderRequestStatus(id, "ignored", providerId);
     markSeen(id);
     if (slideIndex >= slideReqs.length - 1) setSlideIndex(Math.max(0, slideReqs.length - 2));
   }
@@ -507,7 +508,7 @@ function AvailableRequests() {
   }
 
   function handleIgnoreFromModal(id: string) {
-    updateProviderRequestStatus(id, "ignored");
+    updateProviderRequestStatus(id, "ignored", providerId);
     markSeen(id);
   }
 
@@ -750,7 +751,7 @@ export default function ProviderHomePage() {
             </span>
           )}
           <button
-            onClick={() => setLocation("/profile/settings")}
+            onClick={() => setLocation("/dashboard")}
             className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm overflow-hidden flex-shrink-0"
             style={headerLocal.photoUrl ? {} : { background: VIOLET }}
           >

@@ -69,7 +69,6 @@ function FullscreenSlider({
 
   function handleIgnore() {
     if (!current) return;
-    updateProviderRequestStatus(current.id, "ignored");
     onIgnore(current.id);
     if (index < requests.length - 1) setIndex((i) => i + 1);
     else onClose();
@@ -337,6 +336,7 @@ export default function ProviderRequestsPage() {
   const [offerDetailRequest, setOfferDetailRequest] = useState<ProviderRequest | null>(null);
 
   const { user } = useAuth();
+  const providerId = user?.id ?? "";
   const serviceAreas = user?.id ? (getLocalProfile(user.id).serviceAreas ?? []) : [];
   const selectedCategories = providerProfile?.categories ?? [];
   // Build filter tabs from the provider's own chosen categories.
@@ -344,8 +344,8 @@ export default function ProviderRequestsPage() {
   const filterCategories: string[] = selectedCategories.length > 1
     ? ["Barchasi", ...selectedCategories]
     : [];
-  const requests = getMatchingRequests(selectedCategories, serviceAreas);
-  const unseen = getUnseenRequests(selectedCategories, serviceAreas);
+  const requests = getMatchingRequests(selectedCategories, serviceAreas, providerId);
+  const unseen = getUnseenRequests(selectedCategories, serviceAreas, providerId);
 
   // Toast on new unseen matching requests
   const prevUnseenCount = useRef<number | null>(null);
@@ -386,7 +386,7 @@ export default function ProviderRequestsPage() {
   }
 
   function handleMarkAllSeen() {
-    markAllSeen(selectedCategories, serviceAreas);
+    markAllSeen(selectedCategories, serviceAreas, providerId);
     toast({ title: "Barchasi ko'rilgan deb belgilandi" });
   }
 
@@ -530,7 +530,7 @@ export default function ProviderRequestsPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => {
-                          updateProviderRequestStatus(r.id, "ignored");
+                          updateProviderRequestStatus(r.id, "ignored", providerId);
                           markSeen(r.id);
                         }}
                         className="flex-1 h-9 rounded-xl border-2 border-red-100 bg-red-50 text-red-500 font-bold text-xs flex items-center justify-center active:scale-95 hover:bg-red-100 transition-all"
@@ -561,7 +561,7 @@ export default function ProviderRequestsPage() {
             </p>
             <div className="space-y-2">
               {allResponded.map((r, i) => {
-                const offer = getOfferByRequestId(r.id);
+                const offer = getOfferByRequestId(r.id, providerId);
                 return (
                   <motion.div
                     key={r.id}
@@ -642,7 +642,10 @@ export default function ProviderRequestsPage() {
             startIndex={sliderStart}
             onClose={() => setShowSlider(false)}
             onOpenOffer={(req) => openOfferForm(req)}
-            onIgnore={() => {}}
+            onIgnore={(id) => {
+              updateProviderRequestStatus(id, "ignored", providerId);
+              markSeen(id);
+            }}
           />
         )}
       </AnimatePresence>
@@ -660,11 +663,11 @@ export default function ProviderRequestsPage() {
 
       {/* Offer detail modal */}
       <AnimatePresence>
-        {offerDetailRequest && getOfferByRequestId(offerDetailRequest.id) && (
+        {offerDetailRequest && getOfferByRequestId(offerDetailRequest.id, providerId) && (
           <OfferDetailModal
             key={offerDetailRequest.id}
             request={offerDetailRequest}
-            offer={getOfferByRequestId(offerDetailRequest.id)!}
+            offer={getOfferByRequestId(offerDetailRequest.id, providerId)!}
             onClose={() => setOfferDetailRequest(null)}
           />
         )}

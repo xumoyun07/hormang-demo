@@ -3,19 +3,19 @@
  * localStorage persistence for provider (ijrochi) side.
  *
  * Keys used:
- *   hormang_provider_requests  — provider action statuses (seen/ignored/responded)
- *   hormang_provider_services  — UpcomingService[]
- *   hormang_provider_seen      — string[] (seen request IDs)
- *   hormang_provider_offers    — ProviderOffer[] (provider's own submitted offers)
- *   hormang_offers             — Offer[] (shared; customer reads here, provider syncs status from here)
- *   hormang_chats              — Chat[]  (SHARED with customer side — unified store)
+ *   hormang_provider_statuses_${providerId}  — per-provider action statuses (seen/ignored/responded)
+ *   hormang_provider_offers_${providerId}    — per-provider ProviderOffer[] (provider's own offers)
+ *   hormang_provider_services                — UpcomingService[]
+ *   hormang_provider_seen                   — string[] (seen request IDs — global across providers)
+ *   hormang_offers                          — Offer[] (shared; customer reads here; all providers write here)
+ *   hormang_chats                           — Chat[]  (SHARED with customer side — unified store, keyed ${requestId}_${masterId})
  */
 
 import { emitStoreChange } from "./store-events";
 import type { CustomerRequest, Chat } from "./requests-store";
 import {
   getChatById, sendMessage, markProviderChatRead,
-  getTotalProviderUnread, getChats,
+  getChats,
 } from "./requests-store";
 import { doesRequestMatch } from "./matching";
 
@@ -91,14 +91,22 @@ export interface ProviderOffer {
 
 /* ─── Storage Keys ───────────────────────────────────────────────── */
 
-const REQUESTS_KEY = "hormang_provider_requests";
 const SERVICES_KEY = "hormang_provider_services";
 const SEEN_KEY = "hormang_provider_seen";
-const OFFERS_KEY = "hormang_provider_offers";   // provider's own offer records
 const SHARED_OFFERS_KEY = "hormang_offers";     // shared with customer
 const AVG_RESPONSE_KEY = "hormang_provider_avg_response";
 const SEED_VERSION_KEY = "hormang_provider_seed_version";
 const SEED_VERSION = "v4";
+
+/** Per-provider key for action statuses (responded/ignored) */
+function providerStatusesKey(providerId: string): string {
+  return `hormang_provider_statuses_${providerId}`;
+}
+
+/** Per-provider key for the provider's own submitted offers */
+function providerOffersKey(providerId: string): string {
+  return `hormang_provider_offers_${providerId}`;
+}
 
 /* ─── Storage helpers ─────────────────────────────────────────────── */
 
@@ -124,11 +132,12 @@ function uid(): string {
 function clearLegacyData() {
   const version = localStorage.getItem(SEED_VERSION_KEY);
   if (version !== SEED_VERSION) {
-    localStorage.removeItem(REQUESTS_KEY);
+    localStorage.removeItem("hormang_provider_requests");  // old key
     localStorage.removeItem(SERVICES_KEY);
-    localStorage.removeItem(OFFERS_KEY);
+    localStorage.removeItem("hormang_provider_offers");    // old global key
     localStorage.removeItem(SEEN_KEY);
-    localStorage.removeItem("hormang_provider_chats"); // old key
+    localStorage.removeItem("hormang_provider_chats");     // old key
+    localStorage.removeItem("hormang_provider_statuses");  // old global key
     localStorage.removeItem("hormang_requests");
     localStorage.removeItem("hormang_offers");
     localStorage.removeItem("hormang_chats");
@@ -164,11 +173,10 @@ function chatToProviderChat(c: Chat): ProviderChat {
 
 /* ─── Buyer-request → ProviderRequest adapter ────────────────────── */
 
-const PROVIDER_STATUSES_KEY = "hormang_provider_statuses";
 type ProviderActionStatus = "responded" | "ignored";
 
-function getProviderStatuses(): Record<string, ProviderActionStatus> {
-  return readJSON<Record<string, ProviderActionStatus>>(PROVIDER_STATUSES_KEY, {});
+function getProviderStatuses(providerId: string): Record<string, ProviderActionStatus> {
+  return readJSON<Record<string, ProviderActionStatus>>(providerStatusesKey(providerId), {});
 }
 
 function urgencyFrom(answers: Record<string, unknown>): ProviderRequest["urgency"] {
@@ -238,27 +246,32 @@ const BUYER_REQUESTS_KEY_CONST = "hormang_requests";
 export function getMatchingRequests(
   selectedCategories: string[],
   serviceAreas: string[] = [],
+  providerId: string = "",
 ): ProviderRequest[] {
   const buyerReqs = readJSON<CustomerRequest[]>(BUYER_REQUESTS_KEY_CONST, []);
-  const statuses = getProviderStatuses();
+  const statuses = getProviderStatuses(providerId);
   return buyerReqs
     .filter((r) => r.status === "open" && doesRequestMatch(r.categoryName, r.region, selectedCategories, serviceAreas))
     .map((r) => adaptBuyerRequest(r, statuses[r.id]))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-export function getProviderRequests(): ProviderRequest[] {
-  return getMatchingRequests([]);
+export function getProviderRequests(providerId: string = ""): ProviderRequest[] {
+  return getMatchingRequests([], [], providerId);
 }
 
-export function getProviderRequestById(id: string): ProviderRequest | undefined {
-  return getProviderRequests().find((r) => r.id === id);
+export function getProviderRequestById(id: string, providerId: string = ""): ProviderRequest | undefined {
+  return getMatchingRequests([], [], providerId).find((r) => r.id === id);
 }
 
-export function updateProviderRequestStatus(id: string, status: ProviderRequest["status"]): void {
+export function updateProviderRequestStatus(
+  id: string,
+  status: ProviderRequest["status"],
+  providerId: string = "",
+): void {
   if (status === "open") return;
-  const statuses = getProviderStatuses();
-  writeJSON(PROVIDER_STATUSES_KEY, { ...statuses, [id]: status as ProviderActionStatus });
+  const statuses = getProviderStatuses(providerId);
+  writeJSON(providerStatusesKey(providerId), { ...statuses, [id]: status as ProviderActionStatus });
 }
 
 /* ─── Seen IDs ───────────────────────────────────────────────────── */
@@ -272,16 +285,24 @@ export function markSeen(id: string): void {
   if (!seen.includes(id)) writeJSON(SEEN_KEY, [...seen, id]);
 }
 
-export function markAllSeen(selectedCategories: string[] = [], serviceAreas: string[] = []): void {
-  const ids = getMatchingRequests(selectedCategories, serviceAreas).map((r) => r.id);
+export function markAllSeen(
+  selectedCategories: string[] = [],
+  serviceAreas: string[] = [],
+  providerId: string = "",
+): void {
+  const ids = getMatchingRequests(selectedCategories, serviceAreas, providerId).map((r) => r.id);
   const existing = getSeenIds();
   const merged = Array.from(new Set([...existing, ...ids]));
   writeJSON(SEEN_KEY, merged);
 }
 
-export function getUnseenRequests(selectedCategories: string[] = [], serviceAreas: string[] = []): ProviderRequest[] {
+export function getUnseenRequests(
+  selectedCategories: string[] = [],
+  serviceAreas: string[] = [],
+  providerId: string = "",
+): ProviderRequest[] {
   const seen = getSeenIds();
-  return getMatchingRequests(selectedCategories, serviceAreas).filter(
+  return getMatchingRequests(selectedCategories, serviceAreas, providerId).filter(
     (r) => !seen.includes(r.id) && r.status === "open"
   );
 }
@@ -299,15 +320,19 @@ export function markServiceDone(id: string): void {
   writeJSON(SERVICES_KEY, services.map((s) => s.id === id ? { ...s, status: "done" as const } : s));
 }
 
-/* ─── Provider Chats (unified — reads from hormang_chats) ─────────── */
+/* ─── Provider Chats (unified — reads from hormang_chats, filtered by masterId) ── */
 
-export function getProviderChats(): ProviderChat[] {
-  return getChats().map(chatToProviderChat);
+export function getProviderChats(masterId: string = ""): ProviderChat[] {
+  const all = getChats();
+  const filtered = masterId ? all.filter((c) => c.masterId === masterId) : all;
+  return filtered.map(chatToProviderChat);
 }
 
-export function getProviderChatById(id: string): ProviderChat | undefined {
+export function getProviderChatById(id: string, masterId: string = ""): ProviderChat | undefined {
   const chat = getChatById(id);
-  return chat ? chatToProviderChat(chat) : undefined;
+  if (!chat) return undefined;
+  if (masterId && chat.masterId !== masterId) return undefined;
+  return chatToProviderChat(chat);
 }
 
 /**
@@ -325,27 +350,29 @@ export function markChatRead(chatId: string): void {
   markProviderChatRead(chatId);
 }
 
-/** Total unread messages for provider across all chats */
-export function getTotalUnread(): number {
-  return getTotalProviderUnread();
+/** Total unread messages for a specific provider across their chats */
+export function getTotalUnread(masterId: string = ""): number {
+  const all = getChats();
+  const filtered = masterId ? all.filter((c) => c.masterId === masterId) : all;
+  return filtered.reduce((sum, c) => sum + (c.providerUnread ?? 0), 0);
 }
 
 /* ─── Offers ─────────────────────────────────────────────────────── */
 
-export function getOffers(): ProviderOffer[] {
-  return readJSON<ProviderOffer[]>(OFFERS_KEY, []);
+/** Get this provider's own submitted offers */
+export function getOffers(providerId: string = ""): ProviderOffer[] {
+  return readJSON<ProviderOffer[]>(providerOffersKey(providerId), []);
 }
 
-export function getOfferByRequestId(requestId: string): ProviderOffer | undefined {
-  const providerOffer = readJSON<ProviderOffer[]>(OFFERS_KEY, []).find(
-    (o) => o.requestId === requestId
-  );
+/** Get this provider's offer for a specific request (if any) */
+export function getOfferByRequestId(requestId: string, providerId: string = ""): ProviderOffer | undefined {
+  const providerOffer = getOffers(providerId).find((o) => o.requestId === requestId);
   if (!providerOffer) return undefined;
 
   // Overlay status from shared hormang_offers so customer acceptance is visible instantly
   try {
-    const sharedOffer = readJSON<Array<{ id: string; status: string }>>(SHARED_OFFERS_KEY, [])
-      .find((o) => o.id === providerOffer.id);
+    const sharedOffer = readJSON<Array<{ id: string; masterId: string; status: string }>>(SHARED_OFFERS_KEY, [])
+      .find((o) => o.id === providerOffer.id && o.masterId === providerId);
     if (sharedOffer && sharedOffer.status !== providerOffer.status) {
       return { ...providerOffer, status: sharedOffer.status as ProviderOffer["status"] };
     }
@@ -365,7 +392,8 @@ export function saveOffer(
   data: Omit<ProviderOffer, "id" | "createdAt" | "status">,
   providerMeta?: { name: string; initials: string; color: string; id: string },
 ): ProviderOffer {
-  const offers = getOffers();
+  const providerId = providerMeta?.id ?? "";
+  const offers = getOffers(providerId);
   const offer: ProviderOffer = {
     ...data,
     id: uid(),
@@ -373,16 +401,18 @@ export function saveOffer(
     status: "pending",
   };
   const allOffers = [...offers, offer];
-  writeJSON(OFFERS_KEY, allOffers);
+  writeJSON(providerOffersKey(providerId), allOffers);
 
-  // Sync offer count to the buyer-side CustomerRequest
+  // Sync offer count to the buyer-side CustomerRequest using shared offers count
   try {
     const raw = localStorage.getItem(BUYER_REQUESTS_KEY_CONST);
     if (raw) {
       const buyerReqs = JSON.parse(raw) as Array<{ id: string; offerCount?: number }>;
       const idx = buyerReqs.findIndex((r) => r.id === data.requestId);
       if (idx !== -1) {
-        const count = allOffers.filter((o) => o.requestId === data.requestId).length;
+        // Count ALL providers' shared offers for this request (not just this provider's)
+        const sharedOffers = readJSON<Array<{ requestId: string }>>(SHARED_OFFERS_KEY, []);
+        const count = sharedOffers.filter((o) => o.requestId === data.requestId).length + 1;
         buyerReqs[idx] = { ...buyerReqs[idx], offerCount: count };
         localStorage.setItem(BUYER_REQUESTS_KEY_CONST, JSON.stringify(buyerReqs));
       }
@@ -432,14 +462,28 @@ export function setAvgResponseMinutes(mins: number): void {
 
 /* ─── Offer count helpers ─────────────────────────────────────────── */
 
+/**
+ * Count total offers for a request from ALL providers (reads shared hormang_offers).
+ * This is what gets displayed on request cards so providers see real competition.
+ */
 export function getRequestOfferCount(requestId: string): number {
-  return getOffers().filter((o) => o.requestId === requestId).length;
+  const sharedOffers = readJSON<Array<{ requestId: string }>>(SHARED_OFFERS_KEY, []);
+  return sharedOffers.filter((o) => o.requestId === requestId).length;
 }
 
-export function getRequestsWithZeroOffers(selectedCategories: string[] = [], serviceAreas: string[] = []): ProviderRequest[] {
-  const offers = getOffers();
-  return getMatchingRequests(selectedCategories, serviceAreas).filter(
-    (r) => r.status !== "ignored" && !offers.some((o) => o.requestId === r.id)
+/**
+ * Requests with zero offers from any provider.
+ * The current provider's responded requests are included unless they've already
+ * submitted an offer (which would make the count non-zero).
+ */
+export function getRequestsWithZeroOffers(
+  selectedCategories: string[] = [],
+  serviceAreas: string[] = [],
+  providerId: string = "",
+): ProviderRequest[] {
+  const sharedOffers = readJSON<Array<{ requestId: string }>>(SHARED_OFFERS_KEY, []);
+  return getMatchingRequests(selectedCategories, serviceAreas, providerId).filter(
+    (r) => r.status !== "ignored" && !sharedOffers.some((o) => o.requestId === r.id)
   );
 }
 

@@ -32,8 +32,8 @@ export function BottomNav() {
   const selectedCategories = providerProfile?.categories ?? [];
 
   const pendingOffers = getOffers().filter((o) => o.status === "pending").length;
-  const unseenCount = isProvider ? getUnseenRequests(selectedCategories).length : 0;
-  const unreadChats = isProvider ? getTotalUnread() : 0;
+  const unseenCount = isProvider ? getUnseenRequests(selectedCategories, [], user?.id ?? "").length : 0;
+  const unreadChats = isProvider ? getTotalUnread(user?.id ?? "") : 0;
 
   function isActive(href: string): boolean {
     if (href === "/") return location === "/";
