@@ -19,6 +19,7 @@ import {
 } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
+import { getLocalProfile } from "@/lib/local-profile";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Tab type ───────────────────────────────────────────────────── */
@@ -44,6 +45,7 @@ function OfferCard({ offer, index }: {
   const req = getRequestById(offer.requestId);
   const isAccepted = offer.status === "accepted";
   const isRejected = offer.status === "rejected";
+  const providerLocal = getLocalProfile(offer.masterId);
 
   function accept(e: React.MouseEvent) {
     e.stopPropagation();
@@ -80,12 +82,20 @@ function OfferCard({ offer, index }: {
         <div className="p-4">
           {/* Provider row */}
           <div className="flex items-start gap-3 mb-3">
-            <div
-              className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
-              style={{ background: offer.masterColor }}
-            >
-              {offer.masterInitials}
-            </div>
+            {providerLocal.photoUrl ? (
+              <img
+                src={providerLocal.photoUrl}
+                alt={offer.masterName}
+                className="w-11 h-11 rounded-2xl object-cover border border-gray-200 flex-shrink-0 shadow-sm"
+              />
+            ) : (
+              <div
+                className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
+                style={{ background: offer.masterColor }}
+              >
+                {offer.masterInitials}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-bold text-sm text-gray-900">{offer.masterName}</p>
@@ -184,6 +194,7 @@ function OfferCard({ offer, index }: {
 function ChatRow({ chat, index }: { chat: Chat; index: number }) {
   const [, setLocation] = useLocation();
   const lastMsg = chat.messages[chat.messages.length - 1];
+  const providerLocal = getLocalProfile(chat.masterId);
 
   return (
     <motion.button
@@ -193,12 +204,20 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
       onClick={() => setLocation(`/chat/${chat.id}`)}
       className="w-full bg-white rounded-2xl border border-gray-100 p-4 flex items-start gap-3 hover:border-blue-100 hover:shadow-sm transition-all duration-200 text-left"
     >
-      <div
-        className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
-        style={{ background: chat.masterColor }}
-      >
-        {chat.masterInitials}
-      </div>
+      {providerLocal.photoUrl ? (
+        <img
+          src={providerLocal.photoUrl}
+          alt={chat.masterName}
+          className="w-11 h-11 rounded-2xl object-cover border border-gray-200 flex-shrink-0 shadow-sm"
+        />
+      ) : (
+        <div
+          className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
+          style={{ background: chat.masterColor }}
+        >
+          {chat.masterInitials}
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-0.5">
           <p className="font-bold text-sm text-gray-900 truncate">{chat.masterName}</p>

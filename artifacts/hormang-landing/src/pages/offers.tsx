@@ -17,6 +17,7 @@ import {
 } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
+import { getLocalProfile } from "@/lib/local-profile";
 import logoImg from "/hormang-logo.png";
 
 function formatDate(iso: string): string {
@@ -30,6 +31,7 @@ function OfferCard({ offer, index }: { offer: Offer; index: number }) {
   const req = getRequestById(offer.requestId);
   const isAccepted = offer.status === "accepted";
   const isRejected = offer.status === "rejected";
+  const providerLocal = getLocalProfile(offer.masterId);
 
   function accept(e: React.MouseEvent) {
     e.stopPropagation();
@@ -66,12 +68,20 @@ function OfferCard({ offer, index }: { offer: Offer; index: number }) {
         <div className="p-4">
           {/* Provider info row */}
           <div className="flex items-start gap-3 mb-3">
-            <div
-              className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow-sm flex-shrink-0"
-              style={{ background: offer.masterColor }}
-            >
-              {offer.masterInitials}
-            </div>
+            {providerLocal.photoUrl ? (
+              <img
+                src={providerLocal.photoUrl}
+                alt={offer.masterName}
+                className="w-11 h-11 rounded-2xl object-cover border border-gray-200 flex-shrink-0 shadow-sm"
+              />
+            ) : (
+              <div
+                className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm shadow-sm flex-shrink-0"
+                style={{ background: offer.masterColor }}
+              >
+                {offer.masterInitials}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="font-bold text-sm text-gray-900">{offer.masterName}</p>
