@@ -14,10 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import {
-  getOffers, getRequestById, updateOfferStatus, getOrCreateChat,
+  getOffersByCustomer, getRequestById, updateOfferStatus, getOrCreateChat,
   type Offer,
 } from "@/lib/requests-store";
 import { getLocalProfile } from "@/lib/local-profile";
+import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
 
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -380,11 +381,12 @@ function OfferCard({ offer, index }: { offer: Offer; index: number }) {
 export default function OffersPage() {
   useStoreRefresh();
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const rawSearch = useSearch();
   const params = new URLSearchParams(rawSearch);
   const filterRequestId = params.get("requestId") ?? undefined;
 
-  const all = getOffers();
+  const all = getOffersByCustomer(user?.id ?? "");
   const filtered = filterRequestId ? all.filter((o) => o.requestId === filterRequestId) : all;
   const offers = [...filtered].sort((a, b) => {
     if (a.status === "pending" && b.status !== "pending") return -1;

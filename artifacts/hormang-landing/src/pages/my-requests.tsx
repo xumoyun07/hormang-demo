@@ -12,10 +12,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import {
-  getRequests, getOffersByRequestId, getOrCreateChat,
+  getRequestsByCustomer, getOffersByRequestId, getOrCreateChat,
   updateRequestStatus,
   type CustomerRequest,
 } from "@/lib/requests-store";
+import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Urgency helpers ─────────────────────────────────────────────── */
@@ -193,8 +194,9 @@ function SectionLabel({ label, count, color }: { label: string; count: number; c
 export default function MyRequestsPage() {
   useStoreRefresh();
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
 
-  const requests = getRequests();
+  const requests = user ? getRequestsByCustomer(user.id) : [];
 
   function handleClose(id: string) {
     updateRequestStatus(id, "cancelled");

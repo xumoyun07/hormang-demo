@@ -13,6 +13,7 @@ import {
 import {
   saveNewRequest,
 } from "@/lib/requests-store";
+import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
@@ -603,6 +604,7 @@ function RecommendationsScreen({
 
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function QuestionnairePage() {
+  const { user } = useAuth();
   const rawSearch = useSearch();
   const params = new URLSearchParams(rawSearch);
   const presetCat = params.get("cat") ?? undefined;
@@ -624,7 +626,7 @@ export default function QuestionnairePage() {
 
   function handleSeeProviders() {
     const cat = getCategoryById(categoryId);
-    const req = saveNewRequest(categoryId, cat?.name ?? categoryId, answers);
+    const req = saveNewRequest(categoryId, cat?.name ?? categoryId, answers, undefined, user?.id);
     setCurrentRequestId(req.id);
     setStage("recommendations");
   }

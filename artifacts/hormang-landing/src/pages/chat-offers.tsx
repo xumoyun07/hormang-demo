@@ -13,10 +13,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import {
-  getOffers, getChats, getRequestById, getOrCreateChat,
+  getOffersByCustomer, getChatsByCustomer, getRequestById, getOrCreateChat,
   updateOfferStatus,
   type Offer, type Chat,
 } from "@/lib/requests-store";
+import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Tab type ───────────────────────────────────────────────────── */
@@ -209,20 +210,22 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
 export default function ChatOffersPage() {
   useStoreRefresh();
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const rawSearch = useSearch();
   const params = new URLSearchParams(rawSearch);
   const filterRequestId = params.get("requestId") ?? undefined;
 
   const [tab, setTab] = useState<Tab>("offers");
 
-  const allOffers = getOffers();
+  const customerId = user?.id ?? "";
+  const allOffers = getOffersByCustomer(customerId);
   const filtered = filterRequestId ? allOffers.filter((o) => o.requestId === filterRequestId) : allOffers;
   const offers = [...filtered].sort((a, b) => {
     if (a.status === "pending" && b.status !== "pending") return -1;
     if (b.status === "pending" && a.status !== "pending") return 1;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
-  const chats = getChats();
+  const chats = getChatsByCustomer(customerId);
 
   const filteredReq = filterRequestId ? getRequestById(filterRequestId) : undefined;
   const pendingCount = offers.filter((o) => o.status === "pending").length;

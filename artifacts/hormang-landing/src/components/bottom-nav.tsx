@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { Home, LayoutGrid, ClipboardList, MessageCircle, LayoutDashboard, Sparkles, List } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
-import { getOffers } from "@/lib/requests-store";
+import { getOffersByCustomer } from "@/lib/requests-store";
 import { getTotalUnread, getUnseenRequests } from "@/lib/provider-store";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,7 +31,7 @@ export function BottomNav() {
   const isProvider = activeRole === "provider";
   const selectedCategories = providerProfile?.categories ?? [];
 
-  const pendingOffers = getOffers().filter((o) => o.status === "pending").length;
+  const pendingOffers = isProvider ? 0 : getOffersByCustomer(user?.id ?? "").filter((o) => o.status === "pending").length;
   const unseenCount = isProvider ? getUnseenRequests(selectedCategories, [], user?.id ?? "").length : 0;
   const unreadChats = isProvider ? getTotalUnread(user?.id ?? "") : 0;
 

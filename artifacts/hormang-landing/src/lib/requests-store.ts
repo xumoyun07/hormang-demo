@@ -14,6 +14,7 @@ import { emitStoreChange } from "./store-events";
 
 export interface CustomerRequest {
   id: string;
+  customerId?: string;       // The user.id of the customer who created this request
   categoryId: string;
   categoryName: string;
   emoji: string;
@@ -121,12 +122,14 @@ export function saveNewRequest(
   categoryName: string,
   answers: Record<string, unknown>,
   location?: { region?: string; district?: string },
+  customerId?: string,
 ): CustomerRequest {
   const region = location?.region || (answers["region"] as string | undefined);
   const district = location?.district || (answers["district"] as string | undefined);
 
   const req: CustomerRequest = {
     id: uid(),
+    customerId: customerId || undefined,
     categoryId,
     categoryName,
     emoji: CATEGORY_EMOJIS[categoryId] ?? "📋",
@@ -145,6 +148,34 @@ export function saveNewRequest(
 export function updateRequestStatus(requestId: string, status: CustomerRequest["status"]): void {
   const reqs = readJSON<CustomerRequest[]>(REQUESTS_KEY, []);
   writeJSON(REQUESTS_KEY, reqs.map((r) => r.id === requestId ? { ...r, status } : r));
+}
+
+/* ─── Customer-scoped helpers ────────────────────────────────────── */
+
+/** Only requests created by this customer (strict isolation). */
+export function getRequestsByCustomer(customerId: string): CustomerRequest[] {
+  if (!customerId) return [];
+  return getRequests().filter((r) => r.customerId === customerId);
+}
+
+/**
+ * Only offers received on this customer's own requests.
+ * Derives the set from their request IDs.
+ */
+export function getOffersByCustomer(customerId: string): Offer[] {
+  if (!customerId) return [];
+  const myRequestIds = new Set(getRequestsByCustomer(customerId).map((r) => r.id));
+  return getOffers().filter((o) => myRequestIds.has(o.requestId));
+}
+
+/**
+ * Only chats that belong to this customer's own requests.
+ * Derives the set from their request IDs.
+ */
+export function getChatsByCustomer(customerId: string): Chat[] {
+  if (!customerId) return [];
+  const myRequestIds = new Set(getRequestsByCustomer(customerId).map((r) => r.id));
+  return getChats().filter((c) => myRequestIds.has(c.requestId));
 }
 
 /* ─── Offers ─────────────────────────────────────────────────────── */
