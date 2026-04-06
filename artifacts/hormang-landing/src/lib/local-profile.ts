@@ -55,8 +55,28 @@ export function getLocalProfile(userId: string): LocalProfile {
 }
 
 export function saveLocalProfile(userId: string, data: LocalProfile): void {
-  localStorage.setItem(key(userId), JSON.stringify(data));
-  emitStoreChange();
+  try {
+    localStorage.setItem(key(userId), JSON.stringify(data));
+    emitStoreChange();
+  } catch (error) {
+    if (error instanceof Error && error.name === "QuotaExceededError") {
+      console.warn("LocalStorage quota exceeded when saving profile. Image data may be too large.");
+      // Fallback: save without portfolio images
+      const dataWithoutPhotos: LocalProfile = {
+        ...data,
+        photoUrl: undefined,
+        portfolioItems: [],
+      };
+      try {
+        localStorage.setItem(key(userId), JSON.stringify(dataWithoutPhotos));
+        emitStoreChange();
+      } catch (fallbackError) {
+        console.error("Failed to save profile even without images:", fallbackError);
+      }
+    } else {
+      throw error;
+    }
+  }
 }
 
 /* ─── Completion logic ───────────────────────────────────────────── */
