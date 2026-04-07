@@ -13,7 +13,8 @@ import {
   Eye, Clock, DollarSign, Calendar, FileText, AlertOctagon, User,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
-import { OfferForm, CustomerProfileModal } from "@/components/offer-form";
+import { OfferForm } from "@/components/offer-form";
+import { PublicProfileModal } from "@/components/public-profile-modal";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { getLocalProfile } from "@/lib/local-profile";
@@ -439,8 +440,14 @@ function OfferDetailModal({
       {/* Customer profile overlay */}
       <AnimatePresence>
         {showCustomerProfile && (
-          <CustomerProfileModal
-            request={request}
+          <PublicProfileModal
+            mode="customer"
+            customerData={{
+              customerName: request.customerName ?? "Xaridor",
+              region: request.region,
+              district: request.district,
+              joinedAt: request.createdAt,
+            }}
             onClose={() => setShowCustomerProfile(false)}
           />
         )}

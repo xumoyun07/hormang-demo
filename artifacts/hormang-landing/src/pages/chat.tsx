@@ -7,15 +7,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Send, Circle, Clock, X } from "lucide-react";
+import { ChevronLeft, Send, Circle } from "lucide-react";
+import { PublicProfileModal } from "@/components/public-profile-modal";
 import { BottomNav } from "@/components/bottom-nav";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import {
   getChatById, sendMessage,
   type Chat, type ChatMessage,
 } from "@/lib/requests-store";
-
-const BLUE = "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" });
@@ -29,80 +28,6 @@ function formatDay(iso: string): string {
   yesterday.setDate(today.getDate() - 1);
   if (d.toDateString() === yesterday.toDateString()) return "Kecha";
   return d.toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "short" });
-}
-
-/* ─── Master Profile Modal ───────────────────────────────────────── */
-function MasterProfileModal({ chat, onClose }: { chat: Chat; onClose: () => void }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <motion.div
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", stiffness: 420, damping: 38 }}
-        className="bg-white w-full max-w-lg rounded-t-3xl overflow-hidden"
-      >
-        {/* Hero */}
-        <div className="px-5 pt-6 pb-5 text-center" style={{ background: BLUE }}>
-          <div className="flex justify-end mb-2">
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg"
-            style={{ background: chat.masterColor }}
-          >
-            <span className="text-2xl font-black text-white">{chat.masterInitials}</span>
-          </div>
-          <h3 className="font-extrabold text-white text-lg">{chat.masterName}</h3>
-          <p className="text-blue-100 text-sm mt-0.5">Ijrochi · Usta</p>
-        </div>
-
-        <div className="px-5 py-4 space-y-3">
-          {/* Category */}
-          <div className="flex items-center gap-3 bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
-            <span className="text-xl">{chat.categoryEmoji || "📋"}</span>
-            <div>
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Xizmat turi</p>
-              <p className="text-sm font-bold text-gray-800">{chat.categoryName}</p>
-            </div>
-          </div>
-
-          {/* Avg response time */}
-          <div className="flex items-center gap-3 bg-emerald-50 rounded-2xl p-3.5 border border-emerald-100">
-            <Clock className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-            <div>
-              <p className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wide">O'rtacha javob vaqti</p>
-              <p className="text-sm font-bold text-emerald-800">{chat.avgResponseTime} daqiqa ichida</p>
-            </div>
-          </div>
-
-          <p className="text-center text-xs text-gray-400 pt-1">
-            Telefon raqami ko'rsatilmaydi — faqat platforma orqali aloqa
-          </p>
-        </div>
-
-        <div className="px-5 pb-6">
-          <button
-            onClick={onClose}
-            className="w-full h-11 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            Yopish
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
 }
 
 /* ─── Message Bubble ─────────────────────────────────────────────── */
@@ -291,7 +216,19 @@ export default function ChatPage() {
       {/* Master profile modal */}
       <AnimatePresence>
         {showMasterProfile && (
-          <MasterProfileModal chat={chat} onClose={() => setShowMasterProfile(false)} />
+          <PublicProfileModal
+            mode="provider"
+            providerData={{
+              masterId: chat.masterId,
+              masterName: chat.masterName,
+              masterInitials: chat.masterInitials,
+              masterColor: chat.masterColor,
+              avgResponseTime: chat.avgResponseTime,
+              categoryName: chat.categoryName,
+              categoryEmoji: chat.categoryEmoji,
+            }}
+            onClose={() => setShowMasterProfile(false)}
+          />
         )}
       </AnimatePresence>
 

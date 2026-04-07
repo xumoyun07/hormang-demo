@@ -12,7 +12,7 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, MessageCircle, ChevronRight, X, ChevronDown,
-  Circle, Send, Clock,
+  Circle, Send,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import {
@@ -21,6 +21,7 @@ import {
 } from "@/lib/provider-store";
 import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
+import { PublicProfileModal } from "@/components/public-profile-modal";
 
 /* ─── Constants ──────────────────────────────────────────────────── */
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -84,80 +85,6 @@ function MsgBubble({ msg, isFirst }: { msg: ProviderChatMessage; isFirst: boolea
           {formatTime(msg.timestamp)}
         </p>
       </div>
-    </motion.div>
-  );
-}
-
-/* ─── Customer Profile Modal ─────────────────────────────────────── */
-function CustomerProfileModal({ chat, onClose }: { chat: ProviderChat; onClose: () => void }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/60 z-[60] flex items-end justify-center"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <motion.div
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", stiffness: 420, damping: 38 }}
-        className="bg-white w-full max-w-lg rounded-t-3xl overflow-hidden"
-      >
-        {/* Hero — violet gradient */}
-        <div className="px-5 pt-6 pb-5 text-center" style={{ background: VIOLET }}>
-          <div className="flex justify-end mb-2">
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg"
-            style={{ background: chat.customerColor }}
-          >
-            <span className="text-2xl font-black text-white">{chat.customerInitials}</span>
-          </div>
-          <h3 className="font-extrabold text-white text-lg">{chat.customerName}</h3>
-          <p className="text-violet-200 text-sm mt-0.5">Xaridor · Mijoz</p>
-        </div>
-
-        <div className="px-5 py-4 space-y-3">
-          {/* Category */}
-          <div className="flex items-center gap-3 bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
-            <span className="text-xl">{chat.categoryEmoji}</span>
-            <div>
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">So'rov kategoriyasi</p>
-              <p className="text-sm font-bold text-gray-800">{chat.categoryName}</p>
-            </div>
-          </div>
-
-          {/* Avg response time */}
-          <div className="flex items-center gap-3 bg-violet-50 rounded-2xl p-3.5 border border-violet-100">
-            <Clock className="w-4 h-4 text-violet-600 flex-shrink-0" />
-            <div>
-              <p className="text-[10px] text-violet-600 font-semibold uppercase tracking-wide">Sizning javob vaqtingiz</p>
-              <p className="text-sm font-bold text-violet-800">{chat.avgResponseTime} daqiqa (o'rtacha)</p>
-            </div>
-          </div>
-
-          <p className="text-center text-xs text-gray-400 pt-1">
-            Mijoz telefon raqami ko'rsatilmaydi — faqat platforma orqali aloqa
-          </p>
-        </div>
-
-        <div className="px-5 pb-6">
-          <button
-            onClick={onClose}
-            className="w-full h-11 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            Yopish
-          </button>
-        </div>
-      </motion.div>
     </motion.div>
   );
 }
@@ -295,8 +222,15 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
       {/* Customer profile modal */}
       <AnimatePresence>
         {showCustomerProfile && (
-          <CustomerProfileModal
-            chat={chat}
+          <PublicProfileModal
+            mode="customer"
+            customerData={{
+              customerName: chat.customerName,
+              customerInitials: chat.customerInitials,
+              customerColor: chat.customerColor,
+              categoryName: chat.categoryName,
+              categoryEmoji: chat.categoryEmoji,
+            }}
             onClose={() => setShowCustomerProfile(false)}
           />
         )}

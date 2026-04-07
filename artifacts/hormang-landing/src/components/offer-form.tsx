@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X, ChevronLeft, Send, Clock, MapPin, Calendar, FileImage,
   ChevronDown, CheckCircle2, AlertCircle, User,
-  DollarSign, Star, MessageCircle,
+  DollarSign,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -23,9 +23,7 @@ import {
 } from "@/lib/provider-store";
 import { getRequests, getOffers } from "@/lib/requests-store";
 import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
-
-const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
-const BLUE = "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)";
+import { PublicProfileModal } from "@/components/public-profile-modal";
 
 const COMPLETION_OPTIONS = [
   "1 kun", "2–3 kun", "1 hafta", "2 hafta", "1 oy", "Boshqa (kelishiladi)",
@@ -61,137 +59,10 @@ function formatAnswerValue(value: unknown): string {
 
 const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district"]);
 
-/* ─── helpers ────────────────────────────────────────────────────── */
-function memberSince(iso: string): string {
-  const d = new Date(iso);
-  const months = [
-    "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
-    "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr",
-  ];
-  return `${months[d.getMonth()]} ${d.getFullYear()}`;
-}
-
 function urgencyBadge(u: ProviderRequest["urgency"]): { label: string; cls: string } {
   if (u === "urgent") return { label: "Shoshilinch", cls: "bg-red-50 text-red-600 border border-red-100" };
   if (u === "normal") return { label: "Oddiy", cls: "bg-blue-50 text-blue-600 border border-blue-100" };
   return { label: "Moslashuvchan", cls: "bg-gray-100 text-gray-500 border border-gray-200" };
-}
-
-/* ─── Customer Profile Preview Modal ────────────────────────────── */
-export function CustomerProfileModal({ request, onClose }: { request: ProviderRequest; onClose: () => void }) {
-  const [showReviewsSheet, setShowReviewsSheet] = useState(false);
-
-  /* Customer name — use request field (provider never sees real customer account data) */
-  const fullName = request.customerName?.trim() || "Xaridor";
-
-  const initials = fullName
-    .split(" ")
-    .map((p) => p[0] ?? "")
-    .join("")
-    .toUpperCase()
-    .slice(0, 2) || "FO";
-
-  const location = request.district
-    ? `${request.district}, ${request.region}`
-    : (request.region ?? request.location ?? "");
-
-  /* Use request creation date as "member since" proxy */
-  const joined = request.createdAt ? memberSince(request.createdAt) : null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/60 z-[70] flex items-end justify-center"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <motion.div
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", stiffness: 420, damping: 38 }}
-        className="bg-white w-full max-w-lg rounded-t-3xl overflow-hidden max-h-[90vh] flex flex-col"
-      >
-        {/* Hero */}
-        <div className="px-5 pt-6 pb-5 text-center flex-shrink-0" style={{ background: BLUE }}>
-          <div className="flex justify-end mb-2">
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center mx-auto mb-3">
-            <span className="text-2xl font-black text-white">{initials}</span>
-          </div>
-          <h3 className="font-extrabold text-white text-lg">{fullName}</h3>
-          <div className="flex items-center justify-center gap-2 mt-1">
-            <span className="text-blue-100 text-xs font-semibold">Xaridor</span>
-            {joined && (
-              <>
-                <span className="text-blue-200 text-xs">·</span>
-                <span className="text-blue-100 text-xs">{joined}</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Scrollable body */}
-        <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
-
-          {/* Location */}
-          {location && (
-            <div className="flex items-center gap-3 bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
-              <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0" />
-              <div>
-                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Manzil</p>
-                <p className="text-sm font-bold text-gray-800">{location}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Reviews section */}
-          <button
-            onClick={() => setShowReviewsSheet(true)}
-            className="w-full bg-gray-50 rounded-2xl p-4 border border-gray-100 hover:border-blue-300 transition-all hover:bg-blue-50/50 group text-left"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide group-hover:text-blue-600">Fikrlar</span>
-              <div className="flex gap-0.5">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Star key={i} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-lg font-black text-gray-900">0.0</p>
-                <p className="text-xs text-gray-500 mt-0.5">0 ta fikr</p>
-              </div>
-              <MessageCircle className="w-5 h-5 text-gray-300 group-hover:text-blue-400 transition-colors" />
-            </div>
-          </button>
-
-          {/* Privacy note */}
-          <p className="text-center text-xs text-gray-400 pb-1">
-            📵 Telefon raqam ko'rsatilmaydi — faqat platforma orqali aloqa
-          </p>
-        </div>
-
-        {/* Footer */}
-        <div className="px-5 pb-6 flex-shrink-0">
-          <button
-            onClick={onClose}
-            className="w-full h-11 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            Yopish
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
 }
 
 /* ─── Main Form ──────────────────────────────────────────────────── */
@@ -621,7 +492,16 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
       {/* Customer Profile Modal */}
       <AnimatePresence>
         {showCustomerProfile && (
-          <CustomerProfileModal request={request} onClose={() => setShowCustomerProfile(false)} />
+          <PublicProfileModal
+            mode="customer"
+            customerData={{
+              customerName: request.customerName ?? "Xaridor",
+              region: request.region,
+              district: request.district,
+              joinedAt: request.createdAt,
+            }}
+            onClose={() => setShowCustomerProfile(false)}
+          />
         )}
       </AnimatePresence>
     </>

@@ -1,13 +1,13 @@
 /**
  * OfferDetailModal — Customer-side read-only view of a received offer.
  * Shows the original request Q&A + the provider's offer details.
- * Also contains the ProviderProfileModal used on the offers pages.
+ * Tapping "Ijrochi profilini ko'rish" opens the unified PublicProfileModal.
  */
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, ChevronLeft, Clock, MapPin, Calendar, FileText,
-  ShieldCheck, MessageCircle, Check, User, DollarSign,
+  MessageCircle, Check, User, DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
@@ -17,10 +17,10 @@ import {
 } from "@/lib/requests-store";
 import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
 import { getLocalProfile } from "@/lib/local-profile";
+import { PublicProfileModal } from "@/components/public-profile-modal";
 
 /* ─── Constants ────────────────────────────────────────────────────── */
 
-const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 const BLUE = "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)";
 
 const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district"]);
@@ -52,131 +52,6 @@ function timeAgo(iso: string): string {
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs} soat oldin`;
   return `${Math.floor(hrs / 24)} kun oldin`;
-}
-
-/* ─── Provider Profile Modal ───────────────────────────────────────── */
-
-export function ProviderProfileModal({ offer, onClose }: { offer: Offer; onClose: () => void }) {
-  const local = getLocalProfile(offer.masterId);
-  const serviceAreas = local.serviceAreas && local.serviceAreas.length > 0
-    ? local.serviceAreas
-    : local.region
-    ? [local.region]
-    : [];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/60 z-[60] flex items-end justify-center"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <motion.div
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", stiffness: 420, damping: 38 }}
-        className="bg-white w-full max-w-lg rounded-t-3xl overflow-hidden"
-      >
-        {/* Hero banner */}
-        <div className="relative px-5 pt-6 pb-5" style={{ background: VIOLET }}>
-          <div className="flex justify-end mb-2">
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="flex items-end gap-4">
-            {local.photoUrl ? (
-              <img
-                src={local.photoUrl}
-                alt={offer.masterName}
-                className="w-16 h-16 rounded-2xl object-cover border-2 border-white/30 flex-shrink-0"
-              />
-            ) : (
-              <div
-                className="w-16 h-16 rounded-2xl border-2 border-white/30 flex items-center justify-center flex-shrink-0 font-black text-white text-xl"
-                style={{ background: offer.masterColor }}
-              >
-                {offer.masterInitials}
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <h3 className="font-extrabold text-white text-lg leading-tight">{offer.masterName}</h3>
-              <p className="text-violet-200 text-sm">Ijrochi (Usta)</p>
-              {local.experience && (
-                <p className="text-violet-100 text-xs mt-0.5">{local.experience} yil tajriba</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="px-5 py-4 space-y-3 max-h-[50vh] overflow-y-auto">
-          <div className="flex items-center gap-3 bg-violet-50 rounded-2xl p-3.5 border border-violet-100">
-            <Clock className="w-4 h-4 text-violet-500 flex-shrink-0" />
-            <div>
-              <p className="text-[10px] text-violet-500 font-semibold uppercase tracking-wide">O'rtacha javob vaqti</p>
-              <p className="text-sm font-bold text-violet-800">{offer.avgResponseTime} daqiqa</p>
-            </div>
-          </div>
-
-          {serviceAreas.length > 0 && (
-            <div className="flex items-start gap-3 bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
-              <MapPin className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-1.5">Xizmat ko'rsatadigan hududlar</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {serviceAreas.map((area) => (
-                    <span key={area} className="text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg px-2 py-0.5">
-                      {area}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {local.portfolioItems && local.portfolioItems.length > 0 && (
-            <div>
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-1.5">Portfolio</p>
-              <div className="grid grid-cols-3 gap-2">
-                {local.portfolioItems.slice(0, 6).map((item, i) => (
-                  <div key={i} className="relative">
-                    <img
-                      src={item.url}
-                      alt={item.caption ?? `Ish ${i + 1}`}
-                      className="aspect-square object-cover rounded-xl border border-gray-200 w-full"
-                    />
-                    {item.caption && (
-                      <p className="text-[10px] text-gray-500 mt-0.5 truncate">{item.caption}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 py-1">
-            <ShieldCheck className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-            <p className="text-xs text-gray-500">Platforma tomonidan tekshirilgan ijrochi</p>
-          </div>
-        </div>
-
-        <div className="px-5 pb-6">
-          <button
-            onClick={onClose}
-            className="w-full h-11 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            Yopish
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
 }
 
 /* ─── Offer Detail Modal ───────────────────────────────────────────── */
@@ -478,7 +353,17 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
       {/* Provider profile overlay */}
       <AnimatePresence>
         {showProviderProfile && (
-          <ProviderProfileModal offer={offer} onClose={() => setShowProviderProfile(false)} />
+          <PublicProfileModal
+            mode="provider"
+            providerData={{
+              masterId: offer.masterId,
+              masterName: offer.masterName,
+              masterInitials: offer.masterInitials,
+              masterColor: offer.masterColor,
+              avgResponseTime: offer.avgResponseTime,
+            }}
+            onClose={() => setShowProviderProfile(false)}
+          />
         )}
       </AnimatePresence>
     </>
