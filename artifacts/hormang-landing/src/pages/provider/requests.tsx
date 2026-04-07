@@ -714,6 +714,17 @@ export default function ProviderRequestsPage() {
             <div className="space-y-2">
               {allResponded.map((r, i) => {
                 const offer = getOfferByRequestId(r.id, providerId);
+                const st = offer?.status ?? "pending";
+                const badge =
+                  st === "accepted"
+                    ? { label: "Qabul qilindi", cls: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: <CheckCircle2 className="w-3 h-3" /> }
+                    : st === "rejected"
+                    ? { label: "Rad etildi", cls: "text-red-500 bg-red-50 border-red-200", icon: <X className="w-3 h-3" /> }
+                    : { label: "Javob kutilmoqda", cls: "text-amber-600 bg-amber-50 border-amber-200", icon: <Clock className="w-3 h-3" /> };
+                const cardBorder =
+                  st === "accepted" ? "border-emerald-100 hover:border-emerald-200" :
+                  st === "rejected" ? "border-red-100 hover:border-red-200" :
+                  "border-gray-100 hover:border-gray-200";
                 return (
                   <motion.div
                     key={r.id}
@@ -721,10 +732,10 @@ export default function ProviderRequestsPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04 }}
                     onClick={() => offer && setOfferDetailRequest(r)}
-                    className="bg-white rounded-2xl border border-green-100 overflow-hidden cursor-pointer active:scale-[.99] transition-all hover:border-green-200"
+                    className={`bg-white rounded-2xl border overflow-hidden cursor-pointer active:scale-[.99] transition-all ${cardBorder}`}
                   >
                     <div className="px-4 py-3 flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0 text-lg">
+                      <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0 text-lg">
                         {r.emoji}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -732,9 +743,9 @@ export default function ProviderRequestsPage() {
                         <p className="text-[11px] text-gray-400 truncate">{r.customerName} · {r.location}</p>
                       </div>
                       <div className="flex flex-col items-end gap-1">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 border border-green-100 px-2 py-0.5 rounded-full">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Taklif yuborilgan
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold border px-2 py-0.5 rounded-full ${badge.cls}`}>
+                          {badge.icon}
+                          {badge.label}
                         </span>
                         {offer && (
                           <span className="text-[10px] text-violet-600 font-bold">{offer.priceLabel}</span>
