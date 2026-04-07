@@ -336,9 +336,10 @@ function QuizHeader({
 /* ─── Category Select Screen ─────────────────────────────────────── */
 function CategorySelectScreen({ onSelect }: { onSelect: (id: string) => void }) {
   const categories = getCategories();
+  const [, setLocation] = useLocation();
   return (
     <div className="min-h-screen bg-gray-50">
-      <QuizHeader onBack={() => window.history.back()} />
+      <QuizHeader onBack={() => setLocation("/")} />
       <div className="max-w-lg mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-extrabold text-gray-900 mb-1">Qaysi xizmat kerak?</h1>
