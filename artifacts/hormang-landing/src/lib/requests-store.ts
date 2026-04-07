@@ -47,7 +47,7 @@ export interface Offer {
 
 export interface ChatMessage {
   id: string;
-  sender: "customer" | "master"; // master = provider/ijrochi
+  sender: "customer" | "master" | "system"; // master = provider/ijrochi; system = automated notification
   text: string;
   timestamp: string;
 }
@@ -227,10 +227,44 @@ export function getOfferForChat(requestId: string, masterId: string): Offer | un
 }
 
 export function updateOfferStatus(offerId: string, status: "accepted" | "rejected"): void {
-  const offers = getOffers().map((o) => o.id === offerId ? { ...o, status } : o);
-  writeJSON(OFFERS_KEY, offers);
+  const allOffers = getOffers();
+  const target = allOffers.find((o) => o.id === offerId);
+  const updated = allOffers.map((o) => o.id === offerId ? { ...o, status } : o);
+  writeJSON(OFFERS_KEY, updated);
   console.log(`[Hormang] ✅ Offer ${status === "accepted" ? "qabul qilindi" : "rad etildi"}`, { offerId, status });
+
+  // When an offer is accepted, notify all OTHER providers who also offered on this request
+  if (status === "accepted" && target) {
+    const siblings = allOffers.filter(
+      (o) => o.requestId === target.requestId && o.id !== offerId
+    );
+    for (const sib of siblings) {
+      sendSystemMessage(
+        `${sib.requestId}_${sib.masterId}`,
+        "Xaridor boshqa ijrochi taklifini qabul qildi"
+      );
+    }
+  }
+
   emitStoreChange();
+}
+
+/**
+ * Inject a system notification into a chat.
+ * Does NOT increment providerUnread (it's not a real message from either side).
+ */
+export function sendSystemMessage(chatId: string, text: string): void {
+  const chats = readJSON<Chat[]>(CHATS_KEY, []);
+  const idx = chats.findIndex((c) => c.id === chatId);
+  if (idx === -1) return;
+  const msg: ChatMessage = {
+    id: uid(),
+    sender: "system",
+    text,
+    timestamp: new Date().toISOString(),
+  };
+  chats[idx] = { ...chats[idx], messages: [...chats[idx].messages, msg] };
+  writeJSON(CHATS_KEY, chats);
 }
 
 /* ─── Chats ──────────────────────────────────────────────────────── */

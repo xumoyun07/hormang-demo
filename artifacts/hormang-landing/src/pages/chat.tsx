@@ -91,6 +91,20 @@ function StatusBanner({ status }: { status: Offer["status"] }) {
 
 /* ─── Message Bubble ─────────────────────────────────────────────── */
 function MessageBubble({ msg, isFirst }: { msg: ChatMessage; isFirst: boolean }) {
+  // System messages render as centered banners
+  if (msg.sender === "system") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex justify-center my-2"
+      >
+        <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
+          {msg.text}
+        </span>
+      </motion.div>
+    );
+  }
   const isCustomer = msg.sender === "customer";
   return (
     <motion.div

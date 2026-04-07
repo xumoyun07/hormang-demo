@@ -57,7 +57,7 @@ export interface UpcomingService {
 /** Provider-side view of a chat (adapted from unified Chat) */
 export interface ProviderChatMessage {
   id: string;
-  sender: "provider" | "customer";
+  sender: "provider" | "customer" | "system";
   text: string;
   timestamp: string;
 }
@@ -181,7 +181,7 @@ function chatToProviderChat(c: Chat): ProviderChat {
     avgResponseTime: c.avgResponseTime ?? 14,
     messages: c.messages.map((m) => ({
       id: m.id,
-      sender: m.sender === "customer" ? "customer" : "provider",
+      sender: m.sender === "customer" ? "customer" as const : m.sender === "system" ? "system" as const : "provider" as const,
       text: m.text,
       timestamp: m.timestamp,
     })),
@@ -272,8 +272,29 @@ export function getMatchingRequests(
 ): ProviderRequest[] {
   const buyerReqs = readJSON<CustomerRequest[]>(BUYER_REQUESTS_KEY_CONST, []);
   const statuses = getProviderStatuses(providerId);
+
+  // Requests that have an accepted offer from a DIFFERENT provider should be hidden
+  // unless the current provider also sent an offer (they should still see their "responded" entry)
+  const sharedOffers = readJSON<Array<{ requestId: string; masterId: string; status: string }>>(
+    SHARED_OFFERS_KEY, []
+  );
+  const providerOfferRequestIds = new Set(
+    sharedOffers.filter((o) => o.masterId === providerId).map((o) => o.requestId)
+  );
+  const acceptedByOtherRequestIds = new Set(
+    sharedOffers
+      .filter((o) => o.status === "accepted" && o.masterId !== providerId)
+      .map((o) => o.requestId)
+  );
+
   return buyerReqs
-    .filter((r) => r.status === "open" && doesRequestMatch(r.categoryName, r.region, selectedCategories, serviceAreas))
+    .filter((r) => {
+      if (r.status !== "open") return false;
+      if (!doesRequestMatch(r.categoryName, r.region, selectedCategories, serviceAreas)) return false;
+      // If another provider's offer was accepted, only show to this provider if they also offered
+      if (acceptedByOtherRequestIds.has(r.id) && !providerOfferRequestIds.has(r.id)) return false;
+      return true;
+    })
     .map((r) => adaptBuyerRequest(r, statuses[r.id]))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }

@@ -36,12 +36,127 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "short" });
 }
 
+/* ─── Accept Confirmation Modal ──────────────────────────────────── */
+const ACCEPT_CHECKLIST = [
+  "Men taklif tafsilotlari (narx, muddat, shartlar) bilan tanishib chiqdim va tushundim",
+  "Men ijrochi bilan hurmat va etiket doirasida muloqot qilaman",
+  "Men ijrochi uchun xizmat yuzasidan kerakli ma'lumot va imkoniyatlarni taqdim etaman",
+];
+
+function AcceptConfirmModal({ onConfirm, onCancel }: {
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const [checks, setChecks] = useState([false, false, false, false]);
+  const allChecked = checks.every(Boolean);
+
+  function toggle(i: number) {
+    setChecks((prev) => prev.map((v, idx) => idx === i ? !v : v));
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <motion.div
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 60, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 380, damping: 32 }}
+        className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-5 pt-5 pb-3 border-b border-gray-100">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            </div>
+            <h3 className="font-extrabold text-gray-900 text-base">Taklifni qabul qilish</h3>
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            Ijrochi taklifini qabul qilishdan oldin quyidagilar bilan tanishib chiqing:
+          </p>
+          <ul className="mt-1.5 text-xs text-gray-500 space-y-0.5 pl-3">
+            <li>• 1 ta so'rovga faqat 1 ta taklif qabul qilish mumkin;</li>
+            <li>• Taklifni qabul qilishdan oldin qolgan ijrochilar bilan batafsil muhokama qilishingiz mumkin;</li>
+          </ul>
+        </div>
+
+        {/* Checklist */}
+        <div className="px-5 py-4 space-y-3">
+          {ACCEPT_CHECKLIST.map((label, i) => (
+            <button
+              key={i}
+              onClick={() => toggle(i)}
+              className="w-full flex items-start gap-3 text-left"
+            >
+              <div className={`w-5 h-5 rounded-md border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-all ${
+                checks[i] ? "bg-emerald-500 border-emerald-500" : "border-gray-300 bg-white"
+              }`}>
+                {checks[i] && <Check className="w-3 h-3 text-white" />}
+              </div>
+              <span className="text-xs text-gray-700 leading-relaxed">{label}</span>
+            </button>
+          ))}
+
+          {/* 4th item with link */}
+          <button
+            onClick={() => toggle(3)}
+            className="w-full flex items-start gap-3 text-left"
+          >
+            <div className={`w-5 h-5 rounded-md border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-all ${
+              checks[3] ? "bg-emerald-500 border-emerald-500" : "border-gray-300 bg-white"
+            }`}>
+              {checks[3] && <Check className="w-3 h-3 text-white" />}
+            </div>
+            <span className="text-xs text-gray-700 leading-relaxed">
+              Platforma{" "}
+              <span
+                className="text-blue-600 underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                shartlari va qoidalariga
+              </span>{" "}
+              roziman
+            </span>
+          </button>
+        </div>
+
+        {/* Buttons */}
+        <div className="px-5 pb-5 flex gap-3">
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            className="flex-1 h-11 rounded-2xl text-sm font-bold border-gray-200 text-gray-600"
+          >
+            Bekor qilish
+          </Button>
+          <Button
+            onClick={() => { if (allChecked) onConfirm(); }}
+            disabled={!allChecked}
+            className="flex-1 h-11 rounded-2xl text-sm font-bold bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Qabul qilaman
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 /* ─── Offer Card ─────────────────────────────────────────────────── */
-function OfferCard({ offer, index }: {
+function OfferCard({ offer, index, anyAccepted }: {
   offer: Offer;
   index: number;
+  anyAccepted: boolean; // true if ANY other offer on this request has been accepted
 }) {
   const [showDetail, setShowDetail] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [, setLocation] = useLocation();
 
   const req = getRequestById(offer.requestId);
@@ -49,15 +164,23 @@ function OfferCard({ offer, index }: {
   const isRejected = offer.status === "rejected";
   const providerLocal = getLocalProfile(offer.masterId);
 
-  function accept(e: React.MouseEvent) {
+  function handleAcceptClick(e: React.MouseEvent) {
     e.stopPropagation();
+    setShowConfirm(true);
+  }
+
+  function confirmAccept() {
     updateOfferStatus(offer.id, "accepted");
+    setShowConfirm(false);
   }
 
   function reject(e: React.MouseEvent) {
     e.stopPropagation();
     updateOfferStatus(offer.id, "rejected");
   }
+
+  // Can accept: offer is pending, and no other offer on this request is already accepted
+  const canAccept = !isAccepted && !isRejected && !anyAccepted;
 
   return (
     <>
@@ -69,6 +192,7 @@ function OfferCard({ offer, index }: {
         className={`bg-white rounded-2xl border overflow-hidden transition-all duration-200 cursor-pointer ${
           isAccepted ? "border-emerald-200"
           : isRejected ? "border-gray-100 opacity-55"
+          : anyAccepted ? "border-gray-100 opacity-60"
           : "border-gray-100 hover:border-blue-100 hover:shadow-md"
         }`}
       >
@@ -111,6 +235,11 @@ function OfferCard({ offer, index }: {
                     Rad etilgan
                   </span>
                 )}
+                {!isAccepted && !isRejected && anyAccepted && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">
+                    Boshqa taklif qabul qilindi
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-1 mt-0.5">
                 <Clock className="w-3 h-3 text-gray-400" />
@@ -141,7 +270,6 @@ function OfferCard({ offer, index }: {
           {/* Actions */}
           {!isRejected && (
             <div className="flex gap-2">
-              {/* "Batafsil" opens detail modal */}
               <Button
                 size="sm"
                 variant="outline"
@@ -150,11 +278,20 @@ function OfferCard({ offer, index }: {
               >
                 Batafsil
               </Button>
-              {!isAccepted ? (
+              {isAccepted ? (
+                <Button
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); setLocation(`/chat/${offer.requestId}_${offer.masterId}`); }}
+                  className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  Chat
+                </Button>
+              ) : canAccept ? (
                 <>
                   <Button
                     size="sm"
-                    onClick={accept}
+                    onClick={handleAcceptClick}
                     className="flex-1 h-9 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 gap-1.5"
                   >
                     <Check className="w-3.5 h-3.5" />
@@ -167,16 +304,7 @@ function OfferCard({ offer, index }: {
                     <X className="w-4 h-4" />
                   </button>
                 </>
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={(e) => { e.stopPropagation(); setLocation(`/chat/${offer.requestId}_${offer.masterId}`); }}
-                  className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  Chat
-                </Button>
-              )}
+              ) : null}
             </div>
           )}
         </div>
@@ -185,6 +313,15 @@ function OfferCard({ offer, index }: {
       <AnimatePresence>
         {showDetail && (
           <OfferDetailModal offer={offer} onClose={() => setShowDetail(false)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showConfirm && (
+          <AcceptConfirmModal
+            onConfirm={confirmAccept}
+            onCancel={() => setShowConfirm(false)}
+          />
         )}
       </AnimatePresence>
     </>
@@ -278,6 +415,11 @@ export default function ChatOffersPage() {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
   const chats = getChatsByCustomer(customerId);
+
+  // Requests that already have one accepted offer — used to disable Accept on other cards
+  const acceptedRequestIds = new Set(
+    allOffers.filter((o) => o.status === "accepted").map((o) => o.requestId)
+  );
 
   const filteredReq = filterRequestId ? getRequestById(filterRequestId) : undefined;
   const pendingCount = offers.filter((o) => o.status === "pending").length;
@@ -375,7 +517,12 @@ export default function ChatOffersPage() {
               ) : (
                 <div className="space-y-3">
                   {offers.map((offer, i) => (
-                    <OfferCard key={offer.id} offer={offer} index={i} />
+                    <OfferCard
+                      key={offer.id}
+                      offer={offer}
+                      index={i}
+                      anyAccepted={offer.status !== "accepted" && acceptedRequestIds.has(offer.requestId)}
+                    />
                   ))}
                 </div>
               )}
