@@ -878,133 +878,182 @@ function OffersSection({ refreshKey }: { refreshKey: number }) {
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   USERS SECTION — Comprehensive user management with rich data display
-   Combines:
-     • Provider profiles  — hormang_local_profile_* keys
-     • Customer registry  — hormang_customer_registry
-     • Customer requests  — inferred location, activity
-     • Offers & Chats     — calculate completion %, response time
+   USERS SECTION
+   Sources:
+     • Providers  → unique masterIds from hormang_offers (real names/initials)
+                    + hormang_local_profile_* (serviceAreas, region)
+     • Customers  → hormang_customer_registry
+     • "Both"     → userId appears in both provider offers AND registry
    ════════════════════════════════════════════════════════════════════ */
 interface AdminUser {
-  userId: string;
-  name: string;
-  initials: string;
-  role: "provider" | "customer";
-  categories?: string[];
-  phone?: string;
-  phoneVerified?: boolean;
-  location?: string;
-  serviceAreas?: string[];
-  completionPercent?: number;
-  rating?: number;
-  reviewCount?: number;
+  userId:           string;
+  name:             string;
+  initials:         string;
+  color:            string;
+  role:             "provider" | "customer" | "both";
+  categories?:      string[];
+  phone?:           string;
+  phoneVerified?:   boolean;
+  location?:        string;
+  serviceAreas?:    string[];
+  completionPct?:   number;  // % of offers accepted
+  offerCount?:      number;
+  acceptedCount?:   number;
+  requestCount?:    number;
+  rating?:          number;
+  reviewCount?:     number;
   avgResponseTime?: number;
-  verified?: boolean;
-  status?: "active" | "suspended";
-  createdAt?: string;
+  verified?:        boolean;
+  status:           "active" | "suspended";
+  joinedAt?:        string;
 }
 
-interface UserModalData {
-  user: AdminUser;
-}
+/* ─── UserProfileModal ────────────────────────────────────────────── */
+function AdminUserProfileModal({
+  user, onClose,
+}: { user: AdminUser | null; onClose: () => void }) {
+  if (!user) return null;
+  const u = user;
+  const roleBg  = u.role === "provider" ? "bg-violet-600"
+                : u.role === "both"     ? "bg-gradient-to-br from-violet-600 to-blue-600"
+                :                        "bg-blue-600";
 
-function UserProfileModal({ data, onClose }: { data: UserModalData | null; onClose: () => void }) {
-  if (!data) return null;
-  const u = data.user;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-lg font-extrabold text-gray-900">Foydalanuvchi profili</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-            <X className="w-5 h-5" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      onClick={onClose}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
+        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}>
+
+        {/* Header bar */}
+        <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-gray-100 px-5 py-3.5 flex items-center justify-between z-10">
+          <h2 className="text-base font-extrabold text-gray-900">Foydalanuvchi profili</h2>
+          <button onClick={onClose} className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+            <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-6 space-y-6">
-          {/* Header */}
+
+        <div className="p-5 space-y-5">
+          {/* Avatar + name */}
           <div className="flex items-center gap-4">
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-white flex-shrink-0 ${
-              u.role === "provider" ? "bg-violet-600" : "bg-blue-600"
-            }`}>{u.initials}</div>
-            <div>
-              <h3 className="text-xl font-extrabold text-gray-900">{u.name}</h3>
-              <p className="text-sm text-gray-500 font-mono">{u.userId}</p>
-              <div className="flex items-center gap-2 mt-2">
-                <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${
-                  u.role === "provider" ? "bg-violet-50 text-violet-700 border-violet-100" : "bg-blue-50 text-blue-700 border-blue-100"
-                }`}>
-                  {u.role === "provider" ? "Ijrochi" : "Xaridor"}
-                </span>
-                <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${
-                  u.status === "suspended" ? "bg-red-100 text-red-700 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-100"
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-extrabold text-white flex-shrink-0 shadow-md ${roleBg}`}>
+              {u.initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-extrabold text-gray-900 truncate">{u.name}</h3>
+              <p className="text-[11px] text-gray-400 font-mono">{u.userId}</p>
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                {(u.role === "provider" || u.role === "both") && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-violet-50 text-violet-700 border-violet-100">Ijrochi</span>
+                )}
+                {(u.role === "customer" || u.role === "both") && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-100">Xaridor</span>
+                )}
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                  u.status === "suspended"
+                    ? "bg-red-100 text-red-700 border-red-200"
+                    : "bg-emerald-50 text-emerald-700 border-emerald-100"
                 }`}>
                   {u.status === "suspended" ? "To'xtatilgan" : "Faol"}
                 </span>
+                {u.verified && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-teal-50 text-teal-700 border-teal-100">✓ Tasdiqlangan</span>
+                )}
               </div>
             </div>
           </div>
 
           {/* Contact */}
-          <div className="border-t border-gray-100 pt-4">
-            <h4 className="text-sm font-bold text-gray-900 mb-3">Kontakt ma'lumotlari</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-3">
-                <span className="text-gray-500 min-w-[120px]">Telefon:</span>
-                <span className="text-gray-800 font-semibold">{u.phone ?? "—"}</span>
-                {u.phoneVerified && <span className="text-emerald-600 text-[10px] font-bold">✓ Tasdiqlangan</span>}
-              </div>
-              {u.location && (
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-500 min-w-[120px]">Joylashuv:</span>
-                  <span className="text-gray-800 font-semibold">{u.location}</span>
-                </div>
-              )}
-              {u.serviceAreas && u.serviceAreas.length > 0 && (
-                <div className="flex items-start gap-3">
-                  <span className="text-gray-500 min-w-[120px] pt-1">Xizmat sohasi:</span>
-                  <div className="flex flex-wrap gap-1">
-                    {u.serviceAreas.map((area) => (
-                      <span key={area} className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-semibold rounded border border-red-100">
-                        {area}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {u.createdAt && (
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-500 min-w-[120px]">Ro'yxatdan:</span>
-                  <span className="text-gray-800 font-semibold">{fmtDate(u.createdAt)}</span>
-                </div>
-              )}
+          <div className="bg-gray-50 rounded-xl p-4 space-y-2.5 text-sm">
+            <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Kontakt</h4>
+            <div className="flex items-center gap-3">
+              <span className="text-gray-500 w-32 text-[12px]">Telefon</span>
+              <span className="font-semibold text-gray-800">{u.phone ?? "—"}</span>
+              {u.phoneVerified && <span className="text-emerald-600 text-[10px] font-bold">✓</span>}
             </div>
+            {u.location && (
+              <div className="flex items-center gap-3">
+                <span className="text-gray-500 w-32 text-[12px]">Joylashuv</span>
+                <span className="font-semibold text-gray-800">{u.location}</span>
+              </div>
+            )}
+            {u.joinedAt && (
+              <div className="flex items-center gap-3">
+                <span className="text-gray-500 w-32 text-[12px]">Ro'yxatdan o'tgan</span>
+                <span className="font-semibold text-gray-800">{fmtDate(u.joinedAt)}</span>
+              </div>
+            )}
           </div>
 
+          {/* Service areas (provider) */}
+          {u.serviceAreas && u.serviceAreas.length > 0 && (
+            <div>
+              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Xizmat hududlari</h4>
+              <div className="flex flex-wrap gap-1.5">
+                {u.serviceAreas.map((a) => (
+                  <span key={a} className="px-2.5 py-1 bg-red-50 text-red-700 text-xs font-semibold rounded-lg border border-red-100">{a}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Categories (provider) */}
+          {u.categories && u.categories.length > 0 && (
+            <div>
+              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Toifalar</h4>
+              <div className="flex flex-wrap gap-1.5">
+                {u.categories.map((c) => (
+                  <span key={c} className="px-2.5 py-1 bg-violet-50 text-violet-700 text-xs font-semibold rounded-lg border border-violet-100">{c}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Provider stats */}
-          {u.role === "provider" && (
-            <div className="border-t border-gray-100 pt-4">
-              <h4 className="text-sm font-bold text-gray-900 mb-3">Ijrochi statistikasi</h4>
-              <div className="grid grid-cols-2 gap-4">
+          {(u.role === "provider" || u.role === "both") && (
+            <div>
+              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Ijrochi statistikasi</h4>
+              <div className="grid grid-cols-2 gap-3">
                 {u.rating !== undefined && (
-                  <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
-                    <p className="text-[10px] text-amber-600 font-bold uppercase mb-1">Reyting</p>
+                  <div className="bg-amber-50 rounded-xl p-3 border border-amber-100 text-center">
+                    <p className="text-[9px] font-bold text-amber-500 uppercase mb-1">Reyting</p>
                     <p className="text-2xl font-extrabold text-amber-700">★ {u.rating.toFixed(1)}</p>
-                    <p className="text-[10px] text-amber-600 mt-1">{u.reviewCount ?? 0} ta sharh</p>
+                    <p className="text-[10px] text-amber-600 mt-0.5">{u.reviewCount ?? 0} ta sharh</p>
                   </div>
                 )}
-                {u.completionPercent !== undefined && (
-                  <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100">
-                    <p className="text-[10px] text-emerald-600 font-bold uppercase mb-1">Taklif qabuli</p>
-                    <p className="text-2xl font-extrabold text-emerald-700">{u.completionPercent}%</p>
+                {u.offerCount !== undefined && (
+                  <div className="bg-violet-50 rounded-xl p-3 border border-violet-100 text-center">
+                    <p className="text-[9px] font-bold text-violet-500 uppercase mb-1">Takliflar</p>
+                    <p className="text-2xl font-extrabold text-violet-700">{u.offerCount}</p>
+                    <p className="text-[10px] text-violet-600 mt-0.5">{u.acceptedCount ?? 0} ta qabul</p>
+                  </div>
+                )}
+                {u.completionPct !== undefined && (
+                  <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100 text-center">
+                    <p className="text-[9px] font-bold text-emerald-500 uppercase mb-1">Qabul %</p>
+                    <p className="text-2xl font-extrabold text-emerald-700">{u.completionPct}%</p>
                   </div>
                 )}
                 {u.avgResponseTime !== undefined && (
-                  <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
-                    <p className="text-[10px] text-blue-600 font-bold uppercase mb-1">O'rtacha javob vaqti</p>
-                    <p className="text-2xl font-extrabold text-blue-700">~{u.avgResponseTime} dq</p>
+                  <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 text-center">
+                    <p className="text-[9px] font-bold text-blue-500 uppercase mb-1">Javob vaqti</p>
+                    <p className="text-2xl font-extrabold text-blue-700">~{u.avgResponseTime}m</p>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Customer stats */}
+          {(u.role === "customer" || u.role === "both") && (
+            <div>
+              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Xaridor statistikasi</h4>
+              <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 text-center inline-block min-w-[120px]">
+                <p className="text-[9px] font-bold text-blue-500 uppercase mb-1">So'rovlar</p>
+                <p className="text-2xl font-extrabold text-blue-700">{u.requestCount ?? 0}</p>
               </div>
             </div>
           )}
@@ -1014,174 +1063,263 @@ function UserProfileModal({ data, onClose }: { data: UserModalData | null; onClo
   );
 }
 
+/* ─── UsersSection ────────────────────────────────────────────────── */
+type RoleFilter   = "all" | "provider" | "customer" | "both";
+type StatusFilter = "all" | "active" | "suspended" | "verified";
+
 function UsersSection({ refreshKey }: { refreshKey: number }) {
-  const [users, setUsers]                 = useState<AdminUser[]>([]);
-  const [suspended, setSuspended]         = useState<Set<string>>(() =>
+  const [users, setUsers]               = useState<AdminUser[]>([]);
+  const [suspended, setSuspended]       = useState<Set<string>>(() =>
     new Set(readKey<string[]>("hormang_admin_suspended_users", []))
   );
-  const [search, setSearch]               = useState("");
-  const [filterRole, setFilterRole]       = useState<"all" | "provider" | "customer">("all");
-  const [filterStatus, setFilterStatus]   = useState<"all" | "active" | "suspended">("all");
-  const [filterCat, setFilterCat]         = useState("all");
-  const [modalData, setModalData]         = useState<UserModalData | null>(null);
+  const [search, setSearch]             = useState("");
+  const [filterRole, setFilterRole]     = useState<RoleFilter>("all");
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>("all");
+  const [filterCats, setFilterCats]     = useState<Set<string>>(new Set());
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
 
   const load = useCallback(() => {
-    const result: AdminUser[] = [];
-    const requests = readKey<CustomerRequest[]>(K.REQUESTS, []);
-    const offers = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
-    const chats = readKey<{ id: string; masterId: string; avgResponseTime?: number }[]>(K.CHATS_BUYER, []);
-
-    // 1. Provider profiles (hormang_local_profile_*)
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (!key?.startsWith(K.PROFILE_PREFIX)) continue;
-      try {
-        const raw = localStorage.getItem(key);
-        if (!raw) continue;
-        const p = JSON.parse(raw) as LocalProfile;
-        const userId = p.userId ?? key.replace(K.PROFILE_PREFIX, "");
-        const nameParts = (p.name ?? "?").split(" ");
-        
-        // Calculate provider stats
-        const providerOffers = offers.filter((o) => o.masterId === userId);
-        const acceptedCount = providerOffers.filter((o) => o.status === "accepted").length;
-        const completionPercent = providerOffers.length > 0
-          ? Math.round((acceptedCount / providerOffers.length) * 100)
-          : 0;
-        const providerChats = chats.filter((c) => c.masterId === userId);
-        const avgResponseTime = providerChats.length > 0
-          ? Math.round(providerChats.reduce((s, c) => s + (c.avgResponseTime ?? 0), 0) / providerChats.length)
-          : 0;
-
-        result.push({
-          userId,
-          name: p.name ?? "Noma'lum",
-          initials: nameParts.map((n) => n[0]).join("").slice(0, 2).toUpperCase(),
-          role: "provider",
-          categories: p.categories,
-          phone: p.phone,
-          phoneVerified: p.verified,
-          rating: p.rating,
-          reviewCount: p.reviewCount,
-          verified: p.verified,
-          completionPercent,
-          avgResponseTime: avgResponseTime > 0 ? avgResponseTime : undefined,
-          status: suspended.has(userId) ? "suspended" : "active",
-          createdAt: p.createdAt,
-        });
-      } catch { /* skip malformed */ }
-    }
-
-    // 2. Customer registry (hormang_customer_registry)
-    const registry = readKey<Record<string, { name: string; initials: string }>>(
+    const allOffers   = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
+    const allRequests = readKey<CustomerRequest[]>(K.REQUESTS, []);
+    const registry    = readKey<Record<string, { name: string; initials: string }>>(
       "hormang_customer_registry", {}
     );
-    const providerIds = new Set(result.map((u) => u.userId));
+    const suspended_  = readKey<string[]>("hormang_admin_suspended_users", []);
+    const suspSet     = new Set(suspended_);
+
+    /* ── Step 1: Build provider map from offers (canonical provider source) ── */
+    const providerMap = new Map<string, AdminUser>();
+    for (const offer of allOffers) {
+      if (!offer.masterId) continue;
+      if (!providerMap.has(offer.masterId)) {
+        providerMap.set(offer.masterId, {
+          userId:    offer.masterId,
+          name:      offer.masterName   ?? "Ijrochi",
+          initials:  offer.masterInitials ?? offer.masterName?.[0] ?? "I",
+          color:     offer.masterColor  ?? "#7C3AED",
+          role:      "provider",
+          offerCount:    0,
+          acceptedCount: 0,
+          avgResponseTime: 0,
+          status:    suspSet.has(offer.masterId) ? "suspended" : "active",
+        });
+      }
+      const p = providerMap.get(offer.masterId)!;
+      p.offerCount = (p.offerCount ?? 0) + 1;
+      if (offer.status === "accepted") p.acceptedCount = (p.acceptedCount ?? 0) + 1;
+      if (offer.avgResponseTime) {
+        p.avgResponseTime = Math.round(
+          ((p.avgResponseTime ?? 0) * ((p.offerCount ?? 1) - 1) + offer.avgResponseTime) / (p.offerCount ?? 1)
+        );
+      }
+    }
+    // Compute completionPct
+    for (const p of providerMap.values()) {
+      if (p.offerCount && p.offerCount > 0) {
+        p.completionPct = Math.round(((p.acceptedCount ?? 0) / p.offerCount) * 100);
+      }
+    }
+
+    /* ── Step 2: Enrich providers with LocalProfile data (serviceAreas, joinedAt) ── */
+    for (let i = 0; i < localStorage.length; i++) {
+      const lsKey = localStorage.key(i);
+      if (!lsKey?.startsWith(K.PROFILE_PREFIX)) continue;
+      try {
+        const raw = localStorage.getItem(lsKey);
+        if (!raw) continue;
+        const lp = JSON.parse(raw) as {
+          serviceAreas?: string[]; region?: string; district?: string;
+          createdAt?: string; photoUrl?: string;
+        };
+        const uid_ = lsKey.replace(K.PROFILE_PREFIX, "");
+        const provider = providerMap.get(uid_);
+        if (provider) {
+          provider.serviceAreas = lp.serviceAreas ?? (lp.region ? [lp.region] : undefined);
+          provider.joinedAt     = lp.createdAt;
+          provider.location     = lp.district ?? lp.region;
+        }
+      } catch { /* skip */ }
+    }
+
+    /* ── Step 3: Customer registry → build customer list ── */
+    const result: AdminUser[] = [...providerMap.values()];
+    const providerIds = new Set(providerMap.keys());
+
     for (const [userId, entry] of Object.entries(registry)) {
-      if (providerIds.has(userId)) continue;
-      
-      // Find customer's requests to infer location
-      const custRequests = requests.filter((r) => r.customerId === userId);
-      const location = custRequests.length > 0 
+      const custRequests = allRequests.filter((r) => r.customerId === userId);
+      const location     = custRequests.length > 0
         ? (custRequests[0].district ?? custRequests[0].region ?? locationFrom(custRequests[0].answers))
         : undefined;
 
-      result.push({
-        userId,
-        name: entry.name ?? "Xaridor",
-        initials: entry.initials ?? "X",
-        role: "customer",
-        location,
-        status: suspended.has(userId) ? "suspended" : "active",
-      });
+      if (providerIds.has(userId)) {
+        // Upgrade existing provider to "both"
+        const provider = providerMap.get(userId)!;
+        provider.role         = "both";
+        provider.requestCount = custRequests.length;
+        provider.location     = provider.location ?? location;
+      } else {
+        result.push({
+          userId,
+          name:         entry.name ?? "Xaridor",
+          initials:     entry.initials ?? "X",
+          color:        "#2563EB",
+          role:         "customer",
+          requestCount: custRequests.length,
+          location,
+          status:       suspSet.has(userId) ? "suspended" : "active",
+        });
+      }
     }
 
-    setUsers(result.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")));
-  }, [suspended]);
+    setUsers(result.sort((a, b) => {
+      // providers + both first, then customers; within groups alphabetical
+      const roleOrder = { both: 0, provider: 1, customer: 2 };
+      const diff = roleOrder[a.role] - roleOrder[b.role];
+      return diff !== 0 ? diff : a.name.localeCompare(b.name);
+    }));
+  }, []);
 
-  useEffect(() => { load(); }, [load, refreshKey, suspended]);
+  useEffect(() => { load(); }, [load, refreshKey]);
 
+  /* ── Actions ── */
   function toggleSuspend(userId: string) {
     const next = new Set(suspended);
     if (next.has(userId)) next.delete(userId);
     else next.add(userId);
     setSuspended(next);
     writeKey("hormang_admin_suspended_users", Array.from(next));
+    // Reflect immediately in local list
+    setUsers((prev) => prev.map((u) =>
+      u.userId === userId ? { ...u, status: next.has(userId) ? "suspended" : "active" } : u
+    ));
     const u = users.find((x) => x.userId === userId);
     logAction("TOGGLE_USER_STATUS", userId, `${u?.name ?? userId} holati o'zgartirildi`);
   }
 
-  function deleteUser(userId: string) {
-    if (!confirm("Bu foydalanuvchini o'chirishni tasdiqlaysizmi? Bu amalni qaytarib bo'lmaydi.")) return;
-    // Delete provider profile if exists
-    const profileKey = `${K.PROFILE_PREFIX}${userId}`;
-    localStorage.removeItem(profileKey);
-    setUsers(users.filter((u) => u.userId !== userId));
-    logAction("DELETE_USER", userId, "Foydalanuvchi o'chirildi");
+  function deleteUser(user: AdminUser) {
+    if (!confirm(`"${user.name}" foydalanuvchisini o'chirishni tasdiqlaysizmi?\nBu amalni qaytarib bo'lmaydi.`)) return;
+    // 1. Remove local profile (provider physical data)
+    localStorage.removeItem(`${K.PROFILE_PREFIX}${user.userId}`);
+    // 2. Remove from customer registry
+    const registry = readKey<Record<string, unknown>>("hormang_customer_registry", {});
+    delete registry[user.userId];
+    writeKey("hormang_customer_registry", registry);
+    // 3. Remove from suspended list
+    const next = new Set(suspended);
+    next.delete(user.userId);
+    setSuspended(next);
+    writeKey("hormang_admin_suspended_users", Array.from(next));
+    // 4. Update local state
+    setUsers((prev) => prev.filter((u) => u.userId !== user.userId));
+    logAction("DELETE_USER", user.userId, `${user.name} o'chirildi`);
     emitStoreChange();
   }
 
+  /* ── Category pill toggle ── */
+  function toggleCat(cat: string) {
+    setFilterCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat); else next.add(cat);
+      return next;
+    });
+  }
+
+  /* ── Filtering ── */
   const filtered = users.filter((u) => {
-    const q = search.toLowerCase();
-    return (
-      (!q || u.name.toLowerCase().includes(q) || (u.phone?.includes(q)) || u.userId.includes(q))
-      && (filterRole === "all" || u.role === filterRole)
-      && (filterStatus === "all" || u.status === filterStatus)
-      && (filterCat === "all" || u.categories?.includes(filterCat))
-    );
+    const q = search.toLowerCase().trim();
+    if (q && !u.name.toLowerCase().includes(q) && !u.userId.includes(q) && !(u.phone?.includes(q))) return false;
+    if (filterRole !== "all" && u.role !== filterRole) return false;
+    if (filterStatus === "active"    && u.status !== "active")     return false;
+    if (filterStatus === "suspended" && u.status !== "suspended")  return false;
+    if (filterStatus === "verified"  && !u.verified)               return false;
+    if (filterCats.size > 0 && !([...filterCats].some((c) => u.categories?.includes(c)))) return false;
+    return true;
   });
 
-  const providers = users.filter((u) => u.role === "provider").length;
-  const customers = users.filter((u) => u.role === "customer").length;
-  const verifiedCount = users.filter((u) => u.phoneVerified).length;
+  const providerCount  = users.filter((u) => u.role === "provider" || u.role === "both").length;
+  const customerCount  = users.filter((u) => u.role === "customer" || u.role === "both").length;
+  const bothCount      = users.filter((u) => u.role === "both").length;
+  const verifiedCount  = users.filter((u) => u.verified).length;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-lg font-extrabold text-gray-900">Foydalanuvchilar</h2>
-          <p className="text-sm text-gray-500">
-            {providers} ijrochi · {customers} xaridor · {verifiedCount} tasdiqlangan
+          <p className="text-sm text-gray-500 mt-0.5">
+            {users.length} jami ·&nbsp;
+            <span className="text-violet-600 font-semibold">{providerCount} ijrochi</span> ·&nbsp;
+            <span className="text-blue-600 font-semibold">{customerCount} xaridor</span>
+            {bothCount > 0 && <> · <span className="text-indigo-600 font-semibold">{bothCount} ikkalasi</span></>}
+            {verifiedCount > 0 && <> · <span className="text-teal-600 font-semibold">{verifiedCount} tasdiqlangan</span></>}
           </p>
         </div>
-        <button onClick={() => { load(); }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100 transition-colors border border-red-100">
+        <button onClick={load}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100 transition-colors border border-red-100 flex-shrink-0">
           <RefreshCw className="w-3.5 h-3.5" /> Yangilash
         </button>
       </div>
 
+      {/* ── Filters row ── */}
       <div className="flex flex-wrap gap-2">
+        {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Ism, telefon yoki ID..." className={`${inputCls} w-full pl-9`} />
+            placeholder="Ism, telefon yoki ID bo'yicha qidirish..."
+            className={`${inputCls} w-full pl-9`} />
         </div>
-        <select value={filterRole} onChange={(e) => setFilterRole(e.target.value as any)} className={inputCls}>
+        {/* Role filter */}
+        <select value={filterRole} onChange={(e) => setFilterRole(e.target.value as RoleFilter)} className={inputCls}>
           <option value="all">Barcha rollar</option>
           <option value="provider">Ijrochilar</option>
           <option value="customer">Xaridorlar</option>
+          <option value="both">Ikkalasi ham</option>
         </select>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className={inputCls}>
+        {/* Status filter */}
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as StatusFilter)} className={inputCls}>
           <option value="all">Barcha holatlari</option>
           <option value="active">Faol</option>
           <option value="suspended">To'xtatilgan</option>
+          <option value="verified">Tasdiqlangan</option>
         </select>
-        {filterRole !== "customer" && (
-          <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)} className={inputCls}>
-            <option value="all">Barcha toifalar</option>
-            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        )}
       </div>
 
+      {/* ── Category multi-select pills ── */}
+      {(filterRole === "all" || filterRole === "provider" || filterRole === "both") && (
+        <div className="flex flex-wrap gap-1.5">
+          {CATEGORIES.map((cat) => {
+            const active = filterCats.has(cat);
+            return (
+              <button key={cat} onClick={() => toggleCat(cat)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
+                  active
+                    ? "bg-red-600 text-white border-red-600 shadow-sm"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
+                }`}>
+                {cat}
+              </button>
+            );
+          })}
+          {filterCats.size > 0 && (
+            <button onClick={() => setFilterCats(new Set())}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-gray-200 text-gray-400 hover:text-red-600 hover:border-red-300 transition-all">
+              Tozalash ✕
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Table ── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {filtered.length === 0 ? (
-          <div className="p-12 text-center">
-            <Users className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400 font-semibold">
+          <div className="py-16 text-center">
+            <Users className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+            <p className="text-gray-400 font-semibold text-base">
               {users.length === 0 ? "Hali foydalanuvchilar yo'q" : "Topilmadi"}
             </p>
-            <p className="text-gray-300 text-sm mt-1">
+            <p className="text-gray-300 text-sm mt-1.5">
               {users.length === 0
                 ? "Tizimga kirgan foydalanuvchilar bu yerda ko'rinadi"
                 : "Qidiruv yoki filtrlash parametrlarini o'zgartiring"}
@@ -1192,132 +1330,213 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-red-50/40">
-                  {["Foydalanuvchi", "Rol", "Telefon", "Joylashuv", "Toifalar", "Reyting", "Tugallash %", "Javob vaqti", "Holat", "Amallar"].map((h) => (
-                    <th key={h} className="text-left text-[10px] font-bold text-red-400 uppercase tracking-widest px-3 py-3 whitespace-nowrap">{h}</th>
+                  {[
+                    "Foydalanuvchi", "Rol", "Telefon",
+                    "Joylashuv / Hudud", "Toifalar",
+                    "Takliflar / Qabul", "Javob vaqti",
+                    "So'rovlar", "Holat", "Qo'shilgan", "Amallar",
+                  ].map((h) => (
+                    <th key={h}
+                      className="text-left text-[9px] font-bold text-red-400 uppercase tracking-widest px-3 py-3 whitespace-nowrap">
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filtered.map((u) => (
-                  <tr key={u.userId} className="hover:bg-red-50/20 transition-colors">
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                          u.role === "provider" ? "bg-violet-100 text-violet-700" : "bg-blue-100 text-blue-700"
-                        }`}>
-                          {u.initials}
+                {filtered.map((u) => {
+                  const avatarBg =
+                    u.role === "both"     ? "bg-gradient-to-br from-violet-500 to-blue-500 text-white"
+                    : u.role === "provider" ? "bg-violet-100 text-violet-700"
+                    :                        "bg-blue-100 text-blue-700";
+                  return (
+                    <tr key={u.userId} className="hover:bg-red-50/20 transition-colors group">
+                      {/* User */}
+                      <td className="px-3 py-3 min-w-[160px]">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-extrabold flex-shrink-0 ${avatarBg}`}>
+                            {u.initials}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-800 text-[12px] leading-tight whitespace-nowrap">
+                              {u.name}
+                            </p>
+                            <p className="text-[9px] text-gray-400 font-mono">
+                              {u.userId.slice(0, 12)}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-800 text-xs leading-tight">{u.name}</p>
-                          <p className="text-[9px] text-gray-400 font-mono">{u.userId.slice(0, 10)}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
-                        u.role === "provider"
-                          ? "bg-violet-50 text-violet-700 border-violet-100"
-                          : "bg-blue-50 text-blue-700 border-blue-100"
-                      }`}>
-                        {u.role === "provider" ? "Ijrochi" : "Xaridor"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="text-xs">
-                        {u.phone ? (
-                          <>
-                            <p className="text-gray-700 font-semibold">{u.phone}</p>
-                            {u.phoneVerified && <p className="text-emerald-600 font-bold text-[9px]">✓ Tasdiqlangan</p>}
-                          </>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-xs text-gray-600">
-                      {u.location ?? <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-3 py-3">
-                      {u.categories && u.categories.length > 0 ? (
-                        <div className="flex flex-wrap gap-0.5">
-                          {u.categories.slice(0, 2).map((c) => (
-                            <span key={c} className="px-1 py-0.5 bg-red-50 text-red-600 text-[8px] font-bold rounded border border-red-100">
-                              {c.slice(0, 8)}
+                      </td>
+
+                      {/* Role */}
+                      <td className="px-3 py-3">
+                        <div className="flex flex-col gap-0.5">
+                          {(u.role === "provider" || u.role === "both") && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-violet-50 text-violet-700 border-violet-100 w-fit">
+                              Ijrochi
                             </span>
-                          ))}
-                          {u.categories.length > 2 && (
-                            <span className="text-[8px] text-gray-400 px-1">+{u.categories.length - 2}</span>
+                          )}
+                          {(u.role === "customer" || u.role === "both") && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-blue-50 text-blue-700 border-blue-100 w-fit">
+                              Xaridor
+                            </span>
                           )}
                         </div>
-                      ) : (
-                        <span className="text-gray-300 text-xs">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-xs">
-                      {u.rating ? (
-                        <div className="flex items-center gap-0.5 font-semibold text-amber-600">
-                          ★ {u.rating.toFixed(1)} <span className="text-gray-400 font-normal">({u.reviewCount})</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-xs">
-                      {u.completionPercent !== undefined ? (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                            <div className="h-full" style={{
-                              width: `${u.completionPercent}%`,
-                              background: u.completionPercent >= 80 ? "#10B981" : u.completionPercent >= 50 ? "#F59E0B" : "#EF4444",
-                            }} />
+                      </td>
+
+                      {/* Phone */}
+                      <td className="px-3 py-3">
+                        {u.phone ? (
+                          <div>
+                            <p className="text-[11px] font-semibold text-gray-700 whitespace-nowrap">{u.phone}</p>
+                            {u.phoneVerified
+                              ? <p className="text-[9px] text-emerald-600 font-bold">✓ Tasdiqlangan</p>
+                              : <p className="text-[9px] text-gray-400">Tasdiqlanmagan</p>}
                           </div>
-                          <span className="font-bold text-gray-700 min-w-[30px]">{u.completionPercent}%</span>
+                        ) : <span className="text-gray-300 text-[11px]">—</span>}
+                      </td>
+
+                      {/* Location / Service Areas */}
+                      <td className="px-3 py-3 max-w-[140px]">
+                        {u.serviceAreas && u.serviceAreas.length > 0 ? (
+                          <div className="flex flex-wrap gap-0.5">
+                            {u.serviceAreas.slice(0, 2).map((a) => (
+                              <span key={a} className="px-1 py-0.5 bg-red-50 text-red-600 text-[8px] font-bold rounded border border-red-100 whitespace-nowrap">
+                                {a.slice(0, 12)}
+                              </span>
+                            ))}
+                            {u.serviceAreas.length > 2 && (
+                              <span className="text-[8px] text-gray-400">+{u.serviceAreas.length - 2}</span>
+                            )}
+                          </div>
+                        ) : u.location ? (
+                          <span className="text-[11px] text-gray-600">{u.location}</span>
+                        ) : (
+                          <span className="text-gray-300 text-[11px]">—</span>
+                        )}
+                      </td>
+
+                      {/* Categories */}
+                      <td className="px-3 py-3 max-w-[130px]">
+                        {u.categories && u.categories.length > 0 ? (
+                          <div className="flex flex-wrap gap-0.5">
+                            {u.categories.slice(0, 2).map((c) => (
+                              <span key={c} className="px-1 py-0.5 bg-violet-50 text-violet-700 text-[8px] font-bold rounded border border-violet-100 whitespace-nowrap">
+                                {c.slice(0, 10)}
+                              </span>
+                            ))}
+                            {u.categories.length > 2 && (
+                              <span className="text-[8px] text-gray-400">+{u.categories.length - 2}</span>
+                            )}
+                          </div>
+                        ) : <span className="text-gray-300 text-[11px]">—</span>}
+                      </td>
+
+                      {/* Offers / Accepted */}
+                      <td className="px-3 py-3">
+                        {u.offerCount !== undefined ? (
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="text-[11px] font-bold text-gray-700">
+                                {u.acceptedCount}/{u.offerCount}
+                              </span>
+                            </div>
+                            {u.completionPct !== undefined && (
+                              <div className="flex items-center gap-1">
+                                <div className="w-14 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full transition-all" style={{
+                                    width: `${u.completionPct}%`,
+                                    background: u.completionPct >= 70 ? "#10B981"
+                                              : u.completionPct >= 40 ? "#F59E0B"
+                                              : "#EF4444",
+                                  }} />
+                                </div>
+                                <span className="text-[9px] font-bold text-gray-500">{u.completionPct}%</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : <span className="text-gray-300 text-[11px]">—</span>}
+                      </td>
+
+                      {/* Avg Response Time */}
+                      <td className="px-3 py-3 text-[11px] text-gray-600 whitespace-nowrap">
+                        {u.avgResponseTime ? `~${u.avgResponseTime}m` : "—"}
+                      </td>
+
+                      {/* Request count (customer) */}
+                      <td className="px-3 py-3 text-center">
+                        {u.requestCount !== undefined ? (
+                          <span className="text-[12px] font-bold text-gray-700">{u.requestCount}</span>
+                        ) : <span className="text-gray-300">—</span>}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-3 py-3">
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border whitespace-nowrap ${
+                          u.status === "suspended"
+                            ? "bg-red-100 text-red-700 border-red-200"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-100"
+                        }`}>
+                          {u.status === "suspended" ? "To'xtatilgan" : "Faol"}
+                        </span>
+                      </td>
+
+                      {/* Joined date */}
+                      <td className="px-3 py-3 text-[10px] text-gray-400 whitespace-nowrap">
+                        {u.joinedAt ? fmtDate(u.joinedAt) : "—"}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setSelectedUser(u)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                            title="Profilni ko'rish">
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => toggleSuspend(u.userId)}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              u.status === "suspended"
+                                ? "text-emerald-600 hover:bg-emerald-50"
+                                : "text-orange-500 hover:bg-orange-50"
+                            }`}
+                            title={u.status === "suspended" ? "Faollashtirish" : "To'xtatish"}>
+                            {u.status === "suspended"
+                              ? <CheckCircle2 className="w-3.5 h-3.5" />
+                              : <Ban className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            onClick={() => deleteUser(u)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
+                            title="Foydalanuvchini o'chirish">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-xs text-gray-600">
-                      {u.avgResponseTime ? `~${u.avgResponseTime}m` : "—"}
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
-                        u.status === "suspended"
-                          ? "bg-red-100 text-red-700 border-red-200"
-                          : "bg-emerald-50 text-emerald-700 border-emerald-100"
-                      }`}>
-                        {u.status === "suspended" ? "To'xtatilgan" : "Faol"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => setModalData({ user: u })}
-                          className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors" title="Profil ko'rish">
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => toggleSuspend(u.userId)}
-                          className={`p-1.5 rounded-lg transition-colors ${
-                            u.status === "suspended"
-                              ? "text-emerald-600 hover:bg-emerald-50"
-                              : "text-red-600 hover:bg-red-50"
-                          }`} title={u.status === "suspended" ? "Faollashtirish" : "To'xtatish"}>
-                          {u.status === "suspended" ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
-                        </button>
-                        <button onClick={() => deleteUser(u.userId)}
-                          className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors" title="O'chirish">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      <UserProfileModal data={modalData} onClose={() => setModalData(null)} />
+      {/* Result count */}
+      {users.length > 0 && (
+        <p className="text-[11px] text-gray-400 text-right">
+          {filtered.length} / {users.length} foydalanuvchi ko'rsatilmoqda
+        </p>
+      )}
+
+      {/* Profile modal */}
+      <AnimatePresence>
+        {selectedUser && (
+          <AdminUserProfileModal user={selectedUser} onClose={() => setSelectedUser(null)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
