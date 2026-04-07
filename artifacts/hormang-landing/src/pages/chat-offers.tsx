@@ -41,6 +41,7 @@ function OfferCard({ offer, index }: {
   index: number;
 }) {
   const [showDetail, setShowDetail] = useState(false);
+  const [, setLocation] = useLocation();
 
   const req = getRequestById(offer.requestId);
   const isAccepted = offer.status === "accepted";
