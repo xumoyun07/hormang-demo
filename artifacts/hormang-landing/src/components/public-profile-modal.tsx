@@ -50,6 +50,12 @@ export interface CustomerProfileData {
   customerName: string;
   customerInitials?: string;
   customerColor?: string;
+  /**
+   * Preferred: pass the customer's userId so the sheet can auto-load
+   * their photo from localStorage (mirrors what ProviderSheet does with masterId).
+   */
+  customerId?: string;
+  /** Explicit photo override — used when customerId is not available. */
   photoUrl?: string;
   region?: string;
   district?: string;
@@ -316,6 +322,11 @@ function CustomerSheet({ data, onClose }: { data: CustomerProfileData; onClose: 
     : data.region ?? "";
   const joined = data.joinedAt ? memberSince(data.joinedAt) : null;
 
+  /* Auto-load photo from customer's local profile (same pattern as ProviderSheet).
+     Explicit data.photoUrl is the fallback when no customerId is available. */
+  const customerLocal = data.customerId ? getLocalProfile(data.customerId) : null;
+  const photoUrl = customerLocal?.photoUrl ?? data.photoUrl;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -343,9 +354,9 @@ function CustomerSheet({ data, onClose }: { data: CustomerProfileData; onClose: 
           </div>
 
           {/* Avatar */}
-          {data.photoUrl ? (
+          {photoUrl ? (
             <img
-              src={data.photoUrl}
+              src={photoUrl}
               alt={name}
               className="w-16 h-16 rounded-2xl mx-auto mb-3 object-cover shadow-lg border-2 border-white/25"
             />

@@ -320,6 +320,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
               customerName: chat.customerName,
               customerInitials: chat.customerInitials,
               customerColor: chat.customerColor,
+              customerId: chat.customerId,
               categoryName: chat.categoryName,
               categoryEmoji: chat.categoryEmoji,
             }}

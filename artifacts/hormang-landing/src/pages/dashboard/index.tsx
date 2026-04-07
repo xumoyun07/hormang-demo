@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { BottomNav } from "@/components/bottom-nav";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -220,10 +221,11 @@ function BecomeProviderModal({
 function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => void; onBecome: () => void }) {
   const { user, providerProfile } = useAuth();
   const [local, setLocal] = useState<LocalProfile>({});
+  const storeVersion = useStoreRefresh();
 
   useEffect(() => {
     if (user?.id) setLocal(getLocalProfile(user.id));
-  }, [user?.id]);
+  }, [user?.id, storeVersion]);
 
   const fullName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
   const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase();
@@ -687,10 +689,11 @@ export default function UnifiedDashboard() {
   const [headerLocal, setHeaderLocal] = useState<LocalProfile>({});
   const [showBecomeModal, setShowBecomeModal] = useState(false);
   const [becomingProvider, setBecomingProvider] = useState(false);
+  const storeVersion = useStoreRefresh();
 
   useEffect(() => {
     if (user?.id) setHeaderLocal(getLocalProfile(user.id));
-  }, [user?.id]);
+  }, [user?.id, storeVersion]);
 
   const isProvider = activeRole === "provider";
   // Show the role-switcher when the user has a provider account.

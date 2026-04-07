@@ -267,7 +267,16 @@ export default function ProfileSettingsPage() {
 
   /* Local profile state */
   const [local, setLocal] = useState<LocalProfile>({});
-  useEffect(() => { if (user) setLocal(getLocalProfile(user.id)); }, [user?.id]);
+  useEffect(() => {
+    if (user) {
+      const loaded = getLocalProfile(user.id);
+      setLocal(loaded);
+      /* Reset photo IMMEDIATELY on user switch — do NOT rely on the separate
+         local.photoUrl effect, which would leave a 300ms window where the
+         debounced auto-save could write the old user's photo to the new user. */
+      setPhotoUrl(loaded.photoUrl);
+    }
+  }, [user?.id]);
 
   /* Form fields */
   const [firstName, setFirstName]   = useState("");
@@ -302,16 +311,25 @@ export default function ProfileSettingsPage() {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [photoUrl, setPhotoUrl]   = useState<string | undefined>(undefined);
   const [photoLoading, setPhotoLoading] = useState(false);
-  useEffect(() => { setPhotoUrl(local.photoUrl); }, [local.photoUrl]);
+  /* NOTE: photoUrl is reset directly inside the user.id effect above.
+     There is intentionally NO separate useEffect(() => setPhotoUrl(local.photoUrl))
+     here — that pattern introduced a 300ms race window where a stale
+     debouncedPhoto could be written to the wrong user's profile. */
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
     setPhotoLoading(true);
     const reader = new FileReader();
     reader.onload = (ev) => {
-      setPhotoUrl(ev.target?.result as string);
+      const newPhotoUrl = ev.target?.result as string;
+      setPhotoUrl(newPhotoUrl);
       setPhotoLoading(false);
+      /* Immediately persist to localStorage under THIS user's key.
+         This prevents the debounced auto-save (persistLocal) from
+         writing a stale photo to a different user during a user switch. */
+      const currentLocal = getLocalProfile(user.id);
+      saveLocalProfile(user.id, { ...currentLocal, photoUrl: newPhotoUrl });
     };
     reader.readAsDataURL(file);
     e.target.value = "";
@@ -384,6 +402,11 @@ export default function ProfileSettingsPage() {
 
   const persistLocal = useCallback(() => {
     if (!user) return;
+    /* Guard: if debouncedPhoto hasn't caught up with the live photoUrl state,
+       skip this save cycle. This prevents a cross-user race where User A's
+       photo (still in debouncedPhoto) gets written to User B's profile right
+       after a user switch — the next debounce tick will have the correct value. */
+    if (debouncedPhoto !== photoUrl) return;
     const next: LocalProfile = {
       photoUrl: debouncedPhoto,
       region: debouncedRegion,
@@ -395,7 +418,7 @@ export default function ProfileSettingsPage() {
     };
     saveLocalProfile(user.id, next);
     setAutoSaveAt(new Date());
-  }, [user, debouncedPhoto, debouncedRegion, debouncedDistrict, debouncedServiceAreas, debouncedExp, debouncedPortf]);
+  }, [user, photoUrl, debouncedPhoto, debouncedRegion, debouncedDistrict, debouncedServiceAreas, debouncedExp, debouncedPortf]);
 
   useEffect(() => { persistLocal(); }, [persistLocal]);
 
@@ -1048,6 +1071,7 @@ export default function ProfileSettingsPage() {
               customerName: `${firstName} ${lastName}`.trim(),
               customerInitials: `${(firstName[0] ?? "")}${(lastName[0] ?? "")}`.toUpperCase(),
               customerColor: "hsl(221,78%,48%)",
+              customerId: user.id,
               photoUrl,
               region,
               district,

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
@@ -52,9 +53,10 @@ export default function ProviderDashboard() {
 
   /* ── Local profile (photo + completion data) ── */
   const [local, setLocal] = useState<LocalProfile>({});
+  const storeVersion = useStoreRefresh();
   useEffect(() => {
     if (user?.id) setLocal(getLocalProfile(user.id));
-  }, [user?.id]);
+  }, [user?.id, storeVersion]);
 
   /* ── Completion checks ── */
   const completionLocal = {

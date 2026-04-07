@@ -460,9 +460,11 @@ function OfferDetailModal({
       <AnimatePresence>
         {showCustomerProfile && (
           <PublicProfileModal
+            key={`req-customer-${request.customerId}`}
             mode="customer"
             customerData={{
               customerName: request.customerName ?? "Xaridor",
+              customerId: request.customerId,
               region: request.region,
               district: request.district,
               joinedAt: request.createdAt,
