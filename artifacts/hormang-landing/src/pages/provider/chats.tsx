@@ -407,9 +407,10 @@ export default function ProviderChatsPage() {
   let displayed = chats;
   if (tab === "unread") displayed = chats.filter((c) => c.unread > 0);
   if (tab === "by-service") {
-    if (selectedService)
-      displayed = chats.filter((c) => c.categoryName === selectedService);
-    displayed = [...chats].sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+    const source = selectedService
+      ? chats.filter((c) => c.categoryName === selectedService)
+      : chats;
+    displayed = [...source].sort((a, b) => a.categoryName.localeCompare(b.categoryName));
   }
 
   if (query.trim()) {
