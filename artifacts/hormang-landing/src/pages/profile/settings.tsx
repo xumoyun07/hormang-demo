@@ -1040,6 +1040,7 @@ export default function ProfileSettingsPage() {
       <AnimatePresence>
         {showCustomerPreview && (
           <PublicProfileModal
+            key={`customer-${firstName}-${lastName}-${region}-${district}`}
             mode="customer"
             onClose={() => setShowCustomerPreview(false)}
             customerData={{
