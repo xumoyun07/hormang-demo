@@ -169,11 +169,11 @@ function OfferCard({ offer, index }: {
               ) : (
                 <Button
                   size="sm"
-                  onClick={(e) => { e.stopPropagation(); setShowDetail(true); }}
+                  onClick={(e) => { e.stopPropagation(); setLocation(`/chat/${offer.requestId}_${offer.masterId}`); }}
                   className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
-                  Batafsil
+                  Chat
                 </Button>
               )}
             </div>
