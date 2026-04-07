@@ -7,8 +7,9 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Clock, Check, X, ChevronLeft, Briefcase, FileText,
+  Clock, Check, X, ChevronLeft, Briefcase,
 } from "lucide-react";
+import { ImageStrip } from "@/components/image-grid";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import {
@@ -119,11 +120,10 @@ function OfferCard({ offer, index }: { offer: Offer; index: number }) {
             <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">{offer.message}</p>
           </div>
 
-          {/* File indicator */}
+          {/* File / image strip */}
           {offer.fileUrls && offer.fileUrls.length > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-3">
-              <FileText className="w-3.5 h-3.5" />
-              <span>{offer.fileUrls.length} ta fayl ilova qilingan</span>
+            <div className="mb-3">
+              <ImageStrip urls={offer.fileUrls} max={4} />
             </div>
           )}
 

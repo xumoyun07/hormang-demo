@@ -24,6 +24,7 @@ import {
 import { getRequests, getOffers } from "@/lib/requests-store";
 import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
 import { PublicProfileModal } from "@/components/public-profile-modal";
+import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 
 const COMPLETION_OPTIONS = [
   "1 kun", "2–3 kun", "1 hafta", "2 hafta", "1 oy", "Boshqa (kelishiladi)",
@@ -51,6 +52,7 @@ function timeAgo(iso: string): string {
 
 function formatAnswerValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "string" && value.startsWith("data:")) return "__IMAGE__";
   if (typeof value === "boolean") return value ? "Ha" : "Yo'q";
   if (typeof value === "number") return value.toLocaleString("uz-Latn-UZ") + (String(value).length > 3 ? " so'm" : "");
   if (Array.isArray(value)) return value.join(", ");
@@ -97,16 +99,21 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
 
   const urg = urgencyLabel(request.urgency);
 
-  /* Build Q&A pairs from questionnaire + answers */
+  /* Build Q&A pairs from questionnaire + answers (skip image answers) */
   const allQuestions = getAllQuestionsForCategory(request.categoryId);
   const qaPairs = allQuestions
     .filter((q) => !SKIP_ANSWER_KEYS.has(q.id))
     .map((q) => {
       const raw = request.answers?.[q.id];
       if (raw === null || raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0)) return null;
-      return { label: q.label, value: formatAnswerValue(raw) };
+      const formatted = formatAnswerValue(raw);
+      if (formatted === "__IMAGE__") return null;
+      return { label: q.label, value: formatted };
     })
     .filter(Boolean) as { label: string; value: string }[];
+
+  /* Customer uploaded photos (from file-type questions stored as base64) */
+  const customerPhotoUrls = request.answers ? getAnswerImageUrls(request.answers as Record<string, unknown>) : [];
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -269,6 +276,17 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Customer uploaded photos */}
+              {customerPhotoUrls.length > 0 && (
+                <div className="px-4 py-3 border-t border-gray-100">
+                  <ImageGrid
+                    urls={customerPhotoUrls}
+                    label="Mijoz rasmlari"
+                    columns={3}
+                  />
                 </div>
               )}
 

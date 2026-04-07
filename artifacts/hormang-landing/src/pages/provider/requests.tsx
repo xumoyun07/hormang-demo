@@ -15,6 +15,7 @@ import {
 import { BottomNav } from "@/components/bottom-nav";
 import { OfferForm } from "@/components/offer-form";
 import { PublicProfileModal } from "@/components/public-profile-modal";
+import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { getLocalProfile } from "@/lib/local-profile";
@@ -48,6 +49,7 @@ const BLUE   = "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 10
 const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district"]);
 
 function formatAnswerValue(value: unknown): string {
+  if (typeof value === "string" && value.startsWith("data:")) return "__IMAGE__";
   if (Array.isArray(value)) return value.join(", ");
   if (typeof value === "boolean") return value ? "Ha" : "Yo'q";
   return String(value ?? "");
@@ -228,16 +230,26 @@ function OfferDetailModal({
 
   const urg = urgencyLabel(request.urgency);
 
-  /* Build Q&A pairs the same way the offer form does */
+  /* Build Q&A pairs the same way the offer form does (skip image answers) */
   const allQuestions = getAllQuestionsForCategory(request.categoryId);
   const qaPairs = allQuestions
     .filter((q) => !SKIP_ANSWER_KEYS.has(q.id))
     .map((q) => {
       const raw = request.answers?.[q.id];
       if (raw === null || raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0)) return null;
-      return { label: q.label, value: formatAnswerValue(raw) };
+      const formatted = formatAnswerValue(raw);
+      if (formatted === "__IMAGE__") return null;
+      return { label: q.label, value: formatted };
     })
     .filter(Boolean) as { label: string; value: string }[];
+
+  /* Customer uploaded photos */
+  const customerPhotoUrls = request.answers ? getAnswerImageUrls(request.answers as Record<string, unknown>) : [];
+
+  /* Provider offer attachment images */
+  const offerImageUrls = (offer.fileUrls ?? []).filter(
+    (u) => u.startsWith("data:image") || u.startsWith("http") || u.startsWith("blob:")
+  );
 
   return (
     <>
@@ -335,6 +347,17 @@ function OfferDetailModal({
                 </div>
               )}
 
+              {/* Customer uploaded photos */}
+              {customerPhotoUrls.length > 0 && (
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <ImageGrid
+                    urls={customerPhotoUrls}
+                    label="Mijoz rasmlari"
+                    columns={3}
+                  />
+                </div>
+              )}
+
               {/* Customer profile link */}
               <div className="px-4 py-3">
                 <button
@@ -411,17 +434,13 @@ function OfferDetailModal({
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{offer.message}</p>
             </div>
 
-            {/* ── Attached files ── */}
-            {offer.fileUrls && offer.fileUrls.length > 0 && (
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Biriktirilgan fayllar</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {offer.fileUrls.map((url, i) => (
-                    <img key={i} src={url} alt={`Fayl ${i + 1}`}
-                      className="aspect-square object-cover rounded-xl border border-gray-200" />
-                  ))}
-                </div>
-              </div>
+            {/* ── Attached images ── */}
+            {offerImageUrls.length > 0 && (
+              <ImageGrid
+                urls={offerImageUrls}
+                label="Mening rasmlarim"
+                columns={3}
+              />
             )}
           </div>
 

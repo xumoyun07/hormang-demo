@@ -133,7 +133,7 @@ function ProviderSheet({ data, onClose }: { data: ProviderProfileData; onClose: 
               <h3 className="font-extrabold text-white text-lg leading-tight truncate">
                 {data.masterName}
               </h3>
-              <p className="text-violet-200 text-sm">Ijrochi · Usta</p>
+              <p className="text-violet-200 text-sm">Ijrochi</p>
               {local.experience !== undefined && local.experience > 0 && (
                 <p className="text-violet-100 text-xs mt-0.5 font-semibold">
                   {local.experience} yil tajriba
@@ -351,11 +351,11 @@ function CustomerSheet({ data, onClose }: { data: CustomerProfileData; onClose: 
 
           <h3 className="font-extrabold text-white text-lg">{name}</h3>
           <div className="flex items-center justify-center gap-2 mt-1">
-            <span className="text-blue-100 text-xs font-semibold">Xaridor · Mijoz</span>
+            <span className="text-blue-100 text-xs font-semibold">Xaridor</span>
             {joined && (
               <>
                 <span className="text-blue-200 text-xs">·</span>
-                <span className="text-blue-100 text-xs">{joined} dan beri</span>
+                <span className="text-blue-100 text-xs">{joined}</span>
               </>
             )}
           </div>

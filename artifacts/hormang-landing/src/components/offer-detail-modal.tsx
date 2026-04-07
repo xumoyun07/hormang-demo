@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  X, ChevronLeft, Clock, MapPin, Calendar, FileText,
+  X, ChevronLeft, Clock, MapPin, Calendar,
   MessageCircle, Check, User, DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
 import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
 import { getLocalProfile } from "@/lib/local-profile";
 import { PublicProfileModal } from "@/components/public-profile-modal";
+import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 
 /* ─── Constants ────────────────────────────────────────────────────── */
 
@@ -29,6 +30,7 @@ const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", 
 
 function formatAnswerValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "string" && value.startsWith("data:")) return "__IMAGE__";
   if (typeof value === "boolean") return value ? "Ha" : "Yo'q";
   if (typeof value === "number") return value.toLocaleString("uz-Latn-UZ") + (String(value).length > 3 ? " so'm" : "");
   if (Array.isArray(value)) return value.join(", ");
@@ -70,16 +72,26 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
   const isRejected = offer.status === "rejected";
   const providerLocal = getLocalProfile(offer.masterId);
 
-  /* Build Q&A pairs from request */
+  /* Build Q&A pairs from request (skip image answers) */
   const allQuestions = req ? getAllQuestionsForCategory(req.categoryId) : [];
   const qaPairs = allQuestions
     .filter((q) => !SKIP_ANSWER_KEYS.has(q.id))
     .map((q) => {
       const raw = req?.answers?.[q.id];
       if (raw === null || raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0)) return null;
-      return { label: q.label, value: formatAnswerValue(raw) };
+      const formatted = formatAnswerValue(raw);
+      if (formatted === "__IMAGE__") return null;
+      return { label: q.label, value: formatted };
     })
     .filter(Boolean) as { label: string; value: string }[];
+
+  /* Customer uploaded photos */
+  const customerPhotoUrls = req?.answers ? getAnswerImageUrls(req.answers as Record<string, unknown>) : [];
+
+  /* Provider offer attachment images */
+  const offerImageUrls = (offer.fileUrls ?? []).filter(
+    (u) => u.startsWith("data:image") || u.startsWith("http") || u.startsWith("blob:")
+  );
 
   /* Derive request metadata */
   const urgency = req?.answers?.["urgency"] as string | undefined;
@@ -224,30 +236,22 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
                 <p className="text-sm text-gray-700 leading-relaxed">{offer.message}</p>
               </div>
 
-              {/* Extra info */}
-              {(offer.startDate || offer.fileUrls?.length) && (
-                <div className="px-4 py-3 flex flex-wrap gap-3 border-b border-gray-100">
-                  {offer.startDate && (
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                      <span>Boshlanish: {offer.startDate}</span>
-                    </div>
-                  )}
-                  {offer.fileUrls && offer.fileUrls.length > 0 && (
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                      <FileText className="w-3.5 h-3.5 text-gray-400" />
-                      <span>{offer.fileUrls.length} ta fayl ilova qilingan</span>
-                    </div>
-                  )}
+              {/* Start date */}
+              {offer.startDate && (
+                <div className="px-4 py-2 flex items-center gap-1.5 text-xs text-gray-500 border-b border-gray-100">
+                  <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                  <span>Boshlanish: {offer.startDate}</span>
                 </div>
               )}
 
-              {/* Attached images */}
-              {offer.fileUrls && offer.fileUrls.filter((u) => u.startsWith("data:image")).length > 0 && (
-                <div className="px-4 py-3 grid grid-cols-3 gap-1.5 border-b border-gray-100">
-                  {offer.fileUrls.filter((u) => u.startsWith("data:image")).slice(0, 6).map((url, i) => (
-                    <img key={i} src={url} alt={`Fayl ${i + 1}`} className="aspect-square object-cover rounded-xl border border-gray-100 w-full" />
-                  ))}
+              {/* Provider attached images */}
+              {offerImageUrls.length > 0 && (
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <ImageGrid
+                    urls={offerImageUrls}
+                    label="Ijrochi rasmlari"
+                    columns={3}
+                  />
                 </div>
               )}
 
@@ -299,7 +303,7 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
 
                   {/* Q&A pairs */}
                   {qaPairs.length > 0 && (
-                    <div className="px-4 py-3 space-y-2.5">
+                    <div className="px-4 py-3 space-y-2.5 border-b border-gray-100">
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Savol · Javob</p>
                       {qaPairs.map((pair, i) => (
                         <div key={i} className="flex gap-2 text-xs">
@@ -310,6 +314,17 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Customer uploaded photos */}
+                  {customerPhotoUrls.length > 0 && (
+                    <div className="px-4 py-3">
+                      <ImageGrid
+                        urls={customerPhotoUrls}
+                        label="Mening rasmlarim"
+                        columns={3}
+                      />
                     </div>
                   )}
                 </div>

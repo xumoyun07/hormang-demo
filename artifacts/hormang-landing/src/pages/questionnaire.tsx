@@ -206,19 +206,67 @@ function QuestionInput({
   }
 
   if (question.type === "file") {
+    const dataUrl = typeof value === "string" && value.startsWith("data:") ? value : null;
     const hasFile = !!value;
+
+    function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const result = ev.target?.result as string;
+        onChange(result);
+      };
+      reader.readAsDataURL(file);
+      e.target.value = "";
+    }
+
     return (
       <div>
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onChange(e.target.files?.[0]?.name ?? null)} />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
         {hasFile ? (
-          <div className="flex items-center gap-3 p-4 rounded-2xl border border-emerald-200 bg-emerald-50">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center">
-              <Check className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-sm font-semibold text-emerald-700 flex-1">{value as string}</span>
-            <button onClick={() => onChange(null)} className="text-gray-400 hover:text-gray-600">
-              <X className="w-4 h-4" />
-            </button>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 overflow-hidden">
+            {dataUrl ? (
+              <div className="relative">
+                <img
+                  src={dataUrl}
+                  alt="Yuklangan rasm"
+                  className="w-full max-h-64 object-cover"
+                />
+                <button
+                  onClick={() => onChange(null)}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+                <div className="px-4 py-2 flex items-center gap-2">
+                  <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                  <span className="text-xs font-semibold text-emerald-700">Rasm yuklandi</span>
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    className="ml-auto text-xs text-blue-600 font-semibold hover:text-blue-700"
+                  >
+                    Almashtirish
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 p-4">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                  <Check className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-sm font-semibold text-emerald-700 flex-1 truncate">{value as string}</span>
+                <button onClick={() => onChange(null)} className="text-gray-400 hover:text-gray-600">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <button
@@ -227,6 +275,7 @@ function QuestionInput({
           >
             <Upload className="w-6 h-6" />
             <span className="text-sm font-medium">Rasm tanlash uchun bosing</span>
+            <span className="text-xs opacity-70">JPEG, PNG, HEIC — maksimal 10 MB</span>
           </button>
         )}
       </div>
