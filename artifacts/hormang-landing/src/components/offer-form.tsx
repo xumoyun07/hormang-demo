@@ -25,6 +25,7 @@ import { getRequests, getOffers } from "@/lib/requests-store";
 import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
 import { PublicProfileModal } from "@/components/public-profile-modal";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
+import { compressImage } from "@/lib/image-utils";
 
 const COMPLETION_OPTIONS = [
   "1 kun", "2–3 kun", "1 hafta", "2 hafta", "1 oy", "Boshqa (kelishiladi)",
@@ -117,14 +118,20 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        setFilePreviews((prev) => [...prev, { name: file.name, url: ev.target?.result as string }]);
-      };
-      reader.readAsDataURL(file);
-    });
     e.target.value = "";
+    files.forEach((file) => {
+      compressImage(file, 1024, 0.72)
+        .then((url) => {
+          setFilePreviews((prev) => [...prev, { name: file.name, url }]);
+        })
+        .catch(() => {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            setFilePreviews((prev) => [...prev, { name: file.name, url: ev.target?.result as string }]);
+          };
+          reader.readAsDataURL(file);
+        });
+    });
   }
 
   function removeFile(idx: number) {
@@ -156,19 +163,30 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
     const palette = ["#7C3AED", "#2563EB", "#059669", "#D97706", "#DC2626", "#0891B2"];
     const color = palette[(user?.id?.charCodeAt(0) ?? 0) % palette.length];
 
-    const offer = saveOffer(
-      {
-        requestId: request.id,
-        price: numPrice,
-        priceLabel,
-        message: message.trim(),
-        completionTime,
-        startDate,
-        termsAccepted: termsChecked,
-        fileUrls: filePreviews.map((f) => f.url),
-      },
-      user ? { id: user.id, name: fullName, initials, color } : undefined,
-    );
+    let offer;
+    try {
+      offer = saveOffer(
+        {
+          requestId: request.id,
+          price: numPrice,
+          priceLabel,
+          message: message.trim(),
+          completionTime,
+          startDate,
+          termsAccepted: termsChecked,
+          fileUrls: filePreviews.map((f) => f.url),
+        },
+        user ? { id: user.id, name: fullName, initials, color } : undefined,
+      );
+    } catch (_) {
+      setSubmitting(false);
+      toast({
+        title: "Xatolik",
+        description: "Rasm hajmi katta. Kamroq yoki kichikroq rasmlar yuklang.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     updateProviderRequestStatus(request.id, "responded", user?.id ?? "");
     markSeen(request.id);

@@ -14,6 +14,7 @@ import {
   saveNewRequest,
 } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
+import { compressImage } from "@/lib/image-utils";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
@@ -212,13 +213,12 @@ function QuestionInput({
     function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
       const file = e.target.files?.[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const result = ev.target?.result as string;
-        onChange(result);
-      };
-      reader.readAsDataURL(file);
       e.target.value = "";
+      compressImage(file, 1024, 0.72).then(onChange).catch(() => {
+        const reader = new FileReader();
+        reader.onload = (ev) => onChange(ev.target?.result as string);
+        reader.readAsDataURL(file);
+      });
     }
 
     return (
