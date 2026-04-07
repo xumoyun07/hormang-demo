@@ -686,6 +686,7 @@ export default function ProfileSettingsPage() {
           photoUrl,
           region,
           district,
+          serviceAreas,
           experience: experience ? Number(experience) : undefined,
           portfolioItems,
           portfolioImages: portfolioItems.map((i) => i.url),
