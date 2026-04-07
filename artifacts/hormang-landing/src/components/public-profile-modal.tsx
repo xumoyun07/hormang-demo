@@ -50,6 +50,7 @@ export interface CustomerProfileData {
   customerName: string;
   customerInitials?: string;
   customerColor?: string;
+  photoUrl?: string;
   region?: string;
   district?: string;
   joinedAt?: string;
@@ -342,12 +343,20 @@ function CustomerSheet({ data, onClose }: { data: CustomerProfileData; onClose: 
           </div>
 
           {/* Avatar */}
-          <div
-            className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center shadow-lg border-2 border-white/25"
-            style={{ background: color }}
-          >
-            <span className="text-2xl font-black text-white">{initials}</span>
-          </div>
+          {data.photoUrl ? (
+            <img
+              src={data.photoUrl}
+              alt={name}
+              className="w-16 h-16 rounded-2xl mx-auto mb-3 object-cover shadow-lg border-2 border-white/25"
+            />
+          ) : (
+            <div
+              className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center shadow-lg border-2 border-white/25"
+              style={{ background: color }}
+            >
+              <span className="text-2xl font-black text-white">{initials}</span>
+            </div>
+          )}
 
           <h3 className="font-extrabold text-white text-lg">{name}</h3>
           <div className="flex items-center justify-center gap-2 mt-1">

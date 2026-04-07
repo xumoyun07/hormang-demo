@@ -1024,6 +1024,7 @@ export default function ProfileSettingsPage() {
       <AnimatePresence>
         {showPreview && (
           <PublicProfileModal
+            key={`provider-${firstName}-${lastName}-${photoUrl}`}
             mode="provider"
             onClose={() => setShowPreview(false)}
             providerData={{
@@ -1040,13 +1041,14 @@ export default function ProfileSettingsPage() {
       <AnimatePresence>
         {showCustomerPreview && (
           <PublicProfileModal
-            key={`customer-${firstName}-${lastName}-${region}-${district}`}
+            key={`customer-${firstName}-${lastName}-${region}-${district}-${photoUrl}`}
             mode="customer"
             onClose={() => setShowCustomerPreview(false)}
             customerData={{
               customerName: `${firstName} ${lastName}`.trim(),
               customerInitials: `${(firstName[0] ?? "")}${(lastName[0] ?? "")}`.toUpperCase(),
               customerColor: "hsl(221,78%,48%)",
+              photoUrl,
               region,
               district,
             }}
