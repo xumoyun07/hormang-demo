@@ -529,6 +529,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
       <AnimatePresence>
         {showCustomerProfile && (
           <PublicProfileModal
+            key={`offer-customer-${request.customerId}-${request.region}-${request.district}`}
             mode="customer"
             customerData={{
               customerName: request.customerName ?? "Xaridor",

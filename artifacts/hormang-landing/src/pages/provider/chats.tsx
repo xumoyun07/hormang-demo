@@ -314,6 +314,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
       <AnimatePresence>
         {showCustomerProfile && (
           <PublicProfileModal
+            key={`provider-chats-customer-${chat.customerId}`}
             mode="customer"
             customerData={{
               customerName: chat.customerName,

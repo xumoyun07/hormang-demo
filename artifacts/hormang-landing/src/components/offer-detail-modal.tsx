@@ -369,6 +369,7 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
       <AnimatePresence>
         {showProviderProfile && (
           <PublicProfileModal
+            key={`offer-detail-provider-${offer.masterId}`}
             mode="provider"
             providerData={{
               masterId: offer.masterId,

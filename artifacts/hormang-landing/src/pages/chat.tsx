@@ -299,6 +299,7 @@ export default function ChatPage() {
       <AnimatePresence>
         {showMasterProfile && (
           <PublicProfileModal
+            key={`chat-provider-${chat.masterId}`}
             mode="provider"
             providerData={{
               masterId: chat.masterId,
