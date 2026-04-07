@@ -8,14 +8,14 @@ import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageCircle, Clock, ChevronRight, Check, X,
-  Inbox, LayoutList, ChevronLeft,
+  Inbox, LayoutList, ChevronLeft, CheckCircle2,
 } from "lucide-react";
 import { ImageStrip } from "@/components/image-grid";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import {
   getOffersByCustomer, getChatsByCustomer, getRequestById,
-  updateOfferStatus,
+  updateOfferStatus, getOfferForChat,
   type Offer, type Chat,
 } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
@@ -196,6 +196,20 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
   const [, setLocation] = useLocation();
   const lastMsg = chat.messages[chat.messages.length - 1];
   const providerLocal = getLocalProfile(chat.masterId);
+  const offer = getOfferForChat(chat.requestId, chat.masterId);
+  const st = offer?.status ?? "pending";
+
+  const badge =
+    st === "accepted"
+      ? { label: "Qabul qilindi", cls: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: <CheckCircle2 className="w-3 h-3" /> }
+      : st === "rejected"
+      ? { label: "Rad etildi", cls: "text-red-500 bg-red-50 border-red-200", icon: <X className="w-3 h-3" /> }
+      : { label: "Kutilmoqda", cls: "text-amber-600 bg-amber-50 border-amber-200", icon: <Clock className="w-3 h-3" /> };
+
+  const borderCls =
+    st === "accepted" ? "border-emerald-100 hover:border-emerald-200" :
+    st === "rejected" ? "border-red-100 hover:border-red-200" :
+    "border-gray-100 hover:border-blue-100";
 
   return (
     <motion.button
@@ -203,7 +217,7 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.3 }}
       onClick={() => setLocation(`/chat/${chat.id}`)}
-      className="w-full bg-white rounded-2xl border border-gray-100 p-4 flex items-start gap-3 hover:border-blue-100 hover:shadow-sm transition-all duration-200 text-left"
+      className={`w-full bg-white rounded-2xl border p-4 flex items-start gap-3 hover:shadow-sm transition-all duration-200 text-left ${borderCls}`}
     >
       {providerLocal.photoUrl ? (
         <img
@@ -226,9 +240,15 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
             {formatDate(lastMsg?.timestamp ?? chat.createdAt)}
           </span>
         </div>
-        <p className="text-xs text-gray-500 font-medium truncate mb-0.5">{chat.categoryName}</p>
+        <p className="text-xs text-gray-500 font-medium truncate mb-1">{chat.categoryName}</p>
+        {offer && (
+          <span className={`inline-flex items-center gap-1 text-[10px] font-bold border px-1.5 py-0.5 rounded-full ${badge.cls}`}>
+            {badge.icon}
+            {badge.label}
+          </span>
+        )}
         {lastMsg && (
-          <p className="text-[11px] text-gray-400 truncate">
+          <p className="text-[11px] text-gray-400 truncate mt-0.5">
             {lastMsg.sender === "customer" ? "Siz: " : ""}{lastMsg.text}
           </p>
         )}

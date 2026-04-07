@@ -221,6 +221,11 @@ export function getOffersByRequestId(requestId: string): Offer[] {
   return getOffers().filter((o) => o.requestId === requestId);
 }
 
+/** Find the single offer for a chat (by requestId + masterId) */
+export function getOfferForChat(requestId: string, masterId: string): Offer | undefined {
+  return getOffers().find((o) => o.requestId === requestId && o.masterId === masterId);
+}
+
 export function updateOfferStatus(offerId: string, status: "accepted" | "rejected"): void {
   const offers = getOffers().map((o) => o.id === offerId ? { ...o, status } : o);
   writeJSON(OFFERS_KEY, offers);

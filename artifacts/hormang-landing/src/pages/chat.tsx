@@ -7,13 +7,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Send, Circle } from "lucide-react";
+import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock } from "lucide-react";
 import { PublicProfileModal } from "@/components/public-profile-modal";
 import { BottomNav } from "@/components/bottom-nav";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import {
-  getChatById, sendMessage,
-  type Chat, type ChatMessage,
+  getChatById, sendMessage, getOfferForChat,
+  type Chat, type ChatMessage, type Offer,
 } from "@/lib/requests-store";
 
 function formatTime(iso: string): string {
@@ -28,6 +28,65 @@ function formatDay(iso: string): string {
   yesterday.setDate(today.getDate() - 1);
   if (d.toDateString() === yesterday.toDateString()) return "Kecha";
   return d.toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "short" });
+}
+
+/* ─── Offer status badge ─────────────────────────────────────────── */
+function OfferStatusBadge({ status }: { status: Offer["status"] }) {
+  if (status === "accepted") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+        <CheckCircle2 className="w-3 h-3" />
+        Qabul qilindi
+      </span>
+    );
+  }
+  if (status === "rejected") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
+        <X className="w-3 h-3" />
+        Rad etildi
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+      <Clock className="w-3 h-3" />
+      Kutilmoqda
+    </span>
+  );
+}
+
+/* ─── Status banner shown inside message list ────────────────────── */
+function StatusBanner({ status }: { status: Offer["status"] }) {
+  if (status === "accepted") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex items-center justify-center gap-2 my-4"
+      >
+        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 text-emerald-700 text-xs font-semibold shadow-sm">
+          <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+          Taklif qabul qilindi — Suhbat davom etmoqda
+        </div>
+      </motion.div>
+    );
+  }
+  if (status === "rejected") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex items-center justify-center gap-2 my-4"
+      >
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-2.5 text-red-600 text-xs font-semibold shadow-sm">
+          <X className="w-4 h-4 flex-shrink-0" />
+          Taklif rad etildi. Suhbat yopildi.
+        </div>
+      </motion.div>
+    );
+  }
+  return null;
 }
 
 /* ─── Message Bubble ─────────────────────────────────────────────── */
@@ -81,6 +140,9 @@ export default function ChatPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const chat: Chat | undefined = chatId ? getChatById(chatId) : undefined;
+  const offer: Offer | undefined = chat
+    ? getOfferForChat(chat.requestId, chat.masterId)
+    : undefined;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -158,11 +220,12 @@ export default function ChatPage() {
             </div>
           </button>
 
-          <div className="flex-shrink-0 text-right">
-            <p className="text-[11px] font-semibold text-gray-400 truncate max-w-[80px]">
-              {chat.categoryName}
-            </p>
-          </div>
+          {/* Live offer status badge in header */}
+          {offer && (
+            <div className="flex-shrink-0">
+              <OfferStatusBadge status={offer.status} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -189,10 +252,15 @@ export default function ChatPage() {
           </div>
         ))}
 
+        {/* Status banner — shown after messages when offer is resolved */}
+        {offer && offer.status !== "pending" && (
+          <StatusBanner status={offer.status} />
+        )}
+
         <div ref={messagesEndRef} className="h-1" />
       </div>
 
-      {/* Input bar */}
+      {/* Input bar — customer can always send */}
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-100 z-20">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-2">
           <input

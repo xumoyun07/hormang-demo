@@ -64,6 +64,8 @@ export interface ProviderChatMessage {
 
 export interface ProviderChat {
   id: string;
+  requestId: string;
+  masterId: string;
   customerId: string;
   customerName: string;
   customerInitials: string;
@@ -168,6 +170,8 @@ function chatToProviderChat(c: Chat): ProviderChat {
 
   return {
     id: c.id,
+    requestId: c.requestId,
+    masterId: c.masterId,
     customerId: req?.customerId ?? c.requestId,
     customerName,
     customerInitials,

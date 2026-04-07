@@ -2,9 +2,10 @@
  * /provider/chats — Suhbatlarim page (Provider side)
  * - Search bar
  * - Sorting tabs: All | Unread | By service
- * - Chat rows with last message + unread badge
+ * - Chat rows with last message + unread badge + offer status
  * - Inline ChatView matches customer chat quality (day groups, animated bubbles)
  * - Customer avatar in header is clickable → shows customer profile modal
+ * - Input disabled when offer is rejected
  */
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
@@ -12,13 +13,14 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, MessageCircle, ChevronRight, X, ChevronDown,
-  Circle, Send,
+  Circle, Send, CheckCircle2, Clock,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import {
   getProviderChats, markChatRead, sendProviderMessage, getProviderChatById,
   type ProviderChat, type ProviderChatMessage,
 } from "@/lib/provider-store";
+import { getOfferForChat, type Offer } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
 import { PublicProfileModal } from "@/components/public-profile-modal";
@@ -49,6 +51,65 @@ function formatDay(iso: string): string {
   yesterday.setDate(today.getDate() - 1);
   if (d.toDateString() === yesterday.toDateString()) return "Kecha";
   return d.toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "short" });
+}
+
+/* ─── Offer Status Badge ──────────────────────────────────────────── */
+function OfferStatusBadge({ status }: { status: Offer["status"] }) {
+  if (status === "accepted") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+        <CheckCircle2 className="w-3 h-3" />
+        Qabul qilindi
+      </span>
+    );
+  }
+  if (status === "rejected") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
+        <X className="w-3 h-3" />
+        Rad etildi
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+      <Clock className="w-3 h-3" />
+      Kutilmoqda
+    </span>
+  );
+}
+
+/* ─── Status Banner (inside message list) ────────────────────────── */
+function StatusBanner({ status }: { status: Offer["status"] }) {
+  if (status === "accepted") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex items-center justify-center my-4"
+      >
+        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 text-emerald-700 text-xs font-semibold shadow-sm">
+          <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+          Taklif qabul qilindi — Suhbat davom etmoqda
+        </div>
+      </motion.div>
+    );
+  }
+  if (status === "rejected") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex items-center justify-center my-4"
+      >
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-2.5 text-red-600 text-xs font-semibold shadow-sm">
+          <X className="w-4 h-4 flex-shrink-0" />
+          Taklif rad etildi. Suhbat yopildi.
+        </div>
+      </motion.div>
+    );
+  }
+  return null;
 }
 
 /* ─── Day Separator ──────────────────────────────────────────────── */
@@ -101,6 +162,8 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   }, [chatId]);
 
   const chat = getProviderChatById(chatId) ?? null;
+  const offer = chat ? getOfferForChat(chat.requestId, chat.masterId) : undefined;
+  const isRejected = offer?.status === "rejected";
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -110,7 +173,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   }, [chat?.messages.length]);
 
   function send() {
-    if (!text.trim()) return;
+    if (!text.trim() || isRejected) return;
     sendProviderMessage(chatId, "provider", text.trim());
     setText("");
   }
@@ -166,12 +229,12 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
           </div>
         </button>
 
-        {/* Category badge */}
-        <div className="flex-shrink-0">
-          <span className="text-[11px] font-semibold text-gray-400 truncate max-w-[70px] block text-right">
-            {chat.categoryEmoji} {chat.categoryName}
-          </span>
-        </div>
+        {/* Live offer status badge */}
+        {offer && (
+          <div className="flex-shrink-0">
+            <OfferStatusBadge status={offer.status} />
+          </div>
+        )}
       </div>
 
       {/* Messages area */}
@@ -197,27 +260,41 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
           </div>
         ))}
 
+        {/* Status banner after messages */}
+        {offer && offer.status !== "pending" && (
+          <StatusBanner status={offer.status} />
+        )}
+
         <div ref={bottomRef} className="h-1" />
       </div>
 
-      {/* Input */}
-      <div className="bg-white border-t border-gray-100 px-4 py-3 flex gap-2 items-center shadow-sm">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
-          placeholder="Xabar yozing..."
-          className="flex-1 h-11 px-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
-        />
-        <button
-          onClick={send}
-          disabled={!text.trim()}
-          className="w-11 h-11 rounded-2xl flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-sm"
-          style={{ background: VIOLET }}
-        >
-          <Send className="w-4 h-4" />
-        </button>
-      </div>
+      {/* Input — disabled when offer is rejected */}
+      {isRejected ? (
+        <div className="bg-red-50 border-t border-red-100 px-4 py-4 flex items-center justify-center gap-2">
+          <X className="w-4 h-4 text-red-400 flex-shrink-0" />
+          <p className="text-sm font-semibold text-red-500">
+            Taklif rad etildi. Suhbat yopildi.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white border-t border-gray-100 px-4 py-3 flex gap-2 items-center shadow-sm">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
+            placeholder="Xabar yozing..."
+            className="flex-1 h-11 px-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
+          />
+          <button
+            onClick={send}
+            disabled={!text.trim()}
+            className="w-11 h-11 rounded-2xl flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-sm"
+            style={{ background: VIOLET }}
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Customer profile modal */}
       <AnimatePresence>
@@ -242,6 +319,13 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 /* ─── Chat Row ───────────────────────────────────────────────────── */
 function ChatRow({ chat, index, onClick }: { chat: ProviderChat; index: number; onClick: () => void }) {
   const lastMsg = chat.messages[chat.messages.length - 1];
+  const offer = getOfferForChat(chat.requestId, chat.masterId);
+  const st = offer?.status ?? "pending";
+
+  const borderCls =
+    st === "accepted" ? "border-emerald-100 hover:border-emerald-200" :
+    st === "rejected" ? "border-red-100 hover:border-red-200" :
+    "border-gray-100 hover:border-violet-100";
 
   return (
     <motion.button
@@ -249,7 +333,7 @@ function ChatRow({ chat, index, onClick }: { chat: ProviderChat; index: number; 
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, duration: 0.3 }}
       onClick={onClick}
-      className="w-full bg-white rounded-2xl border border-gray-100 p-4 flex items-start gap-3 hover:border-violet-100 hover:shadow-sm transition-all duration-200 text-left active:scale-[.99]"
+      className={`w-full bg-white rounded-2xl border p-4 flex items-start gap-3 hover:shadow-sm transition-all duration-200 text-left active:scale-[.99] ${borderCls}`}
     >
       <div
         className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
@@ -265,8 +349,9 @@ function ChatRow({ chat, index, onClick }: { chat: ProviderChat; index: number; 
           </span>
         </div>
         <p className="text-xs text-gray-500 font-medium mb-1">{chat.categoryEmoji} {chat.categoryName}</p>
+        {offer && <OfferStatusBadge status={offer.status} />}
         {lastMsg && (
-          <p className="text-[11px] text-gray-400 truncate">
+          <p className="text-[11px] text-gray-400 truncate mt-0.5">
             {lastMsg.sender === "provider" ? "Siz: " : ""}{lastMsg.text}
           </p>
         )}
@@ -308,32 +393,33 @@ export default function ProviderChatsPage() {
   let displayed = chats;
   if (tab === "unread") displayed = chats.filter((c) => c.unread > 0);
   if (tab === "by-service") {
-    if (selectedService) {
+    if (selectedService)
       displayed = chats.filter((c) => c.categoryName === selectedService);
-    } else {
-      displayed = [...chats].sort((a, b) => a.categoryName.localeCompare(b.categoryName));
-    }
+    displayed = [...chats].sort((a, b) => a.categoryName.localeCompare(b.categoryName));
   }
-  if (query) {
+
+  if (query.trim()) {
     const q = query.toLowerCase();
     displayed = displayed.filter(
-      (c) => c.customerName.toLowerCase().includes(q) || c.categoryName.toLowerCase().includes(q)
+      (c) =>
+        c.customerName.toLowerCase().includes(q) ||
+        c.categoryName.toLowerCase().includes(q)
     );
   }
 
-  const tabs: { id: SortTab; label: string; count?: number }[] = [
+  const tabs: Array<{ id: SortTab; label: string; count?: number }> = [
     { id: "all", label: "Barchasi", count: chats.length },
-    { id: "unread", label: "O'qilmagan", count: totalUnread },
+    { id: "unread", label: "O'qilmagan", count: totalUnread || undefined },
     { id: "by-service", label: "Xizmat bo'yicha" },
   ];
 
   return (
-    <>
-      <div className="min-h-screen bg-gray-50 pb-24">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-100 sticky top-0 z-10 card-shadow">
-          <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
-            <button onClick={() => setLocation("/provider-home")} className="flex items-center">
+    <div className="min-h-screen bg-gray-50 pb-24">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+        <div className="max-w-lg mx-auto px-4 pt-4 pb-3">
+          <div className="flex items-center gap-3 mb-3">
+            <button onClick={() => setLocation("/provider")} className="flex items-center flex-shrink-0">
               <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
             </button>
             <div className="flex-1">
@@ -345,111 +431,108 @@ export default function ProviderChatsPage() {
           </div>
 
           {/* Search */}
-          <div className="max-w-lg mx-auto px-4 pb-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Suhbat yoki xizmat qidirish..."
-                className="w-full h-9 pl-9 pr-4 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
-              />
-              {query && (
-                <button
-                  onClick={() => setQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Xaridor yoki xizmat..."
+              className="w-full h-10 pl-9 pr-4 rounded-2xl bg-gray-50 border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
+            />
           </div>
 
           {/* Tabs */}
-          <div className="max-w-lg mx-auto px-4 pb-3 flex gap-2 items-center relative">
+          <div className="flex gap-2">
             {tabs.map((t) => (
               <button
                 key={t.id}
                 onClick={() => {
                   setTab(t.id);
-                  if (t.id === "by-service") setShowServiceMenu(!showServiceMenu);
+                  if (t.id !== "by-service") setSelectedService(null);
                 }}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  tab === t.id ? "text-white shadow-sm" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all ${
+                  tab === t.id
+                    ? "text-white shadow-sm"
+                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                 }`}
                 style={tab === t.id ? { background: VIOLET } : {}}
               >
                 {t.label}
-                {t.id === "by-service" && <ChevronDown className="w-3.5 h-3.5" />}
                 {t.count !== undefined && t.count > 0 && (
-                  <span className={`w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center ${
-                    tab === t.id ? "bg-white text-violet-700" : "bg-violet-600 text-white"
-                  }`}>{t.count}</span>
+                  <span className={`text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center ${
+                    tab === t.id ? "bg-white text-violet-700" : "bg-violet-500 text-white"
+                  }`}>
+                    {t.count}
+                  </span>
+                )}
+                {t.id === "by-service" && tab === "by-service" && (
+                  <ChevronDown className="w-3 h-3" />
                 )}
               </button>
             ))}
+          </div>
 
-            <AnimatePresence>
-              {tab === "by-service" && showServiceMenu && services.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  className="absolute top-full right-0 mt-2 bg-white rounded-xl border border-gray-200 shadow-lg z-20"
-                >
+          {/* Service filter dropdown */}
+          {tab === "by-service" && (
+            <div className="mt-2 relative">
+              <button
+                onClick={() => setShowServiceMenu((v) => !v)}
+                className="w-full h-9 px-3 rounded-xl border border-gray-200 bg-gray-50 text-xs text-left flex items-center justify-between text-gray-700"
+              >
+                {selectedService ?? "Barcha xizmatlar"}
+                <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+              </button>
+              {showServiceMenu && (
+                <div className="absolute left-0 right-0 top-10 bg-white border border-gray-200 rounded-2xl shadow-lg z-20 overflow-hidden">
                   <button
                     onClick={() => { setSelectedService(null); setShowServiceMenu(false); }}
-                    className={`block w-full text-left px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-colors ${
-                      selectedService === null ? "text-white" : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                    style={selectedService === null ? { background: VIOLET } : {}}
+                    className="w-full px-4 py-2.5 text-xs text-left text-gray-500 hover:bg-gray-50 border-b border-gray-100"
                   >
-                    Barchasi
+                    Barcha xizmatlar
                   </button>
-                  {services.map((service) => (
+                  {services.map((s) => (
                     <button
-                      key={service}
-                      onClick={() => { setSelectedService(service); setShowServiceMenu(false); }}
-                      className={`block w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors border-t border-gray-100 last:rounded-b-xl ${
-                        selectedService === service ? "text-white" : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                      style={selectedService === service ? { background: VIOLET } : {}}
+                      key={s}
+                      onClick={() => { setSelectedService(s); setShowServiceMenu(false); }}
+                      className="w-full px-4 py-2.5 text-xs text-left text-gray-800 hover:bg-violet-50 hover:text-violet-700"
                     >
-                      {service}
+                      {s}
                     </button>
                   ))}
-                </motion.div>
+                </div>
               )}
-            </AnimatePresence>
-          </div>
-        </div>
-
-        <div className="max-w-lg mx-auto px-4 py-4">
-          {displayed.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
-                <MessageCircle className="w-7 h-7 text-gray-300" />
-              </div>
-              <p className="font-bold text-gray-400 mb-1">Suhbatlar yo'q</p>
-              <p className="text-sm text-gray-300">
-                {query ? "Qidiruv bo'yicha natija topilmadi" : "Buyurtmachilar bilan suhbat bu yerda ko'rinadi"}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {displayed.map((chat, i) => (
-                <ChatRow
-                  key={chat.id}
-                  chat={chat}
-                  index={i}
-                  onClick={() => setOpenChatId(chat.id)}
-                />
-              ))}
             </div>
           )}
         </div>
       </div>
 
+      {/* Chat list */}
+      <div className="max-w-lg mx-auto px-4 py-4">
+        {displayed.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+              <MessageCircle className="w-7 h-7 text-gray-400" />
+            </div>
+            <p className="font-bold text-gray-600 mb-1">Suhbatlar yo'q</p>
+            <p className="text-sm text-gray-400">
+              {tab === "unread" ? "Barcha xabarlar o'qilgan." : "Hozircha suhbat mavjud emas."}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {displayed.map((chat, i) => (
+              <ChatRow
+                key={chat.id}
+                chat={chat}
+                index={i}
+                onClick={() => setOpenChatId(chat.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Inline chat view */}
       <AnimatePresence>
         {openChatId && (
           <ChatView
@@ -461,6 +544,6 @@ export default function ProviderChatsPage() {
       </AnimatePresence>
 
       <BottomNav />
-    </>
+    </div>
   );
 }
