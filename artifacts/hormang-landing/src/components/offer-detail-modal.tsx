@@ -13,11 +13,14 @@ import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import {
   getRequestById, getOrCreateChat, updateOfferStatus,
+  getOffers,
   type Offer,
 } from "@/lib/requests-store";
+import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
 import { getLocalProfile } from "@/lib/local-profile";
 import { PublicProfileModal } from "@/components/public-profile-modal";
+import { AcceptConfirmModal } from "@/components/accept-confirm-modal";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 
 /* ─── Constants ────────────────────────────────────────────────────── */
@@ -66,10 +69,29 @@ interface OfferDetailModalProps {
 export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
   const [, setLocation] = useLocation();
   const [showProviderProfile, setShowProviderProfile] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  /* ── Reactive live data ───────────────────────────────────────────
+     Subscribe to store changes so the modal re-renders whenever
+     updateOfferStatus() is called (either here or in the list card).
+     Re-read from localStorage each render to get the current truth. */
+  useStoreRefresh();
+  const allOffers = getOffers();
+  const liveOffer = allOffers.find((o) => o.id === offer.id) ?? offer;
+
+  /* Has ANY other offer on this same request already been accepted? */
+  const anyAccepted =
+    liveOffer.status !== "accepted" &&
+    allOffers.some(
+      (o) => o.requestId === offer.requestId && o.id !== offer.id && o.status === "accepted"
+    );
+
+  const isAccepted = liveOffer.status === "accepted";
+  const isRejected = liveOffer.status === "rejected";
+  /* Can still accept: offer is pending and no sibling offer is accepted */
+  const canAccept = !isAccepted && !isRejected && !anyAccepted;
 
   const req = getRequestById(offer.requestId);
-  const isAccepted = offer.status === "accepted";
-  const isRejected = offer.status === "rejected";
   const providerLocal = getLocalProfile(offer.masterId);
 
   /* Build Q&A pairs from request (skip image answers) */
@@ -116,8 +138,10 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
     setLocation(`/chat/${chat.id}`);
   }
 
-  function accept() {
+  function confirmAccept() {
     updateOfferStatus(offer.id, "accepted");
+    setShowConfirm(false);
+    onClose();
   }
 
   function reject() {
@@ -335,6 +359,13 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
           {/* Action footer */}
           {!isRejected && (
             <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0 space-y-2">
+              {/* If another offer on this request was already accepted, show a notice */}
+              {anyAccepted && (
+                <p className="text-center text-xs text-gray-400 font-semibold bg-gray-50 rounded-xl py-2 px-3">
+                  Bu so'rovga boshqa taklif allaqachon qabul qilingan
+                </p>
+              )}
+
               <Button
                 onClick={openChat}
                 className="w-full h-11 font-bold gap-2 text-sm"
@@ -343,10 +374,11 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
                 <MessageCircle className="w-4 h-4" />
                 Chat ochish
               </Button>
-              {!isAccepted && (
+
+              {canAccept && (
                 <div className="flex gap-2">
                   <Button
-                    onClick={accept}
+                    onClick={() => setShowConfirm(true)}
                     className="flex-1 h-10 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 gap-1.5"
                   >
                     <Check className="w-3.5 h-3.5" />
@@ -379,6 +411,16 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
               avgResponseTime: offer.avgResponseTime,
             }}
             onClose={() => setShowProviderProfile(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Accept confirm checklist (z-[70] so it sits above the detail modal) */}
+      <AnimatePresence>
+        {showConfirm && (
+          <AcceptConfirmModal
+            onConfirm={confirmAccept}
+            onCancel={() => setShowConfirm(false)}
           />
         )}
       </AnimatePresence>
