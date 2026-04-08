@@ -1,7 +1,7 @@
 /**
  * questionnaire-store.ts
  * Central configuration for all category questions + localStorage persistence.
- * Key: hormang_questions_v1
+ * Key: hormang_questions_v1 / hormang_common_questions_v1
  */
 
 export type QuestionType =
@@ -12,11 +12,15 @@ export type QuestionType =
   | "number"
   | "yes-no"
   | "date"
-  | "file";
+  | "file"
+  | "range"
+  | "section-header";
 
 export interface QuestionOption {
   label: string;
   value: string;
+  isOther?: boolean;
+  otherLabel?: string;
 }
 
 export interface Question {
@@ -27,6 +31,11 @@ export interface Question {
   required?: boolean;
   placeholder?: string;
   helpText?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  isCore?: boolean;
+  conditional?: { questionId: string; value: string };
 }
 
 export interface CategoryConfig {
@@ -36,13 +45,14 @@ export interface CategoryConfig {
   questions: Question[];
 }
 
-/** Appended at the END of every category's question list */
-export const COMMON_QUESTIONS: Question[] = [
+/** Default common questions (editable via admin, persisted separately) */
+export const DEFAULT_COMMON_QUESTIONS: Question[] = [
   {
     id: "region",
     label: "Xizmat qayerda kerak?",
     type: "single-select",
     required: true,
+    isCore: true,
     options: [
       { label: "Toshkent shahri", value: "Toshkent shahri" },
       { label: "Angren", value: "Angren" },
@@ -74,6 +84,7 @@ export const COMMON_QUESTIONS: Question[] = [
     id: "district",
     label: "Toshkent shahri tumani",
     type: "single-select",
+    isCore: true,
     options: [
       { label: "Bektemir", value: "Bektemir" },
       { label: "Chilonzor", value: "Chilonzor" },
@@ -94,6 +105,7 @@ export const COMMON_QUESTIONS: Question[] = [
     label: "Shoshilinchlik darajasi",
     type: "single-select",
     required: true,
+    isCore: true,
     options: [
       { label: "Bugun yoki ertaga kerak", value: "today_tomorrow" },
       { label: "3–7 kun ichida", value: "3_7_days" },
@@ -106,10 +118,14 @@ export const COMMON_QUESTIONS: Question[] = [
     id: "budget",
     label: "Taxminiy byudjet",
     type: "number",
+    isCore: true,
     placeholder: "Masalan: 500 000",
     helpText: "so'm",
   },
 ];
+
+/** Backward compat export — always reads from persistent store */
+export const COMMON_QUESTIONS = DEFAULT_COMMON_QUESTIONS;
 
 const INITIAL_CATEGORIES: CategoryConfig[] = [
   {
@@ -129,7 +145,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Konditsioner", value: "konditsioner" },
           { label: "Muzlatgich", value: "muzlatgich" },
           { label: "Kir yuvish mashinasi", value: "kir_yuvish" },
-          { label: "Boshqa", value: "boshqa" },
+          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
         ],
       },
       {
@@ -155,7 +171,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Oddiy", value: "oddiy" },
           { label: "Chuqur", value: "chuqur" },
           { label: "Ko'chib kirishdan oldin", value: "kochib_kirish" },
-          { label: "Boshqa", value: "boshqa" },
+          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
         ],
       },
       {
@@ -166,7 +182,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Kvartira", value: "kvartira" },
           { label: "Ofis", value: "ofis" },
           { label: "Hovli", value: "hovli" },
-          { label: "Boshqa", value: "boshqa" },
+          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
         ],
       },
       {
@@ -198,7 +214,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Yuvish", value: "yuvish" },
           { label: "Ta'mirlash", value: "tamirlash" },
           { label: "Diagnostika", value: "diagnostika" },
-          { label: "Boshqa", value: "boshqa" },
+          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
         ],
       },
       {
@@ -230,7 +246,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Xonadon jihozlari", value: "xonadon" },
           { label: "Ofis jihozlari", value: "ofis" },
           { label: "Oziq-ovqat mahsulotlari", value: "oziq_ovqat" },
-          { label: "Boshqa", value: "boshqa" },
+          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
         ],
       },
       {
@@ -276,7 +292,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Rus tili", value: "rus" },
           { label: "Matematika", value: "matematika" },
           { label: "Musiqa", value: "musiqa" },
-          { label: "Boshqa", value: "boshqa" },
+          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
         ],
       },
       {
@@ -322,7 +338,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Kelin salom", value: "kelin_salom" },
           { label: "Gap", value: "gap" },
           { label: "Korporativ", value: "korporativ" },
-          { label: "Boshqa", value: "boshqa" },
+          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
         ],
       },
       {
@@ -338,7 +354,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Tozalash xizmati", value: "tozalash" },
           { label: "Kortej xizmati", value: "kortej" },
           { label: "Musiqiy xizmatlar", value: "musiqa" },
-          { label: "Boshqa", value: "boshqa" },
+          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
         ],
       },
       { id: "event_date", label: "Belgilangan sana?", type: "date" },
@@ -365,7 +381,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Manikyur/pedikyur", value: "manikyur" },
           { label: "Soch turmak", value: "soch" },
           { label: "Qosh/kiprik", value: "qosh_kiprik" },
-          { label: "Boshqa", value: "boshqa" },
+          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
         ],
       },
       {
@@ -375,7 +391,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
         options: [
           { label: "Kundalik", value: "kundalik" },
           { label: "To'y marosimlari", value: "toy" },
-          { label: "Boshqa tadbirlar", value: "boshqa" },
+          { label: "Boshqa tadbirlar", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
         ],
       },
       {
@@ -444,7 +460,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Kommunikatsiya ishlari", value: "kommunikatsiya" },
           { label: "Duradgorlik ishlari", value: "duradgorlik" },
           { label: "Landshaft va dizayn", value: "landshaft" },
-          { label: "Boshqa", value: "boshqa" },
+          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
         ],
       },
       {
@@ -479,6 +495,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
 ];
 
 const LS_KEY = "hormang_questions_v1";
+const COMMON_LS_KEY = "hormang_common_questions_v1";
 
 export function getCategories(): CategoryConfig[] {
   try {
@@ -496,13 +513,30 @@ export function getCategoryById(id: string): CategoryConfig | undefined {
   return getCategories().find((c) => c.id === id);
 }
 
-/** Full list: category-specific questions + 2 common ones */
+export function getCommonQuestions(): Question[] {
+  try {
+    const stored = localStorage.getItem(COMMON_LS_KEY);
+    if (stored) return JSON.parse(stored) as Question[];
+  } catch (_) { /* ignore */ }
+  return DEFAULT_COMMON_QUESTIONS;
+}
+
+export function saveCommonQuestions(qs: Question[]): void {
+  localStorage.setItem(COMMON_LS_KEY, JSON.stringify(qs));
+}
+
+export function resetCommonQuestions(): void {
+  localStorage.removeItem(COMMON_LS_KEY);
+}
+
+/** Full list: category-specific questions + common ones */
 export function getAllQuestionsForCategory(categoryId: string): Question[] {
   const cat = getCategoryById(categoryId);
-  if (!cat) return [...COMMON_QUESTIONS];
-  return [...cat.questions, ...COMMON_QUESTIONS];
+  if (!cat) return getCommonQuestions();
+  return [...cat.questions, ...getCommonQuestions()];
 }
 
 export function resetCategories(): void {
   localStorage.removeItem(LS_KEY);
+  localStorage.removeItem(COMMON_LS_KEY);
 }
