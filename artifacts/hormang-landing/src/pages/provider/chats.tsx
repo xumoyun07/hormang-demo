@@ -24,6 +24,7 @@ import { getOfferForChat, type Offer } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
+import { getLocalProfile } from "@/lib/local-profile";
 
 /* ─── Constants ──────────────────────────────────────────────────── */
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -344,6 +345,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 function ChatRow({ chat, index, onClick }: { chat: ProviderChat; index: number; onClick: () => void }) {
   const lastMsg = chat.messages[chat.messages.length - 1];
   const offer = getOfferForChat(chat.requestId, chat.masterId);
+  const customerLocal = chat.customerId ? getLocalProfile(chat.customerId) : null;
   const st = offer?.status ?? "pending";
 
   const borderCls =
@@ -360,10 +362,14 @@ function ChatRow({ chat, index, onClick }: { chat: ProviderChat; index: number; 
       className={`w-full bg-white rounded-2xl border p-4 flex items-start gap-3 hover:shadow-sm transition-all duration-200 text-left active:scale-[.99] ${borderCls}`}
     >
       <div
-        className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm"
-        style={{ background: chat.customerColor }}
+        className="w-11 h-11 rounded-2xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm overflow-hidden"
+        style={customerLocal?.photoUrl ? {} : { background: chat.customerColor }}
       >
-        {chat.customerInitials}
+        {customerLocal?.photoUrl ? (
+          <img src={customerLocal.photoUrl} alt={chat.customerName} className="w-full h-full object-cover" />
+        ) : (
+          chat.customerInitials
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-0.5">
