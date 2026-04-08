@@ -414,11 +414,17 @@ export default function ProfileSettingsPage() {
       serviceAreas: debouncedServiceAreas,
       experience: debouncedExp ? Number(debouncedExp) : undefined,
       portfolioItems: debouncedPortf,
-      portfolioImages: debouncedPortf.map((i) => i.url),
+      /* bio and categories are written here so PublicProfileModal can read them
+         directly from localStorage without needing an API call */
+      bio: debouncedBio || undefined,
+      categories: selectedServices.length > 0 ? selectedServices : undefined,
+      /* NOTE: portfolioImages (legacy field) is intentionally NOT written here.
+         saveLocalProfile() strips it on every write anyway; writing it doubles
+         storage usage and can trigger QuotaExceededError on 6-image portfolios. */
     };
     saveLocalProfile(user.id, next);
     setAutoSaveAt(new Date());
-  }, [user, photoUrl, debouncedPhoto, debouncedRegion, debouncedDistrict, debouncedServiceAreas, debouncedExp, debouncedPortf]);
+  }, [user, photoUrl, debouncedPhoto, debouncedRegion, debouncedDistrict, debouncedServiceAreas, debouncedExp, debouncedPortf, debouncedBio, selectedServices]);
 
   useEffect(() => { persistLocal(); }, [persistLocal]);
 
@@ -496,7 +502,11 @@ export default function ProfileSettingsPage() {
           serviceAreas,
           experience: experience ? Number(experience) : undefined,
           portfolioItems,
-          portfolioImages: portfolioItems.map((i) => i.url),
+          /* bio and categories persisted locally so PublicProfileModal can display
+             them without an API call. portfolioImages NOT included — it's a legacy
+             field that doubles storage and can trigger QuotaExceededError. */
+          bio: bio || undefined,
+          categories: selectedServices.length > 0 ? selectedServices : undefined,
         };
         saveLocalProfile(user.id, newLocal);
         setLocal(newLocal);

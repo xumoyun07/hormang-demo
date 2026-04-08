@@ -86,11 +86,10 @@ function ProviderSheet({ data, onClose }: { data: ProviderProfileData; onClose: 
 
   const portfolioItems: PortfolioItem[] = local.portfolioItems ?? [];
 
-  /* Bio from local profile (stored as any key — check common names) */
-  const bio = (local as Record<string, unknown>)["bio"] as string | undefined;
-
-  /* Categories from local profile */
-  const categories = (local as Record<string, unknown>)["categories"] as string[] | undefined;
+  /* Bio and categories are now first-class fields in LocalProfile,
+     written by settings.tsx on every auto-save and explicit save. */
+  const bio = local.bio;
+  const categories = local.categories;
 
   return (
     <motion.div

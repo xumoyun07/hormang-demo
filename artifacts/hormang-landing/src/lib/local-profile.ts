@@ -21,13 +21,17 @@ export interface PortfolioItem {
 export interface LocalProfile {
   photoUrl?: string;
   experience?: number;
-  /** Legacy — kept for backward compat. Prefer portfolioItems. */
+  /** Legacy — kept for backward compat on read. Never write this; use portfolioItems. */
   portfolioImages?: string[];
-  /** New: portfolio items with captions */
+  /** Portfolio items with captions */
   portfolioItems?: PortfolioItem[];
   region?: string;
   district?: string;
   serviceAreas?: string[];
+  /** Provider bio — stored locally so PublicProfileModal can display it without an API call */
+  bio?: string;
+  /** Provider service categories — stored locally for public profile display */
+  categories?: string[];
 }
 
 /* ─── Storage helpers ───────────────────────────────────────────── */
@@ -55,23 +59,43 @@ export function getLocalProfile(userId: string): LocalProfile {
 }
 
 export function saveLocalProfile(userId: string, data: LocalProfile): void {
+  /* Strip the legacy `portfolioImages` field before saving — it's a redundant
+     copy of portfolioItems[].url and doubles storage usage unnecessarily.
+     getLocalProfile() handles migrating old data that still has this field. */
+  const { portfolioImages: _dropped, ...clean } = data;
+
   try {
-    localStorage.setItem(key(userId), JSON.stringify(data));
+    localStorage.setItem(key(userId), JSON.stringify(clean));
     emitStoreChange();
   } catch (error) {
     if (error instanceof Error && error.name === "QuotaExceededError") {
-      console.warn("LocalStorage quota exceeded when saving profile. Image data may be too large.");
-      // Fallback: save without portfolio images
-      const dataWithoutPhotos: LocalProfile = {
-        ...data,
-        photoUrl: undefined,
+      console.warn("[Hormang] LocalStorage quota exceeded — dropping portfolio images to save space.");
+      /* First fallback: keep photo + metadata, drop portfolio only */
+      const withoutPortfolio: LocalProfile = {
+        ...clean,
         portfolioItems: [],
       };
       try {
-        localStorage.setItem(key(userId), JSON.stringify(dataWithoutPhotos));
+        localStorage.setItem(key(userId), JSON.stringify(withoutPortfolio));
+        emitStoreChange();
+        return;
+      } catch {
+        /* Second fallback: keep only non-image fields */
+      }
+      const minimal: LocalProfile = {
+        bio: clean.bio,
+        region: clean.region,
+        district: clean.district,
+        serviceAreas: clean.serviceAreas,
+        experience: clean.experience,
+        categories: clean.categories,
+        portfolioItems: [],
+      };
+      try {
+        localStorage.setItem(key(userId), JSON.stringify(minimal));
         emitStoreChange();
       } catch (fallbackError) {
-        console.error("Failed to save profile even without images:", fallbackError);
+        console.error("[Hormang] Failed to save profile even without images:", fallbackError);
       }
     } else {
       throw error;
