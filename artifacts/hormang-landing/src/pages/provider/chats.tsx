@@ -179,6 +179,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   const chat = getProviderChatById(chatId) ?? null;
   const offer = chat ? getOfferForChat(chat.requestId, chat.masterId) : undefined;
   const isRejected = offer?.status === "rejected";
+  const customerLocal = chat?.customerId ? getLocalProfile(chat.customerId) : null;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -225,10 +226,14 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
           {/* Clickable customer avatar */}
           <button
             onClick={() => setShowCustomerProfile(true)}
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm active:scale-95 transition-transform ring-2 ring-transparent hover:ring-violet-300"
-            style={{ background: chat.customerColor }}
+          className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm active:scale-95 transition-transform ring-2 ring-transparent hover:ring-violet-300 overflow-hidden"
+          style={customerLocal?.photoUrl ? {} : { background: chat.customerColor }}
           >
-            {chat.customerInitials}
+          {customerLocal?.photoUrl ? (
+            <img src={customerLocal.photoUrl} alt={chat.customerName} className="w-full h-full object-cover" />
+          ) : (
+            chat.customerInitials
+          )}
           </button>
 
           {/* Clickable name + subtitle area */}
