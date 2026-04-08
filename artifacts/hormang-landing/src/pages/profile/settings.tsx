@@ -19,7 +19,7 @@ import {
   X, ArrowRight, RefreshCw, ChevronDown, User, AlertTriangle,
   Eye, Zap, GripVertical, TrendingUp,
 } from "lucide-react";
-import { PublicProfileModal } from "@/components/public-profile-modal";
+import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import logoImg from "/hormang-logo.png";
 import { useAuth } from "@/contexts/auth-context";
 import { BottomNav } from "@/components/bottom-nav";
@@ -1056,7 +1056,7 @@ export default function ProfileSettingsPage() {
 
       <AnimatePresence>
         {showPreview && (
-          <PublicProfileModal
+          <PublicProfilePreviewModal
             key={`provider-${firstName}-${lastName}-${photoUrl}`}
             mode="provider"
             onClose={() => setShowPreview(false)}
@@ -1073,7 +1073,7 @@ export default function ProfileSettingsPage() {
 
       <AnimatePresence>
         {showCustomerPreview && (
-          <PublicProfileModal
+          <PublicProfilePreviewModal
             key={`customer-${firstName}-${lastName}-${region}-${district}-${photoUrl}`}
             mode="customer"
             onClose={() => setShowCustomerPreview(false)}
