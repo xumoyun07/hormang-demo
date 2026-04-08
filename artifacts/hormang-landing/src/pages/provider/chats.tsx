@@ -23,7 +23,7 @@ import {
 import { getOfferForChat, type Offer } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
-import { PublicProfileModal } from "@/components/public-profile-modal";
+import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 
 /* ─── Constants ──────────────────────────────────────────────────── */
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -313,7 +313,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
       {/* Customer profile modal */}
       <AnimatePresence>
         {showCustomerProfile && (
-          <PublicProfileModal
+          <PublicProfilePreviewModal
             key={`provider-chats-customer-${chat.customerId}`}
             mode="customer"
             customerData={{

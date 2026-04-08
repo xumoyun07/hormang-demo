@@ -8,7 +8,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock } from "lucide-react";
-import { PublicProfileModal } from "@/components/public-profile-modal";
+import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { BottomNav } from "@/components/bottom-nav";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import {
@@ -298,7 +298,7 @@ export default function ChatPage() {
       {/* Master profile modal */}
       <AnimatePresence>
         {showMasterProfile && (
-          <PublicProfileModal
+          <PublicProfilePreviewModal
             key={`chat-provider-${chat.masterId}`}
             mode="provider"
             providerData={{

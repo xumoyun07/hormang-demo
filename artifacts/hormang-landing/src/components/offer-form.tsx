@@ -23,7 +23,7 @@ import {
 } from "@/lib/provider-store";
 import { getRequests, getOffers } from "@/lib/requests-store";
 import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
-import { PublicProfileModal } from "@/components/public-profile-modal";
+import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 import { compressImage } from "@/lib/image-utils";
 
@@ -528,7 +528,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
       {/* Customer Profile Modal */}
       <AnimatePresence>
         {showCustomerProfile && (
-          <PublicProfileModal
+          <PublicProfilePreviewModal
             key={`offer-customer-${request.customerId}-${request.region}-${request.district}`}
             mode="customer"
             customerData={{

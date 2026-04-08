@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { OfferForm } from "@/components/offer-form";
-import { PublicProfileModal } from "@/components/public-profile-modal";
+import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -459,7 +459,7 @@ function OfferDetailModal({
       {/* Customer profile overlay */}
       <AnimatePresence>
         {showCustomerProfile && (
-          <PublicProfileModal
+          <PublicProfilePreviewModal
             key={`req-customer-${request.customerId}`}
             mode="customer"
             customerData={{

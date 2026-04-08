@@ -19,7 +19,7 @@ import {
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
 import { getLocalProfile } from "@/lib/local-profile";
-import { PublicProfileModal } from "@/components/public-profile-modal";
+import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { AcceptConfirmModal } from "@/components/accept-confirm-modal";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 
@@ -400,7 +400,7 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
       {/* Provider profile overlay */}
       <AnimatePresence>
         {showProviderProfile && (
-          <PublicProfileModal
+          <PublicProfilePreviewModal
             key={`offer-detail-provider-${offer.masterId}`}
             mode="provider"
             providerData={{

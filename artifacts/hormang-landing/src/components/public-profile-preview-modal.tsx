@@ -10,7 +10,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  X, MapPin, Clock, ShieldCheck, Star,
+  X, MapPin, ShieldCheck, Star,
   Briefcase, Award, ChevronRight,
 } from "lucide-react";
 import { getLocalProfile } from "@/lib/local-profile";
@@ -191,7 +191,7 @@ function ProviderPreviewSheet({
               </div>
             </div>
 
-            {/* ── Metrics row ── */}
+            {/* ── Metrics row: Rating | Completed services | Verified ── */}
             <div
               className="flex items-center rounded-2xl border border-gray-100 py-4 mb-5"
               style={{ background: "hsl(262,80%,99%)" }}
@@ -203,27 +203,18 @@ function ProviderPreviewSheet({
                 color="hsl(37,95%,55%)"
               />
               <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
-              {data.avgResponseTime !== undefined ? (
-                <MetricCell
-                  icon={Clock}
-                  value={`${data.avgResponseTime} min`}
-                  label="Javob vaqti"
-                  color={VIOLET}
-                />
-              ) : (
-                <MetricCell
-                  icon={Clock}
-                  value="—"
-                  label="Javob vaqti"
-                  color={VIOLET}
-                />
-              )}
-              <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
               <MetricCell
                 icon={Briefcase}
                 value="0 ta"
                 label="Bajarilgan"
                 color="hsl(160,60%,40%)"
+              />
+              <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
+              <MetricCell
+                icon={ShieldCheck}
+                value="✓"
+                label="Tasdiqlangan"
+                color={VIOLET}
               />
             </div>
 
