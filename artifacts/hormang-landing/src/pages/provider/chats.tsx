@@ -212,101 +212,109 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
       className="fixed inset-0 bg-gray-50 z-40 flex flex-col"
     >
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 sticky top-0 shadow-sm">
-        <button
-          onClick={onClose}
-          className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 flex-shrink-0 transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 flex-shrink-0 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
 
-        {/* Clickable customer avatar */}
-        <button
-          onClick={() => setShowCustomerProfile(true)}
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm active:scale-95 transition-transform ring-2 ring-transparent hover:ring-violet-300"
-          style={{ background: chat.customerColor }}
-        >
-          {chat.customerInitials}
-        </button>
+          {/* Clickable customer avatar */}
+          <button
+            onClick={() => setShowCustomerProfile(true)}
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm active:scale-95 transition-transform ring-2 ring-transparent hover:ring-violet-300"
+            style={{ background: chat.customerColor }}
+          >
+            {chat.customerInitials}
+          </button>
 
-        {/* Clickable name + subtitle area */}
-        <button
-          onClick={() => setShowCustomerProfile(true)}
-          className="flex-1 min-w-0 text-left"
-        >
-          <p className="font-extrabold text-sm text-gray-900 truncate">{chat.customerName}</p>
-          <div className="flex items-center gap-1.5">
-            <Circle className="w-2 h-2 fill-emerald-500 text-emerald-500 flex-shrink-0" />
-            <p className="text-[11px] text-gray-400">
-              O'rtacha javob vaqti: {chat.avgResponseTime} daqiqa
-            </p>
-          </div>
-        </button>
+          {/* Clickable name + subtitle area */}
+          <button
+            onClick={() => setShowCustomerProfile(true)}
+            className="flex-1 min-w-0 text-left"
+          >
+            <p className="font-extrabold text-sm text-gray-900 truncate">{chat.customerName}</p>
+            <div className="flex items-center gap-1.5">
+              <Circle className="w-2 h-2 fill-emerald-500 text-emerald-500 flex-shrink-0" />
+              <p className="text-[11px] text-gray-400">
+                O'rtacha javob vaqti: {chat.avgResponseTime} daqiqa
+              </p>
+            </div>
+          </button>
 
-        {/* Live offer status badge */}
-        {offer && (
-          <div className="flex-shrink-0">
-            <OfferStatusBadge status={offer.status} />
-          </div>
-        )}
+          {/* Live offer status badge */}
+          {offer && (
+            <div className="flex-shrink-0">
+              <OfferStatusBadge status={offer.status} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4">
-        {grouped.length === 0 && (
-          <div className="text-center py-8 text-gray-400 text-sm">
-            Hozircha xabar yo'q
-          </div>
-        )}
-
-        {grouped.map((group) => (
-          <div key={group.day}>
-            <DaySeparator label={group.day} />
-            <div className="space-y-1">
-              {group.messages.map((msg, i) => (
-                <MsgBubble
-                  key={msg.id}
-                  msg={msg}
-                  isFirst={i === 0 || group.messages[i - 1].sender !== msg.sender}
-                />
-              ))}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-lg mx-auto w-full px-4 pt-4 pb-4">
+          {grouped.length === 0 && (
+            <div className="text-center py-8 text-gray-400 text-sm">
+              Hozircha xabar yo'q
             </div>
-          </div>
-        ))}
+          )}
 
-        {/* Status banner after messages */}
-        {offer && offer.status !== "pending" && (
-          <StatusBanner status={offer.status} />
-        )}
+          {grouped.map((group) => (
+            <div key={group.day}>
+              <DaySeparator label={group.day} />
+              <div className="space-y-1">
+                {group.messages.map((msg, i) => (
+                  <MsgBubble
+                    key={msg.id}
+                    msg={msg}
+                    isFirst={i === 0 || group.messages[i - 1].sender !== msg.sender}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
 
-        <div ref={bottomRef} className="h-1" />
+          {/* Status banner after messages */}
+          {offer && offer.status !== "pending" && (
+            <StatusBanner status={offer.status} />
+          )}
+
+          <div ref={bottomRef} className="h-1" />
+        </div>
       </div>
 
       {/* Input — disabled when offer is rejected */}
       {isRejected ? (
-        <div className="bg-red-50 border-t border-red-100 px-4 py-4 flex items-center justify-center gap-2">
-          <X className="w-4 h-4 text-red-400 flex-shrink-0" />
-          <p className="text-sm font-semibold text-red-500">
-            Taklif rad etildi. Suhbat yopildi.
-          </p>
+        <div className="bg-red-50 border-t border-red-100">
+          <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-center gap-2">
+            <X className="w-4 h-4 text-red-400 flex-shrink-0" />
+            <p className="text-sm font-semibold text-red-500">
+              Taklif rad etildi. Suhbat yopildi.
+            </p>
+          </div>
         </div>
       ) : (
-        <div className="bg-white border-t border-gray-100 px-4 py-3 flex gap-2 items-center shadow-sm">
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
-            placeholder="Xabar yozing..."
-            className="flex-1 h-11 px-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
-          />
-          <button
-            onClick={send}
-            disabled={!text.trim()}
-            className="w-11 h-11 rounded-2xl flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-sm"
-            style={{ background: VIOLET }}
-          >
-            <Send className="w-4 h-4" />
-          </button>
+        <div className="bg-white border-t border-gray-100 shadow-sm">
+          <div className="max-w-lg mx-auto px-4 py-3 flex gap-2 items-center">
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
+              placeholder="Xabar yozing..."
+              className="flex-1 h-11 px-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
+            />
+            <button
+              onClick={send}
+              disabled={!text.trim()}
+              className="w-11 h-11 rounded-2xl flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-sm"
+              style={{ background: VIOLET }}
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
