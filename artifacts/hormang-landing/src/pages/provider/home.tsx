@@ -422,7 +422,7 @@ function RequestsModal({
                             onClick={() => onIgnore(r.id)}
                             className="flex-1 h-9 rounded-xl border-2 border-red-100 bg-red-50 text-red-600 font-bold text-xs flex items-center justify-center gap-1 transition-all active:scale-95 hover:bg-red-100"
                           >
-                            O'tkazish
+                            O'chirish
                           </button>
                           <button
                             onClick={() => onRespond(r.id)}

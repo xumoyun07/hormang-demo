@@ -11,6 +11,7 @@ import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock } from "lucide-react"
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { BottomNav } from "@/components/bottom-nav";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
+import { getLocalProfile } from "@/lib/local-profile";
 import {
   getChatById, sendMessage, getOfferForChat,
   type Chat, type ChatMessage, type Offer,
@@ -157,6 +158,7 @@ export default function ChatPage() {
   const offer: Offer | undefined = chat
     ? getOfferForChat(chat.requestId, chat.masterId)
     : undefined;
+  const masterLocal = chat?.masterId ? getLocalProfile(chat.masterId) : null;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -215,10 +217,14 @@ export default function ChatPage() {
           {/* Clickable master avatar */}
           <button
             onClick={() => setShowMasterProfile(true)}
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm active:scale-95 transition-transform ring-2 ring-transparent hover:ring-blue-300"
-            style={{ background: chat.masterColor }}
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm active:scale-95 transition-transform ring-2 ring-transparent hover:ring-blue-300 overflow-hidden"
+            style={masterLocal?.photoUrl ? {} : { background: chat.masterColor }}
           >
-            {chat.masterInitials}
+            {masterLocal?.photoUrl ? (
+              <img src={masterLocal.photoUrl} alt={chat.masterName} className="w-full h-full object-cover" />
+            ) : (
+              chat.masterInitials
+            )}
           </button>
 
           <button
