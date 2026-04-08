@@ -30,9 +30,6 @@ const BLUE_LIGHT   = "hsl(221,78%,97%)";
 function deriveInitials(name: string): string {
   return name.split(" ").map((p) => p[0] ?? "").join("").toUpperCase().slice(0, 2) || "??";
 }
-function memberSince(iso: string): string {
-  return new Date(iso).toLocaleDateString("uz-Latn-UZ", { month: "long", year: "numeric" });
-}
 
 /* ─── Metric cell ────────────────────────────────────────────────────── */
 function MetricCell({
@@ -370,7 +367,6 @@ function CustomerPreviewSheet({
   const name     = data.customerName?.trim() || "Xaridor";
   const initials = data.customerInitials ?? deriveInitials(name);
   const color    = data.customerColor ?? BLUE;
-  const joined   = data.joinedAt ? memberSince(data.joinedAt) : null;
   const location = data.district
     ? `${data.district}, ${data.region}`
     : data.region ?? "";
@@ -460,11 +456,6 @@ function CustomerPreviewSheet({
                 >
                   Xaridor
                 </span>
-                {joined && (
-                  <span className="text-xs font-bold px-3 py-1 rounded-full text-blue-700 bg-blue-50 border border-blue-200">
-                    {joined}dan beri
-                  </span>
-                )}
               </div>
             </div>
 
