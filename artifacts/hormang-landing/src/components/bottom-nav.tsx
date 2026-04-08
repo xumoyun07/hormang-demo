@@ -42,7 +42,7 @@ export function BottomNav() {
     if (href === "/provider/chats") return location.startsWith("/provider/chats") || location.startsWith("/provider/chat/");
     if (href === "/provider/requests") return location.startsWith("/provider/requests");
     if (href === "/questionnaire") return location.startsWith("/questionnaire");
-    if (href === "/dashboard") return location.startsWith("/dashboard");
+    if (href === "/dashboard") return location.startsWith("/dashboard") || location.startsWith("/settings") || location.startsWith("/profile/settings");
     if (href === "/my-requests") return location.startsWith("/my-requests");
     return location.startsWith(href);
   }

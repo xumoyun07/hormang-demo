@@ -257,6 +257,12 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
       desc: "Ma'lumotlar, parol va hisobing",
       action: () => onNavigate("/profile/settings"),
     },
+    {
+      icon: Settings,
+      title: "Sozlamalar",
+      desc: "Bildirishnomalar, til va boshqalar",
+      action: () => onNavigate("/settings"),
+    },
   ];
 
   return (
@@ -457,6 +463,12 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
       title: "Profil sozlamalari",
       desc: "Xizmatlar, bio, parol va hisobing",
       action: () => onNavigate("/profile/settings"),
+    },
+    {
+      icon: Settings,
+      title: "Sozlamalar",
+      desc: "Bildirishnomalar, til va boshqalar",
+      action: () => onNavigate("/settings"),
     },
   ];
 
