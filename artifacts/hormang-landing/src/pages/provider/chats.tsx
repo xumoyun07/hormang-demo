@@ -321,8 +321,8 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
               customerInitials: chat.customerInitials,
               customerColor: chat.customerColor,
               customerId: chat.customerId,
-              categoryName: chat.categoryName,
-              categoryEmoji: chat.categoryEmoji,
+              region: chat.region,
+              district: chat.district,
             }}
             onClose={() => setShowCustomerProfile(false)}
           />
