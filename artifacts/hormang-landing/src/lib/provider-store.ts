@@ -76,6 +76,8 @@ export interface ProviderChat {
   messages: ProviderChatMessage[];
   unread: number;
   createdAt: string;
+  region?: string;
+  district?: string;
 }
 
 export interface ProviderOffer {
@@ -179,6 +181,8 @@ function chatToProviderChat(c: Chat): ProviderChat {
     categoryName: c.categoryName,
     categoryEmoji: c.categoryEmoji || "📋",
     avgResponseTime: c.avgResponseTime ?? 14,
+    region: req?.region,
+    district: req?.district,
     messages: c.messages.map((m) => ({
       id: m.id,
       sender: m.sender === "customer" ? "customer" as const : m.sender === "system" ? "system" as const : "provider" as const,
