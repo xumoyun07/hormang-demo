@@ -19,6 +19,7 @@ import MyRequestsPage from "@/pages/my-requests";
 import OffersPage from "@/pages/offers";
 import ChatPage from "@/pages/chat";
 import ChatOffersPage from "@/pages/chat-offers";
+import SettingsPage from "@/pages/settings";
 import MigratePage from "@/pages/auth/migrate";
 import ProviderHomePage from "@/pages/provider/home";
 import ProviderRequestsPage from "@/pages/provider/requests";
@@ -94,6 +95,9 @@ function Router() {
       </Route>
       <Route path="/profile/settings">
         {() => <ProtectedRoute component={ProfileSettingsPage} />}
+      </Route>
+      <Route path="/settings">
+        {() => <ProtectedRoute component={SettingsPage} />}
       </Route>
       <Route path="/providers/:id" component={ProviderProfilePage} />
       <Route path="/questionnaire" component={QuestionnairePage} />
