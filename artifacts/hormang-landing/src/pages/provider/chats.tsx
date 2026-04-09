@@ -211,10 +211,10 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
       animate={{ x: 0 }}
       exit={{ x: "100%" }}
       transition={{ type: "spring", stiffness: 400, damping: 35 }}
-      className="fixed inset-0 bg-gray-50 z-40 flex flex-col"
+      className="fixed inset-x-0 top-0 bottom-16 bg-gray-50 z-40 flex flex-col"
     >
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
+      <div className="bg-white border-b border-gray-100 shrink-0 z-10 shadow-sm">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={onClose}
@@ -260,7 +260,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         <div className="max-w-lg mx-auto w-full px-4 pt-4 pb-4">
           {grouped.length === 0 && (
             <div className="text-center py-8 text-gray-400 text-sm">
