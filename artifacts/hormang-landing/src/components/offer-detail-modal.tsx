@@ -31,12 +31,26 @@ const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", 
 
 /* ─── Helpers ──────────────────────────────────────────────────────── */
 
-function formatAnswerValue(value: unknown): string {
+function formatAnswerValue(
+  value: unknown,
+  options?: { label: string; value: string; type?: string }[],
+  otherText?: string,
+): string {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "string" && value.startsWith("data:")) return "__IMAGE__";
   if (typeof value === "boolean") return value ? "Ha" : "Yo'q";
   if (typeof value === "number") return value.toLocaleString("uz-Latn-UZ") + (String(value).length > 3 ? " so'm" : "");
-  if (Array.isArray(value)) return value.join(", ");
+  const otherOpt = options?.find((o) => o.type === "other");
+  if (typeof value === "string") {
+    if (otherOpt && value === otherOpt.value && otherText) return otherText;
+    return options?.find((o) => o.value === value)?.label ?? value;
+  }
+  if (Array.isArray(value)) {
+    return (value as string[]).map((v) => {
+      if (otherOpt && v === otherOpt.value && otherText) return otherText;
+      return options?.find((o) => o.value === v)?.label ?? v;
+    }).join(", ");
+  }
   return String(value);
 }
 
@@ -101,7 +115,8 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
     .map((q) => {
       const raw = req?.answers?.[q.id];
       if (raw === null || raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0)) return null;
-      const formatted = formatAnswerValue(raw);
+      const otherText = req?.answers?.[q.id + "_other"] as string | undefined;
+      const formatted = formatAnswerValue(raw, q.options, otherText);
       if (formatted === "__IMAGE__") return null;
       return { label: q.label, value: formatted };
     })
