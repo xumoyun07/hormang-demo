@@ -203,9 +203,9 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col pb-32">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Chat Header */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-100 shrink-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => setLocation("/my-requests")}
@@ -249,39 +249,41 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Messages area */}
-      <div className="flex-1 overflow-y-auto max-w-lg mx-auto w-full px-4 pt-4 pb-32">
-        {grouped.length === 0 && (
-          <div className="text-center py-8 text-gray-400 text-sm">
-            Hozircha xabar yo'q
-          </div>
-        )}
-
-        {grouped.map((group) => (
-          <div key={group.day}>
-            <DaySeparator label={group.day} />
-            <div className="space-y-1">
-              {group.messages.map((msg, i) => (
-                <MessageBubble
-                  key={msg.id}
-                  msg={msg}
-                  isFirst={i === 0 || group.messages[i - 1].sender !== msg.sender}
-                />
-              ))}
+      {/* Messages area — scrolls internally, fills all remaining space */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="max-w-lg mx-auto w-full px-4 pt-4 pb-4">
+          {grouped.length === 0 && (
+            <div className="text-center py-8 text-gray-400 text-sm">
+              Hozircha xabar yo'q
             </div>
-          </div>
-        ))}
+          )}
 
-        {/* Status banner — shown after messages when offer is resolved */}
-        {offer && offer.status !== "pending" && (
-          <StatusBanner status={offer.status} />
-        )}
+          {grouped.map((group) => (
+            <div key={group.day}>
+              <DaySeparator label={group.day} />
+              <div className="space-y-1">
+                {group.messages.map((msg, i) => (
+                  <MessageBubble
+                    key={msg.id}
+                    msg={msg}
+                    isFirst={i === 0 || group.messages[i - 1].sender !== msg.sender}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
 
-        <div ref={messagesEndRef} className="h-1" />
+          {/* Status banner — shown after messages when offer is resolved */}
+          {offer && offer.status !== "pending" && (
+            <StatusBanner status={offer.status} />
+          )}
+
+          <div ref={messagesEndRef} className="h-1" />
+        </div>
       </div>
 
-      {/* Input bar — customer can always send */}
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-100 z-20">
+      {/* Input bar — in flow, sits above BottomNav */}
+      <div className="shrink-0 bg-white border-t border-gray-100 z-20 pb-16">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-2">
           <input
             ref={inputRef}
