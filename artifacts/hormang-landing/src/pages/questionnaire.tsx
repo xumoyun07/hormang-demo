@@ -52,6 +52,137 @@ function formatAnswer(question: Question, value: unknown): string {
   return String(value);
 }
 
+/* ─── Conditional branch helpers ────────────────────────────────── */
+function getActiveBranches(q: Question, answers: Answers): Question[] {
+  if (!q.conditionalBranches) return [];
+  if (q.type === "single-select") {
+    const val = answers[q.id] as string | null;
+    if (!val) return [];
+    return q.conditionalBranches[val] ?? [];
+  }
+  if (q.type === "multi-select") {
+    const vals = (answers[q.id] as string[]) ?? [];
+    const result: Question[] = [];
+    const seen = new Set<string>();
+    for (const val of vals) {
+      for (const bq of q.conditionalBranches[val] ?? []) {
+        if (!seen.has(bq.id)) { seen.add(bq.id); result.push(bq); }
+      }
+    }
+    return result;
+  }
+  return [];
+}
+
+/* ─── Inline conditional questions block ─────────────────────────── */
+function ConditionalInlineBlock({
+  questions,
+  answers,
+  onChange,
+}: {
+  questions: Question[];
+  answers: Answers;
+  onChange: (id: string, val: unknown) => void;
+}) {
+  if (questions.length === 0) return null;
+
+  const pillBase = "px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-150 cursor-pointer select-none";
+  const pillOff = `${pillBase} border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:text-blue-600`;
+  const pillOn = `${pillBase} border-blue-500 bg-blue-600 text-white shadow-sm`;
+  const otherInputClass = "w-full px-4 py-3.5 rounded-2xl border border-blue-300 bg-blue-50/60 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -6 }}
+      transition={{ duration: 0.22 }}
+      className="mt-5 border-l-2 border-blue-200 pl-4 space-y-6"
+    >
+      {questions.map((bq) => {
+        const bVal = answers[bq.id] ?? (bq.type === "multi-select" ? [] : null);
+        const nestedBranches = getActiveBranches(bq, answers);
+        return (
+          <div key={bq.id}>
+            <div className="mb-3">
+              <span className="text-[10px] font-extrabold text-blue-400 uppercase tracking-widest">↳ Qo'shimcha savol</span>
+              <h3 className="text-base font-bold text-gray-800 mt-0.5 leading-snug">{bq.label}</h3>
+              {bq.helpText && <p className="text-xs text-gray-400 mt-0.5">{bq.helpText}</p>}
+            </div>
+
+            {/* Inline QuestionInput — only for common types to keep it concise */}
+            {bq.type === "single-select" && (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  {bq.options?.map((opt) => (
+                    <button key={opt.value} onClick={() => { onChange(bq.id, bVal === opt.value ? null : opt.value); if (opt.type !== "other") onChange(bq.id + "_other", ""); }}
+                      className={bVal === opt.value ? pillOn : pillOff}>
+                      {bVal === opt.value && <Check className="w-3.5 h-3.5 inline mr-1.5" />}{opt.label}
+                    </button>
+                  ))}
+                </div>
+                {bq.options?.find((o) => o.value === bVal && o.type === "other") && (
+                  <input autoFocus value={(answers[bq.id + "_other"] as string) ?? ""} onChange={(e) => onChange(bq.id + "_other", e.target.value)} placeholder="Boshqasini yozing..." className={otherInputClass} />
+                )}
+              </div>
+            )}
+            {bq.type === "multi-select" && (() => {
+              const sel = Array.isArray(bVal) ? (bVal as string[]) : [];
+              return (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    {bq.options?.map((opt) => {
+                      const on = sel.includes(opt.value);
+                      return (
+                        <button key={opt.value} onClick={() => { const next = on ? sel.filter(x => x !== opt.value) : [...sel, opt.value]; onChange(bq.id, next); if (opt.type === "other" && on) onChange(bq.id + "_other", ""); }}
+                          className={on ? pillOn : pillOff}>
+                          {on && <Check className="w-3.5 h-3.5 inline mr-1.5" />}{opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {bq.options?.find((o) => o.type === "other" && sel.includes(o.value)) && (
+                    <input autoFocus value={(answers[bq.id + "_other"] as string) ?? ""} onChange={(e) => onChange(bq.id + "_other", e.target.value)} placeholder="Boshqasini yozing..." className={otherInputClass} />
+                  )}
+                </div>
+              );
+            })()}
+            {bq.type === "text" && (
+              <input type="text" value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder}
+                className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all" />
+            )}
+            {bq.type === "textarea" && (
+              <textarea rows={3} value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder}
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none transition-all" />
+            )}
+            {bq.type === "number" && (
+              <input type="number" value={(bVal as number) ?? ""} onChange={(e) => onChange(bq.id, e.target.value ? Number(e.target.value) : null)} placeholder={bq.placeholder}
+                className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all" />
+            )}
+            {bq.type === "yes-no" && (
+              <div className="flex gap-3">
+                {([{ label: "Ha", v: true }, { label: "Yo'q", v: false }] as const).map(({ label, v }) => (
+                  <button key={label} onClick={() => onChange(bq.id, v)}
+                    className={`flex-1 py-3 rounded-2xl border text-sm font-bold transition-all ${bVal === v ? "border-blue-500 bg-blue-600 text-white shadow-sm" : "border-gray-200 bg-white text-gray-700 hover:border-blue-300"}`}>
+                    {bVal === v && <Check className="w-3.5 h-3.5 inline mr-1.5" />}{label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Nested branches */}
+            <AnimatePresence>
+              {nestedBranches.length > 0 && (
+                <ConditionalInlineBlock questions={nestedBranches} answers={answers} onChange={onChange} />
+              )}
+            </AnimatePresence>
+          </div>
+        );
+      })}
+    </motion.div>
+  );
+}
+
 /* ─── Single question renderer ───────────────────────────────────── */
 function QuestionInput({
   question,
@@ -510,6 +641,17 @@ function QuestionsScreen({
               openToOffers={openToOffers}
               onOpenToOffersChange={setOpenToOffers}
             />
+
+            {/* Inline conditional follow-up questions */}
+            <AnimatePresence>
+              {getActiveBranches(q, { ...answers, [q.id]: currentValue }).length > 0 && (
+                <ConditionalInlineBlock
+                  questions={getActiveBranches(q, { ...answers, [q.id]: currentValue })}
+                  answers={answers}
+                  onChange={(id, val) => setAnswers((prev) => ({ ...prev, [id]: val }))}
+                />
+              )}
+            </AnimatePresence>
           </motion.div>
         </AnimatePresence>
 

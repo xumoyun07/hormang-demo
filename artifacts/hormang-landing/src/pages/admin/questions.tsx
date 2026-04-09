@@ -63,6 +63,7 @@ interface EditorState {
   condEnabled: boolean;
   condQuestionId: string;
   condValue: string;
+  conditionalBranches: Record<string, Question[]>;
 }
 
 function mkKey() { return `_${Math.random().toString(36).slice(2, 8)}`; }
@@ -83,6 +84,7 @@ function blankEditor(): EditorState {
     condEnabled: false,
     condQuestionId: "",
     condValue: "",
+    conditionalBranches: {},
   };
 }
 
@@ -104,6 +106,7 @@ function editorFromQuestion(q: Question): EditorState {
     condEnabled: !!q.conditional,
     condQuestionId: q.conditional?.questionId ?? "",
     condValue: q.conditional?.value ?? "",
+    conditionalBranches: q.conditionalBranches ?? {},
   };
 }
 
@@ -128,6 +131,12 @@ function editorToQuestion(e: EditorState): Question {
   }
   if (e.condEnabled && e.condQuestionId) {
     q.conditional = { questionId: e.condQuestionId, value: e.condValue };
+  }
+  const nonEmptyBranches = Object.fromEntries(
+    Object.entries(e.conditionalBranches).filter(([, qs]) => qs.length > 0)
+  );
+  if (Object.keys(nonEmptyBranches).length > 0) {
+    q.conditionalBranches = nonEmptyBranches;
   }
   return q;
 }
@@ -367,6 +376,112 @@ function OptionRow({
   );
 }
 
+/* ─── Branch Panel Modal ─────────────────────────────────────────── */
+function BranchPanelModal({
+  optionLabel,
+  optionValue,
+  questions,
+  allQuestions,
+  onChange,
+  onClose,
+}: {
+  optionLabel: string;
+  optionValue: string;
+  questions: Question[];
+  allQuestions: Question[];
+  onChange: (qs: Question[]) => void;
+  onClose: () => void;
+}) {
+  const [editorState, setEditorState] = useState<EditorState | null>(null);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+
+  function move(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    if (j < 0 || j >= questions.length) return;
+    const qs = [...questions];
+    [qs[i], qs[j]] = [qs[j], qs[i]];
+    onChange(qs);
+  }
+  function del(i: number) { onChange(questions.filter((_, idx) => idx !== i)); }
+  function save(q: Question) {
+    const qs = editingIdx !== null
+      ? questions.map((orig, i) => (i === editingIdx ? q : orig))
+      : [...questions, q];
+    onChange(qs);
+    setEditorState(null);
+    setEditingIdx(null);
+    setShowAdd(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, y: 32 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 32 }}
+        className="bg-white w-full sm:rounded-3xl sm:border sm:border-gray-100 sm:max-w-2xl max-h-[90vh] flex flex-col shadow-2xl"
+      >
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 flex-shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+            <GitBranch className="w-4 h-4 text-violet-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-gray-900 text-sm">
+              «{optionLabel}» uchun shartli savollar
+            </p>
+            <p className="text-xs text-gray-400">{questions.length} ta follow-up savol</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors flex-shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {questions.length === 0 && (
+            <div className="text-center py-12">
+              <div className="w-12 h-12 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-3">
+                <GitBranch className="w-6 h-6 text-violet-400" />
+              </div>
+              <p className="text-sm text-gray-500 font-semibold">Hali follow-up savol yo'q</p>
+              <p className="text-xs text-gray-400 mt-1">«{optionLabel}» tanlanganda ko'rinadigan savollar</p>
+            </div>
+          )}
+          {questions.map((q, i) => (
+            <QuestionCard
+              key={q.id} q={q} index={i} total={questions.length}
+              onEdit={() => { setEditorState(editorFromQuestion(q)); setEditingIdx(i); }}
+              onDelete={() => del(i)}
+              onMove={(d) => move(i, d)}
+            />
+          ))}
+        </div>
+
+        <div className="border-t border-gray-100 px-5 py-4 flex items-center justify-between flex-shrink-0">
+          <button
+            onClick={() => { setShowAdd(true); setEditorState(null); setEditingIdx(null); }}
+            className="flex items-center gap-2 text-sm font-semibold text-violet-600 hover:text-violet-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Follow-up savol qo'shish
+          </button>
+          <Button variant="outline" onClick={onClose} className="font-semibold border-gray-200">Yopish</Button>
+        </div>
+
+        <AnimatePresence>
+          {(editorState !== null || showAdd) && (
+            <QuestionEditorModal
+              initial={editorState ?? undefined}
+              allQuestions={[...allQuestions, ...questions]}
+              onSave={save}
+              onClose={() => { setEditorState(null); setEditingIdx(null); setShowAdd(false); }}
+            />
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </div>
+  );
+}
+
 /* ─── Question Editor Modal ──────────────────────────────────────── */
 function QuestionEditorModal({
   initial,
@@ -379,8 +494,12 @@ function QuestionEditorModal({
   onSave: (q: Question) => void;
   onClose: () => void;
 }) {
-  const [s, setS] = useState<EditorState>(initial ?? blankEditor());
+  const [s, setS] = useState<EditorState>(() => {
+    const base = initial ?? blankEditor();
+    return { ...base, conditionalBranches: base.conditionalBranches ?? {} };
+  });
   const [showPreview, setShowPreview] = useState(true);
+  const [branchEditorFor, setBranchEditorFor] = useState<string | null>(null);
   const dragIdx = useRef<number | null>(null);
 
   const set = <K extends keyof EditorState>(k: K, v: EditorState[K]) =>
@@ -496,6 +615,60 @@ function QuestionEditorModal({
                   className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">
                   <Plus className="w-3.5 h-3.5" /> Variant qo'shish
                 </button>
+              </div>
+            )}
+
+            {/* Conditional Branches section */}
+            {needsOptions && (
+              <div className="border border-violet-200 rounded-xl overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 bg-violet-50">
+                  <GitBranch className="w-4 h-4 text-violet-500 flex-shrink-0" />
+                  <p className="text-sm font-bold text-violet-800 flex-1">Shartli savollar (Follow-ups)</p>
+                  {Object.values(s.conditionalBranches).flat().length > 0 && (
+                    <span className="text-[10px] bg-violet-200 text-violet-800 font-bold px-2 py-0.5 rounded-full">
+                      {Object.values(s.conditionalBranches).flat().length} ta savol
+                    </span>
+                  )}
+                </div>
+                <div className="divide-y divide-violet-100">
+                  {s.options.filter((o) => o.label.trim()).length === 0 && (
+                    <p className="px-4 py-3 text-xs text-gray-400 italic">Avval variantlar qo'shing</p>
+                  )}
+                  {s.options.filter((o) => o.label.trim()).map((opt) => {
+                    const optVal = opt.value.trim() || opt.label.trim().toLowerCase().replace(/\s+/g, "_");
+                    const branches = s.conditionalBranches[optVal] ?? [];
+                    return (
+                      <div key={opt._key} className="flex items-center gap-3 px-4 py-2.5">
+                        <span className="text-xs font-semibold text-gray-700 flex-1 truncate">{opt.label}</span>
+                        {branches.length > 0 && (
+                          <span className="text-[10px] bg-violet-100 text-violet-700 font-bold px-2 py-0.5 rounded-full flex-shrink-0">
+                            {branches.length} savol
+                          </span>
+                        )}
+                        <button
+                          onClick={() => setBranchEditorFor(optVal)}
+                          className="text-[11px] font-semibold text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-2.5 py-1 rounded-lg transition-colors flex-shrink-0"
+                        >
+                          {branches.length > 0 ? "Tahrirlash" : "+ Qo'shish"}
+                        </button>
+                        {branches.length > 0 && (
+                          <button
+                            onClick={() => setS((prev) => ({
+                              ...prev,
+                              conditionalBranches: Object.fromEntries(
+                                Object.entries(prev.conditionalBranches).filter(([k]) => k !== optVal)
+                              ),
+                            }))}
+                            className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+                            title="Barcha follow-uplarni o'chirish"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -640,6 +813,27 @@ function QuestionEditorModal({
             <Save className="w-4 h-4" /> Qo'shish
           </Button>
         </div>
+
+        {/* Branch editor overlay */}
+        <AnimatePresence>
+          {branchEditorFor && (
+            <BranchPanelModal
+              optionLabel={
+                s.options.find((o) => (o.value.trim() || o.label.trim().toLowerCase().replace(/\s+/g, "_")) === branchEditorFor)?.label ?? branchEditorFor
+              }
+              optionValue={branchEditorFor}
+              questions={s.conditionalBranches[branchEditorFor] ?? []}
+              allQuestions={allQuestions}
+              onChange={(qs) =>
+                setS((prev) => ({
+                  ...prev,
+                  conditionalBranches: { ...prev.conditionalBranches, [branchEditorFor]: qs },
+                }))
+              }
+              onClose={() => setBranchEditorFor(null)}
+            />
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );
@@ -655,6 +849,9 @@ function QuestionCard({
 }) {
   const hasOther = q.options?.some(o => o.type === "other");
   const typeLabel = TYPE_LABELS[q.type] ?? q.type;
+  const totalBranchQuestions = q.conditionalBranches
+    ? Object.values(q.conditionalBranches).flat().length
+    : 0;
 
   if (q.type === "section-header") {
     return (
@@ -696,6 +893,11 @@ function QuestionCard({
           )}
           {hasOther && (
             <span className="text-[11px] bg-violet-50 text-violet-600 px-2 py-0.5 rounded-full font-semibold">+ Boshqa</span>
+          )}
+          {totalBranchQuestions > 0 && (
+            <span className="text-[11px] bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+              <GitBranch className="w-2.5 h-2.5" />{totalBranchQuestions} ta filial
+            </span>
           )}
           {q.options && q.options.length > 0 && (
             <span className="text-[11px] text-gray-300 truncate max-w-[160px]">

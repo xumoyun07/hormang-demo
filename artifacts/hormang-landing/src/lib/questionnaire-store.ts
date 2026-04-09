@@ -36,6 +36,8 @@ export interface Question {
   step?: number;
   isCore?: boolean;
   conditional?: { questionId: string; value: string };
+  /** option value → follow-up questions shown when that option is selected */
+  conditionalBranches?: Record<string, Question[]>;
 }
 
 export interface CategoryConfig {
