@@ -57,12 +57,16 @@ function QuestionInput({
   question,
   value,
   onChange,
+  otherValue,
+  onOtherChange,
   openToOffers,
   onOpenToOffersChange,
 }: {
   question: Question;
   value: unknown;
   onChange: (v: unknown) => void;
+  otherValue?: string;
+  onOtherChange?: (v: string) => void;
   openToOffers?: boolean;
   onOpenToOffersChange?: (v: boolean) => void;
 }) {
@@ -72,19 +76,38 @@ function QuestionInput({
   const pillOff = `${pillBase} border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:text-blue-600`;
   const pillOn = `${pillBase} border-blue-500 bg-blue-600 text-white shadow-sm`;
 
+  const otherInputClass = "w-full px-4 py-3.5 rounded-2xl border border-blue-300 bg-blue-50/60 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all";
+
   if (question.type === "single-select") {
+    const selectedOpt = question.options?.find((o) => o.value === value);
+    const showOther = !!selectedOpt?.isOther;
     return (
-      <div className="flex flex-wrap gap-2.5">
-        {question.options?.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => onChange(value === opt.value ? null : opt.value)}
-            className={value === opt.value ? pillOn : pillOff}
-          >
-            {value === opt.value && <Check className="w-3.5 h-3.5 inline mr-1.5" />}
-            {opt.label}
-          </button>
-        ))}
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2.5">
+          {question.options?.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                const next = value === opt.value ? null : opt.value;
+                onChange(next);
+                if (!opt.isOther) onOtherChange?.("");
+              }}
+              className={value === opt.value ? pillOn : pillOff}
+            >
+              {value === opt.value && <Check className="w-3.5 h-3.5 inline mr-1.5" />}
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {showOther && (
+          <input
+            autoFocus
+            value={otherValue ?? ""}
+            onChange={(e) => onOtherChange?.(e.target.value)}
+            placeholder={selectedOpt?.otherLabel || "Boshqasini yozing..."}
+            className={otherInputClass}
+          />
+        )}
       </div>
     );
   }
@@ -94,18 +117,32 @@ function QuestionInput({
     const toggle = (v: string) => {
       const next = selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v];
       onChange(next);
+      const opt = question.options?.find((o) => o.value === v);
+      if (opt?.isOther && selected.includes(v)) onOtherChange?.("");
     };
+    const activeOtherOpt = question.options?.find((o) => o.isOther && selected.includes(o.value));
     return (
-      <div className="flex flex-wrap gap-2.5">
-        {question.options?.map((opt) => {
-          const on = selected.includes(opt.value);
-          return (
-            <button key={opt.value} onClick={() => toggle(opt.value)} className={on ? pillOn : pillOff}>
-              {on && <Check className="w-3.5 h-3.5 inline mr-1.5" />}
-              {opt.label}
-            </button>
-          );
-        })}
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2.5">
+          {question.options?.map((opt) => {
+            const on = selected.includes(opt.value);
+            return (
+              <button key={opt.value} onClick={() => toggle(opt.value)} className={on ? pillOn : pillOff}>
+                {on && <Check className="w-3.5 h-3.5 inline mr-1.5" />}
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        {activeOtherOpt && (
+          <input
+            autoFocus
+            value={otherValue ?? ""}
+            onChange={(e) => onOtherChange?.(e.target.value)}
+            placeholder={activeOtherOpt.otherLabel || "Boshqasini yozing..."}
+            className={otherInputClass}
+          />
+        )}
       </div>
     );
   }
@@ -468,6 +505,8 @@ function QuestionsScreen({
               question={q}
               value={currentValue}
               onChange={(v) => setAnswers((prev) => ({ ...prev, [q.id]: v }))}
+              otherValue={(answers[q.id + "_other"] as string) ?? ""}
+              onOtherChange={(v) => setAnswers((prev) => ({ ...prev, [q.id + "_other"]: v }))}
               openToOffers={openToOffers}
               onOpenToOffersChange={setOpenToOffers}
             />
@@ -551,10 +590,15 @@ function SummaryScreen({
             if (q.type === "file") return null;
             const formatted = formatAnswer(q, val);
             if (formatted === "—") return null;
+            const otherText = answers[q.id + "_other"] as string | undefined;
+            const hasOtherText = !!otherText?.trim();
             return (
               <div key={q.id} className="px-5 py-4">
                 <p className="text-xs text-gray-400 font-semibold mb-1">{q.label}</p>
                 <p className="text-sm font-semibold text-gray-900">{formatted}</p>
+                {hasOtherText && (
+                  <p className="text-xs text-blue-600 mt-0.5 font-medium">↳ {otherText}</p>
+                )}
               </div>
             );
           })}

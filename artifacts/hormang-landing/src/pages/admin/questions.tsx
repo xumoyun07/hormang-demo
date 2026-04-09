@@ -396,7 +396,7 @@ function QuestionEditorModal({
           <div className="flex items-center gap-2">
             <button onClick={() => setShowPreview(!showPreview)}
               className={`h-8 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${showPreview ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
-              <Eye className="w-3.5 h-3.5" />{showPreview ? "Ko'rinish yoqiq" : "Ko'rsatish"}
+              <Eye className="w-3.5 h-3.5" />{showPreview ? "" : ""}
             </button>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
               <X className="w-4 h-4" />
