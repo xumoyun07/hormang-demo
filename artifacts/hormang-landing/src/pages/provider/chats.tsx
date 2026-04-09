@@ -303,8 +303,8 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
           </div>
         </div>
       ) : (
-        <div className="bg-white border-t border-gray-100 shadow-sm">
-          <div className="max-w-lg mx-auto px-4 py-3 flex gap-2 items-center">
+            <div className="shrink-0 bg-white border-t border-gray-100 z-20">
+              <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-2">
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
