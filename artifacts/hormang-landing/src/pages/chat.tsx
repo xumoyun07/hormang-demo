@@ -250,7 +250,7 @@ export default function ChatPage() {
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto max-w-lg mx-auto w-full px-4 pt-4 pb-4">
+      <div className="flex-1 overflow-y-auto max-w-lg mx-auto w-full px-4 pt-4 pb-32">
         {grouped.length === 0 && (
           <div className="text-center py-8 text-gray-400 text-sm">
             Hozircha xabar yo'q
