@@ -211,7 +211,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
       animate={{ x: 0 }}
       exit={{ x: "100%" }}
       transition={{ type: "spring", stiffness: 400, damping: 35 }}
-      className="fixed inset-x-0 top-0 bottom-16 bg-gray-50 z-40 flex flex-col"
+      className="fixed inset-x-0 top-0 bottom-14 bg-gray-50 z-40 flex flex-col"
     >
       {/* Header */}
       <div className="bg-white border-b border-gray-100 shrink-0 z-10 shadow-sm">
@@ -303,7 +303,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
           </div>
         </div>
       ) : (
-            <div className="shrink-0 bg-white border-t border-gray-100 z-20">
+            <div className="shrink-0 bg-white border-t border-gray-100 z-20 pb-0">
               <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-2">
             <input
               value={text}

@@ -229,11 +229,23 @@ export function getOfferForChat(requestId: string, masterId: string): Offer | un
 export function updateOfferStatus(offerId: string, status: "accepted" | "rejected"): void {
   const allOffers = getOffers();
   const target = allOffers.find((o) => o.id === offerId);
-  const updated = allOffers.map((o) => o.id === offerId ? { ...o, status } : o);
+
+  // Mark the target offer with the new status
+  let updated = allOffers.map((o) => o.id === offerId ? { ...o, status } : o);
+
+  // When an offer is accepted, also reject ALL sibling offers on the same request
+  if (status === "accepted" && target) {
+    updated = updated.map((o) =>
+      o.requestId === target.requestId && o.id !== offerId
+        ? { ...o, status: "rejected" as const }
+        : o
+    );
+  }
+
   writeJSON(OFFERS_KEY, updated);
   console.log(`[Hormang] ✅ Offer ${status === "accepted" ? "qabul qilindi" : "rad etildi"}`, { offerId, status });
 
-  // When an offer is accepted, notify all OTHER providers who also offered on this request
+  // When an offer is accepted, also notify sibling providers via system message
   if (status === "accepted" && target) {
     const siblings = allOffers.filter(
       (o) => o.requestId === target.requestId && o.id !== offerId
