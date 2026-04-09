@@ -80,7 +80,7 @@ function QuestionInput({
 
   if (question.type === "single-select") {
     const selectedOpt = question.options?.find((o) => o.value === value);
-    const showOther = !!selectedOpt?.isOther;
+    const showOther = !!selectedOpt && selectedOpt.type === "other";
     return (
       <div className="space-y-3">
         <div className="flex flex-wrap gap-2.5">
@@ -90,7 +90,7 @@ function QuestionInput({
               onClick={() => {
                 const next = value === opt.value ? null : opt.value;
                 onChange(next);
-                if (!opt.isOther) onOtherChange?.("");
+                if (opt.type !== "other") onOtherChange?.("");
               }}
               className={value === opt.value ? pillOn : pillOff}
             >
@@ -104,7 +104,7 @@ function QuestionInput({
             autoFocus
             value={otherValue ?? ""}
             onChange={(e) => onOtherChange?.(e.target.value)}
-            placeholder={selectedOpt?.otherLabel || "Boshqasini yozing..."}
+            placeholder="Boshqasini yozing..."
             className={otherInputClass}
           />
         )}
@@ -118,9 +118,9 @@ function QuestionInput({
       const next = selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v];
       onChange(next);
       const opt = question.options?.find((o) => o.value === v);
-      if (opt?.isOther && selected.includes(v)) onOtherChange?.("");
+      if (opt?.type === "other" && selected.includes(v)) onOtherChange?.("");
     };
-    const activeOtherOpt = question.options?.find((o) => o.isOther && selected.includes(o.value));
+    const activeOtherOpt = question.options?.find((o) => o.type === "other" && selected.includes(o.value));
     return (
       <div className="space-y-3">
         <div className="flex flex-wrap gap-2.5">
@@ -139,7 +139,7 @@ function QuestionInput({
             autoFocus
             value={otherValue ?? ""}
             onChange={(e) => onOtherChange?.(e.target.value)}
-            placeholder={activeOtherOpt.otherLabel || "Boshqasini yozing..."}
+            placeholder="Boshqasini yozing..."
             className={otherInputClass}
           />
         )}

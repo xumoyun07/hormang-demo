@@ -45,8 +45,7 @@ interface EditorOption {
   _key: string;
   label: string;
   value: string;
-  isOther: boolean;
-  otherLabel: string;
+  type: "fixed" | "other";
 }
 
 interface EditorState {
@@ -80,7 +79,7 @@ function blankEditor(): EditorState {
     min: "",
     max: "",
     step: "",
-    options: [{ _key: mkKey(), label: "", value: "", isOther: false, otherLabel: "Boshqa" }],
+    options: [{ _key: mkKey(), label: "", value: "", type: "fixed" as const }],
     condEnabled: false,
     condQuestionId: "",
     condValue: "",
@@ -100,8 +99,8 @@ function editorFromQuestion(q: Question): EditorState {
     max: q.max != null ? String(q.max) : "",
     step: q.step != null ? String(q.step) : "",
     options: q.options?.length
-      ? q.options.map((o) => ({ _key: mkKey(), label: o.label, value: o.value, isOther: !!o.isOther, otherLabel: o.otherLabel ?? "Boshqa" }))
-      : [{ _key: mkKey(), label: "", value: "", isOther: false, otherLabel: "Boshqa" }],
+      ? q.options.map((o) => ({ _key: mkKey(), label: o.label, value: o.value, type: (o.type === "other" ? "other" : "fixed") as "fixed" | "other" }))
+      : [{ _key: mkKey(), label: "", value: "", type: "fixed" as const }],
     condEnabled: !!q.conditional,
     condQuestionId: q.conditional?.questionId ?? "",
     condValue: q.conditional?.value ?? "",
@@ -121,11 +120,11 @@ function editorToQuestion(e: EditorState): Question {
   if (needsOptions) {
     q.options = e.options
       .filter((o) => o.label.trim())
-      .map((o): QuestionOption => {
-        const out: QuestionOption = { label: o.label.trim(), value: o.value.trim() || o.label.trim().toLowerCase().replace(/\s+/g, "_") };
-        if (o.isOther) { out.isOther = true; out.otherLabel = o.otherLabel || "Boshqa"; }
-        return out;
-      });
+      .map((o): QuestionOption => ({
+        label: o.label.trim(),
+        value: o.value.trim() || o.label.trim().toLowerCase().replace(/\s+/g, "_"),
+        ...(o.type === "other" ? { type: "other" as const } : {}),
+      }));
   }
   if (e.condEnabled && e.condQuestionId) {
     q.conditional = { questionId: e.condQuestionId, value: e.condValue };
@@ -215,12 +214,12 @@ function QuestionPreview({ q }: { q: EditorState }) {
       {q.type === "single-select" && (
         <div className="flex flex-wrap gap-1.5">
           {q.options.filter(o => o.label).map((o) => (
-            <button key={o._key} onClick={() => { setSelectedSingle(o._key); setShowOther(o.isOther); }}
+            <button key={o._key} onClick={() => { setSelectedSingle(o._key); setShowOther(o.type === "other"); }}
               className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${selectedSingle === o._key ? "border-blue-500 bg-blue-600 text-white" : "border-gray-200 bg-white text-gray-600 hover:border-blue-300"}`}>
               {o.label}
             </button>
           ))}
-          {showOther && <input placeholder="Boshqasini yozing..." className="mt-1 w-full px-3 py-1.5 rounded-lg border border-blue-300 text-xs focus:outline-none" />}
+          {showOther && <input placeholder="Boshqa variantni kiriting..." className="mt-1 w-full px-3 py-1.5 rounded-lg border border-blue-300 text-xs focus:outline-none" />}
         </div>
       )}
 
@@ -232,14 +231,14 @@ function QuestionPreview({ q }: { q: EditorState }) {
               <button key={o._key} onClick={() => {
                 const next = on ? selectedMulti.filter(k => k !== o._key) : [...selectedMulti, o._key];
                 setSelectedMulti(next);
-                setShowOther(next.includes(o._key) && o.isOther || (showOther && !on));
+                setShowOther(q.options.some(x => x.type === "other" && next.includes(x._key)));
               }}
                 className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all flex items-center gap-1 ${on ? "border-blue-500 bg-blue-600 text-white" : "border-gray-200 bg-white text-gray-600 hover:border-blue-300"}`}>
                 {on && <Check className="w-3 h-3" />}{o.label}
               </button>
             );
           })}
-          {showOther && <input placeholder="Boshqasini yozing..." className="mt-1 w-full px-3 py-1.5 rounded-lg border border-blue-300 text-xs focus:outline-none" />}
+          {showOther && <input placeholder="Boshqa variantni kiriting..." className="mt-1 w-full px-3 py-1.5 rounded-lg border border-blue-300 text-xs focus:outline-none" />}
         </div>
       )}
 
@@ -282,53 +281,86 @@ function OptionRow({
   opt, index, total,
   onChange, onDelete, onMove,
   isDragging, onDragStart, onDragOver, onDrop,
+  otherExists,
 }: {
   opt: EditorOption; index: number; total: number;
-  onChange: (f: keyof EditorOption, v: string | boolean) => void;
+  onChange: (f: keyof EditorOption, v: string) => void;
   onDelete: () => void; onMove: (dir: -1 | 1) => void;
   isDragging: boolean;
   onDragStart: () => void; onDragOver: (e: React.DragEvent) => void; onDrop: () => void;
+  /** true if another option in this question is already "other" */
+  otherExists: boolean;
 }) {
+  const isOther = opt.type === "other";
+  const canSetOther = isOther || !otherExists;
+
+  function setType(t: "fixed" | "other") {
+    onChange("type", t);
+    if (t === "other" && !opt.label.trim()) onChange("label", "Boshqa");
+  }
+
   return (
     <div
       draggable
       onDragStart={onDragStart}
       onDragOver={(e) => { e.preventDefault(); onDragOver(e); }}
       onDrop={onDrop}
-      className={`rounded-xl border p-2.5 space-y-2 transition-all ${isDragging ? "opacity-40 border-blue-300 bg-blue-50" : "border-gray-200 bg-gray-50 hover:border-gray-300"}`}
+      className={`rounded-xl border transition-all ${isDragging ? "opacity-40 border-blue-300 bg-blue-50" : isOther ? "border-violet-200 bg-violet-50/50" : "border-gray-200 bg-gray-50 hover:border-gray-300"}`}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 p-2.5">
+        {/* Drag handle */}
         <div className="cursor-grab text-gray-300 hover:text-gray-500 flex-shrink-0">
           <GripVertical className="w-4 h-4" />
         </div>
-        <input value={opt.label} onChange={(e) => onChange("label", e.target.value)}
-          placeholder={`Variant ${index + 1} (ko'rsatiladigan matn)`}
-          className="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-400" />
-        <input value={opt.value} onChange={(e) => onChange("value", e.target.value)}
-          placeholder="value"
-          className="w-28 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-xs text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-300" />
-        <div className="flex gap-0.5">
-          <button onClick={() => onMove(-1)} disabled={index === 0} className="w-6 h-6 rounded flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-200 disabled:opacity-30 transition-colors">
+
+        {/* Label input */}
+        <input
+          value={opt.label}
+          onChange={(e) => onChange("label", e.target.value)}
+          placeholder={isOther ? "Boshqa" : `Variant ${index + 1}`}
+          className={`flex-1 px-2.5 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-1 transition-all ${isOther ? "border-violet-200 bg-white focus:ring-violet-300 focus:border-violet-400 text-violet-800 font-semibold" : "border-gray-200 bg-white focus:ring-blue-300 focus:border-blue-400"}`}
+        />
+
+        {/* Fixed / Boshqa type toggle */}
+        <div className="flex rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
+          <button
+            onClick={() => setType("fixed")}
+            className={`px-2 py-1 text-[10px] font-bold transition-colors ${!isOther ? "bg-blue-600 text-white" : "bg-white text-gray-400 hover:bg-gray-50"}`}
+          >
+            Fixed
+          </button>
+          <button
+            onClick={() => canSetOther && setType("other")}
+            disabled={!canSetOther}
+            title={!canSetOther ? "Allaqachon bir 'Boshqa' variant bor" : "Boshqa (matn kiritish)"}
+            className={`px-2 py-1 text-[10px] font-bold transition-colors border-l border-gray-200 ${isOther ? "bg-violet-600 text-white" : canSetOther ? "bg-white text-gray-400 hover:bg-gray-50" : "bg-white text-gray-200 cursor-not-allowed"}`}
+          >
+            Boshqa
+          </button>
+        </div>
+
+        {/* Reorder + delete */}
+        <div className="flex gap-0.5 flex-shrink-0">
+          <button onClick={() => onMove(-1)} disabled={index === 0}
+            className="w-6 h-6 rounded flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-200 disabled:opacity-30 transition-colors">
             <ChevronUp className="w-3.5 h-3.5" />
           </button>
-          <button onClick={() => onMove(1)} disabled={index === total - 1} className="w-6 h-6 rounded flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-200 disabled:opacity-30 transition-colors">
+          <button onClick={() => onMove(1)} disabled={index === total - 1}
+            className="w-6 h-6 rounded flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-200 disabled:opacity-30 transition-colors">
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
-          <button onClick={onDelete} className="w-6 h-6 rounded flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
+          <button onClick={onDelete}
+            className="w-6 h-6 rounded flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
-      <label className="flex items-center gap-2 pl-6 cursor-pointer">
-        <input type="checkbox" checked={opt.isOther} onChange={(e) => onChange("isOther", e.target.checked)}
-          className="rounded border-gray-300 text-blue-600 w-3.5 h-3.5" />
-        <span className="text-xs text-gray-600">Bu <strong>"Boshqa"</strong> varianti — tanlanganda matn kiritish maydoni paydo bo'ladi</span>
-      </label>
-      {opt.isOther && (
-        <div className="pl-6">
-          <input value={opt.otherLabel} onChange={(e) => onChange("otherLabel", e.target.value)}
-            placeholder='Teg matni (default: "Boshqa")'
-            className="w-full px-2.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-xs focus:outline-none focus:ring-1 focus:ring-blue-300" />
+
+      {/* "Boshqa" indicator */}
+      {isOther && (
+        <div className="px-3 pb-2.5 flex items-center gap-1.5 text-[11px] text-violet-500 font-medium">
+          <span className="w-1.5 h-1.5 rounded-full bg-violet-400 inline-block" />
+          Tanlanganda matn kiritish maydoni paydo bo'ladi
         </div>
       )}
     </div>
@@ -359,9 +391,9 @@ function QuestionEditorModal({
   const needsPlaceholder = ["text", "textarea", "number"].includes(s.type);
 
   function addOption() {
-    setS((prev) => ({ ...prev, options: [...prev.options, { _key: mkKey(), label: "", value: "", isOther: false, otherLabel: "Boshqa" }] }));
+    setS((prev) => ({ ...prev, options: [...prev.options, { _key: mkKey(), label: "", value: "", type: "fixed" as const }] }));
   }
-  function updateOption(i: number, field: keyof EditorOption, val: string | boolean) {
+  function updateOption(i: number, field: keyof EditorOption, val: string) {
     setS((prev) => ({ ...prev, options: prev.options.map((o, idx) => idx === i ? { ...o, [field]: val } : o) }));
   }
   function removeOption(i: number) {
@@ -442,6 +474,7 @@ function QuestionEditorModal({
                 <div className="space-y-2">
                   {s.options.map((opt, i) => (
                     <OptionRow key={opt._key} opt={opt} index={i} total={s.options.length}
+                      otherExists={s.options.some((o, j) => j !== i && o.type === "other")}
                       onChange={(f, v) => updateOption(i, f, v)}
                       onDelete={() => removeOption(i)}
                       onMove={(d) => moveOption(i, d)}
@@ -620,7 +653,7 @@ function QuestionCard({
   q: Question; index: number; total: number;
   onEdit: () => void; onDelete: () => void; onMove: (dir: -1 | 1) => void;
 }) {
-  const hasOther = q.options?.some(o => o.isOther);
+  const hasOther = q.options?.some(o => o.type === "other");
   const typeLabel = TYPE_LABELS[q.type] ?? q.type;
 
   if (q.type === "section-header") {

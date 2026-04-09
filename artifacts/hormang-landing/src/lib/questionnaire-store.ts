@@ -19,8 +19,8 @@ export type QuestionType =
 export interface QuestionOption {
   label: string;
   value: string;
-  isOther?: boolean;
-  otherLabel?: string;
+  /** "other" → selecting this option reveals a free-text input below it */
+  type?: "fixed" | "other";
 }
 
 export interface Question {
@@ -145,7 +145,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Konditsioner", value: "konditsioner" },
           { label: "Muzlatgich", value: "muzlatgich" },
           { label: "Kir yuvish mashinasi", value: "kir_yuvish" },
-          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
+          { label: "Boshqa", value: "boshqa", type: "other" as const },
         ],
       },
       {
@@ -171,7 +171,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Oddiy", value: "oddiy" },
           { label: "Chuqur", value: "chuqur" },
           { label: "Ko'chib kirishdan oldin", value: "kochib_kirish" },
-          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
+          { label: "Boshqa", value: "boshqa", type: "other" as const },
         ],
       },
       {
@@ -182,7 +182,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Kvartira", value: "kvartira" },
           { label: "Ofis", value: "ofis" },
           { label: "Hovli", value: "hovli" },
-          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
+          { label: "Boshqa", value: "boshqa", type: "other" as const },
         ],
       },
       {
@@ -214,7 +214,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Yuvish", value: "yuvish" },
           { label: "Ta'mirlash", value: "tamirlash" },
           { label: "Diagnostika", value: "diagnostika" },
-          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
+          { label: "Boshqa", value: "boshqa", type: "other" as const },
         ],
       },
       {
@@ -246,7 +246,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Xonadon jihozlari", value: "xonadon" },
           { label: "Ofis jihozlari", value: "ofis" },
           { label: "Oziq-ovqat mahsulotlari", value: "oziq_ovqat" },
-          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
+          { label: "Boshqa", value: "boshqa", type: "other" as const },
         ],
       },
       {
@@ -292,7 +292,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Rus tili", value: "rus" },
           { label: "Matematika", value: "matematika" },
           { label: "Musiqa", value: "musiqa" },
-          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
+          { label: "Boshqa", value: "boshqa", type: "other" as const },
         ],
       },
       {
@@ -338,7 +338,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Kelin salom", value: "kelin_salom" },
           { label: "Gap", value: "gap" },
           { label: "Korporativ", value: "korporativ" },
-          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
+          { label: "Boshqa", value: "boshqa", type: "other" as const },
         ],
       },
       {
@@ -354,7 +354,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Tozalash xizmati", value: "tozalash" },
           { label: "Kortej xizmati", value: "kortej" },
           { label: "Musiqiy xizmatlar", value: "musiqa" },
-          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
+          { label: "Boshqa", value: "boshqa", type: "other" as const },
         ],
       },
       { id: "event_date", label: "Belgilangan sana?", type: "date" },
@@ -381,7 +381,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Manikyur/pedikyur", value: "manikyur" },
           { label: "Soch turmak", value: "soch" },
           { label: "Qosh/kiprik", value: "qosh_kiprik" },
-          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
+          { label: "Boshqa", value: "boshqa", type: "other" as const },
         ],
       },
       {
@@ -391,7 +391,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
         options: [
           { label: "Kundalik", value: "kundalik" },
           { label: "To'y marosimlari", value: "toy" },
-          { label: "Boshqa tadbirlar", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
+          { label: "Boshqa tadbirlar", value: "boshqa_tadbir" },
         ],
       },
       {
@@ -460,7 +460,7 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
           { label: "Kommunikatsiya ishlari", value: "kommunikatsiya" },
           { label: "Duradgorlik ishlari", value: "duradgorlik" },
           { label: "Landshaft va dizayn", value: "landshaft" },
-          { label: "Boshqa", value: "boshqa", isOther: true, otherLabel: "Boshqa" },
+          { label: "Boshqa", value: "boshqa", type: "other" as const },
         ],
       },
       {
