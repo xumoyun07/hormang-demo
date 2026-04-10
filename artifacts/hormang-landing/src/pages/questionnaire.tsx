@@ -190,15 +190,15 @@ function ConditionalInlineBlock({
               );
             })()}
             {bq.type === "text" && (
-              <input type="text" value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder}
+              <input type="text" value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder || "Matn kiriting…"}
                 className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all" />
             )}
             {bq.type === "textarea" && (
-              <textarea rows={3} value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder}
+              <textarea rows={3} value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder || "Matn kiriting…"}
                 className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none transition-all" />
             )}
             {bq.type === "number" && (
-              <input type="number" value={(bVal as number) ?? ""} onChange={(e) => onChange(bq.id, e.target.value ? Number(e.target.value) : null)} placeholder={bq.placeholder}
+              <input type="number" value={(bVal as number) ?? ""} onChange={(e) => onChange(bq.id, e.target.value ? Number(e.target.value) : null)} placeholder={bq.placeholder || "0"}
                 className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all" />
             )}
             {bq.type === "yes-no" && (
@@ -347,7 +347,7 @@ function QuestionInput({
         rows={4}
         value={(value as string) ?? ""}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={question.placeholder}
+        placeholder={question.placeholder || "Matn kiriting…"}
         className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none transition-all"
       />
     );
@@ -359,7 +359,7 @@ function QuestionInput({
         type="text"
         value={(value as string) ?? ""}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={question.placeholder}
+        placeholder={question.placeholder || "Matn kiriting…"}
         className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
       />
     );
@@ -390,7 +390,7 @@ function QuestionInput({
               type="number"
               value={(value as number) ?? ""}
               onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
-              placeholder={question.placeholder}
+              placeholder={question.placeholder || "0"}
               disabled={isBudget && openToOffers}
               className="w-full px-4 py-3.5 pr-16 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all disabled:opacity-50"
             />
