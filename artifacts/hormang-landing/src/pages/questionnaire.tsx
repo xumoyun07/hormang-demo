@@ -687,6 +687,9 @@ function QuestionsScreen({
                 {q.label}
                 {q.required && <span className="text-red-500 ml-1" title="Majburiy maydon">*</span>}
               </h2>
+              {q.helpText && (
+                <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{q.helpText}</p>
+              )}
             </div>
 
             <QuestionInput
