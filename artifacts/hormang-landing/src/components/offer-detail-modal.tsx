@@ -17,7 +17,7 @@ import {
   type Offer,
 } from "@/lib/requests-store";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
-import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
+import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questionnaire-store";
 import { getLocalProfile } from "@/lib/local-profile";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { AcceptConfirmModal } from "@/components/accept-confirm-modal";
@@ -108,9 +108,14 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
   const req = getRequestById(offer.requestId);
   const providerLocal = getLocalProfile(offer.masterId);
 
-  /* Build Q&A pairs from request (skip image answers) */
+  /* Build Q&A pairs from request (skip image answers)
+     collectActiveQuestions traverses conditional branches so follow-up
+     answers are included when their triggering option was selected. */
   const allQuestions = req ? getAllQuestionsForCategory(req.categoryId) : [];
-  const qaPairs = allQuestions
+  const activeQuestions = req
+    ? collectActiveQuestions(allQuestions, (req.answers ?? {}) as Record<string, unknown>)
+    : [];
+  const qaPairs = activeQuestions
     .filter((q) => !SKIP_ANSWER_KEYS.has(q.id))
     .map((q) => {
       const raw = req?.answers?.[q.id];

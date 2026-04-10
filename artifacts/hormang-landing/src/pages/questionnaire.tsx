@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  getCategories, getAllQuestionsForCategory, getCategoryById,
+  getCategories, getAllQuestionsForCategory, getCategoryById, collectActiveQuestions,
   type Question, type CategoryConfig,
 } from "@/lib/questionnaire-store";
 import {
@@ -50,6 +50,45 @@ function formatAnswer(question: Question, value: unknown): string {
     return String(n);
   }
   return String(value);
+}
+
+/* ─── Required follow-up validation helper ───────────────────────── */
+function isRequiredBranchAnswered(bq: Question, answers: Answers): boolean {
+  if (bq.required) {
+    const val = answers[bq.id] ?? (bq.type === "multi-select" ? [] : null);
+    if (bq.type === "multi-select") {
+      if (!Array.isArray(val) || val.length === 0) return false;
+    } else {
+      if (val === null || val === undefined || val === "") return false;
+    }
+  }
+  // Recurse into nested branches
+  const nested = getActiveBranchesRaw(bq, answers);
+  for (const nbq of nested) {
+    if (!isRequiredBranchAnswered(nbq, answers)) return false;
+  }
+  return true;
+}
+
+function getActiveBranchesRaw(q: Question, answers: Answers): Question[] {
+  if (!q.conditionalBranches) return [];
+  if (q.type === "single-select") {
+    const val = answers[q.id] as string | null;
+    if (!val) return [];
+    return q.conditionalBranches[val] ?? [];
+  }
+  if (q.type === "multi-select") {
+    const vals = (answers[q.id] as string[]) ?? [];
+    const result: Question[] = [];
+    const seen = new Set<string>();
+    for (const val of vals) {
+      for (const bq of q.conditionalBranches[val] ?? []) {
+        if (!seen.has(bq.id)) { seen.add(bq.id); result.push(bq); }
+      }
+    }
+    return result;
+  }
+  return [];
 }
 
 /* ─── Conditional branch helpers ────────────────────────────────── */
@@ -106,7 +145,10 @@ function ConditionalInlineBlock({
           <div key={bq.id}>
             <div className="mb-3">
               <span className="text-[10px] font-extrabold text-blue-400 uppercase tracking-widest">↳ Qo'shimcha savol</span>
-              <h3 className="text-base font-bold text-gray-800 mt-0.5 leading-snug">{bq.label}</h3>
+              <h3 className="text-base font-bold text-gray-800 mt-0.5 leading-snug">
+                {bq.label}
+                {bq.required && <span className="text-red-500 ml-1" title="Majburiy maydon">*</span>}
+              </h3>
               {bq.helpText && <p className="text-xs text-gray-400 mt-0.5">{bq.helpText}</p>}
             </div>
 
@@ -558,10 +600,22 @@ function QuestionsScreen({
   const currentValue = answers[q.id] ?? (q.type === "multi-select" ? [] : null);
 
   const isAnswered = () => {
-    if (!q.required) return true;
-    if (q.type === "multi-select") return Array.isArray(currentValue) && currentValue.length > 0;
-    if (q.id === "budget") return openToOffers || (currentValue !== null && currentValue !== "");
-    return currentValue !== null && currentValue !== "" && currentValue !== undefined;
+    // Check the current top-level question first
+    if (q.required) {
+      if (q.type === "multi-select") {
+        if (!Array.isArray(currentValue) || currentValue.length === 0) return false;
+      } else if (q.id === "budget") {
+        if (!openToOffers && (currentValue === null || currentValue === "")) return false;
+      } else {
+        if (currentValue === null || currentValue === "" || currentValue === undefined) return false;
+      }
+    }
+    // Also validate any required follow-up questions that are currently visible
+    const visibleBranches = getActiveBranches(q, { ...answers, [q.id]: currentValue });
+    for (const bq of visibleBranches) {
+      if (!isRequiredBranchAnswered(bq, answers)) return false;
+    }
+    return true;
   };
 
   const canSkip = !q.required;
@@ -629,7 +683,10 @@ function QuestionsScreen({
               <span className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-2 block">
                 Savol {step + 1}
               </span>
-              <h2 className="text-xl font-extrabold text-gray-900 leading-snug">{q.label}</h2>
+              <h2 className="text-xl font-extrabold text-gray-900 leading-snug">
+                {q.label}
+                {q.required && <span className="text-red-500 ml-1" title="Majburiy maydon">*</span>}
+              </h2>
             </div>
 
             <QuestionInput
@@ -694,7 +751,9 @@ function SummaryScreen({
   const budget = answers["budget"] as number | undefined;
   const urgencyInfo = urgency ? URGENCY_LABELS[urgency] : null;
 
-  const specificQs = allQuestions.filter((q) => q.id !== "urgency" && q.id !== "budget");
+  // Include active branch questions so their answers are shown in the summary
+  const activeQuestions = collectActiveQuestions(allQuestions, answers as Record<string, unknown>);
+  const specificQs = activeQuestions.filter((q) => q.id !== "urgency" && q.id !== "budget");
   const commonQs = allQuestions.filter((q) => q.id === "urgency" || q.id === "budget");
 
   return (

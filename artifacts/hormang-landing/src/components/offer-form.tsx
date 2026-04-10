@@ -22,7 +22,7 @@ import {
   type ProviderRequest,
 } from "@/lib/provider-store";
 import { getRequests, getOffers } from "@/lib/requests-store";
-import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
+import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questionnaire-store";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 import { compressImage } from "@/lib/image-utils";
@@ -114,9 +114,12 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
 
   const urg = urgencyLabel(request.urgency);
 
-  /* Build Q&A pairs from questionnaire + answers (skip image answers) */
+  /* Build Q&A pairs from questionnaire + answers (skip image answers)
+     collectActiveQuestions includes conditional branch questions whose
+     triggering option was selected, so follow-up answers are shown too. */
   const allQuestions = getAllQuestionsForCategory(request.categoryId);
-  const qaPairs = allQuestions
+  const activeQuestions = collectActiveQuestions(allQuestions, (request.answers ?? {}) as Record<string, unknown>);
+  const qaPairs = activeQuestions
     .filter((q) => !SKIP_ANSWER_KEYS.has(q.id))
     .map((q) => {
       const raw = request.answers?.[q.id];

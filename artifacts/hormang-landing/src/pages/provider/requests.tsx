@@ -24,7 +24,7 @@ import {
   updateProviderRequestStatus, getOfferByRequestId, getRequestOfferCount,
   type ProviderRequest, type ProviderOffer,
 } from "@/lib/provider-store";
-import { getAllQuestionsForCategory } from "@/lib/questionnaire-store";
+import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questionnaire-store";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
@@ -248,7 +248,8 @@ function OfferDetailModal({
 
   /* Build Q&A pairs the same way the offer form does (skip image answers) */
   const allQuestions = getAllQuestionsForCategory(request.categoryId);
-  const qaPairs = allQuestions
+  const activeQuestions = collectActiveQuestions(allQuestions, (request.answers ?? {}) as Record<string, unknown>);
+  const qaPairs = activeQuestions
     .filter((q) => !SKIP_ANSWER_KEYS.has(q.id))
     .map((q) => {
       const raw = request.answers?.[q.id];

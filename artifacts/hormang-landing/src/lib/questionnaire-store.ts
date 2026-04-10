@@ -542,3 +542,37 @@ export function resetCategories(): void {
   localStorage.removeItem(LS_KEY);
   localStorage.removeItem(COMMON_LS_KEY);
 }
+
+/**
+ * Recursively collect all questions that are currently active/visible
+ * given the provided answers. Branch questions are included only when their
+ * triggering option is selected. The returned list is flat (no nesting).
+ */
+export function collectActiveQuestions(
+  questions: Question[],
+  answers: Record<string, unknown>,
+): Question[] {
+  const result: Question[] = [];
+  for (const q of questions) {
+    result.push(q);
+    if (!q.conditionalBranches) continue;
+    if (q.type === "single-select") {
+      const val = answers[q.id] as string | null;
+      if (val && q.conditionalBranches[val]?.length) {
+        result.push(...collectActiveQuestions(q.conditionalBranches[val], answers));
+      }
+    } else if (q.type === "multi-select") {
+      const vals = (answers[q.id] as string[]) ?? [];
+      const seen = new Set<string>();
+      for (const v of vals) {
+        for (const bq of q.conditionalBranches[v] ?? []) {
+          if (!seen.has(bq.id)) {
+            seen.add(bq.id);
+            result.push(...collectActiveQuestions([bq], answers));
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
