@@ -25,6 +25,7 @@ import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { getLocalProfile } from "@/lib/local-profile";
+import { formatDate } from "@/lib/date-utils";
 
 /* ─── Constants ──────────────────────────────────────────────────── */
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -41,7 +42,7 @@ function formatTime(iso: string): string {
   if (d.toDateString() === today.toDateString()) {
     return d.toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" });
   }
-  return d.toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "short" });
+  return formatDate(iso);
 }
 
 function formatDay(iso: string): string {
@@ -51,7 +52,7 @@ function formatDay(iso: string): string {
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
   if (d.toDateString() === yesterday.toDateString()) return "Kecha";
-  return d.toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "short" });
+  return formatDate(iso);
 }
 
 /* ─── Offer Status Badge ──────────────────────────────────────────── */
