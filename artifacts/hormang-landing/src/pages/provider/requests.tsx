@@ -504,6 +504,7 @@ export default function ProviderRequestsPage() {
   const [activeCategory, setActiveCategory] = useState("Barchasi");
   const [showSlider, setShowSlider] = useState(false);
   const [sliderStart, setSliderStart] = useState(0);
+  const [sliderRequests, setSliderRequests] = useState<ProviderRequest[]>([]);
   const [offerRequest, setOfferRequest] = useState<ProviderRequest | null>(null);
   const [offerDetailRequest, setOfferDetailRequest] = useState<ProviderRequest | null>(null);
 
@@ -553,6 +554,7 @@ export default function ProviderRequestsPage() {
   });
 
   function openSlider(startIdx = 0) {
+    setSliderRequests([...unseen]);
     setSliderStart(startIdx);
     setShowSlider(true);
   }
@@ -563,6 +565,7 @@ export default function ProviderRequestsPage() {
   }
 
   function openOfferForm(req: ProviderRequest) {
+    markSeen(req.id);
     setShowSlider(false);
     setOfferRequest(req);
   }
@@ -674,13 +677,17 @@ export default function ProviderRequestsPage() {
                     isUnseen ? "border-violet-100" : "border-gray-100"
                   }`}
                 >
-                  <div className="px-4 pt-3 pb-2 border-b border-gray-50 flex items-center gap-2">
+                  <div 
+                    onClick={() => openOfferForm(r)}
+                    className="px-4 pt-3 pb-2 border-b border-gray-50 flex items-center gap-2">
                     <span className="text-sm">{r.emoji}</span>
                     <p className="text-xs font-semibold text-gray-500 flex-1">{r.categoryName}</p>
                     {isUnseen && <span className="w-2 h-2 rounded-full bg-violet-500 flex-shrink-0" />}
                     <span className="text-[10px] text-gray-400">{timeAgo(r.createdAt)}</span>
                   </div>
-                  <div className="p-4">
+                  <div
+                    onClick={() => openOfferForm(r)}
+                    className="p-4">
                     <p className="text-sm text-gray-700 mb-2 leading-relaxed">{r.description}</p>
                     <div className="flex items-center gap-3 mb-3 flex-wrap">
                       <span className="font-extrabold text-sm text-violet-700">{r.budgetLabel}</span>
@@ -819,9 +826,9 @@ export default function ProviderRequestsPage() {
 
       {/* Sliding modal */}
       <AnimatePresence>
-        {showSlider && unseen.length > 0 && (
+        {showSlider && sliderRequests.length > 0 && (
           <FullscreenSlider
-            requests={unseen}
+            requests={sliderRequests}
             startIndex={sliderStart}
             onClose={() => setShowSlider(false)}
             onOpenOffer={(req) => openOfferForm(req)}
