@@ -58,8 +58,19 @@ function isRequiredBranchAnswered(bq: Question, answers: Answers): boolean {
     const val = answers[bq.id] ?? (bq.type === "multi-select" ? [] : null);
     if (bq.type === "multi-select") {
       if (!Array.isArray(val) || val.length === 0) return false;
+    } else if (bq.type === "range") {
+      // range always has a displayable value
     } else {
       if (val === null || val === undefined || val === "") return false;
+    }
+  }
+  // Validate number min/max even for non-required branch questions
+  if (bq.type === "number") {
+    const val = answers[bq.id];
+    if (val != null && val !== "") {
+      const n = Number(val);
+      if (bq.min != null && n < bq.min) return false;
+      if (bq.max != null && n > bq.max) return false;
     }
   }
   // Recurse into nested branches
@@ -197,10 +208,54 @@ function ConditionalInlineBlock({
               <textarea rows={3} value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder || "Matn kiriting…"}
                 className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none transition-all" />
             )}
-            {bq.type === "number" && (
-              <input type="number" value={(bVal as number) ?? ""} onChange={(e) => onChange(bq.id, e.target.value ? Number(e.target.value) : null)} placeholder={bq.placeholder || "0"}
-                className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all" />
-            )}
+            {bq.type === "number" && (() => {
+              const bNum = bVal as number | null;
+              const bHasMin = bq.min != null;
+              const bHasMax = bq.max != null;
+              const bOutOfRange = bNum != null && (
+                (bHasMin && bNum < bq.min!) ||
+                (bHasMax && bNum > bq.max!)
+              );
+              return (
+                <div className="space-y-1.5">
+                  <input type="number" value={bNum ?? ""} onChange={(e) => onChange(bq.id, e.target.value ? Number(e.target.value) : null)}
+                    placeholder={bq.placeholder || "0"} min={bq.min} max={bq.max} step={bq.step}
+                    className={`w-full px-4 py-3.5 rounded-2xl border bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${bOutOfRange ? "border-red-300 focus:ring-red-300/30 focus:border-red-400" : "border-gray-200 focus:ring-blue-500/30 focus:border-blue-400"}`} />
+                  {(bHasMin || bHasMax) && !bOutOfRange && (
+                    <p className="text-xs text-gray-400 px-1">{bHasMin && bHasMax ? `${bq.min} dan ${bq.max} gacha` : bHasMin ? `Minimal: ${bq.min}` : `Maksimal: ${bq.max}`}</p>
+                  )}
+                  {bOutOfRange && (
+                    <p className="text-xs text-red-500 font-semibold px-1">Qiymat {bHasMin && bHasMax ? `${bq.min} dan ${bq.max} gacha` : bHasMin ? `${bq.min} dan katta yoki teng` : `${bq.max} dan kichik yoki teng`} bo'lishi kerak</p>
+                  )}
+                </div>
+              );
+            })()}
+            {bq.type === "range" && (() => {
+              const bMin = bq.min ?? 0;
+              const bMax = bq.max ?? 100;
+              const bStep = bq.step ?? 1;
+              const bDisplay = (bVal as number) ?? bMin;
+              const bPct = bMax === bMin ? 0 : ((bDisplay - bMin) / (bMax - bMin)) * 100;
+              return (
+                <div className="space-y-3 px-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xl font-extrabold text-blue-600">{bDisplay}</span>
+                    {bq.helpText && <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-1 rounded-lg">{bq.helpText}</span>}
+                  </div>
+                  <div className="relative py-1">
+                    <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+                      <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${bPct}%` }} />
+                    </div>
+                    <input type="range" min={bMin} max={bMax} step={bStep} value={bDisplay}
+                      onChange={(e) => onChange(bq.id, Number(e.target.value))}
+                      className="absolute inset-0 w-full opacity-0 cursor-pointer h-full" />
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-400 font-semibold">
+                    <span>{bMin}</span><span>{bMax}</span>
+                  </div>
+                </div>
+              );
+            })()}
             {bq.type === "yes-no" && (
               <div className="flex gap-3">
                 {([{ label: "Ha", v: true }, { label: "Yo'q", v: false }] as const).map(({ label, v }) => (
@@ -378,6 +433,13 @@ function QuestionInput({
 
   if (question.type === "number") {
     const isBudget = question.id === "budget";
+    const numVal = value as number | null;
+    const hasMin = question.min != null;
+    const hasMax = question.max != null;
+    const outOfRange = numVal != null && numVal !== (null as unknown as number) && (
+      (hasMin && numVal < question.min!) ||
+      (hasMax && numVal > question.max!)
+    );
     return (
       <div className="space-y-3">
         {isBudget && openToOffers ? (
@@ -385,19 +447,42 @@ function QuestionInput({
             Byudjet moslashuvchan / Taklifga ochiq
           </div>
         ) : (
-          <div className="relative">
-            <input
-              type="number"
-              value={(value as number) ?? ""}
-              onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
-              placeholder={question.placeholder || "0"}
-              disabled={isBudget && openToOffers}
-              className="w-full px-4 py-3.5 pr-16 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all disabled:opacity-50"
-            />
-            {question.helpText && (
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">
-                {question.helpText}
-              </span>
+          <div className="space-y-1.5">
+            <div className="relative">
+              <input
+                type="number"
+                value={numVal ?? ""}
+                onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+                placeholder={question.placeholder || "0"}
+                min={question.min}
+                max={question.max}
+                step={question.step}
+                disabled={isBudget && openToOffers}
+                className={`w-full px-4 py-3.5 pr-16 rounded-2xl border bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all disabled:opacity-50 ${outOfRange ? "border-red-300 focus:ring-red-300/30 focus:border-red-400" : "border-gray-200 focus:ring-blue-500/30 focus:border-blue-400"}`}
+              />
+              {question.helpText && (
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">
+                  {question.helpText}
+                </span>
+              )}
+            </div>
+            {(hasMin || hasMax) && !outOfRange && (
+              <p className="text-xs text-gray-400 px-1">
+                {hasMin && hasMax
+                  ? `${question.min} dan ${question.max} gacha`
+                  : hasMin
+                  ? `Minimal: ${question.min}`
+                  : `Maksimal: ${question.max}`}
+              </p>
+            )}
+            {outOfRange && (
+              <p className="text-xs text-red-500 font-semibold px-1">
+                Qiymat {hasMin && hasMax
+                  ? `${question.min} dan ${question.max} gacha`
+                  : hasMin
+                  ? `${question.min} dan katta yoki teng`
+                  : `${question.max} dan kichik yoki teng`} bo'lishi kerak
+              </p>
             )}
           </div>
         )}
@@ -412,6 +497,45 @@ function QuestionInput({
             <span className="text-sm text-gray-600 font-medium">Taklifga ochiq (byudjet moslashuvchan)</span>
           </label>
         )}
+      </div>
+    );
+  }
+
+  if (question.type === "range") {
+    const min = question.min ?? 0;
+    const max = question.max ?? 100;
+    const step = question.step ?? 1;
+    const displayVal = (value as number) ?? min;
+    const pct = max === min ? 0 : ((displayVal - min) / (max - min)) * 100;
+    return (
+      <div className="space-y-3 px-1">
+        <div className="flex items-center justify-between">
+          <span className="text-2xl font-extrabold text-blue-600">{displayVal}</span>
+          {question.helpText && (
+            <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-1 rounded-lg">{question.helpText}</span>
+          )}
+        </div>
+        <div className="relative py-1">
+          <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+            <div
+              className="h-full bg-blue-600 rounded-full transition-all"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={displayVal}
+            onChange={(e) => onChange(Number(e.target.value))}
+            className="absolute inset-0 w-full opacity-0 cursor-pointer h-full"
+          />
+        </div>
+        <div className="flex justify-between text-xs text-gray-400 font-semibold">
+          <span>{min}</span>
+          <span>{max}</span>
+        </div>
       </div>
     );
   }
@@ -604,11 +728,19 @@ function QuestionsScreen({
     if (q.required) {
       if (q.type === "multi-select") {
         if (!Array.isArray(currentValue) || currentValue.length === 0) return false;
+      } else if (q.type === "range") {
+        // range always has a displayable value — always passes required check
       } else if (q.id === "budget") {
         if (!openToOffers && (currentValue === null || currentValue === "")) return false;
       } else {
         if (currentValue === null || currentValue === "" || currentValue === undefined) return false;
       }
+    }
+    // Validate number min/max constraints (blocks Next even for non-required if value entered)
+    if (q.type === "number" && currentValue != null && currentValue !== "") {
+      const n = Number(currentValue);
+      if (q.min != null && n < q.min) return false;
+      if (q.max != null && n > q.max) return false;
     }
     // Also validate any required follow-up questions that are currently visible
     const visibleBranches = getActiveBranches(q, { ...answers, [q.id]: currentValue });
@@ -621,7 +753,11 @@ function QuestionsScreen({
   const canSkip = !q.required;
 
   function goNext() {
-    const updated = { ...answers, [q.id]: currentValue };
+    // For range: if user never moved the slider, save the displayed default (min or 0)
+    const savedValue = q.type === "range" && currentValue === null
+      ? (q.min ?? 0)
+      : currentValue;
+    const updated = { ...answers, [q.id]: savedValue };
     if (q.id === "budget") updated["budget_open"] = openToOffers;
     setAnswers(updated);
 
