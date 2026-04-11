@@ -18,6 +18,7 @@ import {
 } from "@/lib/requests-store";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questionnaire-store";
+import { formatDate as formatUzDate } from "@/lib/date-utils";
 import { getLocalProfile } from "@/lib/local-profile";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { AcceptConfirmModal } from "@/components/accept-confirm-modal";
@@ -61,7 +62,7 @@ function urgencyLabel(u: unknown): { label: string; color: string } {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "long", year: "numeric" });
+  return formatUzDate(iso);
 }
 
 function timeAgo(iso: string): string {

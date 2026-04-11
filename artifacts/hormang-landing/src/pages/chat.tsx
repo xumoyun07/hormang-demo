@@ -12,6 +12,7 @@ import { PublicProfilePreviewModal } from "@/components/public-profile-preview-m
 import { BottomNav } from "@/components/bottom-nav";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { getLocalProfile } from "@/lib/local-profile";
+import { formatDate } from "@/lib/date-utils";
 import {
   getChatById, sendMessage, getOfferForChat,
   type Chat, type ChatMessage, type Offer,
@@ -28,7 +29,7 @@ function formatDay(iso: string): string {
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
   if (d.toDateString() === yesterday.toDateString()) return "Kecha";
-  return d.toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "short" });
+  return formatDate(iso);
 }
 
 /* ─── Offer status badge ─────────────────────────────────────────── */

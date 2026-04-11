@@ -30,6 +30,7 @@ import {
   Bell, Menu, ChevronLeft, Plus, MapPin, Clock, Wallet,
 } from "lucide-react";
 import { onStoreChange, emitStoreChange } from "@/lib/store-events";
+import { formatDateTime, formatMonthYear } from "@/lib/date-utils";
 
 /* ─── Credentials ───────────────────────────────────────────────── */
 const ADMIN_USER = "hormangVIP";
@@ -160,10 +161,7 @@ function clearSession() { sessionStorage.removeItem(SESSION_KEY); }
 
 /* ─── Formatting ─────────────────────────────────────────────────── */
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleString("ru", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
+  return formatDateTime(iso);
 }
 function fmtMoney(n: number) { return `${n.toLocaleString()} so'm`; }
 function timeAgo(iso: string) {
@@ -1561,7 +1559,7 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
   // Real monthly breakdowns from accepted offers
   const monthlyMap: Record<string, number> = {};
   allOffers.filter((o) => o.status === "accepted").forEach((o) => {
-    const month = new Date(o.createdAt).toLocaleString("ru", { month: "long", year: "numeric" });
+    const month = formatMonthYear(o.createdAt);
     monthlyMap[month] = (monthlyMap[month] ?? 0) + (o.price ?? 0);
   });
   const revenueData = Object.entries(monthlyMap).map(([name, daromad]) => ({

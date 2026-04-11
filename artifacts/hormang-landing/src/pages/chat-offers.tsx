@@ -23,6 +23,7 @@ import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { AcceptConfirmModal } from "@/components/accept-confirm-modal";
 import { getLocalProfile } from "@/lib/local-profile";
 import logoImg from "/hormang-logo.png";
+import { formatDate as uzDate } from "@/lib/date-utils";
 
 /* ─── Tab type ───────────────────────────────────────────────────── */
 type Tab = "offers" | "chats";
@@ -34,7 +35,7 @@ function formatDate(iso: string): string {
   if (d.toDateString() === today.toDateString()) {
     return d.toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" });
   }
-  return d.toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "short" });
+  return uzDate(iso);
 }
 
 /* ─── Offer Card ─────────────────────────────────────────────────── */

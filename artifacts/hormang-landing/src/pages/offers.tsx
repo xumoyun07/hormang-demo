@@ -20,10 +20,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { getLocalProfile } from "@/lib/local-profile";
 import logoImg from "/hormang-logo.png";
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "short" });
-}
+import { formatDate } from "@/lib/date-utils";
 
 /* ─── Offer Card ─────────────────────────────────────────────────── */
 function OfferCard({ offer, index }: { offer: Offer; index: number }) {

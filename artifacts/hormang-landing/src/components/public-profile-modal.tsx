@@ -14,6 +14,7 @@ import {
   Award, Briefcase,
 } from "lucide-react";
 import { getLocalProfile, type PortfolioItem } from "@/lib/local-profile";
+import { formatMonthYear } from "@/lib/date-utils";
 
 /* ─── Theme ────────────────────────────────────────────────────────── */
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -21,8 +22,7 @@ const BLUE   = "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 10
 
 /* ─── Helpers ──────────────────────────────────────────────────────── */
 function memberSince(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("uz-Latn-UZ", { month: "long", year: "numeric" });
+  return formatMonthYear(iso);
 }
 
 function deriveInitials(name: string): string {

@@ -18,6 +18,7 @@ import {
 } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
+import { formatDate } from "@/lib/date-utils";
 
 /* ─── Urgency helpers ─────────────────────────────────────────────── */
 const URGENCY_SHORT: Record<string, { label: string; cls: string }> = {
@@ -27,10 +28,6 @@ const URGENCY_SHORT: Record<string, { label: string; cls: string }> = {
   "1_month": { label: "1 oy", cls: "bg-emerald-50 text-emerald-600 border-emerald-200" },
   flexible: { label: "Shoshilinch emas", cls: "bg-gray-50 text-gray-600 border-gray-200" },
 };
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "short", year: "numeric" });
-}
 
 /* ─── Briefcase icon (local) ──────────────────────────────────────── */
 function BriefcaseIcon({ className }: { className?: string }) {

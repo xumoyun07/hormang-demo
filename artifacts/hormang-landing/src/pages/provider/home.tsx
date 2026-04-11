@@ -26,12 +26,12 @@ import {
   type ProviderRequest, type UpcomingService,
 } from "@/lib/provider-store";
 import { getLocalProfile, getCompletionChecks, getCompletionPct } from "@/lib/local-profile";
+import { formatDate as formatUzDate } from "@/lib/date-utils";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
 function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "short", year: "numeric" });
+  return formatUzDate(iso);
 }
 
 function timeAgo(iso: string): string {
@@ -164,7 +164,7 @@ function UpcomingServices() {
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="flex items-center gap-1 text-[11px] text-violet-600 font-semibold">
                     <CalendarDays className="w-3 h-3" />
-                    {new Date(s.date).toLocaleDateString("uz-Latn-UZ", { day: "numeric", month: "short" })} · {s.time}
+                    {formatDate(s.date)} · {s.time}
                   </span>
                   <span className="flex items-center gap-1 text-[11px] text-gray-400">
                     <MapPin className="w-3 h-3" />{s.location}
