@@ -19,6 +19,10 @@ import {
   getChats, getRequestById,
 } from "./requests-store";
 import { doesRequestMatch } from "./matching";
+import {
+  getAllQuestionsForCategory, collectActiveQuestions,
+  type Question,
+} from "./questionnaire-store";
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -225,16 +229,57 @@ function locationFrom(answers: Record<string, unknown>): string {
   return "Toshkent";
 }
 
-function descriptionFrom(answers: Record<string, unknown>): string {
-  const skip = new Set(["urgency", "budget", "budget_open"]);
-  const parts: string[] = [];
-  for (const [k, v] of Object.entries(answers)) {
-    if (skip.has(k) || !v || k.endsWith("_photo") || k.endsWith("_file")) continue;
-    if (typeof v === "boolean") parts.push(v ? "Ha" : "Yo'q");
-    else if (Array.isArray(v)) { if (v.length > 0) parts.push((v as string[]).join(", ")); }
-    else if (typeof v === "number") parts.push(String(v));
-    else if (typeof v === "string" && v.trim()) parts.push(v.trim());
+function formatQValue(q: Question, v: unknown, answers: Record<string, unknown>): string | null {
+  if (v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) return null;
+  if (typeof v === "string" && v.startsWith("data:")) return null; // base64 image
+  if (typeof v === "boolean") return v ? "Ha" : "Yo'q";
+  if (typeof v === "number") return String(v);
+  const otherOpt = q.options?.find((o) => o.type === "other");
+  if (typeof v === "string") {
+    if (otherOpt && v === otherOpt.value) {
+      const customText = answers[q.id + "_other"] as string | undefined;
+      return customText?.trim() || otherOpt.label;
+    }
+    return q.options?.find((o) => o.value === v)?.label ?? v;
   }
+  if (Array.isArray(v)) {
+    return (v as string[])
+      .map((item) => {
+        if (otherOpt && item === otherOpt.value) {
+          const customText = answers[q.id + "_other"] as string | undefined;
+          return customText?.trim() || otherOpt.label;
+        }
+        return q.options?.find((o) => o.value === item)?.label ?? item;
+      })
+      .join(", ");
+  }
+  return null;
+}
+
+function descriptionFrom(answers: Record<string, unknown>, categoryId: string): string {
+  const skip = new Set(["urgency", "budget", "budget_open", "region", "district"]);
+  const parts: string[] = [];
+
+  try {
+    const allQs = getAllQuestionsForCategory(categoryId);
+    const activeQs = collectActiveQuestions(allQs, answers);
+    for (const q of activeQs) {
+      if (skip.has(q.id) || q.type === "file" || q.type === "section-header") continue;
+      const v = answers[q.id];
+      const formatted = formatQValue(q, v, answers);
+      if (formatted) parts.push(formatted);
+    }
+  } catch {
+    // Fallback: iterate answers directly if questions unavailable
+    for (const [k, v] of Object.entries(answers)) {
+      if (skip.has(k) || !v || k.endsWith("_photo") || k.endsWith("_file") || k.endsWith("_other")) continue;
+      if (typeof v === "boolean") parts.push(v ? "Ha" : "Yo'q");
+      else if (Array.isArray(v)) { if (v.length > 0) parts.push((v as string[]).join(", ")); }
+      else if (typeof v === "number") parts.push(String(v));
+      else if (typeof v === "string" && v.trim() && !v.startsWith("data:")) parts.push(v.trim());
+    }
+  }
+
   const desc = parts.join(" · ");
   return desc.length > 130 ? desc.slice(0, 127) + "..." : desc || "—";
 }
@@ -247,7 +292,7 @@ function adaptBuyerRequest(req: CustomerRequest, actionStatus?: ProviderActionSt
     categoryId: req.categoryId,
     categoryName: req.categoryName,
     emoji: req.emoji,
-    description: descriptionFrom(req.answers),
+    description: descriptionFrom(req.answers, req.categoryId),
     budget,
     budgetLabel,
     urgency: urgencyFrom(req.answers),
