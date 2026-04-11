@@ -105,6 +105,7 @@ interface BuyerOffer {
 }
 interface PricingTier {
   id: string; name: string; credits: number; price: number;
+  salePrice?: number; bonusTokens?: number; validUntil?: string;
   desc: string; color: string; active: boolean;
 }
 interface LocalProfile {
@@ -1544,11 +1545,16 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
    ════════════════════════════════════════════════════════════════════ */
 function MonetizationSection({ refreshKey }: { refreshKey: number }) {
   const [tiers, setTiers] = useState<PricingTier[]>(() => readKey<PricingTier[]>(K.PRICING_TIERS, []));
-  const [editId, setEditId]     = useState<string | null>(null);
-  const [editPrice, setEditPrice]     = useState(0);
-  const [editCredits, setEditCredits] = useState(0);
+  const [editId, setEditId]               = useState<string | null>(null);
+  const [editPrice, setEditPrice]         = useState(0);
+  const [editCredits, setEditCredits]     = useState(0);
+  const [editSalePrice, setEditSalePrice] = useState<number | "">("");
+  const [editBonusTokens, setEditBonusTokens] = useState<number | "">("");
+  const [editValidUntil, setEditValidUntil]   = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newTier, setNewTier] = useState({ name: "", credits: 0, price: 0, desc: "" });
+  const [newTier, setNewTier] = useState({
+    name: "", credits: 0, price: 0, salePrice: "", bonusTokens: "", validUntil: "", desc: "",
+  });
 
   void refreshKey;
 
@@ -1571,11 +1577,26 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
   function saveTiers(updated: PricingTier[]) {
     setTiers(updated);
     writeKey(K.PRICING_TIERS, updated);
+    emitStoreChange();
   }
-  function startEdit(t: PricingTier) { setEditId(t.id); setEditPrice(t.price); setEditCredits(t.credits); }
+  function startEdit(t: PricingTier) {
+    setEditId(t.id);
+    setEditPrice(t.price);
+    setEditCredits(t.credits);
+    setEditSalePrice(t.salePrice ?? "");
+    setEditBonusTokens(t.bonusTokens ?? "");
+    setEditValidUntil(t.validUntil ?? "");
+  }
   function saveEdit(id: string) {
-    saveTiers(tiers.map((t) => t.id === id ? { ...t, price: editPrice, credits: editCredits } : t));
-    logAction("UPDATE_PRICING", id, `Narx: ${editPrice} so'm, ${editCredits} kredit`);
+    saveTiers(tiers.map((t) => t.id === id ? {
+      ...t,
+      price: editPrice,
+      credits: editCredits,
+      salePrice: editSalePrice !== "" ? Number(editSalePrice) : undefined,
+      bonusTokens: editBonusTokens !== "" ? Number(editBonusTokens) : undefined,
+      validUntil: editValidUntil || undefined,
+    } : t));
+    logAction("UPDATE_PRICING", id, `Narx: ${editPrice} so'm, ${editCredits} Tanga`);
     setEditId(null);
   }
   function toggleTier(id: string) {
@@ -1589,12 +1610,20 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
   function addTier() {
     if (!newTier.name.trim() || newTier.credits <= 0) return;
     const tier: PricingTier = {
-      id: uid(), name: newTier.name, credits: newTier.credits,
-      price: newTier.price, desc: newTier.desc, color: "bg-red-50 text-red-700", active: true,
+      id: uid(),
+      name: newTier.name,
+      credits: newTier.credits,
+      price: newTier.price,
+      salePrice: newTier.salePrice !== "" ? Number(newTier.salePrice) : undefined,
+      bonusTokens: newTier.bonusTokens !== "" ? Number(newTier.bonusTokens) : undefined,
+      validUntil: newTier.validUntil || undefined,
+      desc: newTier.desc,
+      color: "bg-amber-50 text-amber-700",
+      active: true,
     };
     saveTiers([...tiers, tier]);
     logAction("ADD_PRICING_TIER", tier.id, `Yangi reja: ${tier.name}`);
-    setNewTier({ name: "", credits: 0, price: 0, desc: "" });
+    setNewTier({ name: "", credits: 0, price: 0, salePrice: "", bonusTokens: "", validUntil: "", desc: "" });
     setShowAddForm(false);
   }
 
@@ -1653,8 +1682,8 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
         </div>
 
         {showAddForm && (
-          <div className="bg-red-50 border border-red-100 rounded-2xl p-4 mb-4">
-            <h4 className="font-bold text-red-700 text-sm mb-3">Yangi narx rejasi qo'shish</h4>
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-4">
+            <h4 className="font-bold text-amber-700 text-sm mb-3">Yangi Tanga rejasi qo'shish</h4>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Nomi</label>
@@ -1662,7 +1691,7 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
                   placeholder="Pro" className={`${inputCls} w-full mt-1`} />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Kreditlar</label>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Tanga soni</label>
                 <input type="number" value={newTier.credits || ""}
                   onChange={(e) => setNewTier({ ...newTier, credits: Number(e.target.value) })}
                   placeholder="50" className={`${inputCls} w-full mt-1`} />
@@ -1674,6 +1703,24 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
                   placeholder="49000" className={`${inputCls} w-full mt-1`} />
               </div>
               <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Chegirma narx</label>
+                <input type="number" value={newTier.salePrice}
+                  onChange={(e) => setNewTier({ ...newTier, salePrice: e.target.value })}
+                  placeholder="39000 (ixtiyoriy)" className={`${inputCls} w-full mt-1`} />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Bonus Tanga</label>
+                <input type="number" value={newTier.bonusTokens}
+                  onChange={(e) => setNewTier({ ...newTier, bonusTokens: e.target.value })}
+                  placeholder="10 (ixtiyoriy)" className={`${inputCls} w-full mt-1`} />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Muddati (sana/vaqt)</label>
+                <input type="datetime-local" value={newTier.validUntil}
+                  onChange={(e) => setNewTier({ ...newTier, validUntil: e.target.value })}
+                  className={`${inputCls} w-full mt-1`} />
+              </div>
+              <div className="col-span-2">
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Tavsif</label>
                 <input value={newTier.desc} onChange={(e) => setNewTier({ ...newTier, desc: e.target.value })}
                   placeholder="Ijrochilar uchun" className={`${inputCls} w-full mt-1`} />
@@ -1681,7 +1728,7 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
             </div>
             <div className="flex gap-2 mt-3">
               <button onClick={addTier}
-                className="px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors">
+                className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors">
                 Qo'shish
               </button>
               <button onClick={() => setShowAddForm(false)}
@@ -1714,22 +1761,47 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
                 </div>
                 {editId === t.id ? (
                   <div className="space-y-2">
-                    <input type="number" value={editPrice} onChange={(e) => setEditPrice(Number(e.target.value))}
-                      placeholder="Narx" className={`${inputCls} w-full`} />
                     <input type="number" value={editCredits} onChange={(e) => setEditCredits(Number(e.target.value))}
-                      placeholder="Kreditlar" className={`${inputCls} w-full`} />
+                      placeholder="Tanga soni" className={`${inputCls} w-full`} />
+                    <input type="number" value={editPrice} onChange={(e) => setEditPrice(Number(e.target.value))}
+                      placeholder="Narx (so'm)" className={`${inputCls} w-full`} />
+                    <input type="number" value={editSalePrice}
+                      onChange={(e) => setEditSalePrice(e.target.value === "" ? "" : Number(e.target.value))}
+                      placeholder="Chegirma narx (ixtiyoriy)" className={`${inputCls} w-full`} />
+                    <input type="number" value={editBonusTokens}
+                      onChange={(e) => setEditBonusTokens(e.target.value === "" ? "" : Number(e.target.value))}
+                      placeholder="Bonus Tanga (ixtiyoriy)" className={`${inputCls} w-full`} />
+                    <input type="datetime-local" value={editValidUntil}
+                      onChange={(e) => setEditValidUntil(e.target.value)}
+                      className={`${inputCls} w-full`} />
                     <div className="flex gap-1.5">
-                      <button onClick={() => saveEdit(t.id)} className="flex-1 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-700">Saqlash</button>
+                      <button onClick={() => saveEdit(t.id)} className="flex-1 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700">Saqlash</button>
                       <button onClick={() => setEditId(null)} className="flex-1 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold hover:bg-gray-200">Bekor</button>
                     </div>
                   </div>
                 ) : (
                   <>
-                    <p className="text-2xl font-extrabold text-gray-900 mb-0.5">{t.credits} <span className="text-sm font-semibold text-gray-400">kredit</span></p>
-                    <p className="text-sm font-bold text-gray-600 mb-1">{t.price === 0 ? "Bepul" : fmtMoney(t.price)}</p>
+                    <p className="text-2xl font-extrabold text-gray-900 mb-0.5">
+                      {t.credits}
+                      <span className="text-sm font-semibold text-gray-400 ml-1">Tanga</span>
+                      {(t.bonusTokens ?? 0) > 0 && (
+                        <span className="text-xs font-bold text-emerald-600 ml-1.5">+{t.bonusTokens} bonus</span>
+                      )}
+                    </p>
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <p className="text-sm font-bold text-gray-600">{t.price === 0 ? "Bepul" : fmtMoney(t.salePrice ?? t.price)}</p>
+                      {t.salePrice !== undefined && t.price > t.salePrice && (
+                        <p className="text-xs text-gray-400 line-through">{fmtMoney(t.price)}</p>
+                      )}
+                    </div>
+                    {t.validUntil && (
+                      <p className="text-[10px] text-amber-600 font-semibold mb-1 truncate">
+                        Muddat: {new Date(t.validUntil).toLocaleDateString("uz-UZ")}
+                      </p>
+                    )}
                     <p className="text-xs text-gray-400 mb-3">{t.desc || "—"}</p>
                     <button onClick={() => startEdit(t)}
-                      className="w-full py-1.5 rounded-xl bg-red-50 border border-red-100 text-xs font-bold text-red-600 hover:bg-red-100 transition-colors">
+                      className="w-full py-1.5 rounded-xl bg-amber-50 border border-amber-100 text-xs font-bold text-amber-700 hover:bg-amber-100 transition-colors">
                       Tahrirlash
                     </button>
                   </>

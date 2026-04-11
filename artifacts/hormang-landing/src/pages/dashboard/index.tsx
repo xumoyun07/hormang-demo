@@ -21,6 +21,7 @@ import {
 import {
   getMatchingRequests, getSeenIds,
 } from "@/lib/provider-store";
+import { TangaChip } from "@/pages/plans";
 
 const VIOLET_SOLID = "hsl(262,80%,54%)";
 const VIOLET_GRAD  = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -821,6 +822,9 @@ export default function UnifiedDashboard() {
 
             {/* Right: avatar + logout */}
             <div className="flex items-center gap-2">
+              {isProvider && (
+                <TangaChip userId={user?.id ?? ""} onClick={() => setLocation("/plans")} />
+              )}
               <button
                 onClick={() => setLocation("/profile/settings")}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm transition-all duration-500 overflow-hidden flex-shrink-0"

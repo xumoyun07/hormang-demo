@@ -28,6 +28,7 @@ import {
 import { getLocalProfile, getCompletionChecks, getCompletionPct } from "@/lib/local-profile";
 import { formatDate as formatUzDate } from "@/lib/date-utils";
 import logoImg from "/hormang-logo.png";
+import { TangaChip } from "@/pages/plans";
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
 function formatDate(iso: string): string {
@@ -750,6 +751,7 @@ export default function ProviderHomePage() {
               {unseenCount} yangi
             </span>
           )}
+          <TangaChip userId={user?.id ?? ""} onClick={() => setLocation("/plans")} />
           <button
             onClick={() => setLocation("/dashboard")}
             className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm overflow-hidden flex-shrink-0"

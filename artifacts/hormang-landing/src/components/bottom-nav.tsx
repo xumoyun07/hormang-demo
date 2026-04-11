@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Home, LayoutGrid, ClipboardList, MessageCircle, LayoutDashboard, Sparkles, List } from "lucide-react";
+import { Home, LayoutGrid, ClipboardList, MessageCircle, LayoutDashboard, Wallet, List } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { getOffersByCustomer } from "@/lib/requests-store";
 import { getTotalUnread, getUnseenRequests } from "@/lib/provider-store";
@@ -16,7 +16,7 @@ const BUYER_TABS = [
 const PROVIDER_TABS = [
   { label: "Bosh sahifa", icon: Home, href: "/provider-home", disabled: false },
   { label: "So'rovlar", icon: List, href: "/provider/requests", disabled: false },
-  { label: "Smart", icon: Sparkles, href: "/smart", disabled: true },
+  { label: "Tanga", icon: Wallet, href: "/plans", disabled: false },
   { label: "Suhbatlar", icon: MessageCircle, href: "/provider/chats", disabled: false },
   { label: "Profil", icon: LayoutDashboard, href: "/dashboard", disabled: false },
 ];

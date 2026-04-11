@@ -26,6 +26,7 @@ import {
 } from "@/lib/provider-store";
 import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questionnaire-store";
 import logoImg from "/hormang-logo.png";
+import { TangaChip } from "@/pages/plans";
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
 function timeAgo(iso: string): string {
@@ -600,6 +601,7 @@ export default function ProviderRequestsPage() {
               Barchasi ko'rildi
             </button>
           )}
+          <TangaChip userId={providerId} onClick={() => setLocation("/plans")} />
         </div>
       </div>
 

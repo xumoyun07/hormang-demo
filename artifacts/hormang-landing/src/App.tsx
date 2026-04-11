@@ -24,6 +24,7 @@ import MigratePage from "@/pages/auth/migrate";
 import ProviderHomePage from "@/pages/provider/home";
 import ProviderRequestsPage from "@/pages/provider/requests";
 import ProviderChatsPage from "@/pages/provider/chats";
+import PlansPage from "@/pages/plans";
 import TestPage from "@/pages/test";
 
 const queryClient = new QueryClient({
@@ -123,6 +124,9 @@ function Router() {
       </Route>
       <Route path="/provider/chats">
         {() => <ProtectedRoute component={ProviderChatsPage} />}
+      </Route>
+      <Route path="/plans">
+        {() => <ProtectedRoute component={PlansPage} />}
       </Route>
       <Route path="/test" component={TestPage} />
       <Route component={NotFound} />
