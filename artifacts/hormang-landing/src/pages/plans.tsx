@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import {
   getTangaBalance, addTangaBalance, getActiveTiers, type PricingTier,
+  isSaleActive, getSaleRemaining, incrementSalePurchaseCount,
 } from "@/lib/tanga-store";
 
 const GOLD_GRAD = "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
@@ -87,7 +88,9 @@ function PlanCard({
 }) {
   const countdown = useCountdown(tier.validUntil);
   const isExpired = tier.validUntil ? new Date(tier.validUntil) <= new Date() : false;
-  const effectivePrice = tier.salePrice !== undefined ? tier.salePrice : tier.price;
+  const saleActive = isSaleActive(tier);
+  const effectivePrice = saleActive ? tier.salePrice! : tier.price;
+  const remaining = getSaleRemaining(tier);
   const totalTokens = tier.credits + (tier.bonusTokens ?? 0);
 
   if (bought) {
@@ -142,14 +145,27 @@ function PlanCard({
         </div>
 
         {/* Price */}
-        <div className="flex items-baseline gap-2 mb-3">
+        <div className="flex items-baseline gap-2 mb-2">
           <span className="text-lg font-extrabold text-gray-900">
             {effectivePrice === 0 ? "Bepul" : `${effectivePrice.toLocaleString()} so'm`}
           </span>
-          {tier.salePrice !== undefined && tier.price > tier.salePrice && (
+          {saleActive && tier.salePrice !== undefined && tier.price > tier.salePrice && (
             <span className="text-xs text-gray-400 line-through">{tier.price.toLocaleString()} so'm</span>
           )}
+          {!saleActive && tier.salePrice !== undefined && (
+            <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">Chegirma tugadi</span>
+          )}
         </div>
+
+        {/* Sale remaining slots */}
+        {saleActive && remaining !== null && (
+          <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-orange-50 rounded-xl border border-orange-100">
+            <span className="text-[10px] font-black text-orange-600">🔥</span>
+            <span className="text-[11px] font-bold text-orange-700">
+              Chegirma: {remaining} ta joy qoldi
+            </span>
+          </div>
+        )}
 
         {/* Countdown */}
         {countdown && !isExpired && (
@@ -194,9 +210,13 @@ export default function PlansPage() {
 
   function handleBuy(tier: PricingTier) {
     if (!userId || buying) return;
+    const wasOnSale = isSaleActive(tier);
     setBuying(tier.id);
     setTimeout(() => {
       const total = tier.credits + (tier.bonusTokens ?? 0);
+      if (wasOnSale && tier.saleLimit !== undefined) {
+        incrementSalePurchaseCount(tier.id);
+      }
       addTangaBalance(userId, total);
       setBuying(null);
       setBought(tier.id);

@@ -105,7 +105,8 @@ interface BuyerOffer {
 }
 interface PricingTier {
   id: string; name: string; credits: number; price: number;
-  salePrice?: number; bonusTokens?: number; validUntil?: string;
+  salePrice?: number; saleLimit?: number; salePurchaseCount?: number;
+  bonusTokens?: number; validUntil?: string;
   desc: string; color: string; active: boolean;
 }
 interface LocalProfile {
@@ -1551,11 +1552,12 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
   const [editPrice, setEditPrice]         = useState(0);
   const [editCredits, setEditCredits]     = useState(0);
   const [editSalePrice, setEditSalePrice] = useState<number | "">("");
+  const [editSaleLimit, setEditSaleLimit] = useState<number | "">("");
   const [editBonusTokens, setEditBonusTokens] = useState<number | "">("");
   const [editValidUntil, setEditValidUntil]   = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTier, setNewTier] = useState({
-    name: "", credits: 0, price: 0, salePrice: "", bonusTokens: "", validUntil: "", desc: "",
+    name: "", credits: 0, price: 0, salePrice: "", saleLimit: "", bonusTokens: "", validUntil: "", desc: "",
   });
 
   void refreshKey;
@@ -1588,6 +1590,7 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
     setEditPrice(t.price);
     setEditCredits(t.credits);
     setEditSalePrice(t.salePrice ?? "");
+    setEditSaleLimit(t.saleLimit ?? "");
     setEditBonusTokens(t.bonusTokens ?? "");
     setEditValidUntil(t.validUntil ?? "");
   }
@@ -1599,6 +1602,7 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
       price: editPrice,
       credits: editCredits,
       salePrice: editSalePrice !== "" ? Number(editSalePrice) : undefined,
+      saleLimit: editSaleLimit !== "" ? Number(editSaleLimit) : undefined,
       bonusTokens: editBonusTokens !== "" ? Number(editBonusTokens) : undefined,
       validUntil: editValidUntil || undefined,
     } : t));
@@ -1621,6 +1625,7 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
       credits: newTier.credits,
       price: newTier.price,
       salePrice: newTier.salePrice !== "" ? Number(newTier.salePrice) : undefined,
+      saleLimit: newTier.saleLimit !== "" ? Number(newTier.saleLimit) : undefined,
       bonusTokens: newTier.bonusTokens !== "" ? Number(newTier.bonusTokens) : undefined,
       validUntil: newTier.validUntil || undefined,
       desc: newTier.desc,
@@ -1629,7 +1634,7 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
     };
     saveTiers([...tiers, tier]);
     logAction("ADD_PRICING_TIER", tier.id, `Yangi reja: ${tier.name}`);
-    setNewTier({ name: "", credits: 0, price: 0, salePrice: "", bonusTokens: "", validUntil: "", desc: "" });
+    setNewTier({ name: "", credits: 0, price: 0, salePrice: "", saleLimit: "", bonusTokens: "", validUntil: "", desc: "" });
     setShowAddForm(false);
   }
 
@@ -1715,6 +1720,12 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
                   placeholder="39000 (ixtiyoriy)" className={`${inputCls} w-full mt-1`} />
               </div>
               <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Chegirma limiti (nechta)</label>
+                <input type="number" value={newTier.saleLimit}
+                  onChange={(e) => setNewTier({ ...newTier, saleLimit: e.target.value })}
+                  placeholder="10 (ixtiyoriy)" className={`${inputCls} w-full mt-1`} />
+              </div>
+              <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Bonus Tanga</label>
                 <input type="number" value={newTier.bonusTokens}
                   onChange={(e) => setNewTier({ ...newTier, bonusTokens: e.target.value })}
@@ -1778,6 +1789,9 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
                     <input type="number" value={editSalePrice}
                       onChange={(e) => setEditSalePrice(e.target.value === "" ? "" : Number(e.target.value))}
                       placeholder="Chegirma narx (ixtiyoriy)" className={`${inputCls} w-full`} />
+                    <input type="number" value={editSaleLimit}
+                      onChange={(e) => setEditSaleLimit(e.target.value === "" ? "" : Number(e.target.value))}
+                      placeholder="Chegirma limiti — nechta (ixtiyoriy)" className={`${inputCls} w-full`} />
                     <input type="number" value={editBonusTokens}
                       onChange={(e) => setEditBonusTokens(e.target.value === "" ? "" : Number(e.target.value))}
                       placeholder="Bonus Tanga (ixtiyoriy)" className={`${inputCls} w-full`} />
@@ -1804,6 +1818,14 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
                         <p className="text-xs text-gray-400 line-through">{fmtMoney(t.price)}</p>
                       )}
                     </div>
+                    {t.salePrice !== undefined && t.saleLimit !== undefined && (
+                      <p className="text-[10px] font-bold text-orange-600 mb-1">
+                        Chegirma: {t.salePurchaseCount ?? 0}/{t.saleLimit} ta sotilgan
+                        {(t.salePurchaseCount ?? 0) >= t.saleLimit && (
+                          <span className="ml-1 text-gray-400">(tugadi)</span>
+                        )}
+                      </p>
+                    )}
                     {t.validUntil && (
                       <p className="text-[10px] text-amber-600 font-semibold mb-1 truncate">
                         Muddat: {new Date(t.validUntil).toLocaleDateString("uz-UZ")}
