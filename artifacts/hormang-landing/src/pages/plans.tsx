@@ -250,7 +250,7 @@ export default function PlansPage() {
             </div>
           </div>
           <p className="text-amber-200/70 text-[10px] mt-3">
-            * Tokenlar xizmat takliflarini ko'rish va yuborish uchun ishlatiladi
+            * Tangalar mijoz xizmat-so'rovlariga ijrochi takliflarini yuborish uchun ishlatiladi
           </p>
         </motion.div>
 

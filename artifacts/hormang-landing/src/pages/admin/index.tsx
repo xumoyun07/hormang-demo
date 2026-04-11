@@ -1546,6 +1546,8 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
 function MonetizationSection({ refreshKey }: { refreshKey: number }) {
   const [tiers, setTiers] = useState<PricingTier[]>(() => readKey<PricingTier[]>(K.PRICING_TIERS, []));
   const [editId, setEditId]               = useState<string | null>(null);
+  const [editName, setEditName]           = useState("");
+  const [editDesc, setEditDesc]           = useState("");
   const [editPrice, setEditPrice]         = useState(0);
   const [editCredits, setEditCredits]     = useState(0);
   const [editSalePrice, setEditSalePrice] = useState<number | "">("");
@@ -1581,6 +1583,8 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
   }
   function startEdit(t: PricingTier) {
     setEditId(t.id);
+    setEditName(t.name);
+    setEditDesc(t.desc);
     setEditPrice(t.price);
     setEditCredits(t.credits);
     setEditSalePrice(t.salePrice ?? "");
@@ -1590,6 +1594,8 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
   function saveEdit(id: string) {
     saveTiers(tiers.map((t) => t.id === id ? {
       ...t,
+      name: editName.trim() || t.name,
+      desc: editDesc,
       price: editPrice,
       credits: editCredits,
       salePrice: editSalePrice !== "" ? Number(editSalePrice) : undefined,
@@ -1761,6 +1767,10 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
                 </div>
                 {editId === t.id ? (
                   <div className="space-y-2">
+                    <input value={editName} onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Nomi" className={`${inputCls} w-full font-semibold`} />
+                    <input value={editDesc} onChange={(e) => setEditDesc(e.target.value)}
+                      placeholder="Tavsif" className={`${inputCls} w-full`} />
                     <input type="number" value={editCredits} onChange={(e) => setEditCredits(Number(e.target.value))}
                       placeholder="Tanga soni" className={`${inputCls} w-full`} />
                     <input type="number" value={editPrice} onChange={(e) => setEditPrice(Number(e.target.value))}

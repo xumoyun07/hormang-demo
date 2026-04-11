@@ -16,7 +16,7 @@ const BUYER_TABS = [
 const PROVIDER_TABS = [
   { label: "Bosh sahifa", icon: Home, href: "/provider-home", disabled: false },
   { label: "So'rovlar", icon: List, href: "/provider/requests", disabled: false },
-  { label: "Tanga", icon: Wallet, href: "/plans", disabled: false },
+  { label: "Hamyon", icon: Wallet, href: "/plans", disabled: false },
   { label: "Suhbatlar", icon: MessageCircle, href: "/provider/chats", disabled: false },
   { label: "Profil", icon: LayoutDashboard, href: "/dashboard", disabled: false },
 ];
