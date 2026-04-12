@@ -2,6 +2,7 @@
  * /my-requests — Customer's posted service requests
  * Sections: Faol so'rovlar (open) + Yakunlangan so'rovlar (closed)
  */
+import { useState } from "react";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,6 +10,7 @@ import {
   ClipboardList, MessageCircle, ChevronRight,
   Clock, Wallet, Plus, RefreshCw, X, CheckCircle2,
 } from "lucide-react";
+import { RequestPreviewModal } from "@/components/request-preview-modal";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import {
@@ -50,6 +52,7 @@ function RequestCard({
   onReopen: (id: string) => void;
 }) {
   const [, setLocation] = useLocation();
+  const [previewOpen, setPreviewOpen] = useState(false);
   const offers = getOffersByRequestId(req.id);
   const urgency = req.answers["urgency"] as string | undefined;
   const budget = req.answers["budget"] as number | undefined;
@@ -80,8 +83,11 @@ function RequestCard({
           : "border-gray-100 opacity-75"
       }`}
     >
-      {/* Card header */}
-      <div className="px-4 pt-4 pb-3 flex items-start gap-3">
+      {/* Card header — click to preview request details */}
+      <div
+        className="px-4 pt-4 pb-3 flex items-start gap-3 cursor-pointer active:bg-gray-50 transition-colors"
+        onClick={() => setPreviewOpen(true)}
+      >
         <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${
           isOpen ? "bg-blue-50" : "bg-gray-100"
         }`}>
@@ -172,6 +178,13 @@ function RequestCard({
           </button>
         )}
       </div>
+
+      {/* Request preview modal */}
+      <AnimatePresence>
+        {previewOpen && (
+          <RequestPreviewModal req={req} onClose={() => setPreviewOpen(false)} />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
