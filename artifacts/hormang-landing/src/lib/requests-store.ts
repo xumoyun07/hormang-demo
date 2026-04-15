@@ -104,6 +104,25 @@ export function getCustomerFromRegistry(userId: string): CustomerEntry | null {
   return reg[userId] ?? null;
 }
 
+/* ─── Phone Registry ─────────────────────────────────────────────── */
+/**
+ * A userId → phone map written to localStorage on every login.
+ * Works for both customers and providers so the admin panel can
+ * display phone numbers without a server round-trip.
+ */
+const PHONE_REGISTRY_KEY = "hormang_phone_registry";
+
+export function savePhoneToRegistry(userId: string, phone: string | null | undefined): void {
+  if (!userId || !phone) return;
+  const reg = readJSON<Record<string, string>>(PHONE_REGISTRY_KEY, {});
+  reg[userId] = phone;
+  localStorage.setItem(PHONE_REGISTRY_KEY, JSON.stringify(reg));
+}
+
+export function getPhoneRegistry(): Record<string, string> {
+  return readJSON<Record<string, string>>(PHONE_REGISTRY_KEY, {});
+}
+
 /** Category emoji map */
 const CATEGORY_EMOJIS: Record<string, string> = {
   tamirlash: "🔧", tozalash: "🧹", avto: "🚗", kochirish: "🚚",

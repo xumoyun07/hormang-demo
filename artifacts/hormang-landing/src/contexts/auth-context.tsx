@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { getMe, logoutUser, refreshToken, type SafeUser, type ProviderProfile } from "@/lib/auth-client";
-import { saveCustomerToRegistry } from "@/lib/requests-store";
+import { saveCustomerToRegistry, savePhoneToRegistry } from "@/lib/requests-store";
 
 type Role = "buyer" | "provider";
 
@@ -34,6 +34,7 @@ function registryInitials(u: SafeUser): string {
 function persistUserToRegistry(u: SafeUser) {
   const name = registryName(u);
   if (name) saveCustomerToRegistry(u.id, name, registryInitials(u));
+  savePhoneToRegistry(u.id, u.phone);
 }
 
 const AuthContext = createContext<AuthState>({

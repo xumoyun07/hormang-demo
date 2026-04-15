@@ -37,7 +37,7 @@ import {
   type TangaTransaction as TangaTx,
 } from "@/lib/tanga-history-store";
 import { getTangaBalance } from "@/lib/tanga-store";
-import { getOffers, type Offer as BuyerOfferFull } from "@/lib/requests-store";
+import { getOffers, getPhoneRegistry, type Offer as BuyerOfferFull } from "@/lib/requests-store";
 
 /* ─── Credentials ───────────────────────────────────────────────── */
 const ADMIN_USER = "hormangVIP";
@@ -1096,6 +1096,9 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
     const suspended_  = readKey<string[]>("hormang_admin_suspended_users", []);
     const suspSet     = new Set(suspended_);
 
+    /* ── Phone registry — populated on every user login ── */
+    const phoneRegistry = getPhoneRegistry();
+
     /* ── Step 1: Build provider map from offers (canonical provider source) ── */
     const providerMap = new Map<string, AdminUser>();
     for (const offer of allOffers) {
@@ -1110,6 +1113,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
           offerCount:    0,
           acceptedCount: 0,
           avgResponseTime: 0,
+          phone:     phoneRegistry[offer.masterId],
           status:    suspSet.has(offer.masterId) ? "suspended" : "active",
         });
       }
@@ -1166,6 +1170,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
         provider.role         = "both";
         provider.requestCount = custRequests.length;
         provider.location     = provider.location ?? location;
+        provider.phone        = provider.phone ?? phoneRegistry[userId];
       } else {
         result.push({
           userId,
@@ -1175,6 +1180,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
           role:         "customer",
           requestCount: custRequests.length,
           location,
+          phone:        phoneRegistry[userId],
           status:       suspSet.has(userId) ? "suspended" : "active",
         });
       }
