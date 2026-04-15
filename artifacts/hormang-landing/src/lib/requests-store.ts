@@ -245,6 +245,16 @@ export function updateOfferStatus(offerId: string, status: "accepted" | "rejecte
   writeJSON(OFFERS_KEY, updated);
   console.log(`[Hormang] ✅ Offer ${status === "accepted" ? "qabul qilindi" : "rad etildi"}`, { offerId, status });
 
+  // Inject a timeline system message into the offer's own chat
+  if (target) {
+    const chatId = `${target.requestId}_${target.masterId}`;
+    const text =
+      status === "accepted"
+        ? "Taklif qabul qilindi — Suhbat davom etmoqda"
+        : "Taklif rad etildi. Suhbat yopildi.";
+    sendSystemMessage(chatId, text);
+  }
+
   // When an offer is accepted, also notify sibling providers via system message
   if (status === "accepted" && target) {
     const siblings = allOffers.filter(

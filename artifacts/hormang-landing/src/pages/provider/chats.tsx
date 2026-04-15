@@ -284,18 +284,17 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             </div>
           ))}
 
+          {/* Fallback status banner for old chats that pre-date system-message injection */}
+          {offer && offer.status !== "pending" &&
+            !chat.messages.some(
+              (m) =>
+                m.sender === "system" &&
+                (m.text.includes("qabul qilindi") || m.text.includes("rad etildi"))
+            ) && <StatusBanner status={offer.status} />}
+
           <div ref={bottomRef} className="h-1" />
         </div>
       </div>
-
-      {/* Status banner — fixed strip above input, never scrolls */}
-      {offer && offer.status !== "pending" && (
-        <div className="shrink-0 bg-white border-t border-gray-100">
-          <div className="max-w-lg mx-auto px-4 py-2">
-            <StatusBanner status={offer.status} />
-          </div>
-        </div>
-      )}
 
       {/* Input — disabled when offer is rejected */}
       {isRejected ? (
