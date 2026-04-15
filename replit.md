@@ -184,6 +184,27 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 - Customer sees offers in `/offers` page from `hormang_offers`
 - offerCount on `CustomerRequest` is incremented in `hormang_requests` on each offer
 
+## Tanga Transaction History System
+
+### Transaction Store (`lib/tanga-history-store.ts`)
+- Key: `hormang_tanga_history` in localStorage
+- Interface: `TangaTransaction { id, userId, offerId, requestId, categoryName, categoryEmoji, description, amount, createdAt }`
+- Functions: `recordTangaTransaction()`, `getTangaTransactions(userId)`, `getAllTangaTransactions()`, `getTransactionByOfferId(offerId)`
+- Called from `offer-form.tsx` on successful offer submission (after `spendTangaBalance`)
+
+### Provider History Page — `/provider/tanga-history`
+- File: `artifacts/hormang-landing/src/pages/provider/tanga-history.tsx`
+- Shows current balance (violet hero card), total spent, average cost per offer
+- Lists all transactions: category emoji + name, date/time, Tanga amount, "Batafsil" button
+- "Batafsil" opens `OfferDetailModal` with the linked offer
+- Accessible from Plans page via "🧾 Tanga sarflash tarixini ko'rish →" link
+- Empty state with CTA → `/provider/requests`
+
+### Offer Detail Modal — Transaction section
+- `OfferDetailModal` now shows "Tranzaksiya ma'lumotlari" section at bottom when a linked transaction exists
+- Looks up transaction via `getTransactionByOfferId(offer.id)`
+- Shows: coin icon, amount (−X Tanga), date + time, transaction ID
+
 ## Admin Panels
 
 ### Main Admin Dashboard — `/admin`
@@ -194,6 +215,10 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 - All admin actions written to `hormang_admin_log` localStorage key
 - Pricing tiers persisted in `hormang_pricing_tiers`
 - File: `artifacts/hormang-landing/src/pages/admin/index.tsx`
+- **Monetization sub-tabs:** "Narx Rejalari" (existing) + "🪙 Token Tarixi" (global Tanga transactions)
+  - Token Tarixi: summary stats (today/month/all-time), filter by date/search, table with Batafsil button → OfferDetailModal
+- **Users table:** New "Tanga 🪙" column shows balance + clickable "N tranzaksiya" link
+  - Opens `AdminUserTxModal`: per-user transactions slide-up sheet with balance stats + Batafsil per row
 
 ### Category/Question Manager — `/admin/questions`
 - **Password:** `hormang2024` (old panel, still active)
