@@ -226,7 +226,6 @@ function FullscreenSlider({
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
-          <p className="text-center text-[11px] text-gray-400">Chap yoki o'ng suring</p>
         </div>
       </motion.div>
     </motion.div>

@@ -80,9 +80,12 @@ function timeAgo(iso: string): string {
 interface OfferDetailModalProps {
   offer: Offer;
   onClose: () => void;
+  /** When true: hides all action buttons (Chat, Accept, Reject) and
+   *  provider-profile navigation. Used in admin and provider history views. */
+  readOnly?: boolean;
 }
 
-export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
+export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDetailModalProps) {
   const [, setLocation] = useLocation();
   const [showProviderProfile, setShowProviderProfile] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -199,7 +202,9 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
             </button>
             <div className="flex-1">
               <h2 className="font-extrabold text-base text-gray-900">Taklif tafsilotlari</h2>
-              <p className="text-xs text-gray-400">Ko'rish rejimi · o'qish uchun</p>
+              <p className="text-xs text-gray-400">
+                {readOnly ? "Faqat ko'rish rejimi" : "Ko'rish rejimi · o'qish uchun"}
+              </p>
             </div>
             <button
               onClick={onClose}
@@ -253,14 +258,16 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
                   )}
                 </div>
 
-                {/* "Ijrochi profilini ko'rish" button */}
-                <button
-                  onClick={() => setShowProviderProfile(true)}
-                  className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-violet-600 hover:text-violet-800 transition-colors"
-                >
-                  <User className="w-3.5 h-3.5" />
-                  Ijrochi profilini ko'rish
-                </button>
+                {/* "Ijrochi profilini ko'rish" button — hidden in read-only mode */}
+                {!readOnly && (
+                  <button
+                    onClick={() => setShowProviderProfile(true)}
+                    className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-violet-600 hover:text-violet-800 transition-colors"
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    Ijrochi profilini ko'rish
+                  </button>
+                )}
               </div>
 
               {/* Price + time grid */}
@@ -387,6 +394,7 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
                   Tranzaksiya ma&apos;lumotlari
                 </p>
                 <div className="bg-amber-50 border border-amber-100 rounded-2xl overflow-hidden">
+                  {/* Top row: coin icon + amount */}
                   <div className="px-4 py-3 flex items-center gap-3 border-b border-amber-100">
                     <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-lg flex-shrink-0">
                       🪙
@@ -399,16 +407,51 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
                         −{tangaTx.amount} Tanga
                       </p>
                     </div>
+                    {/* Offer status badge */}
+                    {liveOffer.status === "accepted" && (
+                      <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-600 flex-shrink-0">
+                        Qabul qilingan
+                      </span>
+                    )}
+                    {liveOffer.status === "rejected" && (
+                      <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">
+                        Rad etilgan
+                      </span>
+                    )}
+                    {liveOffer.status === "pending" && (
+                      <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
+                        Kutilmoqda
+                      </span>
+                    )}
                   </div>
-                  <div className="px-4 py-2.5">
-                    <p className="text-[10px] text-amber-600 font-semibold">
-                      Sana: {formatDate(tangaTx.createdAt)}&ensp;·&ensp;
-                      {new Date(tangaTx.createdAt).toLocaleTimeString("uz-Latn-UZ", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                    <p className="text-[10px] text-amber-500 font-mono mt-0.5">
+
+                  {/* Details rows */}
+                  <div className="px-4 py-2.5 space-y-1">
+                    {/* Provider name (always shown, especially useful in admin) */}
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-amber-500 font-semibold">Ijrochi:</p>
+                      <p className="text-[11px] font-bold text-amber-700">{offer.masterName}</p>
+                    </div>
+                    {/* Category */}
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-amber-500 font-semibold">Kategoriya:</p>
+                      <p className="text-[11px] font-bold text-amber-700">
+                        {tangaTx.categoryEmoji} {tangaTx.categoryName}
+                      </p>
+                    </div>
+                    {/* Date + time */}
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-amber-500 font-semibold">Sana va vaqt:</p>
+                      <p className="text-[11px] text-amber-700 font-semibold">
+                        {formatDate(tangaTx.createdAt)}&ensp;
+                        {new Date(tangaTx.createdAt).toLocaleTimeString("uz-Latn-UZ", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                    {/* Transaction ID */}
+                    <p className="text-[10px] text-amber-400 font-mono pt-0.5">
                       ID: {tangaTx.id.slice(0, 24)}
                     </p>
                   </div>
@@ -417,8 +460,8 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
             )}
           </div>
 
-          {/* Action footer */}
-          {!isRejected && (
+          {/* Action footer — hidden in read-only (admin / history) mode */}
+          {!readOnly && !isRejected && (
             <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0 space-y-2">
               {/* If another offer on this request was already accepted, show a notice */}
               {anyAccepted && (

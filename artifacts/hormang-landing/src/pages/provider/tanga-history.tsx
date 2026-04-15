@@ -195,6 +195,7 @@ export default function TangaHistoryPage() {
           <OfferDetailModal
             offer={viewedOffer}
             onClose={() => setViewOfferId(null)}
+            readOnly
           />
         )}
       </AnimatePresence>

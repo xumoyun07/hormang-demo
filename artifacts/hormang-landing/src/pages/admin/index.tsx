@@ -1681,7 +1681,7 @@ function AdminUserTxModal({
 
       <AnimatePresence>
         {viewedOffer && (
-          <OfferDetailModal offer={viewedOffer} onClose={() => setViewOfferId(null)} />
+          <OfferDetailModal offer={viewedOffer} onClose={() => setViewOfferId(null)} readOnly />
         )}
       </AnimatePresence>
     </>
@@ -2151,7 +2151,7 @@ function TangaTransactionsPanel({ refreshKey }: { refreshKey: number }) {
 
       <AnimatePresence>
         {viewedOffer && (
-          <OfferDetailModal offer={viewedOffer} onClose={() => setViewOfferId(null)} />
+          <OfferDetailModal offer={viewedOffer} onClose={() => setViewOfferId(null)} readOnly />
         )}
       </AnimatePresence>
     </div>
