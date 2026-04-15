@@ -9,6 +9,7 @@
  */
 
 import { emitStoreChange } from "./store-events";
+import { incrementCompletedCount } from "./completion-store";
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -42,7 +43,7 @@ export interface Offer {
   fileUrls?: string[];
   avgResponseTime: number; // minutes
   createdAt: string;
-  status: "pending" | "accepted" | "rejected";
+  status: "pending" | "accepted" | "rejected" | "in_progress" | "completed";
 }
 
 export interface ChatMessage {
@@ -224,6 +225,40 @@ export function getOffersByRequestId(requestId: string): Offer[] {
 /** Find the single offer for a chat (by requestId + masterId) */
 export function getOfferForChat(requestId: string, masterId: string): Offer | undefined {
   return getOffers().find((o) => o.requestId === requestId && o.masterId === masterId);
+}
+
+export function getOfferById(offerId: string): Offer | undefined {
+  return getOffers().find((o) => o.id === offerId);
+}
+
+/** Set offer status to in_progress (when provider schedules the work) */
+export function markOfferInProgress(offerId: string): void {
+  const allOffers = getOffers();
+  if (!allOffers.find((o) => o.id === offerId)) return;
+  writeJSON(OFFERS_KEY, allOffers.map((o) => o.id === offerId ? { ...o, status: "in_progress" as const } : o));
+}
+
+/**
+ * Mark offer as completed. Increments completed counts for both sides.
+ * Returns true if newly completed, false if already was completed.
+ */
+export function markOfferCompleted(offerId: string): boolean {
+  const allOffers = getOffers();
+  const target = allOffers.find((o) => o.id === offerId);
+  if (!target) return false;
+  if (target.status === "completed") return false;
+
+  writeJSON(OFFERS_KEY, allOffers.map((o) => o.id === offerId ? { ...o, status: "completed" as const } : o));
+
+  const request = getRequestById(target.requestId);
+  if (request) {
+    updateRequestStatus(target.requestId, "completed");
+    if (request.customerId) incrementCompletedCount(request.customerId);
+  }
+  incrementCompletedCount(target.masterId);
+
+  sendSystemMessage(`${target.requestId}_${target.masterId}`, "✅ Xizmat yakunlandi! Hamkorlik uchun rahmat.");
+  return true;
 }
 
 export function updateOfferStatus(offerId: string, status: "accepted" | "rejected"): void {

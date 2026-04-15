@@ -7,16 +7,19 @@
 import { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock } from "lucide-react";
+import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock, Loader2, Flag } from "lucide-react";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
+import { ReviewModal } from "@/components/review-modal";
 import { BottomNav } from "@/components/bottom-nav";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { getLocalProfile } from "@/lib/local-profile";
+import { useAuth } from "@/contexts/auth-context";
 import { formatDate } from "@/lib/date-utils";
 import {
-  getChatById, sendMessage, getOfferForChat,
+  getChatById, sendMessage, getOfferForChat, markOfferCompleted,
   type Chat, type ChatMessage, type Offer,
 } from "@/lib/requests-store";
+import { addReview, hasReviewed } from "@/lib/completion-store";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" });
@@ -47,6 +50,22 @@ function OfferStatusBadge({ status }: { status: Offer["status"] }) {
       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
         <X className="w-3 h-3" />
         Rad etildi
+      </span>
+    );
+  }
+  if (status === "in_progress") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+        <Loader2 className="w-3 h-3 animate-spin" />
+        Bajarilmoqda
+      </span>
+    );
+  }
+  if (status === "completed") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full">
+        <Flag className="w-3 h-3" />
+        Yakunlandi
       </span>
     );
   }
@@ -147,11 +166,13 @@ export default function ChatPage() {
   const [, setLocation] = useLocation();
   const [match, params] = useRoute("/chat/:chatId");
   const chatId = params?.chatId ?? "";
+  const { user } = useAuth();
 
   useStoreRefresh();
 
   const [input, setInput] = useState("");
   const [showMasterProfile, setShowMasterProfile] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -195,6 +216,30 @@ export default function ChatPage() {
     }
   }
 
+  function handleComplete() {
+    if (!offer) return;
+    const wasNew = markOfferCompleted(offer.id);
+    if (wasNew || !hasReviewed(offer.id, user?.id ?? "")) {
+      setShowReview(true);
+    }
+  }
+
+  function handleReviewSubmit(rating: number, text: string) {
+    if (!offer || !user || !chat) return;
+    addReview({
+      subjectId: chat.masterId,
+      reviewerId: user.id,
+      reviewerName: [user.firstName, user.lastName].filter(Boolean).join(" ") || "Mijoz",
+      reviewerInitials: chat.customerInitials,
+      reviewerColor: chat.customerColor,
+      reviewerRole: "customer",
+      offerId: offer.id,
+      rating,
+      text,
+    });
+    setShowReview(false);
+  }
+
   const grouped: Array<{ day: string; messages: ChatMessage[] }> = [];
   for (const msg of chat.messages) {
     const day = formatDay(msg.timestamp);
@@ -202,6 +247,13 @@ export default function ChatPage() {
     if (last?.day === day) last.messages.push(msg);
     else grouped.push({ day, messages: [msg] });
   }
+
+  const canComplete =
+    offer &&
+    (offer.status === "accepted" || offer.status === "in_progress") &&
+    !hasReviewed(offer.id, user?.id ?? "");
+
+  const alreadyCompleted = offer?.status === "completed";
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
@@ -242,9 +294,27 @@ export default function ChatPage() {
           </button>
 
           {/* Live offer status badge in header */}
-          {offer && (
+          {offer && !canComplete && !alreadyCompleted && (
             <div className="flex-shrink-0">
               <OfferStatusBadge status={offer.status} />
+            </div>
+          )}
+
+          {/* Complete button */}
+          {canComplete && (
+            <button
+              onClick={handleComplete}
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold transition-colors active:scale-95"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Tugatildi
+            </button>
+          )}
+
+          {/* Already completed badge */}
+          {alreadyCompleted && (
+            <div className="flex-shrink-0">
+              <OfferStatusBadge status="completed" />
             </div>
           )}
         </div>
@@ -323,6 +393,21 @@ export default function ChatPage() {
               categoryEmoji: chat.categoryEmoji,
             }}
             onClose={() => setShowMasterProfile(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Review modal */}
+      <AnimatePresence>
+        {showReview && offer && (
+          <ReviewModal
+            key="customer-review"
+            subjectName={chat.masterName}
+            subjectInitials={chat.masterInitials}
+            subjectColor={chat.masterColor}
+            prompt="Ustani baholang"
+            onSubmit={handleReviewSubmit}
+            onSkip={() => setShowReview(false)}
           />
         )}
       </AnimatePresence>

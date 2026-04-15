@@ -14,6 +14,7 @@ import {
   Briefcase, Award, ChevronRight,
 } from "lucide-react";
 import { getLocalProfile } from "@/lib/local-profile";
+import { getAverageRating, getReviews, getCompletedCount } from "@/lib/completion-store";
 import type {
   ProviderProfileData,
   CustomerProfileData,
@@ -84,6 +85,10 @@ function ProviderPreviewSheet({
   const categories = local.categories ?? [];
   const serviceAreas: string[] =
     local.serviceAreas?.length ? local.serviceAreas : local.region ? [local.region] : [];
+
+  const avgRating = getAverageRating(data.masterId);
+  const reviewCount = getReviews(data.masterId).length;
+  const completedCount = getCompletedCount(data.masterId);
 
   const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
 
@@ -195,14 +200,18 @@ function ProviderPreviewSheet({
             >
               <MetricCell
                 icon={Star}
-                value={<span>0.0 <span className="text-amber-400">★</span></span>}
-                label="0 ta baho"
+                value={
+                  avgRating > 0
+                    ? <span>{avgRating.toFixed(1)} <span className="text-amber-400">★</span></span>
+                    : <span>— <span className="text-gray-300">★</span></span>
+                }
+                label={reviewCount > 0 ? `${reviewCount} ta baho` : "Baholanmagan"}
                 color="hsl(37,95%,55%)"
               />
               <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
               <MetricCell
                 icon={Briefcase}
-                value="0 ta"
+                value={`${completedCount} ta`}
                 label="Bajarilgan"
                 color="hsl(160,60%,40%)"
               />
@@ -373,6 +382,9 @@ function CustomerPreviewSheet({
 
   const customerLocal = data.customerId ? getLocalProfile(data.customerId) : null;
   const photoUrl = customerLocal?.photoUrl ?? data.photoUrl;
+  const custAvgRating = data.customerId ? getAverageRating(data.customerId) : 0;
+  const custReviewCount = data.customerId ? getReviews(data.customerId).length : 0;
+  const custCompletedCount = data.customerId ? getCompletedCount(data.customerId) : 0;
 
   return (
     <>
@@ -466,15 +478,19 @@ function CustomerPreviewSheet({
             >
               <MetricCell
                 icon={Star}
-                value={<span>0.0 <span className="text-amber-400">★</span></span>}
-                label="0 ta baho"
+                value={
+                  custAvgRating > 0
+                    ? <span>{custAvgRating.toFixed(1)} <span className="text-amber-400">★</span></span>
+                    : <span>— <span className="text-gray-300">★</span></span>
+                }
+                label={custReviewCount > 0 ? `${custReviewCount} ta baho` : "Baholanmagan"}
                 color="hsl(37,95%,55%)"
               />
               <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
               <MetricCell
                 icon={Briefcase}
-                value="0 ta"
-                label="So'rovlar"
+                value={`${custCompletedCount} ta`}
+                label="Bajarilgan"
                 color={BLUE}
               />
               <div className="w-px h-8 bg-gray-200 flex-shrink-0" />

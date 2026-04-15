@@ -205,6 +205,46 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 - Looks up transaction via `getTransactionByOfferId(offer.id)`
 - Shows: coin icon, amount (−X Tanga), date + time, transaction ID
 
+## Offer Completion Flow
+
+### Completion Store (`lib/completion-store.ts`)
+- Keys: `hormang_reviews` (Review[]), `hormang_completed_{userId}` (number)
+- `Review` interface: subjectId, reviewerId, reviewerName/Initials/Color, reviewerRole, offerId, rating (1–5), text, createdAt
+- Exported: `getReviews(subjectId)`, `getAverageRating(subjectId)`, `hasReviewed(offerId, reviewerId)`, `addReview(review)`, `getCompletedCount(userId)`, `incrementCompletedCount(userId)`
+- No circular deps: emits store events only, imported by requests-store
+
+### Offer Status Extensions
+- `Offer.status` now includes: `"pending" | "accepted" | "rejected" | "in_progress" | "completed"`
+- New requests-store functions: `getOfferById(id)`, `markOfferInProgress(offerId)`, `markOfferCompleted(offerId)` (returns bool; also increments both customer + provider completed counts, sends system message, updates request status)
+
+### UpcomingService Extensions
+- Fields added: `offerId?`, `requestId?`, `masterId?`, `customerId?`
+- New provider-store function: `addUpcomingService(...)` — also calls `markOfferInProgress` if offerId is present
+
+### Review Modal (`components/review-modal.tsx`)
+- Shared bottom-sheet: 5-star picker + optional text + submit/skip
+- Used on both customer (rate provider) and provider (rate customer) sides after completion
+
+### Customer Chat (`pages/chat.tsx`)
+- "Tugatildi" emerald button appears in header when offer is `accepted` or `in_progress`
+- On click: `markOfferCompleted` → shows `ReviewModal` for the provider
+- Offer status badge now handles `in_progress` (spinning loader) and `completed` (flag icon)
+
+### Provider Chat (`pages/provider/chats.tsx`)
+- "Tugatildi" green button in header when offer is `accepted` or `in_progress`
+- "+" dashed button left of input (when accepted/in_progress) → opens `ScheduleModal`
+- `ScheduleModal`: date picker, time, location inputs → `addUpcomingService()` + system message in chat
+- After completion → `ReviewModal` for the customer
+- System messages use `sendSystemMessage` from requests-store
+
+### Provider Home (`pages/provider/home.tsx`)
+- Upcoming service cards are now clickable → opens `OfferDetailModal` (read-only)
+- Checkmark button triggers completion flow: `markOfferCompleted` → `ReviewModal` → `markServiceDone`
+
+### Real Metrics
+- `public-profile-preview-modal.tsx`: provider + customer metrics rows now show real `avgRating`, `reviewCount`, `completedCount` from completion-store
+- `dashboard/index.tsx` (provider view): real star rating + completed count from completion-store
+
 ## Admin Panels
 
 ### Main Admin Dashboard — `/admin`

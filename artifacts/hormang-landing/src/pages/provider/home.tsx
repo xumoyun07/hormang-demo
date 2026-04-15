@@ -25,6 +25,10 @@ import {
   getRequestOfferCount, getRequestsWithZeroOffers,
   type ProviderRequest, type UpcomingService,
 } from "@/lib/provider-store";
+import { markOfferCompleted, getOfferById } from "@/lib/requests-store";
+import { addReview, hasReviewed } from "@/lib/completion-store";
+import { ReviewModal } from "@/components/review-modal";
+import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { getLocalProfile, getCompletionChecks, getCompletionPct } from "@/lib/local-profile";
 import { formatDate as formatUzDate } from "@/lib/date-utils";
 import logoImg from "/hormang-logo.png";
@@ -124,12 +128,44 @@ function ProfileCompletion() {
 /* ─── Upcoming Services ──────────────────────────────────────────── */
 function UpcomingServices() {
   useStoreRefresh();
+  const { user } = useAuth();
+  const masterId = user?.id ?? "";
   const services = getUpcomingServices().filter((s) => s.status === "upcoming");
+  const [selectedService, setSelectedService] = useState<UpcomingService | null>(null);
+  const [reviewService, setReviewService] = useState<UpcomingService | null>(null);
 
-  function handleDone(id: string) {
-    markServiceDone(id);
-    // writeJSON emits → useStoreRefresh re-renders → services recomputed
+  function handleDone(s: UpcomingService, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (s.offerId) {
+      const wasNew = markOfferCompleted(s.offerId);
+      if (wasNew || !hasReviewed(s.offerId, masterId)) {
+        setReviewService(s);
+        return;
+      }
+    }
+    markServiceDone(s.id);
   }
+
+  function handleReviewSubmit(rating: number, text: string) {
+    if (!reviewService) return;
+    if (reviewService.customerId) {
+      addReview({
+        subjectId: reviewService.customerId,
+        reviewerId: masterId,
+        reviewerName: [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Usta",
+        reviewerInitials: `${(user?.firstName ?? "U")[0]}${(user?.lastName ?? "")[0]}`.toUpperCase(),
+        reviewerColor: "#6c3fc7",
+        reviewerRole: "provider",
+        offerId: reviewService.offerId ?? reviewService.id,
+        rating,
+        text,
+      });
+    }
+    markServiceDone(reviewService.id);
+    setReviewService(null);
+  }
+
+  const selectedOffer = selectedService?.offerId ? getOfferById(selectedService.offerId) : null;
 
   return (
     <div className="mb-4">
@@ -149,12 +185,13 @@ function UpcomingServices() {
       ) : (
         <div className="space-y-2">
           {services.map((s, i) => (
-            <motion.div
+            <motion.button
               key={s.id}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.07 }}
-              className="bg-white rounded-2xl border border-gray-100 card-shadow p-4 flex items-start gap-3"
+              onClick={() => setSelectedService(s)}
+              className="w-full bg-white rounded-2xl border border-gray-100 card-shadow p-4 flex items-start gap-3 hover:shadow-sm hover:border-violet-100 transition-all text-left active:scale-[.99]"
             >
               <div className="w-11 h-11 rounded-xl bg-violet-50 flex flex-col items-center justify-center flex-shrink-0">
                 <span className="text-lg leading-none">{s.categoryEmoji}</span>
@@ -173,16 +210,46 @@ function UpcomingServices() {
                 </div>
               </div>
               <button
-                onClick={() => handleDone(s.id)}
+                onClick={(e) => handleDone(s, e)}
                 className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 flex items-center justify-center flex-shrink-0 transition-colors"
                 title="Bajarildi"
               >
                 <Check className="w-4 h-4 text-emerald-600" />
               </button>
-            </motion.div>
+            </motion.button>
           ))}
         </div>
       )}
+
+      {/* Offer detail modal (read-only) for clicking a service card */}
+      <AnimatePresence>
+        {selectedService && selectedOffer && (
+          <OfferDetailModal
+            key={`upcoming-offer-${selectedOffer.id}`}
+            offer={selectedOffer}
+            readOnly
+            onClose={() => setSelectedService(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Review modal after marking done */}
+      <AnimatePresence>
+        {reviewService && (
+          <ReviewModal
+            key="home-review"
+            subjectName={reviewService.customerName}
+            subjectInitials={reviewService.customerInitials}
+            subjectColor={reviewService.customerColor}
+            prompt="Mijozni baholang"
+            onSubmit={handleReviewSubmit}
+            onSkip={() => {
+              markServiceDone(reviewService.id);
+              setReviewService(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

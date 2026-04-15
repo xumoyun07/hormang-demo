@@ -16,7 +16,7 @@ import type { CustomerRequest, Chat } from "./requests-store";
 import {
   getCustomerFromRegistry,
   getChatById, sendMessage, markProviderChatRead,
-  getChats, getRequestById,
+  getChats, getRequestById, markOfferInProgress,
 } from "./requests-store";
 import { doesRequestMatch } from "./matching";
 import {
@@ -47,6 +47,10 @@ export interface ProviderRequest {
 
 export interface UpcomingService {
   id: string;
+  offerId?: string;
+  requestId?: string;
+  masterId?: string;
+  customerId?: string;
   title: string;
   customerName: string;
   customerInitials: string;
@@ -410,6 +414,16 @@ export function getUpcomingServices(): UpcomingService[] {
 export function markServiceDone(id: string): void {
   const services = readJSON<UpcomingService[]>(SERVICES_KEY, []);
   writeJSON(SERVICES_KEY, services.map((s) => s.id === id ? { ...s, status: "done" as const } : s));
+}
+
+export function addUpcomingService(service: Omit<UpcomingService, "id" | "status">): UpcomingService {
+  const newService: UpcomingService = { ...service, id: uid(), status: "upcoming" };
+  const services = readJSON<UpcomingService[]>(SERVICES_KEY, []);
+  writeJSON(SERVICES_KEY, [...services, newService]);
+  if (service.offerId) {
+    markOfferInProgress(service.offerId);
+  }
+  return newService;
 }
 
 /* ─── Provider Chats (unified — reads from hormang_chats, filtered by masterId) ── */

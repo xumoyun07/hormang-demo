@@ -13,14 +13,20 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, MessageCircle, ChevronRight, X, ChevronDown,
-  Circle, Send, CheckCircle2, Clock,
+  Circle, Send, CheckCircle2, Clock, Loader2, Flag, Plus, Calendar,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import {
   getProviderChats, markChatRead, sendProviderMessage, getProviderChatById,
+  addUpcomingService,
   type ProviderChat, type ProviderChatMessage,
 } from "@/lib/provider-store";
-import { getOfferForChat, type Offer } from "@/lib/requests-store";
+import {
+  getOfferForChat, markOfferCompleted, getRequestById, sendSystemMessage,
+  type Offer,
+} from "@/lib/requests-store";
+import { addReview, hasReviewed } from "@/lib/completion-store";
+import { ReviewModal } from "@/components/review-modal";
 import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
@@ -70,6 +76,22 @@ function OfferStatusBadge({ status }: { status: Offer["status"] }) {
       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
         <X className="w-3 h-3" />
         Rad etildi
+      </span>
+    );
+  }
+  if (status === "in_progress") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+        <Loader2 className="w-3 h-3 animate-spin" />
+        Bajarilmoqda
+      </span>
+    );
+  }
+  if (status === "completed") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full">
+        <Flag className="w-3 h-3" />
+        Yakunlandi
       </span>
     );
   }
@@ -166,12 +188,123 @@ function MsgBubble({ msg, isFirst }: { msg: ProviderChatMessage; isFirst: boolea
   );
 }
 
+/* ─── Schedule Modal ─────────────────────────────────────────────── */
+interface ScheduleModalProps {
+  onSave: (date: string, time: string, location: string) => void;
+  onClose: () => void;
+  defaultLocation?: string;
+}
+function ScheduleModal({ onSave, onClose, defaultLocation = "" }: ScheduleModalProps) {
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("09:00");
+  const [location, setLocation] = useState(defaultLocation);
+
+  const today = new Date().toISOString().split("T")[0];
+
+  function handleSave() {
+    if (!date) return;
+    onSave(date, time, location.trim() || "—");
+  }
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[60]"
+        style={{ background: "rgba(10,10,30,0.55)", backdropFilter: "blur(4px)" }}
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ y: "100%", opacity: 0.7 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: "100%", opacity: 0 }}
+        transition={{ type: "spring", stiffness: 400, damping: 38 }}
+        className="fixed inset-x-0 bottom-0 z-[61] flex justify-center"
+      >
+        <div
+          className="bg-white w-full max-w-lg rounded-t-3xl px-5 pb-8 pt-4"
+          style={{ boxShadow: "0 -8px 40px rgba(0,0,0,0.14)" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-center mb-4">
+            <div className="w-10 h-1 rounded-full bg-gray-200" />
+          </div>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-violet-600" />
+              <h3 className="font-extrabold text-gray-900 text-base">Xizmat rejalashtirish</h3>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="space-y-3 mb-5">
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block">Sana</label>
+              <input
+                type="date"
+                min={today}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full h-11 px-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-all"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block">Vaqt</label>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full h-11 px-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-all"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block">Manzil</label>
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Ko'cha, uy raqami..."
+                className="w-full h-11 px-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="flex-1 h-11 rounded-2xl border-2 border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition-colors"
+            >
+              Bekor qilish
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!date}
+              className="flex-1 h-11 rounded-2xl text-sm font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+              style={{ background: VIOLET }}
+            >
+              Rejalashtirish
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
 /* ─── Inline Chat View ───────────────────────────────────────────── */
 function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) {
   useStoreRefresh();
   const [text, setText] = useState("");
   const [showCustomerProfile, setShowCustomerProfile] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const { user } = useAuth();
+  const masterId = user?.id ?? "";
 
   useEffect(() => {
     markChatRead(chatId);
@@ -179,7 +312,15 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 
   const chat = getProviderChatById(chatId) ?? null;
   const offer = chat ? getOfferForChat(chat.requestId, chat.masterId) : undefined;
+  const request = chat ? getRequestById(chat.requestId) : undefined;
   const isRejected = offer?.status === "rejected";
+  const isCompleted = offer?.status === "completed";
+  const canComplete =
+    offer &&
+    (offer.status === "accepted" || offer.status === "in_progress") &&
+    !hasReviewed(offer.id, masterId);
+  const canSchedule =
+    offer && (offer.status === "accepted" || offer.status === "in_progress") && !isCompleted;
   const customerLocal = chat?.customerId ? getLocalProfile(chat.customerId) : null;
 
   useEffect(() => {
@@ -192,7 +333,54 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
     setText("");
   }
 
+  function handleComplete() {
+    if (!offer) return;
+    markOfferCompleted(offer.id);
+    setShowReview(true);
+  }
+
+  function handleScheduleSave(date: string, time: string, location: string) {
+    if (!chat || !offer) return;
+    addUpcomingService({
+      offerId: offer.id,
+      requestId: chat.requestId,
+      masterId,
+      customerId: chat.customerId,
+      title: chat.categoryName,
+      customerName: chat.customerName,
+      customerInitials: chat.customerInitials,
+      customerColor: chat.customerColor,
+      date,
+      time,
+      location,
+      categoryEmoji: chat.categoryEmoji,
+    });
+    setShowSchedule(false);
+    sendSystemMessage(chatId, `📅 Xizmat rejalashtirildi: ${date} soat ${time}`);
+  }
+
+  function handleReviewSubmit(rating: number, reviewText: string) {
+    if (!offer || !chat) return;
+    const firstName = user?.firstName ?? "U";
+    const lastName = user?.lastName ?? "";
+    const initials = `${firstName[0] ?? "U"}${lastName[0] ?? ""}`.toUpperCase();
+    addReview({
+      subjectId: chat.customerId,
+      reviewerId: masterId,
+      reviewerName: [firstName, lastName].filter(Boolean).join(" "),
+      reviewerInitials: initials,
+      reviewerColor: "#6c3fc7",
+      reviewerRole: "provider",
+      offerId: offer.id,
+      rating,
+      text: reviewText,
+    });
+    setShowReview(false);
+  }
+
   if (!chat) return null;
+
+  const defaultLocation = [request?.district, request?.region].filter(Boolean).join(", ");
 
   // Group messages by day
   const grouped: Array<{ day: string; messages: ProviderChatMessage[] }> = [];
@@ -224,14 +412,14 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
           {/* Clickable customer avatar */}
           <button
             onClick={() => setShowCustomerProfile(true)}
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm active:scale-95 transition-transform ring-2 ring-transparent hover:ring-violet-300 overflow-hidden"
-          style={customerLocal?.photoUrl ? {} : { background: chat.customerColor }}
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm active:scale-95 transition-transform ring-2 ring-transparent hover:ring-violet-300 overflow-hidden"
+            style={customerLocal?.photoUrl ? {} : { background: chat.customerColor }}
           >
-          {customerLocal?.photoUrl ? (
-            <img src={customerLocal.photoUrl} alt={chat.customerName} className="w-full h-full object-cover" />
-          ) : (
-            chat.customerInitials
-          )}
+            {customerLocal?.photoUrl ? (
+              <img src={customerLocal.photoUrl} alt={chat.customerName} className="w-full h-full object-cover" />
+            ) : (
+              chat.customerInitials
+            )}
           </button>
 
           {/* Clickable name + subtitle area */}
@@ -248,12 +436,21 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             </div>
           </button>
 
-          {/* Live offer status badge */}
-          {offer && (
+          {/* Live offer status badge or Complete button */}
+          {canComplete ? (
+            <button
+              onClick={handleComplete}
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-[11px] font-bold transition-colors active:scale-95 shadow-sm"
+              style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Tugatildi
+            </button>
+          ) : offer ? (
             <div className="flex-shrink-0">
               <OfferStatusBadge status={offer.status} />
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -304,8 +501,18 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
           </div>
         </div>
       ) : (
-            <div className="shrink-0 bg-white border-t border-gray-100 z-20 pb-0">
-              <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-2">
+        <div className="shrink-0 bg-white border-t border-gray-100 z-20 pb-0">
+          <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-2">
+            {/* Schedule "+" button */}
+            {canSchedule && (
+              <button
+                onClick={() => setShowSchedule(true)}
+                className="w-11 h-11 rounded-2xl border-2 border-dashed border-violet-300 flex items-center justify-center text-violet-500 hover:bg-violet-50 transition-colors flex-shrink-0 active:scale-95"
+                title="Xizmatni rejalashtirish"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -340,6 +547,33 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
               district: chat.district,
             }}
             onClose={() => setShowCustomerProfile(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Schedule modal */}
+      <AnimatePresence>
+        {showSchedule && (
+          <ScheduleModal
+            key="schedule-modal"
+            defaultLocation={defaultLocation}
+            onSave={handleScheduleSave}
+            onClose={() => setShowSchedule(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Review modal */}
+      <AnimatePresence>
+        {showReview && offer && (
+          <ReviewModal
+            key="provider-review"
+            subjectName={chat.customerName}
+            subjectInitials={chat.customerInitials}
+            subjectColor={chat.customerColor}
+            prompt="Mijozni baholang"
+            onSubmit={handleReviewSubmit}
+            onSkip={() => setShowReview(false)}
           />
         )}
       </AnimatePresence>

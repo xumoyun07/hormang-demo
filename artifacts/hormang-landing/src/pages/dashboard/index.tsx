@@ -21,6 +21,7 @@ import {
 import {
   getMatchingRequests, getSeenIds,
 } from "@/lib/provider-store";
+import { getAverageRating, getReviews, getCompletedCount } from "@/lib/completion-store";
 import { TangaChip } from "@/pages/plans";
 
 const VIOLET_SOLID = "hsl(262,80%,54%)";
@@ -419,9 +420,9 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
   const pct     = getCompletionPct(checks);
   const missing = checks.filter((c) => !c.done);
 
-  const avgRating      = 0;
-  const reviewCount    = 0;
-  const completedCount = 0;
+  const avgRating      = user?.id ? getAverageRating(user.id) : 0;
+  const reviewCount    = user?.id ? getReviews(user.id).length : 0;
+  const completedCount = user?.id ? getCompletedCount(user.id) : 0;
 
   const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`;
   const hasPhoto = !!local.photoUrl;
