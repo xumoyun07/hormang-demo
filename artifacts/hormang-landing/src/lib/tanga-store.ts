@@ -57,6 +57,21 @@ export function addTangaBalance(userId: string, amount: number): number {
   return next;
 }
 
+/**
+ * Deduct `amount` Tanga from the provider's balance.
+ * Returns the new balance. Throws if balance is insufficient.
+ */
+export function spendTangaBalance(userId: string, amount: number): number {
+  const current = getTangaBalance(userId);
+  if (current < amount) {
+    throw new Error(`Insufficient Tanga balance: has ${current}, needs ${amount}`);
+  }
+  const next = current - amount;
+  localStorage.setItem(`${TANGA_BALANCE_PREFIX}_${userId}`, String(next));
+  emitStoreChange();
+  return next;
+}
+
 /* ─── Tiers ──────────────────────────────────────────────────────── */
 export function getAllTiers(): PricingTier[] {
   try {

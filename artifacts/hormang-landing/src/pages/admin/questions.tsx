@@ -46,6 +46,7 @@ interface EditorOption {
   label: string;
   value: string;
   type: "fixed" | "other";
+  tangaCost: string;
 }
 
 interface EditorState {
@@ -80,7 +81,7 @@ function blankEditor(): EditorState {
     min: "",
     max: "",
     step: "",
-    options: [{ _key: mkKey(), label: "", value: "", type: "fixed" as const }],
+    options: [{ _key: mkKey(), label: "", value: "", type: "fixed" as const, tangaCost: "0" }],
     condEnabled: false,
     condQuestionId: "",
     condValue: "",
@@ -101,8 +102,14 @@ function editorFromQuestion(q: Question): EditorState {
     max: q.max != null ? String(q.max) : "",
     step: q.step != null ? String(q.step) : "",
     options: q.options?.length
-      ? q.options.map((o) => ({ _key: mkKey(), label: o.label, value: o.value, type: (o.type === "other" ? "other" : "fixed") as "fixed" | "other" }))
-      : [{ _key: mkKey(), label: "", value: "", type: "fixed" as const }],
+      ? q.options.map((o) => ({
+          _key: mkKey(),
+          label: o.label,
+          value: o.value,
+          type: (o.type === "other" ? "other" : "fixed") as "fixed" | "other",
+          tangaCost: o.tangaCost != null ? String(o.tangaCost) : "0",
+        }))
+      : [{ _key: mkKey(), label: "", value: "", type: "fixed" as const, tangaCost: "0" }],
     condEnabled: !!q.conditional,
     condQuestionId: q.conditional?.questionId ?? "",
     condValue: q.conditional?.value ?? "",
@@ -123,11 +130,15 @@ function editorToQuestion(e: EditorState): Question {
   if (needsOptions) {
     q.options = e.options
       .filter((o) => o.label.trim())
-      .map((o): QuestionOption => ({
-        label: o.label.trim(),
-        value: o.value.trim() || o.label.trim().toLowerCase().replace(/\s+/g, "_"),
-        ...(o.type === "other" ? { type: "other" as const } : {}),
-      }));
+      .map((o): QuestionOption => {
+        const cost = parseInt(o.tangaCost, 10);
+        return {
+          label: o.label.trim(),
+          value: o.value.trim() || o.label.trim().toLowerCase().replace(/\s+/g, "_"),
+          ...(o.type === "other" ? { type: "other" as const } : {}),
+          ...(cost > 0 ? { tangaCost: cost } : {}),
+        };
+      });
   }
   if (e.condEnabled && e.condQuestionId) {
     q.conditional = { questionId: e.condQuestionId, value: e.condValue };
@@ -330,6 +341,20 @@ function OptionRow({
           className={`flex-1 px-2.5 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-1 transition-all ${isOther ? "border-violet-200 bg-white focus:ring-violet-300 focus:border-violet-400 text-violet-800 font-semibold" : "border-gray-200 bg-white focus:ring-blue-300 focus:border-blue-400"}`}
         />
 
+        {/* Tanga cost input */}
+        <div className="flex items-center gap-1 flex-shrink-0 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
+          <span className="text-[10px] font-bold text-amber-600">🪙</span>
+          <input
+            type="number"
+            min="0"
+            value={opt.tangaCost}
+            onChange={(e) => onChange("tangaCost", e.target.value)}
+            placeholder="0"
+            className="w-10 bg-transparent text-[11px] font-bold text-amber-800 focus:outline-none text-center"
+            title="Tanga narxi"
+          />
+        </div>
+
         {/* Fixed / Boshqa type toggle */}
         <div className="flex rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
           <button
@@ -510,7 +535,7 @@ function QuestionEditorModal({
   const needsPlaceholder = ["text", "textarea", "number"].includes(s.type);
 
   function addOption() {
-    setS((prev) => ({ ...prev, options: [...prev.options, { _key: mkKey(), label: "", value: "", type: "fixed" as const }] }));
+    setS((prev) => ({ ...prev, options: [...prev.options, { _key: mkKey(), label: "", value: "", type: "fixed" as const, tangaCost: "0" }] }));
   }
   function updateOption(i: number, field: keyof EditorOption, val: string) {
     setS((prev) => ({ ...prev, options: prev.options.map((o, idx) => idx === i ? { ...o, [field]: val } : o) }));
@@ -1021,14 +1046,38 @@ function CategoryPanel({
   const allQuestionsForCond = [...cat.questions, ...commonQuestions];
 
   return (
-    <QuestionsPanel
-      title={cat.name}
-      emoji={cat.emoji}
-      subtitle={`${cat.questions.length} ta o'ziga xos savol · ${commonQuestions.length} ta umumiy savol qo'shiladi`}
-      questions={cat.questions}
-      onChange={(qs) => onChange({ ...cat, questions: qs })}
-      allQuestionsForCond={allQuestionsForCond}
-    />
+    <div>
+      {/* Base cost field */}
+      <div className="mb-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+        <span className="text-xl flex-shrink-0">🪙</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-black text-amber-800 uppercase tracking-wide">Bu kategoriya uchun asosiy narx</p>
+          <p className="text-[11px] text-amber-600 mt-0.5">Har qanday taklif yuborishda qo'shiladigan Tanga miqdori</p>
+        </div>
+        <div className="flex items-center gap-1.5 bg-white border border-amber-300 rounded-xl px-3 py-1.5 flex-shrink-0">
+          <input
+            type="number"
+            min="0"
+            value={cat.baseCost ?? 0}
+            onChange={(e) => {
+              const v = parseInt(e.target.value, 10);
+              onChange({ ...cat, baseCost: isNaN(v) ? 0 : Math.max(0, v) });
+            }}
+            className="w-14 bg-transparent text-sm font-extrabold text-amber-900 focus:outline-none text-center"
+          />
+          <span className="text-xs font-bold text-amber-600">Tanga</span>
+        </div>
+      </div>
+
+      <QuestionsPanel
+        title={cat.name}
+        emoji={cat.emoji}
+        subtitle={`${cat.questions.length} ta o'ziga xos savol · ${commonQuestions.length} ta umumiy savol qo'shiladi`}
+        questions={cat.questions}
+        onChange={(qs) => onChange({ ...cat, questions: qs })}
+        allQuestionsForCond={allQuestionsForCond}
+      />
+    </div>
   );
 }
 

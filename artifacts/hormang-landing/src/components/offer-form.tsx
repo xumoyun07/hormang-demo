@@ -8,6 +8,7 @@
  *  - No editable avg-response-time field (removed)
  */
 import { useState, useRef } from "react";
+import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, ChevronLeft, Send, Clock, MapPin, Calendar, FileImage,
@@ -26,6 +27,9 @@ import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questi
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 import { compressImage } from "@/lib/image-utils";
+import { getTangaBalance, spendTangaBalance } from "@/lib/tanga-store";
+import { calculateOfferCost } from "@/lib/offer-cost";
+import { useLocation } from "wouter";
 
 const COMPLETION_OPTIONS = [
   "1 kun", "2–3 kun", "1 hafta", "2 hafta", "1 oy", "Boshqa (kelishiladi)",
@@ -90,8 +94,18 @@ interface Props {
 }
 
 export function OfferForm({ request, onClose, onSubmitted }: Props) {
+  useStoreRefresh();
   const { toast } = useToast();
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
+
+  /* Tanga cost calculation */
+  const offerCost = calculateOfferCost({
+    categoryId: request.categoryId,
+    answers: (request.answers ?? {}) as Record<string, unknown>,
+  });
+  const balance = user ? getTangaBalance(user.id) : 0;
+  const hasEnoughTanga = balance >= offerCost;
 
   /* Form state */
   const [priceRaw, setPriceRaw] = useState("");
@@ -168,6 +182,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
   }
 
   function handleSubmit() {
+    if (!hasEnoughTanga) return;
     if (!validate()) return;
     setSubmitting(true);
 
@@ -206,6 +221,21 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
       return;
     }
 
+    /* Deduct Tanga balance */
+    if (user) {
+      try {
+        spendTangaBalance(user.id, offerCost);
+      } catch (_) {
+        setSubmitting(false);
+        toast({
+          title: "Yetarli Tanga yo'q",
+          description: `Balans yetarli emas. ${offerCost} Tanga kerak.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     updateProviderRequestStatus(request.id, "responded", user?.id ?? "");
     markSeen(request.id);
     createChatFromOffer(
@@ -217,7 +247,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
 
     setTimeout(() => {
       setSubmitting(false);
-      toast({ title: "Taklif muvaffaqiyatli yuborildi!" });
+      toast({ title: `Taklif yuborildi! −${offerCost} Tanga sarflandi.` });
       onSubmitted();
     }, 500);
   }
@@ -260,6 +290,39 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
 
           {/* Scrollable body */}
           <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+            {/* ── Tanga Cost Banner ── */}
+            {hasEnoughTanga ? (
+              <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+                <span className="text-xl flex-shrink-0">🪙</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-extrabold text-amber-900">
+                    Bu taklif yuborish uchun <span className="text-amber-700">{offerCost} Tanga</span> sarflanadi
+                  </p>
+                  <p className="text-[11px] text-amber-600 mt-0.5">
+                    Joriy balans: <strong>{balance} Tanga</strong> → taklif yuborilgandan keyin: <strong>{balance - offerCost} Tanga</strong>
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
+                <span className="text-xl flex-shrink-0">🪙</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-extrabold text-red-800">
+                    Bu taklif uchun <strong>{offerCost} Tanga</strong> kerak
+                  </p>
+                  <p className="text-[11px] text-red-500 mt-0.5">
+                    Sizning balans: <strong>{balance} Tanga</strong>. Yetarli Tanga yo'q.
+                  </p>
+                </div>
+                <button
+                  onClick={() => { onClose(); setLocation("/plans"); }}
+                  className="flex-shrink-0 text-[11px] font-extrabold text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-xl transition-colors"
+                >
+                  Sotib oling
+                </button>
+              </div>
+            )}
 
             {/* ── Request Summary ── */}
             <div className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
@@ -515,30 +578,41 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
           </div>
 
           {/* Bottom actions */}
-          <div className="flex gap-3 px-5 py-4 border-t border-gray-100 flex-shrink-0">
-            <button
-              onClick={onClose}
-              className="flex-1 h-12 rounded-2xl border-2 border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors"
-            >
-              Bekor qilish
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="flex-[2] h-12 rounded-2xl text-white font-extrabold text-sm flex items-center justify-center gap-2 active:scale-[.98] transition-all shadow-lg disabled:opacity-70"
-              style={{ background: "linear-gradient(135deg, #059669 0%, #10B981 100%)" }}
-            >
-              {submitting ? (
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
-                  className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
-                />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-              Taklifni yuborish
-            </button>
+          <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0 space-y-2">
+            {!hasEnoughTanga && (
+              <button
+                onClick={() => { onClose(); setLocation("/plans"); }}
+                className="w-full h-12 rounded-2xl font-extrabold text-sm text-white flex items-center justify-center gap-2 transition-all shadow-lg"
+                style={{ background: "linear-gradient(135deg, #DC2626 0%, #EF4444 100%)" }}
+              >
+                🪙 Tanga sotib oling — {offerCost} Tanga kerak
+              </button>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={onClose}
+                className="flex-1 h-12 rounded-2xl border-2 border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors"
+              >
+                Bekor qilish
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || !hasEnoughTanga}
+                className="flex-[2] h-12 rounded-2xl text-white font-extrabold text-sm flex items-center justify-center gap-2 active:scale-[.98] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ background: hasEnoughTanga ? "linear-gradient(135deg, #059669 0%, #10B981 100%)" : "#9CA3AF" }}
+              >
+                {submitting ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
+                    className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                  />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                {hasEnoughTanga ? `Taklifni yuborish (−${offerCost} 🪙)` : "Tanga yetarli emas"}
+              </button>
+            </div>
           </div>
         </motion.div>
       </motion.div>

@@ -21,6 +21,8 @@ export interface QuestionOption {
   value: string;
   /** "other" → selecting this option reveals a free-text input below it */
   type?: "fixed" | "other";
+  /** Tanga cost added when this option is selected (default 0) */
+  tangaCost?: number;
 }
 
 export interface Question {
@@ -45,6 +47,8 @@ export interface CategoryConfig {
   name: string;
   emoji: string;
   questions: Question[];
+  /** Base Tanga cost for any offer in this category (default 0) */
+  baseCost?: number;
 }
 
 /** Default common questions (editable via admin, persisted separately) */
