@@ -284,14 +284,18 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             </div>
           ))}
 
-          {/* Status banner after messages */}
-          {offer && offer.status !== "pending" && (
-            <StatusBanner status={offer.status} />
-          )}
-
           <div ref={bottomRef} className="h-1" />
         </div>
       </div>
+
+      {/* Status banner — fixed strip above input, never scrolls */}
+      {offer && offer.status !== "pending" && (
+        <div className="shrink-0 bg-white border-t border-gray-100">
+          <div className="max-w-lg mx-auto px-4 py-2">
+            <StatusBanner status={offer.status} />
+          </div>
+        </div>
+      )}
 
       {/* Input — disabled when offer is rejected */}
       {isRejected ? (

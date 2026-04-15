@@ -274,14 +274,18 @@ export default function ChatPage() {
             </div>
           ))}
 
-          {/* Status banner — shown after messages when offer is resolved */}
-          {offer && offer.status !== "pending" && (
-            <StatusBanner status={offer.status} />
-          )}
-
           <div ref={messagesEndRef} className="h-1" />
         </div>
       </div>
+
+      {/* Status banner — fixed strip above input, never scrolls */}
+      {offer && offer.status !== "pending" && (
+        <div className="shrink-0 bg-white border-t border-gray-100">
+          <div className="max-w-lg mx-auto px-4 py-2">
+            <StatusBanner status={offer.status} />
+          </div>
+        </div>
+      )}
 
       {/* Input bar — in flow, sits above BottomNav */}
       <div className="shrink-0 bg-white border-t border-gray-100 z-20 pb-16">
