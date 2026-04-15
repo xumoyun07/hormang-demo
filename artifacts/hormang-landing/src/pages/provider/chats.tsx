@@ -183,10 +183,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   const customerLocal = chat?.customerId ? getLocalProfile(chat.customerId) : null;
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 60);
-    return () => clearTimeout(timer);
+    bottomRef.current?.scrollIntoView({ behavior: "instant" });
   }, [chat?.messages.length]);
 
   function send() {

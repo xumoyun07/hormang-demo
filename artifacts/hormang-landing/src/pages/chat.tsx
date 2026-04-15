@@ -162,7 +162,7 @@ export default function ChatPage() {
   const masterLocal = chat?.masterId ? getLocalProfile(chat.masterId) : null;
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
   }, [chat?.messages.length]);
 
   if (!match || !chat) {
