@@ -387,8 +387,8 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
               </>
             )}
 
-            {/* ── Tranzaksiya ma'lumotlari ─── */}
-            {tangaTx && (
+            {/* ── Tranzaksiya ma'lumotlari — only in read-only (admin / provider history) mode ─── */}
+            {readOnly && tangaTx && (
               <>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   Tranzaksiya ma&apos;lumotlari
