@@ -26,7 +26,7 @@ import {
   type ProviderRequest, type UpcomingService,
 } from "@/lib/provider-store";
 import { markOfferCompleted, getOfferById } from "@/lib/requests-store";
-import { addReview, hasReviewed } from "@/lib/completion-store";
+import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 import { ReviewModal } from "@/components/review-modal";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { getLocalProfile, getCompletionChecks, getCompletionPct } from "@/lib/local-profile";
@@ -138,7 +138,8 @@ function UpcomingServices() {
     e.stopPropagation();
     if (s.offerId) {
       const wasNew = markOfferCompleted(s.offerId);
-      if (wasNew || !hasReviewed(s.offerId, masterId)) {
+      const alreadyReviewed = s.requestId ? hasReviewedRequest(s.requestId, masterId) : false;
+      if (wasNew || !alreadyReviewed) {
         setReviewService(s);
         return;
       }
@@ -148,17 +149,17 @@ function UpcomingServices() {
 
   function handleReviewSubmit(rating: number, text: string) {
     if (!reviewService) return;
-    if (reviewService.customerId) {
+    if (reviewService.customerId && reviewService.requestId) {
       addReview({
-        subjectId: reviewService.customerId,
+        requestId: reviewService.requestId,
+        offerId: reviewService.offerId,
         reviewerId: masterId,
-        reviewerName: [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Usta",
-        reviewerInitials: `${(user?.firstName ?? "U")[0]}${(user?.lastName ?? "")[0]}`.toUpperCase(),
-        reviewerColor: "#6c3fc7",
         reviewerRole: "provider",
-        offerId: reviewService.offerId ?? reviewService.id,
+        reviewedId: reviewService.customerId,
+        reviewedRole: "customer",
         rating,
-        text,
+        comment: text || undefined,
+        serviceCategory: reviewService.title,
       });
     }
     markServiceDone(reviewService.id);

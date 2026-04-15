@@ -25,7 +25,7 @@ import {
   getOfferForChat, markOfferCompleted, getRequestById, sendSystemMessage,
   type Offer,
 } from "@/lib/requests-store";
-import { addReview, hasReviewed } from "@/lib/completion-store";
+import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 import { ReviewModal } from "@/components/review-modal";
 import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
@@ -317,8 +317,9 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   const isCompleted = offer?.status === "completed";
   const canComplete =
     offer &&
+    chat &&
     (offer.status === "accepted" || offer.status === "in_progress") &&
-    !hasReviewed(offer.id, masterId);
+    !hasReviewedRequest(chat.requestId, masterId);
   const canSchedule =
     offer && (offer.status === "accepted" || offer.status === "in_progress") && !isCompleted;
   const customerLocal = chat?.customerId ? getLocalProfile(chat.customerId) : null;
@@ -329,7 +330,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 
   /* Auto-prompt review when the OTHER side marks the offer completed */
   useEffect(() => {
-    if (offer?.status === "completed" && masterId && !hasReviewed(offer.id, masterId)) {
+    if (offer?.status === "completed" && masterId && chat && !hasReviewedRequest(chat.requestId, masterId)) {
       setShowReview(true);
     }
   }, [offer?.status]);
@@ -341,9 +342,11 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   }
 
   function handleComplete() {
-    if (!offer) return;
+    if (!offer || !chat) return;
     markOfferCompleted(offer.id);
-    setShowReview(true);
+    if (!hasReviewedRequest(chat.requestId, masterId)) {
+      setShowReview(true);
+    }
   }
 
   function handleScheduleSave(date: string, time: string, location: string) {
@@ -368,19 +371,16 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 
   function handleReviewSubmit(rating: number, reviewText: string) {
     if (!offer || !chat) return;
-    const firstName = user?.firstName ?? "U";
-    const lastName = user?.lastName ?? "";
-    const initials = `${firstName[0] ?? "U"}${lastName[0] ?? ""}`.toUpperCase();
     addReview({
-      subjectId: chat.customerId,
-      reviewerId: masterId,
-      reviewerName: [firstName, lastName].filter(Boolean).join(" "),
-      reviewerInitials: initials,
-      reviewerColor: "#6c3fc7",
-      reviewerRole: "provider",
+      requestId: chat.requestId,
       offerId: offer.id,
+      reviewerId: masterId,
+      reviewerRole: "provider",
+      reviewedId: chat.customerId,
+      reviewedRole: "customer",
       rating,
-      text: reviewText,
+      comment: reviewText || undefined,
+      serviceCategory: chat.categoryName,
     });
     setShowReview(false);
   }

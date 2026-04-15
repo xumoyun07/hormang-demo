@@ -14,7 +14,7 @@ import {
   Briefcase, Award, ChevronRight,
 } from "lucide-react";
 import { getLocalProfile } from "@/lib/local-profile";
-import { getAverageRating, getReviews, getCompletedCount } from "@/lib/completion-store";
+import { getAverageRatingForUser, getReviewsForUser, getCompletedCount } from "@/lib/completion-store";
 import type {
   ProviderProfileData,
   CustomerProfileData,
@@ -86,8 +86,8 @@ function ProviderPreviewSheet({
   const serviceAreas: string[] =
     local.serviceAreas?.length ? local.serviceAreas : local.region ? [local.region] : [];
 
-  const avgRating = getAverageRating(data.masterId);
-  const reviewCount = getReviews(data.masterId).length;
+  const avgRating = getAverageRatingForUser(data.masterId, "provider");
+  const reviewCount = getReviewsForUser(data.masterId, "provider").length;
   const completedCount = getCompletedCount(data.masterId, "provider");
 
   const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
@@ -382,8 +382,8 @@ function CustomerPreviewSheet({
 
   const customerLocal = data.customerId ? getLocalProfile(data.customerId) : null;
   const photoUrl = customerLocal?.photoUrl ?? data.photoUrl;
-  const custAvgRating = data.customerId ? getAverageRating(data.customerId) : 0;
-  const custReviewCount = data.customerId ? getReviews(data.customerId).length : 0;
+  const custAvgRating = data.customerId ? getAverageRatingForUser(data.customerId, "customer") : 0;
+  const custReviewCount = data.customerId ? getReviewsForUser(data.customerId, "customer").length : 0;
   const custCompletedCount = data.customerId ? getCompletedCount(data.customerId, "customer") : 0;
 
   return (

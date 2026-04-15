@@ -1,33 +1,40 @@
 /**
  * completion-store.ts
- * Tracks reviews (star ratings + text) and per-user / per-role completed counts.
  *
- * Keys:
- *   hormang_reviews                    — Review[]
- *   hormang_completed_provider_{uid}   — number (completed as provider)
- *   hormang_completed_customer_{uid}   — number (completed as customer)
+ * Clean review storage system.
+ * Key: "hormang_reviews_v2"  →  Review[]
+ *
+ * Each Review records:
+ *   - WHO wrote it (reviewerId + reviewerRole)
+ *   - WHO received it (reviewedId + reviewedRole)
+ *   - WHICH request/offer it belongs to
+ *   - rating + optional comment
+ *
+ * Completed-count keys (role-separated, incremented on offer completion):
+ *   hormang_completed_provider_{uid}
+ *   hormang_completed_customer_{uid}
  */
 import { emitStoreChange } from "./store-events";
 
-/* ─── Types ──────────────────────────────────────────────────────── */
+/* ─── Type ───────────────────────────────────────────────────────── */
 
 export interface Review {
   id: string;
-  subjectId: string;        // who is being reviewed
-  reviewerId: string;       // who wrote the review
-  reviewerName: string;
-  reviewerInitials: string;
-  reviewerColor: string;
-  reviewerRole: "customer" | "provider";  // the role of the REVIEWER (not subject)
-  offerId: string;
-  rating: number;           // 1–5
-  text: string;
+  requestId: string;
+  offerId?: string;
+  reviewerId: string;
+  reviewerRole: "customer" | "provider";
+  reviewedId: string;
+  reviewedRole: "customer" | "provider";
+  rating: number;             // 1–5
+  comment?: string;
   createdAt: string;
+  serviceCategory?: string;
 }
 
 /* ─── Keys ───────────────────────────────────────────────────────── */
 
-const REVIEWS_KEY = "hormang_reviews";
+const REVIEWS_KEY = "hormang_reviews_v2";
 
 function completedKey(userId: string, role: "provider" | "customer"): string {
   return `hormang_completed_${role}_${userId}`;
@@ -43,56 +50,82 @@ function readJSON<T>(key: string, fallback: T): T {
   return fallback;
 }
 
-function uid(): string {
+function genId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
-/* ─── Reviews ────────────────────────────────────────────────────── */
-
-/** All reviews where the given user is the SUBJECT (i.e., the one being rated). */
-export function getReviews(subjectId: string): Review[] {
-  if (!subjectId) return [];
-  return readJSON<Review[]>(REVIEWS_KEY, []).filter((r) => r.subjectId === subjectId);
+function allReviews(): Review[] {
+  return readJSON<Review[]>(REVIEWS_KEY, []);
 }
+
+/* ─── Read helpers ───────────────────────────────────────────────── */
 
 /**
- * Reviews where the subject is `subjectId` AND the reviewer had role `byRole`.
- * Use this to get provider reviews from customers, or customer reviews from providers.
+ * All reviews about a specific user in a specific role.
+ * - provider profile  → getReviewsForUser(masterId, "provider")
+ * - customer profile  → getReviewsForUser(customerId, "customer")
  */
-export function getReviewsByRole(subjectId: string, byRole: "customer" | "provider"): Review[] {
-  return getReviews(subjectId).filter((r) => r.reviewerRole === byRole);
+export function getReviewsForUser(userId: string, asRole: "provider" | "customer"): Review[] {
+  if (!userId) return [];
+  return allReviews().filter(
+    (r) => r.reviewedId === userId && r.reviewedRole === asRole
+  );
 }
 
-export function getAverageRating(subjectId: string): number {
-  const reviews = getReviews(subjectId);
+export function getAverageRatingForUser(
+  userId: string,
+  asRole: "provider" | "customer"
+): number {
+  const reviews = getReviewsForUser(userId, asRole);
   if (!reviews.length) return 0;
   const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
   return Math.round(avg * 10) / 10;
 }
 
-export function hasReviewed(offerId: string, reviewerId: string): boolean {
-  return readJSON<Review[]>(REVIEWS_KEY, []).some(
-    (r) => r.offerId === offerId && r.reviewerId === reviewerId
+/**
+ * Has this reviewer already reviewed the given request?
+ * Prevents submitting a second review for the same job.
+ */
+export function hasReviewedRequest(requestId: string, reviewerId: string): boolean {
+  return allReviews().some(
+    (r) => r.requestId === requestId && r.reviewerId === reviewerId
   );
 }
 
-export function addReview(review: Omit<Review, "id" | "createdAt">): void {
-  const all = readJSON<Review[]>(REVIEWS_KEY, []);
-  if (all.some((r) => r.offerId === review.offerId && r.reviewerId === review.reviewerId)) return;
-  const newReview: Review = { ...review, id: uid(), createdAt: new Date().toISOString() };
-  localStorage.setItem(REVIEWS_KEY, JSON.stringify([...all, newReview]));
+/* ─── Write ──────────────────────────────────────────────────────── */
+
+export function addReview(
+  review: Omit<Review, "id" | "createdAt">
+): void {
+  const reviews = allReviews();
+  const isDuplicate = reviews.some(
+    (r) => r.requestId === review.requestId && r.reviewerId === review.reviewerId
+  );
+  if (isDuplicate) return;
+
+  const newReview: Review = {
+    ...review,
+    id: genId(),
+    createdAt: new Date().toISOString(),
+  };
+  localStorage.setItem(REVIEWS_KEY, JSON.stringify([...reviews, newReview]));
   emitStoreChange();
 }
 
-/* ─── Completed Counts (role-separated) ─────────────────────────── */
+/* ─── Completed Counts (role-separated, from completion events) ──── */
 
-/** How many services this user has completed in the given role. */
-export function getCompletedCount(userId: string, role: "provider" | "customer"): number {
+export function getCompletedCount(
+  userId: string,
+  role: "provider" | "customer"
+): number {
   if (!userId) return 0;
   return readJSON<number>(completedKey(userId, role), 0);
 }
 
-export function incrementCompletedCount(userId: string, role: "provider" | "customer"): void {
+export function incrementCompletedCount(
+  userId: string,
+  role: "provider" | "customer"
+): void {
   if (!userId) return;
   const current = getCompletedCount(userId, role);
   localStorage.setItem(completedKey(userId, role), JSON.stringify(current + 1));

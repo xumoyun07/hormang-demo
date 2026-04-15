@@ -19,7 +19,7 @@ import {
   getChatById, sendMessage, getOfferForChat, markOfferCompleted,
   type Chat, type ChatMessage, type Offer,
 } from "@/lib/requests-store";
-import { addReview, hasReviewed } from "@/lib/completion-store";
+import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" });
@@ -188,7 +188,7 @@ export default function ChatPage() {
 
   /* Auto-prompt review when the OTHER side marks the offer completed */
   useEffect(() => {
-    if (offer?.status === "completed" && user?.id && !hasReviewed(offer.id, user.id)) {
+    if (offer?.status === "completed" && user?.id && chat && !hasReviewedRequest(chat.requestId, user.id)) {
       setShowReview(true);
     }
   }, [offer?.status]);
@@ -224,25 +224,25 @@ export default function ChatPage() {
   }
 
   function handleComplete() {
-    if (!offer) return;
+    if (!offer || !chat) return;
     const wasNew = markOfferCompleted(offer.id);
-    if (wasNew || !hasReviewed(offer.id, user?.id ?? "")) {
+    if (wasNew || !hasReviewedRequest(chat.requestId, user?.id ?? "")) {
       setShowReview(true);
     }
   }
 
-  function handleReviewSubmit(rating: number, text: string) {
+  function handleReviewSubmit(rating: number, comment: string) {
     if (!offer || !user || !chat) return;
     addReview({
-      subjectId: chat.masterId,
-      reviewerId: user.id,
-      reviewerName: [user.firstName, user.lastName].filter(Boolean).join(" ") || "Mijoz",
-      reviewerInitials: chat.customerInitials,
-      reviewerColor: chat.customerColor,
-      reviewerRole: "customer",
+      requestId: chat.requestId,
       offerId: offer.id,
+      reviewerId: user.id,
+      reviewerRole: "customer",
+      reviewedId: chat.masterId,
+      reviewedRole: "provider",
       rating,
-      text,
+      comment: comment || undefined,
+      serviceCategory: (chat as any).categoryName ?? undefined,
     });
     setShowReview(false);
   }
@@ -257,8 +257,9 @@ export default function ChatPage() {
 
   const canComplete =
     offer &&
+    chat &&
     (offer.status === "accepted" || offer.status === "in_progress") &&
-    !hasReviewed(offer.id, user?.id ?? "");
+    !hasReviewedRequest(chat.requestId, user?.id ?? "");
 
   const alreadyCompleted = offer?.status === "completed";
 
