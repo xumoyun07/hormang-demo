@@ -272,6 +272,12 @@ export default function PlansPage() {
           <p className="text-amber-200/70 text-[10px] mt-3">
             * Tangalar mijoz xizmat-so'rovlariga ijrochi takliflarini yuborish uchun ishlatiladi
           </p>
+          <button
+            onClick={() => setLocation("/provider/tanga-history")}
+            className="mt-3 flex items-center gap-1.5 text-[11px] font-bold text-amber-100 hover:text-white transition-colors"
+          >
+            🧾 Tanga sarflash tarixini ko'rish →
+          </button>
         </motion.div>
 
         {/* Plans */}

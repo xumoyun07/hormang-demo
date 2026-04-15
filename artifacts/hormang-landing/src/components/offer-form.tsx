@@ -29,6 +29,7 @@ import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 import { compressImage } from "@/lib/image-utils";
 import { getTangaBalance, spendTangaBalance } from "@/lib/tanga-store";
 import { calculateOfferCost } from "@/lib/offer-cost";
+import { recordTangaTransaction } from "@/lib/tanga-history-store";
 import { useLocation } from "wouter";
 
 const COMPLETION_OPTIONS = [
@@ -221,7 +222,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
       return;
     }
 
-    /* Deduct Tanga balance */
+    /* Deduct Tanga balance and record transaction */
     if (user) {
       try {
         spendTangaBalance(user.id, offerCost);
@@ -234,6 +235,15 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
         });
         return;
       }
+      recordTangaTransaction({
+        userId: user.id,
+        offerId: offer.id,
+        requestId: request.id,
+        categoryName: request.categoryName ?? "",
+        categoryEmoji: request.emoji,
+        description: request.categoryName ?? "",
+        amount: offerCost,
+      });
     }
 
     updateProviderRequestStatus(request.id, "responded", user?.id ?? "");

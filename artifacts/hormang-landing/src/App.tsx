@@ -25,6 +25,7 @@ import ProviderHomePage from "@/pages/provider/home";
 import ProviderRequestsPage from "@/pages/provider/requests";
 import ProviderChatsPage from "@/pages/provider/chats";
 import PlansPage from "@/pages/plans";
+import TangaHistoryPage from "@/pages/provider/tanga-history";
 import TestPage from "@/pages/test";
 
 const queryClient = new QueryClient({
@@ -127,6 +128,9 @@ function Router() {
       </Route>
       <Route path="/plans">
         {() => <ProtectedRoute component={PlansPage} />}
+      </Route>
+      <Route path="/provider/tanga-history">
+        {() => <ProtectedRoute component={TangaHistoryPage} />}
       </Route>
       <Route path="/test" component={TestPage} />
       <Route component={NotFound} />

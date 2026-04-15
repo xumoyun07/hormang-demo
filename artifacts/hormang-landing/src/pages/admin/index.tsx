@@ -31,6 +31,13 @@ import {
 } from "lucide-react";
 import { onStoreChange, emitStoreChange } from "@/lib/store-events";
 import { formatDateTime, formatMonthYear } from "@/lib/date-utils";
+import { OfferDetailModal } from "@/components/offer-detail-modal";
+import {
+  getAllTangaTransactions, getTangaTransactions,
+  type TangaTransaction as TangaTx,
+} from "@/lib/tanga-history-store";
+import { getTangaBalance } from "@/lib/tanga-store";
+import { getOffers, type Offer as BuyerOfferFull } from "@/lib/requests-store";
 
 /* ─── Credentials ───────────────────────────────────────────────── */
 const ADMIN_USER = "hormangVIP";
@@ -1077,6 +1084,8 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
   const [filterStatus, setFilterStatus] = useState<StatusFilter>("all");
   const [filterCats, setFilterCats]     = useState<Set<string>>(new Set());
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [txUserId, setTxUserId]         = useState<string | null>(null);
+  const [txUserName, setTxUserName]     = useState<string>("");
 
   const load = useCallback(() => {
     const allOffers   = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
@@ -1334,7 +1343,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
                     "Foydalanuvchi", "Rol", "Telefon",
                     "Joylashuv / Hudud", "Toifalar",
                     "Takliflar / Qabul", "Javob vaqti",
-                    "So'rovlar", "Holat", "Qo'shilgan", "Amallar",
+                    "So'rovlar", "Tanga 🪙", "Holat", "Qo'shilgan", "Amallar",
                   ].map((h) => (
                     <th key={h}
                       className="text-left text-[9px] font-bold text-red-400 uppercase tracking-widest px-3 py-3 whitespace-nowrap">
@@ -1470,6 +1479,29 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
                         ) : <span className="text-gray-300">—</span>}
                       </td>
 
+                      {/* Tanga balance */}
+                      <td className="px-3 py-3">
+                        {(() => {
+                          const bal = parseInt(localStorage.getItem(`provider_tokens_${u.userId}`) ?? "0", 10);
+                          const txCount = getTangaTransactions(u.userId).length;
+                          return (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[12px] font-extrabold text-amber-600">
+                                {bal > 0 ? `${bal} 🪙` : "—"}
+                              </span>
+                              {txCount > 0 && (
+                                <button
+                                  onClick={() => { setTxUserId(u.userId); setTxUserName(u.name); }}
+                                  className="text-[9px] font-bold text-violet-600 hover:text-violet-800 underline whitespace-nowrap"
+                                >
+                                  {txCount} tranzaksiya
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
+
                       {/* Status */}
                       <td className="px-3 py-3">
                         <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border whitespace-nowrap ${
@@ -1537,7 +1569,122 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
           <AdminUserProfileModal user={selectedUser} onClose={() => setSelectedUser(null)} />
         )}
       </AnimatePresence>
+
+      {/* User transactions modal */}
+      <AnimatePresence>
+        {txUserId && (
+          <AdminUserTxModal
+            userId={txUserId}
+            userName={txUserName}
+            onClose={() => setTxUserId(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+/* ─── Admin User Transactions Modal ─────────────────────────────────── */
+function AdminUserTxModal({
+  userId, userName, onClose,
+}: {
+  userId: string; userName: string; onClose: () => void;
+}) {
+  const txs = getTangaTransactions(userId);
+  const allOffers = getOffers() as BuyerOfferFull[];
+  const balance = parseInt(localStorage.getItem(`provider_tokens_${userId}`) ?? "0", 10);
+  const totalSpent = txs.reduce((s, t) => s + t.amount, 0);
+  const [viewOfferId, setViewOfferId] = useState<string | null>(null);
+  const viewedOffer = viewOfferId ? allOffers.find((o) => o.id === viewOfferId) : undefined;
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center"
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
+        <motion.div
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "spring", stiffness: 380, damping: 36 }}
+          className="bg-white w-full max-w-lg rounded-t-3xl max-h-[92vh] flex flex-col"
+        >
+          {/* Header */}
+          <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-gray-100 flex-shrink-0">
+            <div className="flex-1">
+              <h2 className="font-extrabold text-base text-gray-900">{userName} — Tanga tarixi</h2>
+              <p className="text-xs text-gray-400">{txs.length} ta tranzaksiya · Joriy balans: {balance} 🪙</p>
+            </div>
+            <button onClick={onClose}
+              className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Stats */}
+          <div className="px-5 py-3 border-b border-gray-50 grid grid-cols-3 gap-3 flex-shrink-0">
+            <div className="text-center">
+              <p className="text-[10px] text-gray-400">Balans</p>
+              <p className="font-extrabold text-amber-600 text-base">{balance} 🪙</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] text-gray-400">Jami sarflandi</p>
+              <p className="font-extrabold text-red-600 text-base">{totalSpent} 🪙</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] text-gray-400">Tranzaksiyalar</p>
+              <p className="font-extrabold text-gray-700 text-base">{txs.length}</p>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="overflow-y-auto flex-1 px-5 py-4">
+            {txs.length === 0 ? (
+              <div className="text-center py-10">
+                <p className="text-2xl mb-2">🪙</p>
+                <p className="text-gray-400 font-semibold text-sm">Hali tranzaksiyalar yo'q</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {txs.map((tx) => {
+                  const offer = allOffers.find((o) => o.id === tx.offerId);
+                  return (
+                    <div key={tx.id} className="bg-gray-50 rounded-xl p-3 flex items-center gap-3 border border-gray-100">
+                      <span className="text-xl flex-shrink-0">{tx.categoryEmoji || "📋"}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-800 text-xs truncate">{tx.categoryName}</p>
+                        <p className="text-[10px] text-gray-400">
+                          {new Date(tx.createdAt).toLocaleDateString("uz-UZ")}&ensp;
+                          {new Date(tx.createdAt).toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                      <span className="font-extrabold text-amber-600 text-sm flex-shrink-0">−{tx.amount} 🪙</span>
+                      {offer && (
+                        <button
+                          onClick={() => setViewOfferId(offer.id)}
+                          className="px-2 py-1 rounded-lg bg-violet-50 text-violet-600 text-[10px] font-bold hover:bg-violet-100 transition-colors border border-violet-100 flex-shrink-0">
+                          Batafsil
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+
+      <AnimatePresence>
+        {viewedOffer && (
+          <OfferDetailModal offer={viewedOffer} onClose={() => setViewOfferId(null)} />
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -1545,6 +1692,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
    MONETIZATION SECTION — no DEFAULT_TIERS, load from localStorage only
    ════════════════════════════════════════════════════════════════════ */
 function MonetizationSection({ refreshKey }: { refreshKey: number }) {
+  const [monoTab, setMonoTab] = useState<"tiers" | "transactions">("tiers");
   const [tiers, setTiers] = useState<PricingTier[]>(() => readKey<PricingTier[]>(K.PRICING_TIERS, []));
   const [editId, setEditId]               = useState<string | null>(null);
   const [editName, setEditName]           = useState("");
@@ -1640,10 +1788,29 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-extrabold text-gray-900">Monetizatsiya</h2>
-        <p className="text-sm text-gray-500">Narx rejalari va daromad boshqaruvi</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-lg font-extrabold text-gray-900">Monetizatsiya</h2>
+          <p className="text-sm text-gray-500">Narx rejalari va daromad boshqaruvi</p>
+        </div>
+        <div className="flex gap-1 p-1 rounded-xl bg-gray-100 flex-shrink-0">
+          {(["tiers", "transactions"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setMonoTab(tab)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                monoTab === tab
+                  ? "bg-white text-red-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab === "tiers" ? "Narx Rejalari" : "🪙 Token Tarixi"}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {monoTab === "tiers" && <>
 
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
@@ -1843,6 +2010,150 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
           </div>
         )}
       </div>
+
+      </>}
+
+      {monoTab === "transactions" && (
+        <TangaTransactionsPanel refreshKey={refreshKey} />
+      )}
+
+    </div>
+  );
+}
+
+/* ─── Global Tanga Transactions Panel ───────────────────────────────── */
+function TangaTransactionsPanel({ refreshKey }: { refreshKey: number }) {
+  const [txs, setTxs] = useState<TangaTx[]>([]);
+  const [search, setSearch] = useState("");
+  const [filterDate, setFilterDate] = useState<"all" | "today" | "month">("all");
+  const [viewOfferId, setViewOfferId] = useState<string | null>(null);
+
+  const load = useCallback(() => { setTxs(getAllTangaTransactions()); }, []);
+  useEffect(() => { load(); }, [load, refreshKey]);
+
+  const allOffers = getOffers() as BuyerOfferFull[];
+
+  /* Summary stats */
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const monthStr = now.toISOString().slice(0, 7);
+  const todaySpent  = txs.filter((t) => t.createdAt.startsWith(todayStr)).reduce((s, t) => s + t.amount, 0);
+  const monthSpent  = txs.filter((t) => t.createdAt.startsWith(monthStr)).reduce((s, t) => s + t.amount, 0);
+  const totalSpent  = txs.reduce((s, t) => s + t.amount, 0);
+
+  const filtered = txs.filter((t) => {
+    if (search) {
+      const q = search.toLowerCase();
+      if (!t.categoryName.toLowerCase().includes(q) && !t.userId.includes(q) && !t.offerId.includes(q)) return false;
+    }
+    if (filterDate === "today" && !t.createdAt.startsWith(todayStr)) return false;
+    if (filterDate === "month" && !t.createdAt.startsWith(monthStr)) return false;
+    return true;
+  });
+
+  const viewedOffer = viewOfferId ? allOffers.find((o) => o.id === viewOfferId) : undefined;
+
+  return (
+    <div className="space-y-4">
+      {/* Summary stats */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Bugun sarflandi", value: todaySpent, color: "text-amber-600" },
+          { label: "Bu oy sarflandi", value: monthSpent, color: "text-violet-600" },
+          { label: "Jami sarflandi", value: totalSpent, color: "text-red-600" },
+        ].map((s) => (
+          <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+            <p className="text-[10px] font-semibold text-gray-400 mb-1">{s.label}</p>
+            <p className={`text-xl font-extrabold ${s.color}`}>{s.value} 🪙</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Ijrochi ID, kategoriya bo'yicha qidirish..."
+            className={`${inputCls} w-full pl-9`} />
+        </div>
+        <select value={filterDate} onChange={(e) => setFilterDate(e.target.value as "all" | "today" | "month")}
+          className={inputCls}>
+          <option value="all">Barcha vaqt</option>
+          <option value="today">Bugun</option>
+          <option value="month">Bu oy</option>
+        </select>
+        <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors border border-red-100">
+          <RefreshCw className="w-3.5 h-3.5" /> Yangilash
+        </button>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {filtered.length === 0 ? (
+          <div className="py-12 text-center">
+            <p className="text-2xl mb-2">🪙</p>
+            <p className="text-gray-400 font-semibold text-sm">
+              {txs.length === 0 ? "Hali tranzaksiyalar yo'q" : "Topilmadi"}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-red-50/40">
+                  {["Ijrochi ID", "Sana va vaqt", "Kategoriya", "Sarflandi", "Offer ID", "Amal"].map((h) => (
+                    <th key={h} className="text-left text-[9px] font-bold text-red-400 uppercase tracking-widest px-3 py-3 whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filtered.map((tx) => {
+                  const offer = allOffers.find((o) => o.id === tx.offerId);
+                  return (
+                    <tr key={tx.id} className="hover:bg-red-50/20 transition-colors">
+                      <td className="px-3 py-3 font-mono text-[10px] text-gray-500">{tx.userId.slice(0, 14)}</td>
+                      <td className="px-3 py-3 text-[11px] text-gray-600 whitespace-nowrap">
+                        {new Date(tx.createdAt).toLocaleDateString("uz-UZ")}
+                        {" "}
+                        {new Date(tx.createdAt).toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" })}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <span>{tx.categoryEmoji || "📋"}</span>
+                          <span className="text-[11px] font-semibold text-gray-700">{tx.categoryName}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className="font-extrabold text-amber-600 text-[12px]">−{tx.amount} 🪙</span>
+                      </td>
+                      <td className="px-3 py-3 font-mono text-[10px] text-gray-400">{tx.offerId.slice(0, 12)}</td>
+                      <td className="px-3 py-3">
+                        {offer && (
+                          <button
+                            onClick={() => setViewOfferId(offer.id)}
+                            className="px-2 py-1 rounded-lg bg-violet-50 text-violet-600 text-[10px] font-bold hover:bg-violet-100 transition-colors border border-violet-100">
+                            Batafsil
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      <p className="text-[11px] text-gray-400 text-right">{filtered.length} / {txs.length} tranzaksiya</p>
+
+      <AnimatePresence>
+        {viewedOffer && (
+          <OfferDetailModal offer={viewedOffer} onClose={() => setViewOfferId(null)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

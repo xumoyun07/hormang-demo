@@ -932,7 +932,7 @@ function QuestionCard({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-all duration-200">
         <button onClick={onEdit} className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
           <Edit3 className="w-3.5 h-3.5" />
         </button>

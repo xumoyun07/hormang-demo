@@ -17,6 +17,7 @@ import {
   type Offer,
 } from "@/lib/requests-store";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
+import { getTransactionByOfferId } from "@/lib/tanga-history-store";
 import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questionnaire-store";
 import { formatDate as formatUzDate } from "@/lib/date-utils";
 import { getLocalProfile } from "@/lib/local-profile";
@@ -130,6 +131,9 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
 
   /* Customer uploaded photos */
   const customerPhotoUrls = req?.answers ? getAnswerImageUrls(req.answers as Record<string, unknown>) : [];
+
+  /* Tanga transaction for this offer */
+  const tangaTx = getTransactionByOfferId(offer.id);
 
   /* Provider offer attachment images */
   const offerImageUrls = (offer.fileUrls ?? []).filter(
@@ -372,6 +376,42 @@ export function OfferDetailModal({ offer, onClose }: OfferDetailModalProps) {
                       />
                     </div>
                   )}
+                </div>
+              </>
+            )}
+
+            {/* ── Tranzaksiya ma'lumotlari ─── */}
+            {tangaTx && (
+              <>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  Tranzaksiya ma&apos;lumotlari
+                </p>
+                <div className="bg-amber-50 border border-amber-100 rounded-2xl overflow-hidden">
+                  <div className="px-4 py-3 flex items-center gap-3 border-b border-amber-100">
+                    <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-lg flex-shrink-0">
+                      🪙
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wide">
+                        Sarflangan Tanga
+                      </p>
+                      <p className="font-extrabold text-amber-700 text-base leading-tight">
+                        −{tangaTx.amount} Tanga
+                      </p>
+                    </div>
+                  </div>
+                  <div className="px-4 py-2.5">
+                    <p className="text-[10px] text-amber-600 font-semibold">
+                      Sana: {formatDate(tangaTx.createdAt)}&ensp;·&ensp;
+                      {new Date(tangaTx.createdAt).toLocaleTimeString("uz-Latn-UZ", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    <p className="text-[10px] text-amber-500 font-mono mt-0.5">
+                      ID: {tangaTx.id.slice(0, 24)}
+                    </p>
+                  </div>
                 </div>
               </>
             )}
