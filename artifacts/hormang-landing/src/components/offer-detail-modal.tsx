@@ -107,8 +107,9 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
 
   const isAccepted = liveOffer.status === "accepted";
   const isRejected = liveOffer.status === "rejected";
+  const isCompleted = liveOffer.status === "completed" || liveOffer.status === "in_progress";
   /* Can still accept: offer is pending and no sibling offer is accepted */
-  const canAccept = !isAccepted && !isRejected && !anyAccepted;
+  const canAccept = !isAccepted && !isRejected && !isCompleted && !anyAccepted;
 
   const req = getRequestById(offer.requestId);
   const providerLocal = getLocalProfile(offer.masterId);
@@ -203,7 +204,11 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
             <div className="flex-1">
               <h2 className="font-extrabold text-base text-gray-900">Taklif tafsilotlari</h2>
               <p className="text-xs text-gray-400">
-                {readOnly ? "Faqat ko'rish rejimi" : "Ko'rish rejimi · o'qish uchun"}
+                {isCompleted
+                  ? "✅ Xizmat yakunlangan"
+                  : readOnly
+                  ? "Faqat ko'rish rejimi"
+                  : "Ko'rish rejimi · o'qish uchun"}
               </p>
             </div>
             <button

@@ -1,10 +1,11 @@
 /**
  * completion-store.ts
- * Tracks reviews (star ratings + text) and per-user completed counts.
+ * Tracks reviews (star ratings + text) and per-user / per-role completed counts.
  *
  * Keys:
- *   hormang_reviews         — Review[]
- *   hormang_completed_{uid} — number
+ *   hormang_reviews                    — Review[]
+ *   hormang_completed_provider_{uid}   — number (completed as provider)
+ *   hormang_completed_customer_{uid}   — number (completed as customer)
  */
 import { emitStoreChange } from "./store-events";
 
@@ -17,7 +18,7 @@ export interface Review {
   reviewerName: string;
   reviewerInitials: string;
   reviewerColor: string;
-  reviewerRole: "customer" | "provider";
+  reviewerRole: "customer" | "provider";  // the role of the REVIEWER (not subject)
   offerId: string;
   rating: number;           // 1–5
   text: string;
@@ -28,8 +29,8 @@ export interface Review {
 
 const REVIEWS_KEY = "hormang_reviews";
 
-function completedKey(userId: string): string {
-  return `hormang_completed_${userId}`;
+function completedKey(userId: string, role: "provider" | "customer"): string {
+  return `hormang_completed_${role}_${userId}`;
 }
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
@@ -48,8 +49,18 @@ function uid(): string {
 
 /* ─── Reviews ────────────────────────────────────────────────────── */
 
+/** All reviews where the given user is the SUBJECT (i.e., the one being rated). */
 export function getReviews(subjectId: string): Review[] {
+  if (!subjectId) return [];
   return readJSON<Review[]>(REVIEWS_KEY, []).filter((r) => r.subjectId === subjectId);
+}
+
+/**
+ * Reviews where the subject is `subjectId` AND the reviewer had role `byRole`.
+ * Use this to get provider reviews from customers, or customer reviews from providers.
+ */
+export function getReviewsByRole(subjectId: string, byRole: "customer" | "provider"): Review[] {
+  return getReviews(subjectId).filter((r) => r.reviewerRole === byRole);
 }
 
 export function getAverageRating(subjectId: string): number {
@@ -73,16 +84,17 @@ export function addReview(review: Omit<Review, "id" | "createdAt">): void {
   emitStoreChange();
 }
 
-/* ─── Completed Counts ───────────────────────────────────────────── */
+/* ─── Completed Counts (role-separated) ─────────────────────────── */
 
-export function getCompletedCount(userId: string): number {
+/** How many services this user has completed in the given role. */
+export function getCompletedCount(userId: string, role: "provider" | "customer"): number {
   if (!userId) return 0;
-  return readJSON<number>(completedKey(userId), 0);
+  return readJSON<number>(completedKey(userId, role), 0);
 }
 
-export function incrementCompletedCount(userId: string): void {
+export function incrementCompletedCount(userId: string, role: "provider" | "customer"): void {
   if (!userId) return;
-  const current = getCompletedCount(userId);
-  localStorage.setItem(completedKey(userId), JSON.stringify(current + 1));
+  const current = getCompletedCount(userId, role);
+  localStorage.setItem(completedKey(userId, role), JSON.stringify(current + 1));
   emitStoreChange();
 }

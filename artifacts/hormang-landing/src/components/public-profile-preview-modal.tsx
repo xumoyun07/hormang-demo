@@ -88,7 +88,7 @@ function ProviderPreviewSheet({
 
   const avgRating = getAverageRating(data.masterId);
   const reviewCount = getReviews(data.masterId).length;
-  const completedCount = getCompletedCount(data.masterId);
+  const completedCount = getCompletedCount(data.masterId, "provider");
 
   const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
 
@@ -384,7 +384,7 @@ function CustomerPreviewSheet({
   const photoUrl = customerLocal?.photoUrl ?? data.photoUrl;
   const custAvgRating = data.customerId ? getAverageRating(data.customerId) : 0;
   const custReviewCount = data.customerId ? getReviews(data.customerId).length : 0;
-  const custCompletedCount = data.customerId ? getCompletedCount(data.customerId) : 0;
+  const custCompletedCount = data.customerId ? getCompletedCount(data.customerId, "customer") : 0;
 
   return (
     <>

@@ -422,7 +422,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
 
   const avgRating      = user?.id ? getAverageRating(user.id) : 0;
   const reviewCount    = user?.id ? getReviews(user.id).length : 0;
-  const completedCount = user?.id ? getCompletedCount(user.id) : 0;
+  const completedCount = user?.id ? getCompletedCount(user.id, "provider") : 0;
 
   const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`;
   const hasPhoto = !!local.photoUrl;

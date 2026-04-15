@@ -186,6 +186,13 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
   }, [chat?.messages.length]);
 
+  /* Auto-prompt review when the OTHER side marks the offer completed */
+  useEffect(() => {
+    if (offer?.status === "completed" && user?.id && !hasReviewed(offer.id, user.id)) {
+      setShowReview(true);
+    }
+  }, [offer?.status]);
+
   if (!match || !chat) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

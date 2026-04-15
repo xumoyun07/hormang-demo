@@ -253,9 +253,9 @@ export function markOfferCompleted(offerId: string): boolean {
   const request = getRequestById(target.requestId);
   if (request) {
     updateRequestStatus(target.requestId, "completed");
-    if (request.customerId) incrementCompletedCount(request.customerId);
+    if (request.customerId) incrementCompletedCount(request.customerId, "customer");
   }
-  incrementCompletedCount(target.masterId);
+  incrementCompletedCount(target.masterId, "provider");
 
   sendSystemMessage(`${target.requestId}_${target.masterId}`, "✅ Xizmat yakunlandi! Hamkorlik uchun rahmat.");
   return true;

@@ -327,6 +327,13 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
     bottomRef.current?.scrollIntoView({ behavior: "instant" });
   }, [chat?.messages.length]);
 
+  /* Auto-prompt review when the OTHER side marks the offer completed */
+  useEffect(() => {
+    if (offer?.status === "completed" && masterId && !hasReviewed(offer.id, masterId)) {
+      setShowReview(true);
+    }
+  }, [offer?.status]);
+
   function send() {
     if (!text.trim() || isRejected) return;
     sendProviderMessage(chatId, "provider", text.trim());
