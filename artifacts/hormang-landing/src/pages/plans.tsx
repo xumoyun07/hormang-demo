@@ -15,6 +15,7 @@ import {
 const GOLD_GRAD = "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
 const GOLD_DARK = "linear-gradient(135deg, #f59e0b 0%, #92400e 100%)";
 
+/* ─── Coin Icon ──────────────────────────────────────────────────── */
 export function CoinIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
   return (
     <div
@@ -37,6 +38,7 @@ export function CoinIcon({ size = 20, className = "" }: { size?: number; classNa
   );
 }
 
+/* ─── Tanga Balance Chip ─────────────────────────────────────────── */
 export function TangaChip({ userId, onClick }: { userId: string; onClick?: () => void }) {
   useStoreRefresh();
   const balance = getTangaBalance(userId);
@@ -51,6 +53,7 @@ export function TangaChip({ userId, onClick }: { userId: string; onClick?: () =>
   );
 }
 
+/* ─── Countdown hook ─────────────────────────────────────────────── */
 function useCountdown(validUntil?: string): string | null {
   const [label, setLabel] = useState<string | null>(null);
 
