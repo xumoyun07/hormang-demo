@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Timer, Sparkles, Check, Zap } from "lucide-react";
+import { Timer, Sparkles } from "lucide-react";
 import logoImg from "/hormang-logo.png";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { BottomNav } from "@/components/bottom-nav";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import {
-  getTangaBalance, addTangaBalance, getActiveTiers, getEffectivePrice, type PricingTier,
-  isSaleActive, getSaleRemaining, incrementSalePurchaseCount,
+  getTangaBalance, addTangaBalance, getActiveTiers, type PricingTier,
+  incrementSalePurchaseCount,
 } from "@/lib/tanga-store";
 
 const GOLD_GRAD = "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
@@ -85,63 +85,28 @@ interface PlanCardProps {
   onBuy: () => void;
 }
 
-function fmtMoney(n: number) {
-  return n === 0 ? "Bepul" : n.toLocaleString("uz-UZ") + " so'm";
-}
-
 function PlanCard({ tier, buying, bought, onBuy }: PlanCardProps) {
   const remaining = useCountdown(tier.validUntil);
-  const effectivePrice = getEffectivePrice(tier);
-  const onSale = isSaleActive(tier);
-  const saleRemaining = getSaleRemaining(tier);
-
   return (
     <motion.div
-      className="bg-white rounded-2xl border shadow-sm overflow-hidden"
-      style={{ borderColor: tier.color + "44" }}
+      className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden"
       whileHover={{ y: -2 }}
       transition={{ type: "spring", stiffness: 300, damping: 24 }}
     >
-      {/* Color bar */}
-      <div className="h-1.5 w-full" style={{ background: tier.color }} />
-
       <div className="p-4">
-        {/* Name + credits */}
-        <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="flex items-start justify-between gap-3 mb-3">
           <div>
             <h3 className="font-bold text-gray-900">{tier.name}</h3>
-            {tier.desc ? <p className="text-xs text-gray-400 mt-0.5">{tier.desc}</p> : null}
+            {tier.desc ? <p className="text-xs text-gray-400 mt-1">{tier.desc}</p> : null}
           </div>
-          <div className="text-right flex-shrink-0">
-            <div className="font-black text-xl" style={{ color: tier.color }}>
-              {tier.credits}
-              {(tier.bonusTokens ?? 0) > 0 && (
-                <span className="text-xs font-bold text-emerald-600 ml-1">+{tier.bonusTokens}</span>
-              )}
-            </div>
+          <div className="text-right">
+            <div className="font-black text-xl text-amber-600">{tier.credits}</div>
             <div className="text-[10px] text-gray-400">Tanga</div>
           </div>
         </div>
 
-        {/* Price */}
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-sm font-bold text-gray-700">{fmtMoney(effectivePrice)}</span>
-          {onSale && tier.salePrice !== undefined && tier.price > tier.salePrice && (
-            <span className="text-xs text-gray-400 line-through">{fmtMoney(tier.price)}</span>
-          )}
-          {onSale && <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-full">CHEGIRMA</span>}
-        </div>
-
-        {/* Sale remaining */}
-        {saleRemaining !== null && (
-          <p className="text-[11px] text-rose-600 font-semibold mb-2 flex items-center gap-1">
-            <Zap className="w-3 h-3" /> {saleRemaining} ta qoldi
-          </p>
-        )}
-
-        {/* Countdown */}
         {remaining && (
-          <p className="text-[11px] text-amber-700 font-semibold mb-2 flex items-center gap-1">
+          <p className="text-[11px] text-amber-700 font-semibold mb-3 flex items-center gap-1">
             <Timer className="w-3 h-3" /> {remaining}
           </p>
         )}
@@ -149,12 +114,10 @@ function PlanCard({ tier, buying, bought, onBuy }: PlanCardProps) {
         <button
           onClick={onBuy}
           disabled={buying || bought}
-          className="w-full h-11 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-60 flex items-center justify-center gap-1.5"
-          style={{ background: bought ? "#10B981" : tier.color }}
+          className="w-full h-11 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-60"
+          style={{ background: bought ? "#10B981" : GOLD_GRAD }}
         >
-          {buying ? "Sotib olinmoqda..." : bought ? (
-            <><Check className="w-4 h-4" /> Sotib olindi</>
-          ) : "Sotib olish"}
+          {buying ? "Sotib olinmoqda..." : bought ? "Sotib olindi" : "Sotib olish"}
         </button>
       </div>
     </motion.div>
