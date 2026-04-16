@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Timer, Sparkles, Check, Zap } from "lucide-react";
+import { Timer, Sparkles, Check, Zap } from "lucide-react";
+import logoImg from "/hormang-logo.png";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { BottomNav } from "@/components/bottom-nav";
 import { useAuth } from "@/contexts/auth-context";
@@ -14,7 +15,6 @@ import {
 const GOLD_GRAD = "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
 const GOLD_DARK = "linear-gradient(135deg, #f59e0b 0%, #92400e 100%)";
 
-/* ─── Coin Icon ──────────────────────────────────────────────────── */
 export function CoinIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
   return (
     <div
@@ -37,7 +37,6 @@ export function CoinIcon({ size = 20, className = "" }: { size?: number; classNa
   );
 }
 
-/* ─── Tanga Balance Chip ─────────────────────────────────────────── */
 export function TangaChip({ userId, onClick }: { userId: string; onClick?: () => void }) {
   useStoreRefresh();
   const balance = getTangaBalance(userId);
@@ -52,7 +51,6 @@ export function TangaChip({ userId, onClick }: { userId: string; onClick?: () =>
   );
 }
 
-/* ─── Countdown hook ─────────────────────────────────────────────── */
 function useCountdown(validUntil?: string): string | null {
   const [label, setLabel] = useState<string | null>(null);
 
@@ -77,167 +75,90 @@ function useCountdown(validUntil?: string): string | null {
   return label;
 }
 
-/* ─── Plan Card ──────────────────────────────────────────────────── */
-function PlanCard({
-  tier, buying, bought, onBuy,
-}: {
+interface PlanCardProps {
   tier: PricingTier;
   buying: boolean;
   bought: boolean;
   onBuy: () => void;
-}) {
-  const countdown = useCountdown(tier.validUntil);
-  const isExpired = tier.validUntil ? new Date(tier.validUntil) <= new Date() : false;
-  const saleActive = isSaleActive(tier);
-  const effectivePrice = saleActive ? tier.salePrice! : tier.price;
-  const remaining = getSaleRemaining(tier);
-  const totalTokens = tier.credits + (tier.bonusTokens ?? 0);
+}
 
-  if (bought) {
-    return (
-      <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[220px] gap-2">
-        <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
-          <Check className="w-6 h-6 text-emerald-600" />
-        </div>
-        <p className="font-extrabold text-emerald-700 text-sm">Muvaffaqiyatli!</p>
-        <p className="text-xs text-emerald-600">{totalTokens} Tanga qo'shildi 🎉</p>
-      </div>
-    );
-  }
-
-  if (buying) {
-    return (
-      <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[220px] gap-3">
-        <div className="w-10 h-10 rounded-full border-[3px] border-amber-400 border-t-transparent animate-spin" />
-        <p className="text-xs font-semibold text-gray-400">Sotib olinmoqda…</p>
-      </div>
-    );
-  }
-
+function PlanCard({ tier, buying, bought, onBuy }: PlanCardProps) {
+  const remaining = useCountdown(tier.validUntil);
   return (
-    <div className={`bg-white rounded-2xl border overflow-hidden shadow-sm transition-opacity ${isExpired ? "opacity-60" : "border-amber-100"}`}>
-      <div className="h-1.5 w-full" style={{ background: GOLD_GRAD }} />
+    <motion.div
+      className="bg-white rounded-2xl border border-amber-100 shadow-sm overflow-hidden"
+      whileHover={{ y: -2 }}
+      transition={{ type: "spring", stiffness: 300, damping: 24 }}
+    >
       <div className="p-4">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="flex items-start justify-between gap-3 mb-3">
           <div>
-            <p className="font-extrabold text-sm text-gray-900">{tier.name}</p>
-            {tier.desc && <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">{tier.desc}</p>}
+            <h3 className="font-bold text-gray-900">{tier.name}</h3>
           </div>
-          {(tier.bonusTokens ?? 0) > 0 && (
-            <span className="flex-shrink-0 flex items-center gap-0.5 text-[10px] font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full whitespace-nowrap">
-              <Zap className="w-2.5 h-2.5" />+{tier.bonusTokens}
-            </span>
-          )}
-        </div>
-
-        {/* Token amount */}
-        <div className="flex items-center gap-2.5 mb-3">
-          <CoinIcon size={32} />
-          <div>
-            <p className="text-3xl font-black text-gray-900 leading-none">{tier.credits}</p>
-            {(tier.bonusTokens ?? 0) > 0 && (
-              <p className="text-[11px] font-bold text-emerald-600 mt-0.5">
-                +{tier.bonusTokens} bonus → jami {totalTokens} Tanga
-              </p>
-            )}
+          <div className="text-right">
+            <div className="font-black text-xl text-amber-600">{tier.price}</div>
+            <div className="text-[10px] text-gray-400">Tanga</div>
           </div>
         </div>
 
-        {/* Price */}
-        <div className="flex items-baseline gap-2 mb-2">
-          <span className="text-lg font-extrabold text-gray-900">
-            {effectivePrice === 0 ? "Bepul" : `${effectivePrice.toLocaleString()} so'm`}
-          </span>
-          {saleActive && tier.salePrice !== undefined && tier.price > tier.salePrice && (
-            <span className="text-xs text-gray-400 line-through">{tier.price.toLocaleString()} so'm</span>
-          )}
-          {!saleActive && tier.salePrice !== undefined && (
-            <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">Chegirma tugadi</span>
-          )}
-        </div>
-
-        {/* Sale remaining slots */}
-        {saleActive && remaining !== null && (
-          <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-orange-50 rounded-xl border border-orange-100">
-            <span className="text-[10px] font-black text-orange-600">🔥</span>
-            <span className="text-[11px] font-bold text-orange-700">
-              Chegirma: {remaining} ta joy qoldi
-            </span>
-          </div>
+        {remaining && (
+          <p className="text-[11px] text-amber-700 font-semibold mb-3 flex items-center gap-1">
+            <Timer className="w-3 h-3" /> {remaining}
+          </p>
         )}
 
-        {/* Countdown */}
-        {countdown && !isExpired && (
-          <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-amber-50 rounded-xl border border-amber-100">
-            <Timer className="w-3 h-3 text-amber-500 flex-shrink-0" />
-            <span className="text-[11px] font-bold text-amber-700">Qoldi: {countdown}</span>
-          </div>
-        )}
-        {isExpired && tier.validUntil && (
-          <div className="mb-3 px-2.5 py-1.5 bg-gray-50 rounded-xl border border-gray-100 text-[11px] font-bold text-gray-400 text-center">
-            Muddati tugagan
-          </div>
-        )}
-
-        {/* Buy button */}
         <button
           onClick={onBuy}
-          disabled={isExpired}
-          className="w-full h-10 rounded-xl font-bold text-sm text-white transition-all active:scale-[.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
-          style={{ background: isExpired ? "#d1d5db" : GOLD_DARK }}
+          disabled={buying || bought}
+          className="w-full h-11 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-60"
+          style={{ background: bought ? "#10B981" : GOLD_GRAD }}
         >
-          Sotib olish
+          {buying ? "Sotib olinmoqda..." : bought ? "Sotib olindi" : "Sotib olish"}
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
-/* ─── Main Page ──────────────────────────────────────────────────── */
 export default function PlansPage() {
-  useStoreRefresh();
   const { user } = useAuth();
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
-
-  const userId = user?.id ?? "";
-  const balance = userId ? getTangaBalance(userId) : 0;
-  const tiers = getActiveTiers();
-
+  const [, setLocation] = useLocation();
+  const [tiers, setTiers] = useState<PricingTier[]>([]);
+  const [balance, setBalance] = useState(0);
   const [buying, setBuying] = useState<string | null>(null);
   const [bought, setBought] = useState<string | null>(null);
 
-  function handleBuy(tier: PricingTier) {
-    if (!userId || buying) return;
-    const wasOnSale = isSaleActive(tier);
+  useEffect(() => {
+    setTiers(getActiveTiers());
+    if (user?.id) setBalance(getTangaBalance(user.id));
+  }, [user?.id]);
+
+  async function handleBuy(tier: PricingTier) {
+    if (!user?.id) return;
     setBuying(tier.id);
-    setTimeout(() => {
-      const total = tier.credits + (tier.bonusTokens ?? 0);
-      if (wasOnSale && tier.saleLimit !== undefined) {
-        incrementSalePurchaseCount(tier.id);
-      }
-      addTangaBalance(userId, total);
-      setBuying(null);
+    try {
+      addTangaBalance(user.id, -tier.price);
+      incrementSalePurchaseCount(tier.id);
+      setBalance(getTangaBalance(user.id));
       setBought(tier.id);
-      toast({
-        title: `${total} Tanga qo'shildi! 🎉`,
-        description: `Joriy balans: ${getTangaBalance(userId)} Tanga`,
-      });
-      setTimeout(() => setBought(null), 2500);
-    }, 900);
+      toast({ title: "Reja sotib olindi" });
+    } catch (err: unknown) {
+      toast({ title: err instanceof Error ? err.message : "Xatolik yuz berdi", variant: "destructive" });
+    } finally {
+      setBuying(null);
+    }
   }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10 card-shadow">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => history.back()}
-            className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+            onClick={() => setLocation("/provider-home")}
+            className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
           </button>
           <div className="flex-1">
             <h1 className="font-extrabold text-sm text-gray-900">Tanga Rejalari</h1>
@@ -248,7 +169,6 @@ export default function PlansPage() {
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-5">
-        {/* Balance hero */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -280,7 +200,6 @@ export default function PlansPage() {
           </button>
         </motion.div>
 
-        {/* Plans */}
         {tiers.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
