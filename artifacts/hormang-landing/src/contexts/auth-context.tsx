@@ -22,40 +22,63 @@ function activeRoleKey(userId: string): string {
   return `hormang_active_role_${userId}`;
 }
 
-/**
- * Decide which role to activate for this user.
- * Priority:
- *   1. Their saved role (last time they explicitly switched)
- *   2. "provider" if they have a providerProfile (auto-restore)
- *   3. The fallback from user.role
- */
-function getSavedRole(
-  userId: string,
-  providerProfile: ProviderProfile | null,
-  fallback: Role,
-): Role {
-  const saved = localStorage.getItem(activeRoleKey(userId));
-  if (saved === "buyer" || saved === "provider") return saved;
-  if (providerProfile) return "provider";
-  return fallback;
-}
-
 /** Key that tracks the last successfully-logged-in userId. */
 const LAST_USER_KEY = "hormang_last_user_id";
 
 /**
+ * Determine which role to activate.
+ *
+ * Priority:
+ *   1. Per-user saved key  `hormang_active_role_{userId}`
+ *   2. Legacy global key   `hormang_active_role`  (migrate on first read)
+ *   3. "provider" if the user has a providerProfile (first-ever login default)
+ *   4. `fallback`  (user.role from the DB)
+ *
+ * The result is also WRITTEN to the per-user key so that all subsequent
+ * calls (including mid-session setAuth) read a consistent value and never
+ * accidentally re-evaluate and flip the role.
+ */
+function resolveAndPersistRole(
+  userId: string,
+  providerProfile: ProviderProfile | null,
+  fallback: Role,
+): Role {
+  // 1. Per-user key
+  const saved = localStorage.getItem(activeRoleKey(userId));
+  if (saved === "buyer" || saved === "provider") return saved;
+
+  // 2. Legacy global key — only safe to use if this was the last logged-in user
+  const lastUserId = localStorage.getItem(LAST_USER_KEY);
+  const legacy = localStorage.getItem("hormang_active_role");
+  if (
+    (legacy === "buyer" || legacy === "provider") &&
+    (!lastUserId || lastUserId === userId)
+  ) {
+    // Migrate: write to per-user key, keep legacy key for backward compat reads
+    localStorage.setItem(activeRoleKey(userId), legacy);
+    return legacy;
+  }
+
+  // 3. First-ever login — default to "provider" if user has a provider profile
+  const role: Role = providerProfile ? "provider" : fallback;
+
+  // 4. Write so future calls always find the key (prevents mid-session flip)
+  localStorage.setItem(activeRoleKey(userId), role);
+  return role;
+}
+
+/* ─── Cross-user cleanup ─────────────────────────────────────────── */
+
+/**
  * When a DIFFERENT user logs in, clear stale global session data that
- * could bleed across accounts (seen IDs, upcoming services snapshot, etc.).
+ * could bleed across accounts (seen IDs, etc.).
  * User-specific keys (local-profile, tanga-balance, etc.) are keyed by
  * userId so they are naturally isolated.
  */
 function handleUserSwitch(newUserId: string): void {
   const lastId = localStorage.getItem(LAST_USER_KEY);
   if (lastId && lastId !== newUserId) {
-    // Clear global non-user-specific transient session keys
     localStorage.removeItem("hormang_provider_seen");
-    // Note: hormang_provider_services is global; services have masterId
-    // so they're filtered at read time — no need to wipe.
   }
   localStorage.setItem(LAST_USER_KEY, newUserId);
 }
@@ -105,7 +128,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       handleUserSwitch(u.id);
       setUser(u);
       setProviderProfileState(pp);
-      setActiveRoleState(getSavedRole(u.id, pp, u.role as Role));
+      // resolveAndPersistRole writes the per-user key on first load,
+      // ensuring that mid-session setAuth calls always read the saved key.
+      const role = resolveAndPersistRole(u.id, pp, u.role as Role);
+      setActiveRoleState(role);
     }
 
     getMe()
@@ -122,9 +148,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * Called right after login/register to apply the new session.
-   * The role is restored from the per-user key (or defaults to provider if
-   * the user has a providerProfile).
+   * Called right after login/register (and also for mid-session auth updates
+   * such as after saving profile settings).
+   *
+   * Because `resolveAndPersistRole` writes the per-user key on the very first
+   * call (initial load / login), subsequent mid-session calls always find the
+   * key and return the saved value — so the role is NEVER flipped unexpectedly.
    */
   const setAuth = useCallback((u: SafeUser, profile?: ProviderProfile | null) => {
     const pp = profile ?? null;
@@ -132,7 +161,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     handleUserSwitch(u.id);
     setUser(u);
     setProviderProfileState(pp);
-    setActiveRoleState(getSavedRole(u.id, pp, u.role as Role));
+    const role = resolveAndPersistRole(u.id, pp, u.role as Role);
+    setActiveRoleState(role);
   }, []);
 
   const setProviderProfile = useCallback((profile: ProviderProfile | null) => {
@@ -151,8 +181,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setProviderProfileState(null);
     setActiveRoleState("buyer");
-    // Do NOT remove the per-user active role key — it should be
-    // restored correctly on next login for the same user.
+    // The per-user active role key is intentionally preserved so the role
+    // is correctly restored when the same user logs back in.
   }, []);
 
   return (
