@@ -97,10 +97,9 @@ function PlanCard({ tier, buying, bought, onBuy }: PlanCardProps) {
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
             <h3 className="font-bold text-gray-900">{tier.name}</h3>
-            {tier.desc ? <p className="text-xs text-gray-400 mt-1">{tier.desc}</p> : null}
           </div>
           <div className="text-right">
-            <div className="font-black text-xl text-amber-600">{tier.credits}</div>
+            <div className="font-black text-xl text-amber-600">{tier.price}</div>
             <div className="text-[10px] text-gray-400">Tanga</div>
           </div>
         </div>
