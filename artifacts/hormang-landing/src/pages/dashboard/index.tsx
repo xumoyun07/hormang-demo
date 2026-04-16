@@ -430,7 +430,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
   const serviceAreas = user?.id ? (getLocalProfile(user.id).serviceAreas ?? []) : [];
   const selectedCategories = providerProfile?.categories ?? [];
   const requests = getMatchingRequests(selectedCategories, serviceAreas);
-  const seen = getSeenIds();
+  const seen = getSeenIds(user?.id ?? "");
   const unseenCount = requests.filter((r) => !seen.includes(r.id) && r.status === "open").length;
 
   const menuItems = [

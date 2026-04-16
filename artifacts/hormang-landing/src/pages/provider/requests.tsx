@@ -88,10 +88,11 @@ function FullscreenSlider({
 }) {
   const [index, setIndex] = useState(startIndex);
   const current = requests[index];
+  const { user: sliderUser } = useAuth();
 
   const urg = current ? urgencyLabel(current.urgency) : null;
 
-  useEffect(() => { if (current) markSeen(current.id); }, [current?.id]);
+  useEffect(() => { if (current) markSeen(current.id, sliderUser?.id); }, [current?.id, sliderUser?.id]);
 
   function next() { if (index < requests.length - 1) setIndex((i) => i + 1); }
   function prev() { if (index > 0) setIndex((i) => i - 1); }
@@ -565,7 +566,7 @@ export default function ProviderRequestsPage() {
   }
 
   function openOfferForm(req: ProviderRequest) {
-    markSeen(req.id);
+    markSeen(req.id, providerId);
     setShowSlider(false);
     setOfferRequest(req);
   }
@@ -711,7 +712,7 @@ export default function ProviderRequestsPage() {
                       <button
                         onClick={() => {
                           updateProviderRequestStatus(r.id, "ignored", providerId);
-                          markSeen(r.id);
+                          markSeen(r.id, providerId);
                         }}
                         className="flex-1 h-9 rounded-xl border-2 border-red-100 bg-red-50 text-red-500 font-bold text-xs flex items-center justify-center active:scale-95 hover:bg-red-100 transition-all"
                       >
@@ -835,7 +836,7 @@ export default function ProviderRequestsPage() {
             onOpenOffer={(req) => openOfferForm(req)}
             onIgnore={(id) => {
               updateProviderRequestStatus(id, "ignored", providerId);
-              markSeen(id);
+              markSeen(id, providerId);
             }}
           />
         )}

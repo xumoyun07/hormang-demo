@@ -130,7 +130,7 @@ function UpcomingServices() {
   useStoreRefresh();
   const { user } = useAuth();
   const masterId = user?.id ?? "";
-  const services = getUpcomingServices().filter((s) => s.status === "upcoming");
+  const services = getUpcomingServices(masterId).filter((s) => s.status === "upcoming");
   const [selectedService, setSelectedService] = useState<UpcomingService | null>(null);
   const [reviewService, setReviewService] = useState<UpcomingService | null>(null);
 
@@ -530,7 +530,7 @@ function AvailableRequests() {
   const serviceAreas = authUser?.id ? (getLocalProfile(authUser.id).serviceAreas ?? []) : [];
   const providerId = authUser?.id ?? "";
   const requests = getMatchingRequests(selectedCategories, serviceAreas, providerId);
-  const seen = getSeenIds();
+  const seen = getSeenIds(providerId);
 
   // All non-ignored requests (open + responded) — visible to every provider
   const visibleRequests = requests.filter((r) => r.status !== "ignored");
@@ -558,19 +558,19 @@ function AvailableRequests() {
 
   function handleRespond(id: string) {
     updateProviderRequestStatus(id, "responded", providerId);
-    markSeen(id);
+    markSeen(id, providerId);
     toast({ title: "Javob yuborildi!", description: "Buyurtmachi siz bilan bog'lanadi." });
     if (slideIndex >= slideReqs.length - 1) setSlideIndex(Math.max(0, slideReqs.length - 2));
   }
 
   function handleIgnore(id: string) {
     updateProviderRequestStatus(id, "ignored", providerId);
-    markSeen(id);
+    markSeen(id, providerId);
     if (slideIndex >= slideReqs.length - 1) setSlideIndex(Math.max(0, slideReqs.length - 2));
   }
 
   function handleRespondFromModal(id: string) {
-    markSeen(id);
+    markSeen(id, providerId);
     const req = requests.find((r) => r.id === id) ?? null;
     setOfferRequest(req);
     setModal(null);
@@ -578,7 +578,7 @@ function AvailableRequests() {
 
   function handleIgnoreFromModal(id: string) {
     updateProviderRequestStatus(id, "ignored", providerId);
-    markSeen(id);
+    markSeen(id, providerId);
   }
 
   // Determine modal request list
@@ -696,7 +696,7 @@ function AvailableRequests() {
           onIgnore={(id) => { handleIgnoreFromModal(id); }}
           isNewModal={modal === "new"}
           onMarkAllSeen={() => {
-            modalRequests.forEach((r) => markSeen(r.id));
+            modalRequests.forEach((r) => markSeen(r.id, providerId));
           }}
         />
       )}
@@ -795,7 +795,7 @@ export default function ProviderHomePage() {
   const selectedCategories = providerProfile?.categories ?? [];
   const headerServiceAreas = user?.id ? (getLocalProfile(user.id).serviceAreas ?? []) : [];
   const unseenCount = getMatchingRequests(selectedCategories, headerServiceAreas).filter(
-    (r) => !getSeenIds().includes(r.id) && r.status === "open"
+    (r) => !getSeenIds(user?.id ?? "").includes(r.id) && r.status === "open"
   ).length;
 
   return (

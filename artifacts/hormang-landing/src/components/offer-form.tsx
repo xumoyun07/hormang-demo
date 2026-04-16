@@ -247,7 +247,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
     }
 
     updateProviderRequestStatus(request.id, "responded", user?.id ?? "");
-    markSeen(request.id);
+    markSeen(request.id, user?.id);
     createChatFromOffer(
       request,
       offer,

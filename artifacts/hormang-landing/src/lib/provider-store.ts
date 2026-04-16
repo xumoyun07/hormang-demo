@@ -105,7 +105,11 @@ export interface ProviderOffer {
 /* ─── Storage Keys ───────────────────────────────────────────────── */
 
 const SERVICES_KEY = "hormang_provider_services";
-const SEEN_KEY = "hormang_provider_seen";
+
+/** Per-provider seen-requests key. Falls back to global for legacy data. */
+function seenKey(providerId?: string): string {
+  return providerId ? `hormang_provider_seen_${providerId}` : "hormang_provider_seen";
+}
 const SHARED_OFFERS_KEY = "hormang_offers";     // shared with customer
 const AVG_RESPONSE_KEY = "hormang_provider_avg_response";
 const SEED_VERSION_KEY = "hormang_provider_seed_version";
@@ -156,7 +160,7 @@ function clearLegacyData() {
     localStorage.removeItem("hormang_provider_requests");  // old key
     localStorage.removeItem(SERVICES_KEY);
     localStorage.removeItem("hormang_provider_offers");    // old global key
-    localStorage.removeItem(SEEN_KEY);
+    localStorage.removeItem("hormang_provider_seen");  // old global key
     localStorage.removeItem("hormang_provider_chats");     // old key
     localStorage.removeItem("hormang_provider_statuses");  // old global key
     localStorage.removeItem("hormang_requests");
@@ -372,13 +376,17 @@ export function updateProviderRequestStatus(
 
 /* ─── Seen IDs ───────────────────────────────────────────────────── */
 
-export function getSeenIds(): string[] {
-  return readJSON<string[]>(SEEN_KEY, []);
+export function getSeenIds(providerId?: string): string[] {
+  const perUser = providerId ? readJSON<string[]>(seenKey(providerId), []) : [];
+  const global  = readJSON<string[]>("hormang_provider_seen", []);
+  // Merge legacy global seen IDs into per-provider on first call
+  return providerId ? Array.from(new Set([...perUser, ...global])) : global;
 }
 
-export function markSeen(id: string): void {
-  const seen = getSeenIds();
-  if (!seen.includes(id)) writeJSON(SEEN_KEY, [...seen, id]);
+export function markSeen(id: string, providerId?: string): void {
+  const k = seenKey(providerId);
+  const seen = readJSON<string[]>(k, []);
+  if (!seen.includes(id)) writeJSON(k, [...seen, id]);
 }
 
 export function markAllSeen(
@@ -387,9 +395,9 @@ export function markAllSeen(
   providerId: string = "",
 ): void {
   const ids = getMatchingRequests(selectedCategories, serviceAreas, providerId).map((r) => r.id);
-  const existing = getSeenIds();
+  const existing = getSeenIds(providerId);
   const merged = Array.from(new Set([...existing, ...ids]));
-  writeJSON(SEEN_KEY, merged);
+  writeJSON(seenKey(providerId || undefined), merged);
 }
 
 export function getUnseenRequests(
@@ -397,7 +405,7 @@ export function getUnseenRequests(
   serviceAreas: string[] = [],
   providerId: string = "",
 ): ProviderRequest[] {
-  const seen = getSeenIds();
+  const seen = getSeenIds(providerId);
   return getMatchingRequests(selectedCategories, serviceAreas, providerId).filter(
     (r) => !seen.includes(r.id) && r.status === "open"
   );
@@ -405,8 +413,12 @@ export function getUnseenRequests(
 
 /* ─── Upcoming Services ──────────────────────────────────────────── */
 
-export function getUpcomingServices(): UpcomingService[] {
-  return readJSON<UpcomingService[]>(SERVICES_KEY, []).sort(
+export function getUpcomingServices(providerId?: string): UpcomingService[] {
+  const all = readJSON<UpcomingService[]>(SERVICES_KEY, []);
+  const filtered = providerId
+    ? all.filter((s) => !s.masterId || s.masterId === providerId)
+    : all;
+  return filtered.sort(
     (a, b) => new Date(a.date + "T" + a.time).getTime() - new Date(b.date + "T" + b.time).getTime()
   );
 }
