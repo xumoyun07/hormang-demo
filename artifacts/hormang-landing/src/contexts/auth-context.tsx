@@ -38,7 +38,7 @@ const LAST_USER_KEY = "hormang_last_user_id";
  * calls (including mid-session setAuth) read a consistent value and never
  * accidentally re-evaluate and flip the role.
  */
-export function resolveAndPersistRole(
+function resolveAndPersistRole(
   userId: string,
   providerProfile: ProviderProfile | null,
   fallback: Role,
@@ -173,8 +173,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Helper to prevent data leakage
   function clearPreviousUserData() {
-    // Clear any temporary or old keys that might leak
-    const keysToClear = ["hormang_access_token", "activeRole", "currentUser"];
+    // Clear any temporary or old keys that might leak.
+    // NOTE: hormang_access_token must NOT be in this list — it was just saved by loginUser.
+    const keysToClear = ["activeRole", "currentUser"];
     keysToClear.forEach(key => localStorage.removeItem(key));
   }
 

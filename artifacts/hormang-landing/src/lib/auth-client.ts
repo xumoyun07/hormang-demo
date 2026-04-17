@@ -25,15 +25,21 @@ export interface AuthResponse {
   providerProfile?: ProviderProfile | null;
 }
 
-function getToken() {
-  return localStorage.getItem("hormang_access_token");
+/* ─── Token helpers (centralized, exported) ─────────────────────── */
+
+const TOKEN_KEY = "hormang_access_token";
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
 }
-function setToken(t: string) {
-  localStorage.setItem("hormang_access_token", t);
+export function setToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
 }
-function clearToken() {
-  localStorage.removeItem("hormang_access_token");
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY);
 }
+
+/* ─── Central request helper ────────────────────────────────────── */
 
 async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const token = getToken();
@@ -43,13 +49,36 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...opts.headers,
+      ...opts.headers, // caller-supplied headers override defaults (but not Content-Type unless explicit)
     },
   });
   const text = await res.text();
   const data = text ? JSON.parse(text) : {};
   if (!res.ok) throw new Error(data.error ?? "Xatolik yuz berdi");
   return data as T;
+}
+
+/** Wraps a request; if it fails with auth error, refreshes token and retries once. */
+async function requestWithRefresh<T>(path: string, opts: RequestInit = {}): Promise<T> {
+  const token = getToken();
+  if (!token) {
+    throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  }
+  try {
+    return await request<T>(path, opts);
+  } catch (err: any) {
+    const isAuthError =
+      err.message?.toLowerCase().includes("token") ||
+      err.message?.toLowerCase().includes("avtorizatsiya") ||
+      err.message?.toLowerCase().includes("unauthorized");
+    if (isAuthError) {
+      const newToken = await refreshToken();
+      if (newToken) {
+        return await request<T>(path, opts);
+      }
+    }
+    throw err;
+  }
 }
 
 // ─── SMS Verification ──────────────────────────────────────────────────────
@@ -163,7 +192,7 @@ export async function updateProfile(body: {
   lastName?: string;
   email?: string;
 }): Promise<{ user: SafeUser }> {
-  return request("/auth/profile", {
+  return requestWithRefresh("/auth/profile", {
     method: "PUT",
     body: JSON.stringify(body),
   });
@@ -174,7 +203,7 @@ export async function updateProviderProfile(body: {
   bio?: string;
   preferredLocation?: string;
 }): Promise<{ profile: ProviderProfile }> {
-  return request("/auth/provider-profile", {
+  return requestWithRefresh("/auth/provider-profile", {
     method: "PUT",
     body: JSON.stringify(body),
   });

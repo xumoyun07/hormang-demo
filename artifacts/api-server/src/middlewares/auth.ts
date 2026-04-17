@@ -1,5 +1,6 @@
 import { type Request, type Response, type NextFunction } from "express";
 import { verifyAccessToken } from "../lib/auth.js";
+import { appendFile } from "fs";
 
 export interface AuthRequest extends Request {
   user?: { id: string; role: string; email?: string; phone?: string };
@@ -12,11 +13,11 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
     return;
   }
   try {
-    const token = header.slice(7);
+    const token = header.slice(7);appendFile.ts
     const payload = verifyAccessToken(token);
     req.user = { id: payload.sub as string, role: payload.role, email: payload.email, phone: payload.phone };
     next();
-  } catch {
+  } catch {P
     res.status(401).json({ error: "Token yaroqsiz yoki muddati o'tgan" });
   }
 }
