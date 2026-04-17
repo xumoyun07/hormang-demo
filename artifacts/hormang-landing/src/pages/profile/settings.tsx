@@ -473,15 +473,20 @@ export default function ProfileSettingsPage() {
   async function handleSave() {
     const errs: Record<string, string> = {};
     if (!firstName.trim() || firstName.trim().length < 2) errs.firstName = "Ism kamida 2 harf";
-    if (!lastName.trim() || lastName.trim().length < 2)  errs.lastName  = "Familiya kamida 2 harf";
+    if (!lastName.trim() || lastName.trim().length < 2) errs.lastName = "Familiya kamida 2 harf";
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
     setSaving(true);
+
     try {
       const shouldUpdateProvider = isProvider && selectedServices.length > 0;
+
       const [userRes, profileRes] = await Promise.all([
-        updateProfile({ firstName: firstName.trim(), lastName: lastName.trim() }),
+        updateProfile({ 
+          firstName: firstName.trim(), 
+          lastName: lastName.trim() 
+        }),
         shouldUpdateProvider
           ? updateProviderProfile({
               categories: selectedServices,
@@ -491,9 +496,7 @@ export default function ProfileSettingsPage() {
           : Promise.resolve(null),
       ]);
 
-      setAuth(userRes.user, providerProfile);
-      if (profileRes) setProviderProfile(profileRes.profile);
-
+      // === CRITICAL FIX: Always use the current user's ID ===
       if (user) {
         const newLocal: LocalProfile = {
           photoUrl,
@@ -502,21 +505,27 @@ export default function ProfileSettingsPage() {
           serviceAreas,
           experience: experience ? Number(experience) : undefined,
           portfolioItems,
-          /* bio and categories persisted locally so PublicProfileModal can display
-             them without an API call. portfolioImages NOT included — it's a legacy
-             field that doubles storage and can trigger QuotaExceededError. */
           bio: bio || undefined,
           categories: selectedServices.length > 0 ? selectedServices : undefined,
         };
+
+        // Save with strict per-user key
         saveLocalProfile(user.id, newLocal);
         setLocal(newLocal);
+
+        // Only update auth with the correct user data
+        setAuth(userRes.user, profileRes ? profileRes.profile : providerProfile);
       }
 
       setSaved(true);
       toast({ title: "Profil muvaffaqiyatli saqlandi!" });
       setTimeout(() => setSaved(false), 3000);
+
     } catch (err: unknown) {
-      toast({ title: err instanceof Error ? err.message : "Xatolik yuz berdi", variant: "destructive" });
+      toast({ 
+        title: err instanceof Error ? err.message : "Xatolik yuz berdi", 
+        variant: "destructive" 
+      });
     } finally {
       setSaving(false);
     }

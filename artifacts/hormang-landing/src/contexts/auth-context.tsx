@@ -18,8 +18,8 @@ interface AuthState {
 /* ─── Per-user role key ──────────────────────────────────────────── */
 
 /** Stores the last-chosen role per user so it survives logout/login. */
-function activeRoleKey(userId: string): string {
-  return `hormang_active_role_${userId}`;
+function activeRoleKey(userId: string) {
+  return `user_${userId}_activeRole`;
 }
 
 /** Key that tracks the last successfully-logged-in userId. */
@@ -38,7 +38,7 @@ const LAST_USER_KEY = "hormang_last_user_id";
  * calls (including mid-session setAuth) read a consistent value and never
  * accidentally re-evaluate and flip the role.
  */
-function resolveAndPersistRole(
+export function resolveAndPersistRole(
   userId: string,
   providerProfile: ProviderProfile | null,
   fallback: Role,
@@ -156,14 +156,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * key and return the saved value — so the role is NEVER flipped unexpectedly.
    */
   const setAuth = useCallback((u: SafeUser, profile?: ProviderProfile | null) => {
+    // CRITICAL: Clear any previous user's data first
+    clearPreviousUserData();
+
     const pp = profile ?? null;
+
     persistUserToRegistry(u);
     handleUserSwitch(u.id);
+
     setUser(u);
     setProviderProfileState(pp);
+
     const role = resolveAndPersistRole(u.id, pp, u.role as Role);
     setActiveRoleState(role);
   }, []);
+
+  // Helper to prevent data leakage
+  function clearPreviousUserData() {
+    // Clear any temporary or old keys that might leak
+    const keysToClear = ["hormang_access_token", "activeRole", "currentUser"];
+    keysToClear.forEach(key => localStorage.removeItem(key));
+  }
 
   const setProviderProfile = useCallback((profile: ProviderProfile | null) => {
     setProviderProfileState(profile);

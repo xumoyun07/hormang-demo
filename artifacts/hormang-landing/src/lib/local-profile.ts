@@ -36,9 +36,9 @@ export interface LocalProfile {
 
 /* ─── Storage helpers ───────────────────────────────────────────── */
 
-function key(userId: string) {
-  return `hormang_local_profile_${userId}`;
-}
+function key(userId: string): string {
+    return `user_${userId}_localProfile`;   // ← Must be like this
+  }
 
 export function getLocalProfile(userId: string): LocalProfile {
   try {
