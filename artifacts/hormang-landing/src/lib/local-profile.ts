@@ -2,10 +2,14 @@
  * local-profile.ts
  * Stores provider-specific profile data that isn't sent to the API:
  * photo, experience, portfolio images, region/district.
- * Key: hormang_local_profile_{userId}
  *
- * Also exports shared profile-completion logic used by both
- * provider/home.tsx and profile/settings.tsx.
+ * Storage key: user_${userId}_localProfile
+ *
+ * ISOLATION GUARANTEE: every read and write is strictly scoped to the
+ * provided userId. If userId is empty or falsy the operation is a no-op
+ * (or returns {}) and a warning is logged — this prevents the
+ * "user__localProfile" corruption key that would appear during a race
+ * between logout and a debounced auto-save.
  */
 
 import type { SafeUser, ProviderProfile } from "./auth-client";
@@ -41,6 +45,10 @@ function key(userId: string): string {
 }
 
 export function getLocalProfile(userId: string): LocalProfile {
+  if (!userId) {
+    console.warn("[Hormang] getLocalProfile: userId bo'sh — {} qaytarildi.");
+    return {};
+  }
   try {
     const raw = localStorage.getItem(key(userId));
     const p = raw ? (JSON.parse(raw) as LocalProfile) : {};
@@ -59,17 +67,23 @@ export function getLocalProfile(userId: string): LocalProfile {
 }
 
 export function saveLocalProfile(userId: string, data: LocalProfile): void {
-  /* Strip the legacy `portfolioImages` field before saving — it's a redundant
-     copy of portfolioItems[].url and doubles storage usage unnecessarily.
-     getLocalProfile() handles migrating old data that still has this field. */
+  /* CRITICAL defensive guard: never write to an empty key. */
+  if (!userId) {
+    console.error("[Hormang] saveLocalProfile: userId bo'sh — saqlash bekor qilindi. Ma'lumotlar yo'qolmadi.");
+    return;
+  }
+
+  /* Strip the legacy `portfolioImages` field before saving */
   const { portfolioImages: _dropped, ...clean } = data;
+
+  console.log(`[Hormang] 💾 saveLocalProfile: user=${userId.slice(0, 8)} photo=${!!clean.photoUrl} region=${clean.region ?? "—"}`);
 
   try {
     localStorage.setItem(key(userId), JSON.stringify(clean));
     emitStoreChange();
   } catch (error) {
     if (error instanceof Error && error.name === "QuotaExceededError") {
-      console.warn("[Hormang] LocalStorage quota exceeded — dropping portfolio images to save space.");
+      console.warn("[Hormang] LocalStorage quota exceeded — portfolio tushirilmoqda.");
       /* First fallback: keep photo + metadata, drop portfolio only */
       const withoutPortfolio: LocalProfile = {
         ...clean,
@@ -95,7 +109,7 @@ export function saveLocalProfile(userId: string, data: LocalProfile): void {
         localStorage.setItem(key(userId), JSON.stringify(minimal));
         emitStoreChange();
       } catch (fallbackError) {
-        console.error("[Hormang] Failed to save profile even without images:", fallbackError);
+        console.error("[Hormang] Profil saqlanmadi (minimal ham sig'madi):", fallbackError);
       }
     } else {
       throw error;
@@ -111,9 +125,8 @@ export function saveLocalProfile(userId: string, data: LocalProfile): void {
  *   name         10 %
  *   region       15 %
  *   services     20 %
- *   bio          15 %
+ *   bio          20 %
  *   experience   10 %
- *   hours         5 %
  *   portfolio     5 %
  */
 export interface CompletionCheck {

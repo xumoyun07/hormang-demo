@@ -17,52 +17,54 @@ interface AuthState {
 
 /* ─── Per-user role key ──────────────────────────────────────────── */
 
-/** Stores the last-chosen role per user so it survives logout/login. */
 function activeRoleKey(userId: string) {
   return `user_${userId}_activeRole`;
 }
 
-/** Key that tracks the last successfully-logged-in userId. */
 const LAST_USER_KEY = "hormang_last_user_id";
 
 /**
- * Determine which role to activate.
+ * Global localStorage keys that are NOT scoped to a specific user.
+ * These must be cleared when a DIFFERENT user logs in to prevent cross-user
+ * data leakage. Keys that are already per-user (e.g. user_${id}_*) are
+ * naturally isolated and do NOT need to be listed here.
+ */
+const GLOBAL_KEYS_TO_CLEAR_ON_USER_SWITCH: string[] = [
+  "hormang_provider_seen",   // legacy global seen-request IDs
+  "hormang_active_role",     // legacy global role (before per-user keys)
+  "activeRole",              // potential legacy key
+  "currentUser",             // potential legacy key
+];
+
+/**
+ * Determine which role to activate on login / session restore.
  *
  * Priority:
- *   1. Per-user saved key  `hormang_active_role_{userId}`
- *   2. Legacy global key   `hormang_active_role`  (migrate on first read)
- *   3. "provider" if the user has a providerProfile (first-ever login default)
- *   4. `fallback`  (user.role from the DB)
- *
- * The result is also WRITTEN to the per-user key so that all subsequent
- * calls (including mid-session setAuth) read a consistent value and never
- * accidentally re-evaluate and flip the role.
+ *   1. Per-user saved key  user_${userId}_activeRole
+ *   2. Legacy global key   hormang_active_role  (migrate once, then discard)
+ *   3. "provider" if user has a providerProfile
+ *   4. fallback (user.role from the DB)
  */
 function resolveAndPersistRole(
   userId: string,
   providerProfile: ProviderProfile | null,
   fallback: Role,
 ): Role {
-  // 1. Per-user key
   const saved = localStorage.getItem(activeRoleKey(userId));
   if (saved === "buyer" || saved === "provider") return saved;
 
-  // 2. Legacy global key — only safe to use if this was the last logged-in user
+  // Legacy global key — only safe to migrate if this was the last logged-in user
   const lastUserId = localStorage.getItem(LAST_USER_KEY);
   const legacy = localStorage.getItem("hormang_active_role");
   if (
     (legacy === "buyer" || legacy === "provider") &&
     (!lastUserId || lastUserId === userId)
   ) {
-    // Migrate: write to per-user key, keep legacy key for backward compat reads
     localStorage.setItem(activeRoleKey(userId), legacy);
     return legacy;
   }
 
-  // 3. First-ever login — default to "provider" if user has a provider profile
   const role: Role = providerProfile ? "provider" : fallback;
-
-  // 4. Write so future calls always find the key (prevents mid-session flip)
   localStorage.setItem(activeRoleKey(userId), role);
   return role;
 }
@@ -70,15 +72,17 @@ function resolveAndPersistRole(
 /* ─── Cross-user cleanup ─────────────────────────────────────────── */
 
 /**
- * When a DIFFERENT user logs in, clear stale global session data that
- * could bleed across accounts (seen IDs, etc.).
- * User-specific keys (local-profile, tanga-balance, etc.) are keyed by
- * userId so they are naturally isolated.
+ * Called whenever a user authenticates. If the authenticated userId differs
+ * from the previously-seen userId, ALL global (non-per-user) keys are wiped
+ * so stale data from another account can never bleed through.
  */
 function handleUserSwitch(newUserId: string): void {
   const lastId = localStorage.getItem(LAST_USER_KEY);
   if (lastId && lastId !== newUserId) {
-    localStorage.removeItem("hormang_provider_seen");
+    console.log(`[Hormang] 🔄 Foydalanuvchi almashdi: ${lastId.slice(0, 8)}... → ${newUserId.slice(0, 8)}... Eski global kalitlar tozalanmoqda.`);
+    GLOBAL_KEYS_TO_CLEAR_ON_USER_SWITCH.forEach((key) => {
+      localStorage.removeItem(key);
+    });
   }
   localStorage.setItem(LAST_USER_KEY, newUserId);
 }
@@ -94,9 +98,14 @@ function registryInitials(u: SafeUser): string {
 }
 
 function persistUserToRegistry(u: SafeUser) {
+  if (!u.id) {
+    console.warn("[Hormang] persistUserToRegistry: foydalanuvchi ID yo'q, o'tkazib yuborildi.");
+    return;
+  }
   const name = registryName(u);
   if (name) saveCustomerToRegistry(u.id, name, registryInitials(u));
   savePhoneToRegistry(u.id, u.phone);
+  console.log(`[Hormang] 📋 Registry yangilandi: id=${u.id.slice(0, 8)} phone=${u.phone ?? "—"}`);
 }
 
 /* ─── Context ────────────────────────────────────────────────────── */
@@ -128,10 +137,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       handleUserSwitch(u.id);
       setUser(u);
       setProviderProfileState(pp);
-      // resolveAndPersistRole writes the per-user key on first load,
-      // ensuring that mid-session setAuth calls always read the saved key.
       const role = resolveAndPersistRole(u.id, pp, u.role as Role);
       setActiveRoleState(role);
+      console.log(`[Hormang] ✅ Sessiya tiklandi: id=${u.id.slice(0, 8)} rol=${role}`);
     }
 
     getMe()
@@ -148,36 +156,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * Called right after login/register (and also for mid-session auth updates
-   * such as after saving profile settings).
-   *
-   * Because `resolveAndPersistRole` writes the per-user key on the very first
-   * call (initial load / login), subsequent mid-session calls always find the
-   * key and return the saved value — so the role is NEVER flipped unexpectedly.
+   * Called right after login/register and after mid-session profile saves.
+   * Defensively guards against empty userId to prevent cross-user key corruption.
    */
   const setAuth = useCallback((u: SafeUser, profile?: ProviderProfile | null) => {
-    // CRITICAL: Clear any previous user's data first
-    clearPreviousUserData();
+    if (!u?.id) {
+      console.error("[Hormang] setAuth: foydalanuvchi ID yo'q — auth o'rnatilmadi.");
+      return;
+    }
 
     const pp = profile ?? null;
 
-    persistUserToRegistry(u);
+    // Cross-user cleanup before applying new user's data
     handleUserSwitch(u.id);
+    persistUserToRegistry(u);
 
     setUser(u);
     setProviderProfileState(pp);
 
     const role = resolveAndPersistRole(u.id, pp, u.role as Role);
     setActiveRoleState(role);
+    console.log(`[Hormang] 🔐 setAuth: id=${u.id.slice(0, 8)} phone=${u.phone ?? "—"} rol=${role}`);
   }, []);
-
-  // Helper to prevent data leakage
-  function clearPreviousUserData() {
-    // Clear any temporary or old keys that might leak.
-    // NOTE: hormang_access_token must NOT be in this list — it was just saved by loginUser.
-    const keysToClear = ["activeRole", "currentUser"];
-    keysToClear.forEach(key => localStorage.removeItem(key));
-  }
 
   const setProviderProfile = useCallback((profile: ProviderProfile | null) => {
     setProviderProfileState(profile);
@@ -186,18 +186,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   /** Save role per-user so it survives logout/login cycles. */
   const switchRole = useCallback((role: Role) => {
     setActiveRoleState(role);
-    if (user) localStorage.setItem(activeRoleKey(user.id), role);
-    console.log(`[Hormang] 🔄 Rol almashtirildi → ${role === "provider" ? "Ijrochi" : "Xaridor"}`);
+    if (user?.id) {
+      localStorage.setItem(activeRoleKey(user.id), role);
+      console.log(`[Hormang] 🔄 Rol almashtirildi → ${role === "provider" ? "Ijrochi" : "Xaridor"} (user=${user.id.slice(0, 8)})`);
+    }
   }, [user]);
 
   const logout = useCallback(async () => {
+    const outgoingId = user?.id;
     await logoutUser();
+    // Clear global leaked keys so next login starts clean
+    GLOBAL_KEYS_TO_CLEAR_ON_USER_SWITCH.forEach((key) => localStorage.removeItem(key));
     setUser(null);
     setProviderProfileState(null);
     setActiveRoleState("buyer");
-    // The per-user active role key is intentionally preserved so the role
-    // is correctly restored when the same user logs back in.
-  }, []);
+    console.log(`[Hormang] 👋 Logout: id=${outgoingId?.slice(0, 8) ?? "—"}`);
+    // Per-user keys (user_${id}_*) are intentionally kept so the same user's
+    // role, local profile, and tanga balance are restored on re-login.
+  }, [user]);
 
   return (
     <AuthContext.Provider value={{

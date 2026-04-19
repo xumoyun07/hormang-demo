@@ -144,7 +144,7 @@ function UpcomingServices() {
         return;
       }
     }
-    markServiceDone(s.id);
+    markServiceDone(s.id, masterId);
   }
 
   function handleReviewSubmit(rating: number, text: string) {
@@ -162,7 +162,7 @@ function UpcomingServices() {
         serviceCategory: reviewService.title,
       });
     }
-    markServiceDone(reviewService.id);
+    markServiceDone(reviewService.id, masterId);
     setReviewService(null);
   }
 
@@ -245,7 +245,7 @@ function UpcomingServices() {
             prompt="Mijozni baholang"
             onSubmit={handleReviewSubmit}
             onSkip={() => {
-              markServiceDone(reviewService.id);
+              markServiceDone(reviewService.id, masterId);
               setReviewService(null);
             }}
           />

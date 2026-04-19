@@ -5,7 +5,7 @@
  * Keys used:
  *   hormang_provider_statuses_${providerId}  — per-provider action statuses (seen/ignored/responded)
  *   hormang_provider_offers_${providerId}    — per-provider ProviderOffer[] (provider's own offers)
- *   hormang_provider_services                — UpcomingService[]
+ *   hormang_provider_services_${providerId}  — UpcomingService[] (per-provider)
  *   hormang_provider_seen                   — string[] (seen request IDs — global across providers)
  *   hormang_offers                          — Offer[] (shared; customer reads here; all providers write here)
  *   hormang_chats                           — Chat[]  (SHARED with customer side — unified store, keyed ${requestId}_${masterId})
@@ -104,7 +104,10 @@ export interface ProviderOffer {
 
 /* ─── Storage Keys ───────────────────────────────────────────────── */
 
-const SERVICES_KEY = "hormang_provider_services";
+/** Per-provider upcoming services key — strictly isolated by providerId. */
+function servicesKey(providerId: string): string {
+  return `hormang_provider_services_${providerId}`;
+}
 
 /** Per-provider seen-requests key. Falls back to global for legacy data. */
 function seenKey(providerId?: string): string {
@@ -113,7 +116,7 @@ function seenKey(providerId?: string): string {
 const SHARED_OFFERS_KEY = "hormang_offers";     // shared with customer
 const AVG_RESPONSE_KEY = "hormang_provider_avg_response";
 const SEED_VERSION_KEY = "hormang_provider_seed_version";
-const SEED_VERSION = "v4";
+const SEED_VERSION = "v5"; // v5: services key changed to per-provider
 
 /** Per-provider key for action statuses (responded/ignored) */
 function providerStatusesKey(providerId: string): string {
@@ -158,9 +161,9 @@ function clearLegacyData() {
   const version = localStorage.getItem(SEED_VERSION_KEY);
   if (version !== SEED_VERSION) {
     localStorage.removeItem("hormang_provider_requests");  // old key
-    localStorage.removeItem(SERVICES_KEY);
+    localStorage.removeItem("hormang_provider_services");  // old global (non-per-provider) key
     localStorage.removeItem("hormang_provider_offers");    // old global key
-    localStorage.removeItem("hormang_provider_seen");  // old global key
+    localStorage.removeItem("hormang_provider_seen");      // old global key
     localStorage.removeItem("hormang_provider_chats");     // old key
     localStorage.removeItem("hormang_provider_statuses");  // old global key
     localStorage.removeItem("hormang_requests");
@@ -413,25 +416,30 @@ export function getUnseenRequests(
 
 /* ─── Upcoming Services ──────────────────────────────────────────── */
 
-export function getUpcomingServices(providerId?: string): UpcomingService[] {
-  const all = readJSON<UpcomingService[]>(SERVICES_KEY, []);
-  const filtered = providerId
-    ? all.filter((s) => !s.masterId || s.masterId === providerId)
-    : all;
-  return filtered.sort(
+export function getUpcomingServices(providerId: string): UpcomingService[] {
+  if (!providerId) return [];
+  const all = readJSON<UpcomingService[]>(servicesKey(providerId), []);
+  return all.sort(
     (a, b) => new Date(a.date + "T" + a.time).getTime() - new Date(b.date + "T" + b.time).getTime()
   );
 }
 
-export function markServiceDone(id: string): void {
-  const services = readJSON<UpcomingService[]>(SERVICES_KEY, []);
-  writeJSON(SERVICES_KEY, services.map((s) => s.id === id ? { ...s, status: "done" as const } : s));
+export function markServiceDone(id: string, providerId: string): void {
+  if (!providerId) return;
+  const k = servicesKey(providerId);
+  const services = readJSON<UpcomingService[]>(k, []);
+  writeJSON(k, services.map((s) => s.id === id ? { ...s, status: "done" as const } : s));
 }
 
 export function addUpcomingService(service: Omit<UpcomingService, "id" | "status">): UpcomingService {
+  const providerId = service.masterId ?? "";
+  if (!providerId) {
+    console.error("[Hormang] addUpcomingService: masterId yo'q — saqlash bekor qilindi.");
+  }
   const newService: UpcomingService = { ...service, id: uid(), status: "upcoming" };
-  const services = readJSON<UpcomingService[]>(SERVICES_KEY, []);
-  writeJSON(SERVICES_KEY, [...services, newService]);
+  const k = servicesKey(providerId);
+  const services = readJSON<UpcomingService[]>(k, []);
+  writeJSON(k, [...services, newService]);
   if (service.offerId) {
     markOfferInProgress(service.offerId);
   }

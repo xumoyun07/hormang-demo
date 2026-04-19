@@ -13,11 +13,11 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
     return;
   }
   try {
-    const token = header.slice(7);appendFile.ts
+    const token = header.slice(7);
     const payload = verifyAccessToken(token);
     req.user = { id: payload.sub as string, role: payload.role, email: payload.email, phone: payload.phone };
     next();
-  } catch {P
+  } catch {
     res.status(401).json({ error: "Token yaroqsiz yoki muddati o'tgan" });
   }
 }
