@@ -426,7 +426,7 @@ function CustomerSheet({ data, onClose }: { data: CustomerProfileData; onClose: 
 
           {/* Privacy note */}
           <p className="text-center text-xs text-gray-400 pb-1">
-            📵 Telefon raqam ko'rsatilmaydi — faqat platforma orqali aloqa
+            📵 Foydalanuvchi ma'lumotlari xavfsizligini ta'minlash maqsadida telefon raqam ko'rsatilmaydi
           </p>
         </div>
 

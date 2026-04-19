@@ -37,8 +37,8 @@ export interface LocalProfile {
 /* ─── Storage helpers ───────────────────────────────────────────── */
 
 function key(userId: string): string {
-    return `user_${userId}_localProfile`;   // ← Must be like this
-  }
+  return `user_${userId}_localProfile`;
+}
 
 export function getLocalProfile(userId: string): LocalProfile {
   try {
