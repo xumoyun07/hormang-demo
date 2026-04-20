@@ -6,6 +6,7 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { BottomNav } from "@/components/bottom-nav";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import logoImg from "/hormang-logo.png";
 import {
   getTangaBalance, addTangaBalance, getActiveTiers, type PricingTier,
   isSaleActive, getSaleRemaining, incrementSalePurchaseCount,
@@ -234,11 +235,8 @@ export default function PlansPage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10 card-shadow">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
-          <button
-            onClick={() => history.back()}
-            className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5" />
+          <button onClick={() => setLocation("/provider-home")} className="flex items-center flex-shrink-0">
+            <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
           </button>
           <div className="flex-1">
             <h1 className="font-extrabold text-sm text-gray-900">Tanga Rejalari</h1>

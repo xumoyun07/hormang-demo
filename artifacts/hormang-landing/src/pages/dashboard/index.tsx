@@ -5,7 +5,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import logoImg from "/hormang-logo.png";
 import {
-  Search, ClipboardList, Heart, Settings, LogOut, ChevronRight,
+  Search, ClipboardList, Heart, Settings, UserPen, LogOut, ChevronRight,
   Inbox, TrendingUp, Star, CheckCircle2, MapPin,
   ShoppingBag, Briefcase, Loader2, ArrowRight, X,
   Phone, ShieldCheck,
@@ -215,7 +215,7 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
       badge: "Tez kunda",
     },
     {
-      icon: Settings,
+      icon: UserPen,
       title: "Profil sozlamalari",
       desc: "Ma'lumotlar, parol va hisobing",
       action: () => onNavigate("/profile/settings"),
@@ -416,7 +416,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
       comingSoon: true,
     },
     {
-      icon: Settings,
+      icon: UserPen,
       title: "Profil sozlamalari",
       desc: "Xizmatlar, bio, parol va hisobing",
       action: () => onNavigate("/profile/settings"),
