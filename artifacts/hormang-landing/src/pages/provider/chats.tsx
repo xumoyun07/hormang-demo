@@ -28,6 +28,7 @@ import {
 } from "@/lib/requests-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 import { ReviewModal } from "@/components/review-modal";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
@@ -307,6 +308,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   const [showCustomerProfile, setShowCustomerProfile] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const { user } = useAuth();
   const masterId = user?.id ?? "";
@@ -451,7 +453,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
           {/* Live offer status badge or Complete button */}
           {canComplete ? (
             <button
-              onClick={handleComplete}
+              onClick={() => setShowCompleteConfirm(true)}
               className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-[11px] font-bold transition-colors active:scale-95 shadow-sm"
               style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}
             >
@@ -586,6 +588,20 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             prompt="Mijozni baholang"
             onSubmit={handleReviewSubmit}
             onSkip={() => setShowReview(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Completion confirmation modal */}
+      <AnimatePresence>
+        {showCompleteConfirm && (
+          <ConfirmModal
+            key="provider-chats-complete-confirm"
+            title="Xizmat yakunlanganligini tasdiqlaysizmi?"
+            message={"Bu amalni ortga qaytarib bo'lmaydi.\n\nXizmat haqiqatan ham yakunlandimi?\nXizmat yakunida xaridor xizmat sifatini baholashi mumkin."}
+            confirmText="Ha, yakunlandi"
+            onConfirm={handleComplete}
+            onClose={() => setShowCompleteConfirm(false)}
           />
         )}
       </AnimatePresence>

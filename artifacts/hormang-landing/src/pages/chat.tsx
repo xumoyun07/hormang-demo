@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock, Loader2, Flag } from "lucide-react";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { ReviewModal } from "@/components/review-modal";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { BottomNav } from "@/components/bottom-nav";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { getLocalProfile } from "@/lib/local-profile";
@@ -173,6 +174,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [showMasterProfile, setShowMasterProfile] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -311,7 +313,7 @@ export default function ChatPage() {
           {/* Complete button */}
           {canComplete && (
             <button
-              onClick={handleComplete}
+              onClick={() => setShowCompleteConfirm(true)}
               className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold transition-colors active:scale-95"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -416,6 +418,20 @@ export default function ChatPage() {
             prompt="Ustani baholang"
             onSubmit={handleReviewSubmit}
             onSkip={() => setShowReview(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Completion confirmation modal */}
+      <AnimatePresence>
+        {showCompleteConfirm && (
+          <ConfirmModal
+            key="customer-complete-confirm"
+            title="Xizmat yakunlanganligini tasdiqlaysizmi?"
+            message={"Bu amalni ortga qaytarib bo'lmaydi.\n\nIjrochi ishni muvaffaqiyatli yakunlaganiga ishonchingiz komilmi?\nXizmat yakunida ijrochini baholashinggiz mumkin."}
+            confirmText="Ha, tasdiqlayman"
+            onConfirm={handleComplete}
+            onClose={() => setShowCompleteConfirm(false)}
           />
         )}
       </AnimatePresence>

@@ -28,6 +28,7 @@ import {
 import { markOfferCompleted, getOfferById } from "@/lib/requests-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 import { ReviewModal } from "@/components/review-modal";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { getLocalProfile, getCompletionChecks, getCompletionPct } from "@/lib/local-profile";
 import { formatDate as formatUzDate } from "@/lib/date-utils";
@@ -134,9 +135,14 @@ function UpcomingServices() {
   const services = getUpcomingServices(masterId).filter((s) => s.status === "upcoming");
   const [selectedService, setSelectedService] = useState<UpcomingService | null>(null);
   const [reviewService, setReviewService] = useState<UpcomingService | null>(null);
+  const [confirmService, setConfirmService] = useState<UpcomingService | null>(null);
 
-  function handleDone(s: UpcomingService, e: React.MouseEvent) {
+  function requestComplete(s: UpcomingService, e: React.MouseEvent) {
     e.stopPropagation();
+    setConfirmService(s);
+  }
+
+  function handleDone(s: UpcomingService) {
     if (s.offerId) {
       const wasNew = markOfferCompleted(s.offerId);
       const alreadyReviewed = s.requestId ? hasReviewedRequest(s.requestId, masterId) : false;
@@ -212,7 +218,7 @@ function UpcomingServices() {
                 </div>
               </div>
               <button
-                onClick={(e) => handleDone(s, e)}
+                onClick={(e) => requestComplete(s, e)}
                 className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 flex items-center justify-center flex-shrink-0 transition-colors"
                 title="Bajarildi"
               >
@@ -249,6 +255,20 @@ function UpcomingServices() {
               markServiceDone(reviewService.id, masterId);
               setReviewService(null);
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Completion confirmation modal */}
+      <AnimatePresence>
+        {confirmService && (
+          <ConfirmModal
+            key="home-complete-confirm"
+            title="Xizmat yakunlanganligini tasdiqlaysizmi?"
+            message={"Bu amalni ortga qaytarib bo'lmaydi.\n\nXizmat haqiqatan ham yakunlandimi?\nXizmat yakunida xaridor xizmat sifatini baholashi mumkin."}
+            confirmText="Ha, yakunlandi"
+            onConfirm={() => handleDone(confirmService)}
+            onClose={() => setConfirmService(null)}
           />
         )}
       </AnimatePresence>
