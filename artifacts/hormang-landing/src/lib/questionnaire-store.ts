@@ -114,9 +114,8 @@ export const DEFAULT_COMMON_QUESTIONS: Question[] = [
     isCore: true,
     options: [
       { label: "Bugun yoki ertaga kerak", value: "today_tomorrow" },
-      { label: "3–7 kun ichida", value: "3_7_days" },
-      { label: "1–2 hafta ichida", value: "1_2_weeks" },
-      { label: "1 oy ichida", value: "1_month" },
+      { label: "3–7 kun", value: "3_7_days" },
+      { label: "1–2 hafta", value: "1_2_weeks" },
       { label: "Shoshilinch emas (qulay vaqt)", value: "flexible" },
     ],
   },

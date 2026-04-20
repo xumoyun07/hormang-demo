@@ -9,11 +9,12 @@
  */
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
+
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, MessageCircle, ChevronRight, X, ChevronDown,
-  Circle, Send, CheckCircle2, Clock, Loader2, Flag, Plus, Calendar,
+  Circle, Send, CheckCircle2, Clock, Loader2, Flag, CalendarPlus, Calendar,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import {
@@ -40,13 +41,12 @@ const SERVICE_CATEGORIES = [
   "Tozalash", "Ta'mirlash", "Enagalik", "Tadbir xizmatlari",
   "Ko'chirish yuk yetkazish", "Go'zallik", "Avto xizmat", "Repetitorlar", "Ustachilik",
 ];
-
 /* ─── Helpers ─────────────────────────────────────────────────────── */
 function formatTime(iso: string): string {
   const d = new Date(iso);
   const today = new Date();
   if (d.toDateString() === today.toDateString()) {
-    return d.toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit", hour12: false });
   }
   return formatDate(iso);
 }
@@ -234,7 +234,7 @@ function ScheduleModal({ onSave, onClose, defaultLocation = "" }: ScheduleModalP
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-violet-600" />
-              <h3 className="font-extrabold text-gray-900 text-base">Xizmat rejalashtirish</h3>
+              <h3 className="font-extrabold text-gray-900 text-base">Xizmatni rejalashtirish</h3>
             </div>
             <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-colors">
               <X className="w-4 h-4" />
@@ -252,25 +252,30 @@ function ScheduleModal({ onSave, onClose, defaultLocation = "" }: ScheduleModalP
                 className="w-full h-11 px-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-all"
               />
             </div>
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block">Vaqt</label>
-              <input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full h-11 px-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-all"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block">Manzil</label>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Ko'cha, uy raqami..."
-                className="w-full h-11 px-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-all"
-              />
-            </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block">Vaqt</label>
+                <input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="w-full h-11 px-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-all"
+                  style={{ colorScheme: "light" }}
+                />
+              </div>
+
+              <p className="text-sm text-gray-600 mt-1">
+                Tanlangan vaqt: <span className="font-mono font-bold text-gray-800">{time}</span>
+              </p>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block">Manzil</label>
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Ko'cha, uy raqami..."
+                  className="w-full h-11 px-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-all"
+                />
+              </div>
           </div>
 
           <div className="flex gap-2">
@@ -517,7 +522,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
                 className="w-11 h-11 rounded-2xl border-2 border-dashed border-violet-300 flex items-center justify-center text-violet-500 hover:bg-violet-50 transition-colors flex-shrink-0 active:scale-95"
                 title="Xizmatni rejalashtirish"
               >
-                <Plus className="w-5 h-5" />
+                <CalendarPlus className="w-5 h-5" />
               </button>
             )}
             <input

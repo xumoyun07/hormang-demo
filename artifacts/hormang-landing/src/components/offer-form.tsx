@@ -307,7 +307,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                 <span className="text-xl flex-shrink-0">🪙</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-extrabold text-amber-900">
-                    Bu taklif yuborish uchun <span className="text-amber-700">{offerCost} Tanga</span> sarflanadi
+                    Bu so'rovga taklif yuborish uchun <span className="text-amber-700">{offerCost} Tanga</span> sarflanadi
                   </p>
                   <p className="text-[11px] text-amber-600 mt-0.5">
                     Joriy balans: <strong>{balance} Tanga</strong> → taklif yuborilgandan keyin: <strong>{balance - offerCost} Tanga</strong>
