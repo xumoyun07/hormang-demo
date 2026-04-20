@@ -5,15 +5,15 @@
  *   2. Upcoming Services
  *   3. Events (coming soon)
  *   4. Available Requests (tabs + swipeable cards)
- *   5. Share Profile
+ *   5. Referral System
  */
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChevronRight, ChevronLeft, CalendarDays, Sparkles, Share2, Link2,
-  CheckCircle2, Clock, MapPin, AlertCircle, Inbox, Send, Check, X,
+  ChevronRight, ChevronLeft, CalendarDays, Sparkles, Gift,
+  CheckCircle2, Clock, MapPin, AlertCircle, Inbox, Send, Check, X, Copy,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { OfferForm } from "@/components/offer-form";
@@ -31,6 +31,10 @@ import { ReviewModal } from "@/components/review-modal";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { getLocalProfile, getCompletionChecks, getCompletionPct } from "@/lib/local-profile";
 import { formatDate as formatUzDate } from "@/lib/date-utils";
+import {
+  getReferralCode, getReferralLink, getReferralStats,
+  ensureReferralIndex, TANGA_PER_REFERRAL, MAX_REFERRALS, MAX_REFERRAL_TANGA,
+} from "@/lib/referral-store";
 import logoImg from "/hormang-logo.png";
 import { TangaChip } from "@/pages/plans";
 
@@ -715,46 +719,166 @@ function AvailableRequests() {
   );
 }
 
-/* ─── Share Profile ──────────────────────────────────────────────── */
-function ShareProfile() {
+/* ─── Referral System Card ────────────────────────────────────────── */
+function ReferralCard() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const profileUrl = `${window.location.origin}/providers/${user?.id}`;
+  const [copied, setCopied] = useState(false);
+
+  const userId = user?.id ?? "";
+  const referralCode = userId ? getReferralCode(userId) : "";
+  const referralLink = userId ? getReferralLink(userId) : "";
+  const stats = userId ? getReferralStats(userId) : { count: 0, earned: 0, invitees: [] };
+
+  // Register the code → userId index so processReferralReward() can look it up
+  useEffect(() => {
+    if (userId) ensureReferralIndex(userId);
+  }, [userId]);
+
+  const progressPct = Math.min(100, (stats.count / MAX_REFERRALS) * 100);
+  const remaining = MAX_REFERRALS - stats.count;
+  const canEarnMore = stats.count < MAX_REFERRALS;
 
   function copyLink() {
-    navigator.clipboard.writeText(profileUrl).catch(() => {});
-    toast({ title: "Havola nusxalandi!", description: "Ulashish uchun tayyor." });
+    navigator.clipboard.writeText(referralLink).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast({ title: "Referral havola nusxalandi! 🔗", description: "Do'stlaringizga yuboring." });
   }
 
   function shareToTelegram() {
-    copyLink();
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(profileUrl)}&text=${encodeURIComponent("Mening Hormang profilim")}`, "_blank");
+    const text = `Hormangda ijrochi bo'ling va pul ishlang! Mening havolam orqali ro'yxatdan o'ting: ${referralLink}`;
+    window.open(
+      `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(text)}`,
+      "_blank"
+    );
+  }
+
+  function shareToWhatsApp() {
+    const text = `Hormangda ijrochi bo'ling! Havolam orqali ro'yxatdan o'ting: ${referralLink}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   }
 
   return (
     <div className="mb-6">
+      {/* Section header */}
       <div className="flex items-center gap-2 mb-3">
-        <Share2 className="w-4 h-4 text-violet-600" />
-        <h2 className="font-bold text-sm text-gray-900">Profil bilan ulashing</h2>
+        <Gift className="w-4 h-4 text-amber-500" />
+        <h2 className="font-bold text-sm text-gray-900">Ijrochi do'stlaringizni taklif qiling</h2>
       </div>
-      <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-4">
-        <p className="text-xs text-gray-500 mb-3">Profilingiz havolasini do'stlar va mijozlarga ulashing</p>
-        <div className="flex gap-2">
-          <button
-            onClick={copyLink}
-            className="flex-1 h-10 rounded-xl border-2 border-violet-100 bg-violet-50 text-violet-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 hover:bg-violet-100"
-          >
-            <Link2 className="w-3.5 h-3.5" />
-            Havolani nusxalash
-          </button>
-          <button
-            onClick={shareToTelegram}
-            className="flex-1 h-10 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-sm"
-            style={{ background: "linear-gradient(135deg, #2AABEE, #229ED9)" }}
-          >
-            <Send className="w-3.5 h-3.5" />
-            Telegram
-          </button>
+
+      {/* Main golden card */}
+      <div
+        className="rounded-2xl overflow-hidden shadow-lg relative"
+        style={{ background: "linear-gradient(135deg, #92400E 0%, #B45309 40%, #D97706 100%)" }}
+      >
+        {/* Decorative shimmer */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: "radial-gradient(ellipse at 10% 0%, rgba(255,255,255,0.18) 0%, transparent 55%)",
+          }}
+        />
+
+        <div className="relative p-5">
+          {/* Top row — emoji + headline */}
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-2xl">🪙</span>
+                <span className="font-extrabold text-white text-lg leading-tight">
+                  +{TANGA_PER_REFERRAL} Tanga
+                </span>
+              </div>
+              <p className="text-amber-100 text-xs leading-relaxed">
+                Har bir muvaffaqiyatli taklif uchun {TANGA_PER_REFERRAL} Tanga
+                {" · "}Maksimal {MAX_REFERRAL_TANGA} Tanga
+              </p>
+            </div>
+            <div className="bg-white/20 rounded-xl px-3 py-1.5 text-center flex-shrink-0">
+              <p className="text-[10px] text-amber-100 font-semibold uppercase tracking-wide">Jami topildi</p>
+              <p className="text-white font-extrabold text-lg leading-none">
+                {stats.earned}&nbsp;🪙
+              </p>
+            </div>
+          </div>
+
+          {/* Progress */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-amber-100 text-xs font-semibold">
+                {stats.count}/{MAX_REFERRALS} ijrochi taklif qildingiz
+              </span>
+              {canEarnMore ? (
+                <span className="text-amber-200 text-[11px]">
+                  Yana {remaining} ta qoldi
+                </span>
+              ) : (
+                <span className="text-amber-200 text-[11px] font-bold">✅ Maksimum!</span>
+              )}
+            </div>
+            <div className="h-2.5 rounded-full bg-white/20 overflow-hidden">
+              <motion.div
+                className="h-full rounded-full"
+                style={{ background: "linear-gradient(90deg, #FCD34D, #FBBF24)" }}
+                initial={{ width: 0 }}
+                animate={{ width: `${progressPct}%` }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+              />
+            </div>
+          </div>
+
+          {/* Referral code pill */}
+          <div className="bg-white/15 rounded-xl px-3 py-2 flex items-center justify-between mb-4 border border-white/20">
+            <div>
+              <p className="text-[10px] text-amber-200 font-semibold uppercase tracking-wider mb-0.5">
+                Referral kodingiz
+              </p>
+              <p className="text-white font-extrabold text-sm tracking-wide">{referralCode}</p>
+            </div>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={copyLink}
+              className="flex items-center gap-1.5 bg-white/25 hover:bg-white/35 transition-colors rounded-lg px-3 py-1.5"
+            >
+              {copied
+                ? <Check className="w-3.5 h-3.5 text-white" />
+                : <Copy className="w-3.5 h-3.5 text-white" />}
+              <span className="text-white text-xs font-bold">
+                {copied ? "Nusxalandi!" : "Nusxalash"}
+              </span>
+            </motion.button>
+          </div>
+
+          {/* Action buttons */}
+          <div className="grid grid-cols-3 gap-2">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={copyLink}
+              className="h-10 rounded-xl bg-white text-amber-700 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm hover:bg-amber-50 transition-colors col-span-1"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              Havola
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={shareToTelegram}
+              className="h-10 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-colors col-span-1"
+              style={{ background: "linear-gradient(135deg, #2AABEE, #229ED9)" }}
+            >
+              <Send className="w-3.5 h-3.5" />
+              Telegram
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={shareToWhatsApp}
+              className="h-10 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-colors col-span-1"
+              style={{ background: "linear-gradient(135deg, #25D366, #128C7E)" }}
+            >
+              <Send className="w-3.5 h-3.5" />
+              WhatsApp
+            </motion.button>
+          </div>
         </div>
       </div>
     </div>
@@ -851,7 +975,7 @@ export default function ProviderHomePage() {
         <UpcomingServices />
         <EventsSection />
         <AvailableRequests />
-        <ShareProfile />
+        <ReferralCard />
       </div>
 
       <BottomNav />

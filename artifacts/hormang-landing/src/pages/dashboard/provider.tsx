@@ -104,12 +104,6 @@ export default function ProviderDashboard() {
       comingSoon: true,
     },
     {
-      icon: Eye,
-      title: "Ommaviy profilim",
-      desc: "Mijozlar ko'radigan profilingiz",
-      action: () => setLocation(`/providers/${user?.id}`),
-    },
-    {
       icon: Settings,
       title: "Profil sozlamalari",
       desc: "Xizmatlar, bio, parol va hisobing",

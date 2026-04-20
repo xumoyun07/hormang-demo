@@ -697,7 +697,7 @@ export default function ProviderChatsPage() {
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 pt-4 pb-3">
           <div className="flex items-center gap-3 mb-3">
-            <button onClick={() => setLocation("/provider")} className="flex items-center flex-shrink-0">
+            <button onClick={() => setLocation("/provider-home")} className="flex items-center flex-shrink-0">
               <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
             </button>
             <div className="flex-1">

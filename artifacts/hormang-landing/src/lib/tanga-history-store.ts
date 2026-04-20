@@ -16,6 +16,8 @@ export interface TangaTransaction {
   categoryEmoji?: string;
   description: string;
   amount: number;
+  /** "spend" = offer cost (default), "referral" = reward earned, "purchase" = bought */
+  type?: "spend" | "referral" | "purchase";
   createdAt: string;
 }
 

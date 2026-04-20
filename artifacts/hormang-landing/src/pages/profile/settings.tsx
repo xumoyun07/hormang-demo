@@ -56,21 +56,20 @@ function CircularProgress({ pct }: { pct: number }) {
   const r    = 34;
   const circ = 2 * Math.PI * r;
   const dash = (pct / 100) * circ;
-
   const color = pct < 40 ? "#EF4444" : pct < 75 ? "#F97316" : VIOLET_SOLID;
-
   return (
-    <svg width="88" height="88" className="rotate-[-90deg]" style={{ filter: "drop-shadow(0 0 6px rgba(139,92,246,0.2))" }}>
+    <svg width="88" height="88" className="rotate-[-90deg]"
+      style={{ filter: "drop-shadow(0 0 6px rgba(139,92,246,0.2))" }}>
       <circle cx="44" cy="44" r={r} fill="none" stroke="#EDE9FE" strokeWidth="7" />
       <circle
         cx="44" cy="44" r={r} fill="none" strokeWidth="7"
-        stroke={pct < 75 ? color : "url(#pgradV2)"}
+        stroke={pct < 75 ? color : "url(#pgradProv)"}
         strokeLinecap="round"
         strokeDasharray={`${dash} ${circ}`}
         style={{ transition: "stroke-dasharray 0.9s cubic-bezier(0.4,0,0.2,1), stroke 0.5s ease" }}
       />
       <defs>
-        <linearGradient id="pgradV2" x1="0%" y1="0%" x2="100%" y2="0%">
+        <linearGradient id="pgradProv" x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="hsl(262,80%,54%)" />
           <stop offset="100%" stopColor="hsl(236,76%,60%)" />
         </linearGradient>
@@ -78,7 +77,6 @@ function CircularProgress({ pct }: { pct: number }) {
     </svg>
   );
 }
-
 /* ─── Field wrapper ──────────────────────────────────────────────── */
 function Field({ label, required, children, hint, error, boost }: {
   label: string; required?: boolean; children: React.ReactNode;

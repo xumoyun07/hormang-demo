@@ -28,14 +28,24 @@ function TxRow({
   offer: Offer | undefined;
   onView: () => void;
 }) {
+  const isReferral = tx.type === "referral";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+      className={`rounded-2xl shadow-sm overflow-hidden border ${
+        isReferral
+          ? "bg-emerald-50 border-emerald-100"
+          : "bg-white border-gray-100"
+      }`}
     >
       <div className="px-4 py-3.5 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-xl flex-shrink-0">
+        <div
+          className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${
+            isReferral ? "bg-emerald-100" : "bg-amber-50"
+          }`}
+        >
           {tx.categoryEmoji || "📋"}
         </div>
         <div className="flex-1 min-w-0">
@@ -52,9 +62,15 @@ function TxRow({
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-          <span className="text-sm font-extrabold text-amber-600">
-            −{tx.amount}&nbsp;🪙
-          </span>
+          {isReferral ? (
+            <span className="text-sm font-extrabold text-emerald-600">
+              +{tx.amount}&nbsp;🪙
+            </span>
+          ) : (
+            <span className="text-sm font-extrabold text-amber-600">
+              −{tx.amount}&nbsp;🪙
+            </span>
+          )}
           {offer && (
             <button
               onClick={onView}
@@ -80,10 +96,13 @@ export default function TangaHistoryPage() {
   const balance = user ? getTangaBalance(user.id) : 0;
   const allOffers = getOffers();
 
-  const totalSpent = transactions.reduce((s, t) => s + t.amount, 0);
+  const spendTxs = transactions.filter((t) => t.type !== "referral");
+  const referralTxs = transactions.filter((t) => t.type === "referral");
+  const totalSpent = spendTxs.reduce((s, t) => s + t.amount, 0);
+  const totalEarnedReferral = referralTxs.reduce((s, t) => s + t.amount, 0);
   const avgSpent =
-    transactions.length > 0
-      ? Math.round(totalSpent / transactions.length)
+    spendTxs.length > 0
+      ? Math.round(totalSpent / spendTxs.length)
       : 0;
 
   const viewedOffer = viewOfferId
@@ -128,13 +147,14 @@ export default function TangaHistoryPage() {
             🪙 {balance}
           </p>
           <p className="text-violet-200 text-xs mt-2 relative">
-            Jami {transactions.length} ta taklif · {totalSpent} Tanga sarflangan
+            {spendTxs.length} ta taklif · {totalSpent} Tanga sarflangan
+            {totalEarnedReferral > 0 && ` · +${totalEarnedReferral} Tanga referral mukofoti`}
           </p>
         </div>
 
         {/* ── Stats row ── */}
         {transactions.length > 0 && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className={`grid gap-3 ${totalEarnedReferral > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
             <div className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm text-center">
               <p className="text-[10px] font-semibold text-gray-400 mb-1">Jami sarflandi</p>
               <p className="font-extrabold text-amber-600 text-xl">
@@ -147,6 +167,14 @@ export default function TangaHistoryPage() {
                 {avgSpent}&nbsp;<span className="text-base">🪙</span>
               </p>
             </div>
+            {totalEarnedReferral > 0 && (
+              <div className="bg-emerald-50 rounded-2xl border border-emerald-100 p-3.5 shadow-sm text-center">
+                <p className="text-[10px] font-semibold text-emerald-600 mb-1">Referral mukofot</p>
+                <p className="font-extrabold text-emerald-600 text-xl">
+                  +{totalEarnedReferral}&nbsp;<span className="text-base">🪙</span>
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -172,6 +200,7 @@ export default function TangaHistoryPage() {
           <div className="space-y-2">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">
               Barcha tranzaksiyalar · {transactions.length} ta
+              {referralTxs.length > 0 && ` (${referralTxs.length} ta referral mukofoti)`}
             </p>
             {transactions.map((tx) => {
               const offer = allOffers.find((o) => o.id === tx.offerId);

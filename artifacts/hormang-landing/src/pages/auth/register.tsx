@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { sendSmsCode, registerUser, saveProviderProfile } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
+import { recordReferralSignup, processReferralReward } from "@/lib/referral-store";
 import logoImg from "/hormang-logo.png";
 
 const SERVICE_CATEGORIES = [
@@ -155,6 +156,7 @@ export default function RegisterPage() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const role = (params.get("role") ?? "buyer") as "buyer" | "provider";
+  const refCode = params.get("ref") ?? "";
   const [, setLocation] = useLocation();
   const { setAuth, user } = useAuth();
   const { toast } = useToast();
@@ -242,10 +244,12 @@ export default function RegisterPage() {
 
       if (role === "buyer") {
         setAuth(res.user, null);
+        if (refCode) recordReferralSignup(refCode, res.user.id);
         toast({ title: `Xush kelibsiz, ${res.user.firstName}! Hormangga xush kelibsiz.` });
         setLocation("/dashboard");
       } else {
         setAuth(res.user, null);
+        if (refCode) recordReferralSignup(refCode, res.user.id);
         setStep("provider");
       }
     } catch (err: unknown) {
@@ -265,6 +269,7 @@ export default function RegisterPage() {
         preferredLocation: data.preferredLocation,
       });
       setAuth(user!, profile);
+      processReferralReward(user!.id);
       toast({ title: `Profilingiz tayyor, ${user?.firstName}! Endi so'rovlar kuting.` });
       setLocation("/dashboard");
     } catch (err: unknown) {
