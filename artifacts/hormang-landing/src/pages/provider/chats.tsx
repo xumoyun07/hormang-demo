@@ -19,7 +19,7 @@ import {
 import { BottomNav } from "@/components/bottom-nav";
 import {
   getProviderChats, markChatRead, sendProviderMessage, getProviderChatById,
-  addUpcomingService,
+  addUpcomingService, getUpcomingServices,
   type ProviderChat, type ProviderChatMessage,
 } from "@/lib/provider-store";
 import {
@@ -329,6 +329,10 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
     !hasReviewedRequest(chat.requestId, masterId);
   const canSchedule =
     offer && (offer.status === "accepted" || offer.status === "in_progress") && !isCompleted;
+  const isAlreadyPlanned =
+    canSchedule && offer
+      ? getUpcomingServices(masterId).some((s) => s.offerId === offer.id)
+      : false;
   const customerLocal = chat?.customerId ? getLocalProfile(chat.customerId) : null;
 
   useEffect(() => {
@@ -517,15 +521,26 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
       ) : (
         <div className="shrink-0 bg-white border-t border-gray-100 z-20 pb-0">
           <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-2">
-            {/* Schedule "+" button */}
+            {/* Schedule button */}
             {canSchedule && (
-              <button
-                onClick={() => setShowSchedule(true)}
-                className="w-11 h-11 rounded-2xl border-2 border-dashed border-violet-300 flex items-center justify-center text-violet-500 hover:bg-violet-50 transition-colors flex-shrink-0 active:scale-95"
-                title="Xizmatni rejalashtirish"
-              >
-                <CalendarPlus className="w-5 h-5" />
-              </button>
+              isAlreadyPlanned ? (
+                <button
+                  disabled
+                  className="flex items-center gap-1.5 h-11 px-3 rounded-2xl border border-gray-200 bg-gray-50 text-gray-400 text-[11px] font-semibold flex-shrink-0 cursor-not-allowed opacity-60 select-none"
+                  title="Xizmat allaqachon rejalashtirilgan"
+                >
+                  <Calendar className="w-4 h-4" />
+                  Rejalashtirilgan
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowSchedule(true)}
+                  className="w-11 h-11 rounded-2xl border-2 border-dashed border-violet-300 flex items-center justify-center text-violet-500 hover:bg-violet-50 transition-colors flex-shrink-0 active:scale-95"
+                  title="Xizmatni rejalashtirish"
+                >
+                  <CalendarPlus className="w-5 h-5" />
+                </button>
+              )
             )}
             <input
               value={text}
