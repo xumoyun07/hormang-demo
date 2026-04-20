@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import logoImg from "/hormang-logo.png";
 import {
   Search, ClipboardList, Heart, Settings, LogOut, ChevronRight,
-  Inbox, TrendingUp, Star, Eye, CheckCircle2, MapPin,
+  Inbox, TrendingUp, Star, CheckCircle2, MapPin,
   ShoppingBag, Briefcase, Loader2, ArrowRight, X,
   Phone, ShieldCheck,
 } from "lucide-react";
@@ -26,6 +26,8 @@ import { TangaChip } from "@/pages/plans";
 
 const VIOLET_SOLID = "hsl(262,80%,54%)";
 const VIOLET_GRAD  = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
+
+
 
 function RoleSwitcher() {
   const { activeRole, switchRole } = useAuth();
@@ -453,12 +455,6 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
       title: "Sharhlarim",
       desc: "Mijozlar fikr-mulohazalari",
       comingSoon: true,
-    },
-    {
-      icon: Eye,
-      title: "Ommaviy profilim",
-      desc: "Mijozlar ko'radigan profilingiz",
-      action: () => onNavigate(`/providers/${user?.id}`),
     },
     {
       icon: Settings,

@@ -314,7 +314,7 @@ function ProviderPreviewSheet({
 
             {/* ── Privacy note ── */}
             <p className="text-center text-[11px] text-gray-400 leading-relaxed mb-2">
-              📵 Telefon raqam ko'rsatilmaydi — faqat platforma orqali aloqa
+              📵 Foydalanuvchi ma'lumotlarini himoya qilish maqsadida telefon raqam ko'rsatilmaydi
             </p>
 
             {/* ── Close button ── */}
@@ -538,7 +538,7 @@ function CustomerPreviewSheet({
 
             {/* ── Privacy note ── */}
             <p className="text-center text-[11px] text-gray-400 leading-relaxed mb-4">
-              📵 Telefon raqam ko'rsatilmaydi — faqat platforma orqali aloqa
+              📵 Foydalanuvchi ma'lumotlarini himoya qilish maqsadida telefon raqam ko'rsatilmaydi
             </p>
 
             {/* ── Close button ── */}

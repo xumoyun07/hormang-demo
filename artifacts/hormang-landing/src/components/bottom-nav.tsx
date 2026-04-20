@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { Home, LayoutGrid, ClipboardList, MessageCircle, LayoutDashboard, Wallet, List } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
@@ -25,7 +26,11 @@ export function BottomNav() {
   const [location, setLocation] = useLocation();
   const { user, activeRole, providerProfile } = useAuth();
   const { toast } = useToast();
-
+  
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [window.location.pathname]);
+  
   if (!user) return null;
 
   const isProvider = activeRole === "provider";

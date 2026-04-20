@@ -291,7 +291,7 @@ function ProviderSheet({ data, onClose }: { data: ProviderProfileData; onClose: 
           </div>
 
           <p className="text-center text-xs text-gray-400 pb-1">
-            📵 Telefon raqam ko'rsatilmaydi — faqat platforma orqali aloqa
+            📵 Foydalanuvchi ma'lumotlarini himoya qilish maqsadida telefon raqam ko'rsatilmaydi
           </p>
         </div>
 
