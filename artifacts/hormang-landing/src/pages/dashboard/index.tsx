@@ -28,47 +28,6 @@ const VIOLET_SOLID = "hsl(262,80%,54%)";
 const VIOLET_GRAD  = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 
 
-
-function RoleSwitcher() {
-  const { activeRole, switchRole } = useAuth();
-
-  return (
-    <div className="relative flex items-center bg-gray-100 rounded-2xl p-1 gap-1">
-      {(["buyer", "provider"] as const).map((role) => {
-        const active = activeRole === role;
-        return (
-          <button
-            key={role}
-            onClick={() => switchRole(role)}
-            className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors duration-150 z-10 ${
-              active ? "text-white" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            {active && (
-              <motion.div
-                layoutId="role-pill"
-                className="absolute inset-0 rounded-xl shadow-sm"
-                style={{
-                  background: role === "buyer"
-                    ? "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)"
-                    : "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)",
-                }}
-                transition={{ type: "spring", stiffness: 500, damping: 35 }}
-              />
-            )}
-            <span className="relative">
-              {role === "buyer" ? <ShoppingBag className="w-3.5 h-3.5" /> : <Briefcase className="w-3.5 h-3.5" />}
-            </span>
-            <span className="relative hidden sm:inline">
-              {role === "buyer" ? "Xaridor" : "Ijrochi"}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 function BecomeProviderCard({ onBecome }: { onBecome: () => void }) {
   return (
     <motion.div
