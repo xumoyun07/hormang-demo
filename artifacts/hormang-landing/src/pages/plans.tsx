@@ -10,6 +10,7 @@ import {
   getTangaBalance, addTangaBalance, getActiveTiers, type PricingTier,
   isSaleActive, getSaleRemaining, incrementSalePurchaseCount,
 } from "@/lib/tanga-store";
+import { ReferralCard } from "@/components/referral-card";
 
 const GOLD_GRAD = "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
 const GOLD_DARK = "linear-gradient(135deg, #f59e0b 0%, #92400e 100%)";
@@ -310,6 +311,11 @@ export default function PlansPage() {
             </AnimatePresence>
           </div>
         )}
+
+        {/* Referral card */}
+        <div className="mt-6">
+          <ReferralCard title="Bepul Tanga ishlab oling" />
+        </div>
       </div>
 
       <BottomNav />
