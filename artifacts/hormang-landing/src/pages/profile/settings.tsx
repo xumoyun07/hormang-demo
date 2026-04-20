@@ -10,7 +10,7 @@
  *   - Helper texts + "Add now" scroll anchors for missing items
  *   - Phone-migration modal
  */
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import {
@@ -263,16 +263,30 @@ export default function ProfileSettingsPage() {
     setShowWelcomeBanner(false);
   }
 
+  /* ── Save guard ref: tracks the "authorized user ID" for all saves.
+   * Updated synchronously (useLayoutEffect) on every user.id change so that
+   * stale closures captured by persistLocal or handleSave can be detected and
+   * blocked before they write to the wrong user's localStorage key. */
+  const saveGuardRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    saveGuardRef.current = user?.id ?? null;
+  }, [user?.id]);
+
   /* Local profile state */
   const [local, setLocal] = useState<LocalProfile>({});
   useEffect(() => {
     if (user) {
       const loaded = getLocalProfile(user.id);
       setLocal(loaded);
-      /* Reset photo IMMEDIATELY on user switch — do NOT rely on the separate
-         local.photoUrl effect, which would leave a 300ms window where the
-         debounced auto-save could write the old user's photo to the new user. */
+      /* Reset photo IMMEDIATELY on user switch — prevents a 300ms race where
+         the debounced auto-save writes the old user's photo to the new user. */
       setPhotoUrl(loaded.photoUrl);
+    } else {
+      /* User logged out → wipe ALL form state so no stale data lingers in the
+         component if it stays mounted through a logout/login cycle. */
+      setLocal({});
+      setPhotoUrl(undefined);
+      setPortfolioItems([]);
     }
   }, [user?.id]);
 
@@ -286,11 +300,16 @@ export default function ProfileSettingsPage() {
   const [experience, setExperience] = useState("");
   const [bio, setBio]               = useState("");
 
-  /* Populate from auth/local once loaded */
+  /* Populate from auth/local once loaded — also clear on logout */
   useEffect(() => {
     if (user) {
       setFirstName(user.firstName ?? "");
       setLastName(user.lastName ?? "");
+    } else {
+      setFirstName("");
+      setLastName("");
+      setBio("");
+      setSelectedServices([]);
     }
     if (providerProfile) {
       setSelectedServices(providerProfile.categories ?? []);
@@ -400,11 +419,28 @@ export default function ProfileSettingsPage() {
 
   const persistLocal = useCallback(() => {
     if (!user) return;
-    /* Guard: if debouncedPhoto hasn't caught up with the live photoUrl state,
-       skip this save cycle. This prevents a cross-user race where User A's
-       photo (still in debouncedPhoto) gets written to User B's profile right
-       after a user switch — the next debounce tick will have the correct value. */
+
+    /* ── CRITICAL: reject stale closures from a previous user session ──
+     * saveGuardRef.current is updated synchronously (useLayoutEffect) whenever
+     * user.id changes, so this check reliably blocks any persistLocal call that
+     * was captured before the user switched. */
+    if (user.id !== saveGuardRef.current) {
+      console.warn(`[Hormang] persistLocal blocked — stale closure for user=${user.id.slice(0, 8)}`);
+      return;
+    }
+
+    /* ── CRITICAL: ALL debounced values must have settled before saving ──
+     * Only checking debouncedPhoto was insufficient: debouncedBio, debouncedRegion,
+     * and debouncedExp would still hold the OLD user's values for up to 1200ms
+     * after a user switch, causing cross-user data leakage into the new user's
+     * localStorage key. We now require every debounced field to match its
+     * live state counterpart before any write occurs. */
     if (debouncedPhoto !== photoUrl) return;
+    if (debouncedBio !== bio) return;
+    if (debouncedRegion !== region) return;
+    if (debouncedDistrict !== district) return;
+    if (debouncedExp !== experience) return;
+
     const next: LocalProfile = {
       photoUrl: debouncedPhoto,
       region: debouncedRegion,
@@ -412,17 +448,12 @@ export default function ProfileSettingsPage() {
       serviceAreas: debouncedServiceAreas,
       experience: debouncedExp ? Number(debouncedExp) : undefined,
       portfolioItems: debouncedPortf,
-      /* bio and categories are written here so PublicProfileModal can read them
-         directly from localStorage without needing an API call */
       bio: debouncedBio || undefined,
       categories: selectedServices.length > 0 ? selectedServices : undefined,
-      /* NOTE: portfolioImages (legacy field) is intentionally NOT written here.
-         saveLocalProfile() strips it on every write anyway; writing it doubles
-         storage usage and can trigger QuotaExceededError on 6-image portfolios. */
     };
     saveLocalProfile(user.id, next);
     setAutoSaveAt(new Date());
-  }, [user, photoUrl, debouncedPhoto, debouncedRegion, debouncedDistrict, debouncedServiceAreas, debouncedExp, debouncedPortf, debouncedBio, selectedServices]);
+  }, [user, photoUrl, debouncedPhoto, bio, debouncedBio, region, debouncedRegion, district, debouncedDistrict, experience, debouncedExp, debouncedServiceAreas, debouncedPortf, selectedServices]);
 
   useEffect(() => { persistLocal(); }, [persistLocal]);
 
@@ -469,6 +500,13 @@ export default function ProfileSettingsPage() {
   const [errors, setErrors]   = useState<Record<string, string>>({});
 
   async function handleSave() {
+    /* Strict guard: never save for a user that isn't the currently authenticated
+     * one. This blocks any async save that started before a user switch completes. */
+    if (!user || user.id !== saveGuardRef.current) {
+      console.warn("[Hormang] handleSave blocked — stale or missing user");
+      return;
+    }
+
     const errs: Record<string, string> = {};
     if (!firstName.trim() || firstName.trim().length < 2) errs.firstName = "Ism kamida 2 harf";
     if (!lastName.trim() || lastName.trim().length < 2) errs.lastName = "Familiya kamida 2 harf";

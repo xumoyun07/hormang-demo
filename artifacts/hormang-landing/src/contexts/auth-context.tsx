@@ -127,6 +127,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeRole, setActiveRoleState] = useState<Role>("buyer");
   const [loading, setLoading] = useState(true);
 
+  /* Cross-tab / cross-iframe sync: listen for token changes in localStorage.
+   * This ensures that when one iframe logs out or a new user logs in, ALL
+   * other open instances of the app immediately sync their React state. */
+  useEffect(() => {
+    function onStorageChange(e: StorageEvent) {
+      if (e.key !== "hormang_access_token") return;
+
+      if (!e.newValue) {
+        // Token was removed in another tab/iframe → sync logout here too
+        setUser(null);
+        setProviderProfileState(null);
+        setActiveRoleState("buyer");
+        console.log("[Hormang] 🔄 Boshqa oynada chiqish — holat tozalandi.");
+      } else {
+        // Token changed (new login in another tab/iframe) → re-validate session
+        getMe()
+          .then(({ user: u, providerProfile: pp }) => {
+            handleUserSwitch(u.id);
+            persistUserToRegistry(u);
+            setUser(u);
+            setProviderProfileState(pp);
+            const role = resolveAndPersistRole(u.id, pp, u.role as Role);
+            setActiveRoleState(role);
+            console.log(`[Hormang] 🔄 Boshqa oynada kirish — sessiya yangilandi: id=${u.id.slice(0, 8)}`);
+          })
+          .catch(() => {
+            setUser(null);
+            setProviderProfileState(null);
+            setActiveRoleState("buyer");
+          });
+      }
+    }
+
+    window.addEventListener("storage", onStorageChange);
+    return () => window.removeEventListener("storage", onStorageChange);
+  }, []);
+
   /* On mount: restore session from existing token */
   useEffect(() => {
     const token = localStorage.getItem("hormang_access_token");
