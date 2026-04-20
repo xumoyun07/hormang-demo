@@ -787,7 +787,7 @@ function ReferralCard() {
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-2xl">🪙</span>
                 <span className="font-extrabold text-white text-lg leading-tight">
-                  +{TANGA_PER_REFERRAL} Tanga
+                  +{MAX_REFERRAL_TANGA} Tanga bepul
                 </span>
               </div>
               <p className="text-amber-100 text-xs leading-relaxed">
