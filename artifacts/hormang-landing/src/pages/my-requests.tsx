@@ -267,13 +267,14 @@ export default function MyRequestsPage() {
               <Plus className="w-4 h-4" />
               Yangi so'rov yuborish
             </Button>
-            {requests.some((r) => r.status === "completed") && (
-              <button
+          
+        {requests.some((r) => r.status === "completed") && (
+              <h3> <button
                 onClick={() => setLocation("/request-history")}
-                className="mt-4 text-xs font-bold text-blue-600 hover:text-blue-700"
+                className="mt-4 text-xs font-bold text-blue-500 hover:underline hover:text-blue-600"
               >
                 Yakunlangan buyurtmalarni ko'rish
-              </button>
+              </button> </h3>
             )}
           </motion.div>
         ) : (

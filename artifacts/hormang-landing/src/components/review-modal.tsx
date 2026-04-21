@@ -5,6 +5,7 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { motion } from "framer-motion";
 import { Camera, ImagePlus, Star, ThumbsDown, ThumbsUp, X } from "lucide-react";
+import React from "react";
 
 export interface ReviewSubmitData {
   rating: number;
@@ -189,8 +190,8 @@ export function ReviewModal({
           </div>
 
           {showProviderSliders && (
-            <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-3 mb-4 space-y-3">
-              <p className="text-sm font-black text-gray-900">Xizmat ko'rsatkichlari</p>
+              <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4 mb-4 space-y-4">
+              <p className="text-sm font-black text-gray-500">Xizmat ko'rsatkichlari</p>
               <MetricSlider
                 label="Xizmat sifati"
                 value={serviceQuality}
@@ -304,6 +305,7 @@ export function ReviewModal({
   );
 }
 
+
 function MetricSlider({
   label,
   value,
@@ -313,26 +315,91 @@ function MetricSlider({
   value: number;
   onChange: (value: number) => void;
 }) {
+  const getLabel = (value: number) => {
+    if (value < 40) return "Qoniqarsiz";
+    if (value < 70) return "O‘rtacha";
+    return "A’lo";
+  };
+
+  const getEmoji = (value: number) => {
+    if (value < 40) return "👎";
+    if (value < 70) return "🙂";
+    return "👍";
+  };
+
   return (
     <div>
+      {/* Top Row */}
       <div className="flex items-center justify-between gap-3 mb-1.5">
         <p className="text-xs font-black text-gray-800">{label}</p>
-        <span className="text-xs font-black text-violet-700 bg-white border border-violet-100 rounded-full px-2 py-0.5">
-          {value}%
-        </span>
+
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{getEmoji(value)}</span>
+
+          <span className="text-sm font-bold text-white bg-gradient-to-r from-violet-500 to-purple-600 rounded-full px-3 py-1 shadow">
+            {value}%
+          </span>
+        </div>
       </div>
-      <input
-        type="range"
-        min={0}
-        max={100}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-violet-600"
-      />
-      <div className="flex justify-between text-[10px] font-bold text-gray-400 mt-0.5">
-        <span>Qoniqarsiz</span>
-        <span>Qoniqarli</span>
+
+      {/* Slider */}
+      <div className="relative">
+        {/* Gradient Track */}
+        <div className="absolute top-1/2 -translate-y-1/2 w-full h-2 rounded-full bg-gradient-to-r from-red-500 via-yellow-100 to-green-500" />
+
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="relative w-full appearance-none bg-transparent h-3.5 cursor-pointer"
+        />
+
+        {/* Custom Thumb Style */}
+        <style>
+          {`
+            input[type="range"]::-webkit-slider-thumb {
+              appearance: none;
+              height: 16px;
+              width: 16px;
+              border-radius: 9999px;
+              background: #7c3aed;
+              cursor: pointer;
+              transition: transform 0.2s;
+            }
+
+            input[type="range"]::-webkit-slider-thumb:hover {
+              transform: scale(1.2);
+            }
+
+            input[type="range"]::-moz-range-thumb {
+              height: 16px;
+              width: 16px;
+              border-radius: 9999px;
+              background: #7c3aed;
+              cursor: pointer;
+            }
+          `}
+        </style>
+      </div>
+
+      {/* Bottom Labels */}
+      <div className="flex justify-between items-center mt-1">
+        <span className="text-[10px] font-bold text-gray-400">
+          Qoniqarsiz
+        </span>
+
+        <span className="text-[11px] font-bold text-violet-600">
+          {getLabel(value)}
+        </span>
+
+        <span className="text-[10px] font-bold text-gray-400">
+          A’lo
+        </span>
       </div>
     </div>
   );
 }
+
+export default MetricSlider;

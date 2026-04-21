@@ -256,6 +256,7 @@ function ReviewCard({
   onProfile: () => void;
 }) {
   const meta = getReviewerMeta(review);
+  const metrics = review.providerMetrics;
 
   return (
     <motion.div
@@ -297,7 +298,7 @@ function ReviewCard({
       <p className="text-sm text-gray-600 leading-relaxed mt-3 line-clamp-3">
         {review.comment || "Izoh qoldirilmagan."}
       </p>
-      {review.providerMetrics && (
+      {metrics && (
         <div className="mt-3 space-y-2 rounded-2xl bg-gray-50 border border-gray-100 p-3">
           {METRIC_LABELS.map((metric) => (
             <div key={metric.key} className="flex items-center gap-2">
@@ -305,11 +306,11 @@ function ReviewCard({
               <div className="flex-1 h-2 rounded-full bg-gray-200 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-amber-300 to-emerald-400"
-                  style={{ width: `${review.providerMetrics?.[metric.key] ?? 0}%` }}
+                  style={{ width: `${metrics[metric.key] ?? 0}%` }}
                 />
               </div>
               <span className="w-9 text-right text-[10px] font-black text-violet-700">
-                {review.providerMetrics[metric.key]}%
+                {metrics[metric.key] ?? 0}%
               </span>
             </div>
           ))}
@@ -325,7 +326,29 @@ function ReviewCard({
     </motion.div>
   );
 }
+function CompactMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between items-center text-xs">
+        <span className="text-white/80 font-semibold">{label}</span>
+        <span className="text-white font-bold">{value}%</span>
+      </div>
 
+      <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-violet-300 via-white/80 to-white rounded-full transition-all duration-300"
+          style={{ width: `${value}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 export default function ProviderReviewsPage() {
   useStoreRefresh();
   const { user } = useAuth();
@@ -358,31 +381,68 @@ export default function ProviderReviewsPage() {
       </div>
 
       <main className="max-w-lg mx-auto px-4 py-4">
-        <div className="rounded-3xl p-5 text-white mb-4" style={{ background: VIOLET }}>
-          <p className="text-sm font-bold text-white/80 mb-2">Umumiy baho</p>
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-4xl font-black">{avg > 0 ? avg.toFixed(1) : "—"}</span>
-                <Star className="w-7 h-7 text-amber-300 fill-amber-300" />
-              </div>
-              <p className="text-sm font-semibold text-white/80">{reviews.length} ta sharh</p>
+        {/* Summary Card */}
+        <div
+          className="rounded-2xl p-4 text-white mb-4"
+          style={{ background: VIOLET }}
+        >
+          {/* Title */}
+          <p className="text-[11px] uppercase tracking-wide text-white/70 mb-2">
+            Umumiy baho
+          </p>
+
+          {/* Top Row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl font-black">
+                {avg > 0 ? avg.toFixed(1) : "—"}
+              </span>
+
+              <Star className="w-6 h-6 text-amber-300 fill-amber-300" />
+
+              <span className="text-sm text-white/80">
+                {reviews.length} ta sharh
+              </span>
             </div>
-            <div className="w-14 h-14 rounded-2xl bg-white/18 flex items-center justify-center">
-              <MessageCircle className="w-7 h-7" />
+
+            <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center">
+              <MessageCircle className="w-5 h-5" />
             </div>
           </div>
-          <ReviewMetricsBlock metrics={metricAverages} variant="dark" />
+
+          {/* Divider */}
+          <div className="h-px bg-white/10 my-3" />
+
+          {/* Compact Metrics */}
+          <div className="space-y-3">
+            <CompactMetric
+              label="Xizmat sifati"
+              value={metricAverages.serviceQuality}
+            />
+            <CompactMetric
+              label="Muomala"
+              value={metricAverages.providerAttitude}
+            />
+            <CompactMetric
+              label="Narx"
+              value={metricAverages.servicePrice}
+            />
+          </div>
         </div>
 
+        {/* Reviews */}
         {reviews.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-gray-100 card-shadow p-8 text-center">
-            <div className="w-16 h-16 rounded-3xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
-              <UserRound className="w-8 h-8 text-gray-400" />
+          <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-6 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
+              <UserRound className="w-7 h-7 text-gray-400" />
             </div>
-            <h2 className="font-black text-gray-800 mb-1">Hozircha sharh yo'q</h2>
+
+            <h2 className="font-bold text-gray-800 mb-1">
+              Hozircha sharh yo‘q
+            </h2>
+
             <p className="text-sm text-gray-400">
-              Yakunlangan xizmatlardan keyin mijozlar baholari shu yerda ko'rinadi.
+              Yakunlangan xizmatlardan keyin mijozlar baholari shu yerda ko‘rinadi
             </p>
           </div>
         ) : (
@@ -398,6 +458,8 @@ export default function ProviderReviewsPage() {
           </div>
         )}
       </main>
+
+      
 
       <AnimatePresence>
         {selectedReview && (
