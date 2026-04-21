@@ -1,6 +1,6 @@
 /**
  * /my-requests — Customer's posted service requests
- * Sections: Faol (open) | Yakunlangan (completed) | Bekor qilingan (cancelled)
+ * Sections: Faol (open) | Bekor qilingan (cancelled)
  */
 import { useState } from "react";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
@@ -42,7 +42,7 @@ function BriefcaseIcon({ className }: { className?: string }) {
 }
 
 /* ─── Request Card ───────────────────────────────────────────────── */
-type CardMode = "active" | "completed" | "cancelled";
+type CardMode = "active" | "cancelled";
 
 function RequestCard({
   req, index, mode, onClose, onReopen,
@@ -77,8 +77,6 @@ function RequestCard({
   const statusChip =
     mode === "active"
       ? { label: "Faol", cls: "bg-emerald-50 text-emerald-600" }
-      : mode === "completed"
-      ? { label: "Yakunlangan", cls: "bg-blue-50 text-blue-600" }
       : { label: "Bekor qilindi", cls: "bg-gray-100 text-gray-500" };
 
   return (
@@ -186,12 +184,6 @@ function RequestCard({
           </button>
         )}
 
-        {/* Completed — no action button, just visual indicator */}
-        {mode === "completed" && (
-          <div className="w-9 h-9 rounded-xl border border-blue-100 bg-blue-50 flex items-center justify-center text-blue-400 flex-shrink-0">
-            <CheckCircle2 className="w-4 h-4" />
-          </div>
-        )}
       </div>
 
       <AnimatePresence>
@@ -230,9 +222,9 @@ export default function MyRequestsPage() {
     updateRequestStatus(id, "open");
   }
 
-  const active    = requests.filter((r) => r.status === "open");
-  const completed = requests.filter((r) => r.status === "completed");
+  const active = requests.filter((r) => r.status === "open");
   const cancelled = requests.filter((r) => r.status === "cancelled");
+  const visibleRequests = [...active, ...cancelled];
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -245,7 +237,7 @@ export default function MyRequestsPage() {
           <div className="flex-1">
             <h1 className="font-extrabold text-sm text-gray-900">Mening so'rovlarim</h1>
             <p className="text-xs text-gray-400">
-              {active.length} faol · {completed.length} yakunlangan · {cancelled.length} bekor
+              {active.length} faol · {cancelled.length} bekor
             </p>
           </div>
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-300">
@@ -255,7 +247,7 @@ export default function MyRequestsPage() {
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6">
-        {requests.length === 0 ? (
+        {visibleRequests.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -275,6 +267,14 @@ export default function MyRequestsPage() {
               <Plus className="w-4 h-4" />
               Yangi so'rov yuborish
             </Button>
+            {requests.some((r) => r.status === "completed") && (
+              <button
+                onClick={() => setLocation("/request-history")}
+                className="mt-4 text-xs font-bold text-blue-600 hover:text-blue-700"
+              >
+                Yakunlangan buyurtmalarni ko'rish
+              </button>
+            )}
           </motion.div>
         ) : (
           <>
@@ -282,7 +282,7 @@ export default function MyRequestsPage() {
             <div className="flex items-center justify-between mb-5">
               {/* Quick link to dashboard Buyurtmalarim */}
               <button
-                onClick={() => setLocation("/dashboard")}
+                onClick={() => setLocation("/request-history")}
                 className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-blue-600 transition-colors"
               >
                 <LayoutDashboard className="w-3.5 h-3.5" />
@@ -309,27 +309,6 @@ export default function MyRequestsPage() {
                         req={req}
                         index={i}
                         mode="active"
-                        onClose={handleClose}
-                        onReopen={handleReopen}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </div>
-              </div>
-            )}
-
-            {/* ── Completed section ── */}
-            {completed.length > 0 && (
-              <div className="mb-6">
-                <SectionLabel label="Yakunlangan xizmatlar" count={completed.length} color="bg-blue-400" />
-                <div className="space-y-3">
-                  <AnimatePresence mode="popLayout">
-                    {completed.map((req, i) => (
-                      <RequestCard
-                        key={req.id}
-                        req={req}
-                        index={i}
-                        mode="completed"
                         onClose={handleClose}
                         onReopen={handleReopen}
                       />

@@ -230,6 +230,11 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 - On click: `markOfferCompleted` → shows `ReviewModal` for the provider
 - Offer status badge now handles `in_progress` (spinning loader) and `completed` (flag icon)
 
+### Customer Request History
+- Completed customer requests move out of `/my-requests` and are shown in `/request-history`
+- `dashboard/index.tsx` buyer menu item "Buyurtmalarim" navigates to `/request-history`
+- `/my-requests` now shows only active (`open`) and cancelled requests; completed requests remain viewable in history with detail/offers/chat access
+
 ### Provider Chat (`pages/provider/chats.tsx`)
 - "Tugatildi" green button in header when offer is `accepted` or `in_progress`
 - "+" dashed button left of input (when accepted/in_progress) → opens `ScheduleModal`

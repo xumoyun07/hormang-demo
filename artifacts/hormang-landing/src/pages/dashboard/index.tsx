@@ -206,7 +206,7 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
       icon: ClipboardList,
       title: "Buyurtmalarim",
       desc: "Barcha buyurtmalar va holati",
-      badge: "Tez kunda",
+      action: () => onNavigate("/request-history"),
     },
     {
       icon: Heart,
