@@ -238,6 +238,7 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 ### Provider Profile Completion
 - Completion checks now use locally saved provider `categories` and `bio` as fallback when the API profile returns empty after logout/login
 - 100% completion cards in `/dashboard` and `/provider-home` can be dismissed with an upper-right X per user
+- Provider role access now also uses a per-user local provider marker plus saved service categories as fallback, keeping the dashboard role switcher after logout/login when the server profile is sparse
 
 ### Provider Chat (`pages/provider/chats.tsx`)
 - "Tugatildi" green button in header when offer is `accepted` or `in_progress`

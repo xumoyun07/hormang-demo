@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { getMe, logoutUser, refreshToken, type SafeUser, type ProviderProfile } from "@/lib/auth-client";
 import { saveCustomerToRegistry, savePhoneToRegistry } from "@/lib/requests-store";
+import { getLocalProfile, hasProviderAccess, markProviderAccess } from "@/lib/local-profile";
 
 type Role = "buyer" | "provider";
 
@@ -42,14 +43,15 @@ const GLOBAL_KEYS_TO_CLEAR_ON_USER_SWITCH: string[] = [
  * Priority:
  *   1. Per-user saved key  user_${userId}_activeRole
  *   2. Legacy global key   hormang_active_role  (migrate once, then discard)
- *   3. "provider" if user has a providerProfile
+ *   3. "provider" if server or local profile proves provider access
  *   4. fallback (user.role from the DB)
  */
 function resolveAndPersistRole(
-  userId: string,
+  user: SafeUser,
   providerProfile: ProviderProfile | null,
   fallback: Role,
 ): Role {
+  const userId = user.id;
   const saved = localStorage.getItem(activeRoleKey(userId));
   if (saved === "buyer" || saved === "provider") return saved;
 
@@ -64,7 +66,8 @@ function resolveAndPersistRole(
     return legacy;
   }
 
-  const role: Role = providerProfile ? "provider" : fallback;
+  const localProfile = getLocalProfile(userId);
+  const role: Role = hasProviderAccess(user, providerProfile, localProfile) ? "provider" : fallback;
   localStorage.setItem(activeRoleKey(userId), role);
   return role;
 }
@@ -146,9 +149,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .then(({ user: u, providerProfile: pp }) => {
             handleUserSwitch(u.id);
             persistUserToRegistry(u);
+            if (hasProviderAccess(u, pp, getLocalProfile(u.id))) markProviderAccess(u.id);
             setUser(u);
             setProviderProfileState(pp);
-            const role = resolveAndPersistRole(u.id, pp, u.role as Role);
+            const role = resolveAndPersistRole(u, pp, u.role as Role);
             setActiveRoleState(role);
             console.log(`[Hormang] 🔄 Boshqa oynada kirish — sessiya yangilandi: id=${u.id.slice(0, 8)}`);
           })
@@ -172,9 +176,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     function applyUser(u: SafeUser, pp: ProviderProfile | null) {
       persistUserToRegistry(u);
       handleUserSwitch(u.id);
+      if (hasProviderAccess(u, pp, getLocalProfile(u.id))) markProviderAccess(u.id);
       setUser(u);
       setProviderProfileState(pp);
-      const role = resolveAndPersistRole(u.id, pp, u.role as Role);
+      const role = resolveAndPersistRole(u, pp, u.role as Role);
       setActiveRoleState(role);
       console.log(`[Hormang] ✅ Sessiya tiklandi: id=${u.id.slice(0, 8)} rol=${role}`);
     }
@@ -207,16 +212,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Cross-user cleanup before applying new user's data
     handleUserSwitch(u.id);
     persistUserToRegistry(u);
+    if (hasProviderAccess(u, pp, getLocalProfile(u.id))) markProviderAccess(u.id);
 
     setUser(u);
     setProviderProfileState(pp);
 
-    const role = resolveAndPersistRole(u.id, pp, u.role as Role);
+    const role = resolveAndPersistRole(u, pp, u.role as Role);
     setActiveRoleState(role);
     console.log(`[Hormang] 🔐 setAuth: id=${u.id.slice(0, 8)} phone=${u.phone ?? "—"} rol=${role}`);
   }, []);
 
   const setProviderProfile = useCallback((profile: ProviderProfile | null) => {
+    if (profile?.userId) markProviderAccess(profile.userId);
     setProviderProfileState(profile);
   }, []);
 
@@ -224,6 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const switchRole = useCallback((role: Role) => {
     setActiveRoleState(role);
     if (user?.id) {
+      if (role === "provider") markProviderAccess(user.id);
       localStorage.setItem(activeRoleKey(user.id), role);
       console.log(`[Hormang] 🔄 Rol almashtirildi → ${role === "provider" ? "Ijrochi" : "Xaridor"} (user=${user.id.slice(0, 8)})`);
     }

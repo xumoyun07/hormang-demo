@@ -38,10 +38,40 @@ export interface LocalProfile {
   categories?: string[];
 }
 
+export function hasProviderAccess(
+  user: SafeUser | null,
+  providerProfile: ProviderProfile | null,
+  local: LocalProfile = {},
+): boolean {
+  return !!(
+    (user?.id && hasStoredProviderAccess(user.id)) ||
+    user?.role === "provider" ||
+    providerProfile ||
+    (local.categories && local.categories.length > 0)
+  );
+}
+
 /* ─── Storage helpers ───────────────────────────────────────────── */
 
 function key(userId: string): string {
   return `user_${userId}_localProfile`;
+}
+
+function providerAccessKey(userId: string): string {
+  return `user_${userId}_hasProviderAccess`;
+}
+
+export function markProviderAccess(userId: string): void {
+  if (!userId) return;
+  try {
+    localStorage.setItem(providerAccessKey(userId), "1");
+  } catch {
+    console.warn("[Hormang] Provider marker saqlanmadi — localStorage xotirasi to'liq bo'lishi mumkin.");
+  }
+}
+
+export function hasStoredProviderAccess(userId: string): boolean {
+  return !!userId && localStorage.getItem(providerAccessKey(userId)) === "1";
 }
 
 export function getLocalProfile(userId: string): LocalProfile {
@@ -82,6 +112,7 @@ export function saveLocalProfile(userId: string, data: LocalProfile): void {
 
   try {
     localStorage.setItem(key(userId), JSON.stringify(clean));
+    if (clean.categories?.length) markProviderAccess(userId);
     emitStoreChange();
   } catch (error) {
     if (error instanceof Error && error.name === "QuotaExceededError") {

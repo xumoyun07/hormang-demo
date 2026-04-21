@@ -15,7 +15,9 @@ import { useAuth } from "@/contexts/auth-context";
 import { saveProviderProfile } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
 import {
-  getLocalProfile, getCompletionChecks, getCompletionPct,
+  getLocalProfile, saveLocalProfile, hasProviderAccess,
+  markProviderAccess,
+  getCompletionChecks, getCompletionPct,
   type LocalProfile,
 } from "@/lib/local-profile";
 import {
@@ -193,6 +195,7 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
   const fullName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
   const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase();
   const location = local.district ? `${local.district}, ${local.region}` : local.region;
+  const hasProviderRole = hasProviderAccess(user ?? null, providerProfile ?? null, local);
 
   const items = [
     {
@@ -330,7 +333,7 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
           ) : null}
         </motion.button>
       ))}
-      {!providerProfile && <BecomeProviderCard onBecome={onBecome} />}
+      {!hasProviderRole && <BecomeProviderCard onBecome={onBecome} />}
     </div>
   );
 }
@@ -694,16 +697,7 @@ export default function UnifiedDashboard() {
   }, [user?.id, storeVersion]);
 
   const isProvider = activeRole === "provider";
-  // Show the role-switcher when the user has a provider account.
-  // Sources of truth (any one is sufficient):
-  //   1. Server providerProfile has categories (full server-side provider)
-  //   2. user.role === "provider" (server marks them as provider)
-  //   3. activeRole === "provider" (already switched — they went through onboarding)
-  const hasBothRoles = !!(
-    (providerProfile && providerProfile.categories && providerProfile.categories.length > 0) ||
-    user?.role === "provider" ||
-    activeRole === "provider"
-  );
+  const hasBothRoles = hasProviderAccess(user ?? null, providerProfile ?? null, headerLocal) || activeRole === "provider";
 
   const accentGradient = isProvider
     ? "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)"
@@ -724,6 +718,8 @@ export default function UnifiedDashboard() {
     try {
       const res = await saveProviderProfile({ categories });
       setProviderProfile(res.profile);
+      markProviderAccess(user.id);
+      saveLocalProfile(user.id, { ...getLocalProfile(user.id), categories });
       switchRole("provider");
       sessionStorage.setItem("justBecameProvider", "1");
       setShowBecomeModal(false);
