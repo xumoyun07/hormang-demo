@@ -6,13 +6,25 @@ import { BottomNav } from "@/components/bottom-nav";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { useAuth } from "@/contexts/auth-context";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
-import { getAverageRatingForUser, getReviewsForUser, type Review } from "@/lib/completion-store";
+import {
+  getAverageRatingForUser,
+  getProviderReviewAverages,
+  getReviewsForUser,
+  type ProviderReviewMetrics,
+  type Review,
+} from "@/lib/completion-store";
 import { getCustomerFromRegistry, getRequestById } from "@/lib/requests-store";
 import { getLocalProfile } from "@/lib/local-profile";
 import { formatDate } from "@/lib/date-utils";
 
 const BLUE = "hsl(221,78%,48%)";
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
+
+const METRIC_LABELS: Array<{ key: keyof ProviderReviewMetrics; label: string }> = [
+  { key: "serviceQuality", label: "Xizmat sifati" },
+  { key: "providerAttitude", label: "Ijrochi muomalasi" },
+  { key: "servicePrice", label: "Xizmat narxi" },
+];
 
 function initials(name: string): string {
   return name
@@ -45,6 +57,70 @@ function Stars({ value, size = "w-4 h-4" }: { value: number; size?: string }) {
         <Star
           key={star}
           className={`${size} ${star <= value ? "text-amber-400 fill-amber-400" : "text-gray-200 fill-gray-200"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function MetricScale({
+  label,
+  value,
+  variant = "light",
+}: {
+  label: string;
+  value: number;
+  variant?: "light" | "dark";
+}) {
+  const safeValue = Math.max(0, Math.min(100, Math.round(value || 0)));
+  const isDark = variant === "dark";
+
+  return (
+    <div className={isDark ? "text-white" : "text-gray-900"}>
+      <div className="flex items-center justify-between gap-3 mb-1.5">
+        <p className={`text-xs font-black ${isDark ? "text-white/90" : "text-gray-800"}`}>{label}</p>
+        <span className={`text-xs font-black rounded-full px-2 py-0.5 ${
+          isDark ? "bg-white text-violet-700" : "bg-violet-50 text-violet-700 border border-violet-100"
+        }`}>
+          {safeValue}%
+        </span>
+      </div>
+      <div className={`relative h-3 rounded-full overflow-hidden ${isDark ? "bg-white/20" : "bg-gray-100"}`}>
+        <div
+          className={isDark ? "h-full bg-white rounded-full" : "h-full rounded-full bg-gradient-to-r from-red-300 via-amber-300 to-emerald-400"}
+          style={{ width: `${safeValue}%` }}
+        />
+        <span
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 text-[9px] font-black text-gray-900 bg-white rounded-full px-1.5 py-0.5 shadow-sm"
+          style={{ left: `${Math.max(12, Math.min(88, safeValue))}%` }}
+        >
+          {safeValue}%
+        </span>
+      </div>
+      <div className={`flex justify-between text-[10px] font-bold mt-1 ${isDark ? "text-white/65" : "text-gray-400"}`}>
+        <span>Qoniqarsiz</span>
+        <span>Qoniqarli</span>
+      </div>
+    </div>
+  );
+}
+
+function ReviewMetricsBlock({
+  metrics,
+  variant = "light",
+}: {
+  metrics?: ProviderReviewMetrics;
+  variant?: "light" | "dark";
+}) {
+  if (!metrics) return null;
+  return (
+    <div className={variant === "dark" ? "space-y-3 mt-4" : "space-y-3 rounded-2xl border border-gray-100 bg-white p-4"}>
+      {METRIC_LABELS.map((metric) => (
+        <MetricScale
+          key={metric.key}
+          label={metric.label}
+          value={metrics[metric.key]}
+          variant={variant}
         />
       ))}
     </div>
@@ -123,6 +199,11 @@ function ReviewPreviewModal({
               {review.comment || "Izoh qoldirilmagan."}
             </p>
           </div>
+          {review.providerMetrics && (
+            <div className="mb-4">
+              <ReviewMetricsBlock metrics={review.providerMetrics} />
+            </div>
+          )}
           {review.photoUrl && (
             <button
               onClick={() => setExpandedPhoto(true)}
@@ -216,6 +297,24 @@ function ReviewCard({
       <p className="text-sm text-gray-600 leading-relaxed mt-3 line-clamp-3">
         {review.comment || "Izoh qoldirilmagan."}
       </p>
+      {review.providerMetrics && (
+        <div className="mt-3 space-y-2 rounded-2xl bg-gray-50 border border-gray-100 p-3">
+          {METRIC_LABELS.map((metric) => (
+            <div key={metric.key} className="flex items-center gap-2">
+              <span className="w-24 text-[10px] font-black text-gray-500 truncate">{metric.label}</span>
+              <div className="flex-1 h-2 rounded-full bg-gray-200 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-300 to-emerald-400"
+                  style={{ width: `${review.providerMetrics?.[metric.key] ?? 0}%` }}
+                />
+              </div>
+              <span className="w-9 text-right text-[10px] font-black text-violet-700">
+                {review.providerMetrics[metric.key]}%
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       <button
         onClick={onPreview}
         className="mt-3 w-full h-10 rounded-2xl bg-violet-50 text-violet-700 text-sm font-black flex items-center justify-center gap-2 hover:bg-violet-100 transition-colors"
@@ -236,6 +335,7 @@ export default function ProviderReviewsPage() {
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
   const avg = getAverageRatingForUser(providerId, "provider");
+  const metricAverages = getProviderReviewAverages(providerId);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [profileReview, setProfileReview] = useState<Review | null>(null);
   const profileMeta = profileReview ? getReviewerMeta(profileReview) : null;
@@ -272,6 +372,7 @@ export default function ProviderReviewsPage() {
               <MessageCircle className="w-7 h-7" />
             </div>
           </div>
+          <ReviewMetricsBlock metrics={metricAverages} variant="dark" />
         </div>
 
         {reviews.length === 0 ? (

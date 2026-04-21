@@ -247,6 +247,7 @@ export default function ChatPage() {
       photoUrl: data.photoUrl,
       platformSentiment: data.platformSentiment,
       platformFeedback: data.platformFeedback,
+      providerMetrics: data.providerMetrics,
       reviewerName: chat.customerName,
       reviewerInitials: chat.customerInitials,
       reviewerColor: chat.customerColor,
@@ -423,6 +424,7 @@ export default function ChatPage() {
             subjectInitials={chat.masterInitials}
             subjectColor={chat.masterColor}
             prompt="Ijrochini baholang"
+            showProviderSliders
             onSubmit={handleReviewSubmit}
             onSkip={() => setShowReview(false)}
           />

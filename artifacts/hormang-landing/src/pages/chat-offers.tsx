@@ -123,7 +123,7 @@ function OfferCard({ offer, index, anyAccepted }: {
                 )}
                 {isInProgress && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
-                    Bajarilmoqda
+                    Rejalashtirildi
                   </span>
                 )}
                 {!isCompleted && !isInProgress && isAccepted && (
@@ -261,7 +261,7 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
     st === "completed"
       ? { label: "Yakunlandi", cls: "text-blue-600 bg-blue-50 border-blue-200", icon: <CheckCircle2 className="w-3 h-3" /> }
       : st === "in_progress"
-      ? { label: "Bajarilmoqda", cls: "text-blue-600 bg-blue-50 border-blue-200", icon: <Clock className="w-3 h-3" /> }
+      ? { label: "Rejalashtirildi", cls: "text-blue-600 bg-blue-50 border-blue-200", icon: <Clock className="w-3 h-3" /> }
       : st === "accepted"
       ? { label: "Qabul qilindi", cls: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: <CheckCircle2 className="w-3 h-3" /> }
       : st === "rejected"

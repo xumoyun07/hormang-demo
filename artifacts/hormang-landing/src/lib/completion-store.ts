@@ -31,6 +31,7 @@ export interface Review {
   photoUrl?: string;
   platformSentiment?: "positive" | "negative";
   platformFeedback?: string;
+  providerMetrics?: ProviderReviewMetrics;
   reviewerName?: string;
   reviewerInitials?: string;
   reviewerColor?: string;
@@ -39,9 +40,19 @@ export interface Review {
   serviceCategory?: string;
 }
 
+export interface ProviderReviewMetrics {
+  serviceQuality: number;
+  providerAttitude: number;
+  servicePrice: number;
+}
+
 /* ─── Keys ───────────────────────────────────────────────────────── */
 
 const REVIEWS_KEY = "hormang_reviews_v2";
+
+function providerAveragesKey(providerId: string): string {
+  return `hormang_provider_review_averages_${providerId}`;
+}
 
 function completedKey(userId: string, role: "provider" | "customer"): string {
   return `hormang_completed_${role}_${userId}`;
@@ -63,6 +74,10 @@ function genId(): string {
 
 function allReviews(): Review[] {
   return readJSON<Review[]>(REVIEWS_KEY, []);
+}
+
+function averageMetric(oldValue: number, newValue: number): number {
+  return oldValue > 0 ? (oldValue + newValue) / 2 : newValue;
 }
 
 /* ─── Read helpers ───────────────────────────────────────────────── */
@@ -87,6 +102,36 @@ export function getAverageRatingForUser(
   if (!reviews.length) return 0;
   const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
   return Math.round(avg * 10) / 10;
+}
+
+export function getProviderReviewAverages(providerId: string): ProviderReviewMetrics {
+  if (!providerId) {
+    return { serviceQuality: 0, providerAttitude: 0, servicePrice: 0 };
+  }
+  const key = providerAveragesKey(providerId);
+  const saved = localStorage.getItem(key);
+  if (saved) {
+    try {
+      return JSON.parse(saved) as ProviderReviewMetrics;
+    } catch (_) { /* rebuild from reviews below */ }
+  }
+
+  const derived = getReviewsForUser(providerId, "provider")
+    .filter((review) => review.providerMetrics)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .reduce<ProviderReviewMetrics>(
+      (current, review) => ({
+        serviceQuality: averageMetric(current.serviceQuality, review.providerMetrics!.serviceQuality),
+        providerAttitude: averageMetric(current.providerAttitude, review.providerMetrics!.providerAttitude),
+        servicePrice: averageMetric(current.servicePrice, review.providerMetrics!.servicePrice),
+      }),
+      { serviceQuality: 0, providerAttitude: 0, servicePrice: 0 }
+    );
+
+  if (derived.serviceQuality || derived.providerAttitude || derived.servicePrice) {
+    localStorage.setItem(key, JSON.stringify(derived));
+  }
+  return derived;
 }
 
 /**
@@ -116,6 +161,17 @@ export function addReview(
     createdAt: new Date().toISOString(),
   };
   localStorage.setItem(REVIEWS_KEY, JSON.stringify([...reviews, newReview]));
+
+  if (newReview.reviewedRole === "provider" && newReview.providerMetrics) {
+    const old = getProviderReviewAverages(newReview.reviewedId);
+    const next: ProviderReviewMetrics = {
+      serviceQuality: averageMetric(old.serviceQuality, newReview.providerMetrics.serviceQuality),
+      providerAttitude: averageMetric(old.providerAttitude, newReview.providerMetrics.providerAttitude),
+      servicePrice: averageMetric(old.servicePrice, newReview.providerMetrics.servicePrice),
+    };
+    localStorage.setItem(providerAveragesKey(newReview.reviewedId), JSON.stringify(next));
+  }
+
   emitStoreChange();
 }
 

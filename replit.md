@@ -213,6 +213,7 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 - `Review` interface stores reviewer/reviewed IDs + roles, request/offer linkage, rating, comment, optional review photo, optional Hormang platform feedback, createdAt, and service category
 - Exported: `getReviewsForUser(userId, role)`, `getAverageRatingForUser(userId, role)`, `hasReviewedRequest(requestId, reviewerId)`, `addReview(review)`, `getCompletedCount(userId, role)`, `incrementCompletedCount(userId, role)`
 - Review modal supports compressed photo upload plus "Hormang haqida fikringiz" thumbs up/down and textarea fields
+- Customer → provider reviews include three 0–100% provider metrics: `serviceQuality`, `providerAttitude`, `servicePrice`; individual values are stored on each review and provider-level running averages are persisted at `hormang_provider_review_averages_{providerId}` using `(old_average + new_value) / 2`
 
 ### Offer Status Extensions
 - `Offer.status` now includes: `"pending" | "accepted" | "rejected" | "in_progress" | "completed"`

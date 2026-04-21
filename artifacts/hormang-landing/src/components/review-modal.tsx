@@ -12,6 +12,11 @@ export interface ReviewSubmitData {
   photoUrl?: string;
   platformSentiment?: "positive" | "negative";
   platformFeedback?: string;
+  providerMetrics?: {
+    serviceQuality: number;
+    providerAttitude: number;
+    servicePrice: number;
+  };
 }
 
 interface ReviewModalProps {
@@ -19,6 +24,7 @@ interface ReviewModalProps {
   subjectInitials: string;
   subjectColor: string;
   prompt?: string;
+  showProviderSliders?: boolean;
   onSubmit: (data: ReviewSubmitData) => void;
   onSkip: () => void;
 }
@@ -54,6 +60,7 @@ export function ReviewModal({
   subjectInitials,
   subjectColor,
   prompt = "Xizmatni baholang",
+  showProviderSliders = false,
   onSubmit,
   onSkip,
 }: ReviewModalProps) {
@@ -65,6 +72,9 @@ export function ReviewModal({
   const [photoLoading, setPhotoLoading] = useState(false);
   const [platformSentiment, setPlatformSentiment] = useState<"positive" | "negative" | undefined>();
   const [platformFeedback, setPlatformFeedback] = useState("");
+  const [serviceQuality, setServiceQuality] = useState(50);
+  const [providerAttitude, setProviderAttitude] = useState(50);
+  const [servicePrice, setServicePrice] = useState(50);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   function handleSubmit() {
@@ -75,6 +85,9 @@ export function ReviewModal({
       photoUrl,
       platformSentiment,
       platformFeedback: platformFeedback.trim() || undefined,
+      providerMetrics: showProviderSliders
+        ? { serviceQuality, providerAttitude, servicePrice }
+        : undefined,
     });
   }
 
@@ -175,6 +188,27 @@ export function ReviewModal({
             ))}
           </div>
 
+          {showProviderSliders && (
+            <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-3 mb-4 space-y-3">
+              <p className="text-sm font-black text-gray-900">Xizmat ko'rsatkichlari</p>
+              <MetricSlider
+                label="Xizmat sifati"
+                value={serviceQuality}
+                onChange={setServiceQuality}
+              />
+              <MetricSlider
+                label="Ijrochi muomalasi"
+                value={providerAttitude}
+                onChange={setProviderAttitude}
+              />
+              <MetricSlider
+                label="Xizmat narxi"
+                value={servicePrice}
+                onChange={setServicePrice}
+              />
+            </div>
+          )}
+
           {/* Optional comment */}
           <textarea
             value={text}
@@ -227,7 +261,6 @@ export function ReviewModal({
                 }`}
               >
                 <ThumbsUp className="w-4 h-4" />
-                Yoqdi
               </button>
               <button
                 onClick={() => setPlatformSentiment(platformSentiment === "negative" ? undefined : "negative")}
@@ -238,13 +271,12 @@ export function ReviewModal({
                 }`}
               >
                 <ThumbsDown className="w-4 h-4" />
-                Yoqmadi
               </button>
             </div>
             <textarea
               value={platformFeedback}
               onChange={(e) => setPlatformFeedback(e.target.value)}
-              placeholder="Ilova haqida fikringiz (ixtiyoriy)..."
+              placeholder="Fikringgizni qoldiring. Sizning fikringgiz biz uchun muhim(ixtiyoriy)..."
               rows={2}
               className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 resize-none"
             />
@@ -269,5 +301,38 @@ export function ReviewModal({
         </div>
       </motion.div>
     </>
+  );
+}
+
+function MetricSlider({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3 mb-1.5">
+        <p className="text-xs font-black text-gray-800">{label}</p>
+        <span className="text-xs font-black text-violet-700 bg-white border border-violet-100 rounded-full px-2 py-0.5">
+          {value}%
+        </span>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-violet-600"
+      />
+      <div className="flex justify-between text-[10px] font-bold text-gray-400 mt-0.5">
+        <span>Qoniqarsiz</span>
+        <span>Qoniqarli</span>
+      </div>
+    </div>
   );
 }
