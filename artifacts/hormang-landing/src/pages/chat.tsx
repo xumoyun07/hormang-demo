@@ -9,7 +9,7 @@ import { useRoute, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock, Loader2, Flag } from "lucide-react";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
-import { ReviewModal } from "@/components/review-modal";
+import { ReviewModal, type ReviewSubmitData } from "@/components/review-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { BottomNav } from "@/components/bottom-nav";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
@@ -233,7 +233,7 @@ export default function ChatPage() {
     }
   }
 
-  function handleReviewSubmit(rating: number, comment: string) {
+  function handleReviewSubmit(data: ReviewSubmitData) {
     if (!offer || !user || !chat) return;
     addReview({
       requestId: chat.requestId,
@@ -242,8 +242,15 @@ export default function ChatPage() {
       reviewerRole: "customer",
       reviewedId: chat.masterId,
       reviewedRole: "provider",
-      rating,
-      comment: comment || undefined,
+      rating: data.rating,
+      comment: data.text || undefined,
+      photoUrl: data.photoUrl,
+      platformSentiment: data.platformSentiment,
+      platformFeedback: data.platformFeedback,
+      reviewerName: chat.customerName,
+      reviewerInitials: chat.customerInitials,
+      reviewerColor: chat.customerColor,
+      reviewedName: chat.masterName,
       serviceCategory: (chat as any).categoryName ?? undefined,
     });
     setShowReview(false);

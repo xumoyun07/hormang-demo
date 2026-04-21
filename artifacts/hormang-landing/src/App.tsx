@@ -25,6 +25,7 @@ import MigratePage from "@/pages/auth/migrate";
 import ProviderHomePage from "@/pages/provider/home";
 import ProviderRequestsPage from "@/pages/provider/requests";
 import ProviderChatsPage from "@/pages/provider/chats";
+import ProviderReviewsPage from "@/pages/provider-reviews";
 import PlansPage from "@/pages/plans";
 import TangaHistoryPage from "@/pages/provider/tanga-history";
 import TestPage from "@/pages/test";
@@ -129,6 +130,9 @@ function Router() {
       </Route>
       <Route path="/provider/chats">
         {() => <ProtectedRoute component={ProviderChatsPage} />}
+      </Route>
+      <Route path="/provider-reviews">
+        {() => <ProtectedRoute component={ProviderReviewsPage} />}
       </Route>
       <Route path="/plans">
         {() => <ProtectedRoute component={PlansPage} />}

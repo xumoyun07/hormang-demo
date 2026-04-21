@@ -429,7 +429,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
       icon: Star,
       title: "Sharhlarim",
       desc: "Mijozlar fikr-mulohazalari",
-      comingSoon: true,
+      action: () => onNavigate("/provider-reviews"),
     },
     {
       icon: UserPen,
@@ -495,7 +495,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
             <div className="flex items-center gap-3">
               <button
                 className="flex items-center gap-1"
-                onClick={() => toast({ title: "Sharhlar modali tez kunda qo'shiladi" })}
+                onClick={() => onNavigate("/provider-reviews")}
               >
                 {[1,2,3,4,5].map(s => (
                   <Star

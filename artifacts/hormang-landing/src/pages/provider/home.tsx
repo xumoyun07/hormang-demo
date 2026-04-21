@@ -27,7 +27,7 @@ import {
 } from "@/lib/provider-store";
 import { markOfferCompleted, getOfferById } from "@/lib/requests-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
-import { ReviewModal } from "@/components/review-modal";
+import { ReviewModal, type ReviewSubmitData } from "@/components/review-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { getLocalProfile, getCompletionChecks, getCompletionPct } from "@/lib/local-profile";
@@ -187,7 +187,7 @@ function UpcomingServices() {
     markServiceDone(s.id, masterId);
   }
 
-  function handleReviewSubmit(rating: number, text: string) {
+  function handleReviewSubmit(data: ReviewSubmitData) {
     if (!reviewService) return;
     if (reviewService.customerId && reviewService.requestId) {
       addReview({
@@ -197,8 +197,12 @@ function UpcomingServices() {
         reviewerRole: "provider",
         reviewedId: reviewService.customerId,
         reviewedRole: "customer",
-        rating,
-        comment: text || undefined,
+        rating: data.rating,
+        comment: data.text || undefined,
+        photoUrl: data.photoUrl,
+        platformSentiment: data.platformSentiment,
+        platformFeedback: data.platformFeedback,
+        reviewedName: reviewService.customerName,
         serviceCategory: reviewService.title,
       });
     }

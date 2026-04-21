@@ -27,7 +27,7 @@ import {
   type Offer,
 } from "@/lib/requests-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
-import { ReviewModal } from "@/components/review-modal";
+import { ReviewModal, type ReviewSubmitData } from "@/components/review-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
@@ -380,7 +380,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
     sendSystemMessage(chatId, `📅 Xizmat rejalashtirildi: ${date} soat ${time}`);
   }
 
-  function handleReviewSubmit(rating: number, reviewText: string) {
+  function handleReviewSubmit(data: ReviewSubmitData) {
     if (!offer || !chat) return;
     addReview({
       requestId: chat.requestId,
@@ -389,8 +389,15 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
       reviewerRole: "provider",
       reviewedId: chat.customerId,
       reviewedRole: "customer",
-      rating,
-      comment: reviewText || undefined,
+      rating: data.rating,
+      comment: data.text || undefined,
+      photoUrl: data.photoUrl,
+      platformSentiment: data.platformSentiment,
+      platformFeedback: data.platformFeedback,
+      reviewerName: chat.masterName,
+      reviewerInitials: chat.masterInitials,
+      reviewerColor: chat.masterColor,
+      reviewedName: chat.customerName,
       serviceCategory: chat.categoryName,
     });
     setShowReview(false);

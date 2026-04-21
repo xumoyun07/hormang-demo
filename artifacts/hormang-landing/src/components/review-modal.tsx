@@ -2,17 +2,51 @@
  * ReviewModal — bottom-sheet for leaving a star rating + optional comment.
  * Used after offer completion on both customer and provider sides.
  */
-import { useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { motion } from "framer-motion";
-import { Star, X } from "lucide-react";
+import { Camera, ImagePlus, Star, ThumbsDown, ThumbsUp, X } from "lucide-react";
+
+export interface ReviewSubmitData {
+  rating: number;
+  text: string;
+  photoUrl?: string;
+  platformSentiment?: "positive" | "negative";
+  platformFeedback?: string;
+}
 
 interface ReviewModalProps {
   subjectName: string;
   subjectInitials: string;
   subjectColor: string;
   prompt?: string;
-  onSubmit: (rating: number, text: string) => void;
+  onSubmit: (data: ReviewSubmitData) => void;
   onSkip: () => void;
+}
+
+async function compressReviewPhoto(file: File): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = dataUrl;
+  });
+
+  const maxSide = 1024;
+  const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(img.width * scale));
+  canvas.height = Math.max(1, Math.round(img.height * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return dataUrl;
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.72);
 }
 
 export function ReviewModal({
@@ -26,10 +60,41 @@ export function ReviewModal({
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [text, setText] = useState("");
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>();
+  const [photoError, setPhotoError] = useState("");
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [platformSentiment, setPlatformSentiment] = useState<"positive" | "negative" | undefined>();
+  const [platformFeedback, setPlatformFeedback] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   function handleSubmit() {
     if (rating === 0) return;
-    onSubmit(rating, text.trim());
+    onSubmit({
+      rating,
+      text: text.trim(),
+      photoUrl,
+      platformSentiment,
+      platformFeedback: platformFeedback.trim() || undefined,
+    });
+  }
+
+  async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Faqat rasm faylini yuklang.");
+      return;
+    }
+    setPhotoError("");
+    setPhotoLoading(true);
+    try {
+      setPhotoUrl(await compressReviewPhoto(file));
+    } catch {
+      setPhotoError("Rasmni yuklab bo'lmadi. Boshqa rasm tanlang.");
+    } finally {
+      setPhotoLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
   const display = hovered || rating;
@@ -55,7 +120,7 @@ export function ReviewModal({
         className="fixed inset-x-0 bottom-0 z-[71] flex justify-center"
       >
         <div
-          className="bg-white w-full max-w-lg rounded-t-3xl px-5 pb-8 pt-4"
+          className="bg-white w-full max-w-lg rounded-t-3xl px-5 pb-8 pt-4 max-h-[92dvh] overflow-y-auto"
           style={{ boxShadow: "0 -8px 40px rgba(0,0,0,0.16)" }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -116,8 +181,74 @@ export function ReviewModal({
             onChange={(e) => setText(e.target.value)}
             placeholder="Izoh qoldiring (ixtiyoriy)..."
             rows={3}
-            className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 resize-none transition-all mb-4"
+            className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 resize-none transition-all mb-3"
           />
+
+          <div className="mb-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoChange}
+              className="hidden"
+            />
+            {photoUrl ? (
+              <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+                <img src={photoUrl} alt="Sharh rasmi" className="w-full h-36 object-cover" />
+                <button
+                  onClick={() => setPhotoUrl(undefined)}
+                  className="absolute top-2 right-2 w-8 h-8 rounded-xl bg-black/55 text-white flex items-center justify-center backdrop-blur-sm"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={photoLoading}
+                className="w-full h-12 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 text-gray-500 flex items-center justify-center gap-2 text-sm font-bold hover:bg-gray-100 transition-colors disabled:opacity-50"
+              >
+                {photoLoading ? <Camera className="w-4 h-4 animate-pulse" /> : <ImagePlus className="w-4 h-4" />}
+                {photoLoading ? "Rasm tayyorlanmoqda..." : "Rasm qo'shish (ixtiyoriy)"}
+              </button>
+            )}
+            {photoError && <p className="text-xs font-semibold text-red-500 mt-1.5">{photoError}</p>}
+          </div>
+
+          <div className="rounded-2xl border border-gray-100 bg-gray-50 p-3 mb-4">
+            <p className="text-sm font-black text-gray-900 mb-2">Hormang haqida fikringiz</p>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <button
+                onClick={() => setPlatformSentiment(platformSentiment === "positive" ? undefined : "positive")}
+                className={`h-10 rounded-xl border text-sm font-bold flex items-center justify-center gap-1.5 transition-colors ${
+                  platformSentiment === "positive"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                    : "bg-white border-gray-200 text-gray-500"
+                }`}
+              >
+                <ThumbsUp className="w-4 h-4" />
+                Yoqdi
+              </button>
+              <button
+                onClick={() => setPlatformSentiment(platformSentiment === "negative" ? undefined : "negative")}
+                className={`h-10 rounded-xl border text-sm font-bold flex items-center justify-center gap-1.5 transition-colors ${
+                  platformSentiment === "negative"
+                    ? "bg-red-50 border-red-200 text-red-600"
+                    : "bg-white border-gray-200 text-gray-500"
+                }`}
+              >
+                <ThumbsDown className="w-4 h-4" />
+                Yoqmadi
+              </button>
+            </div>
+            <textarea
+              value={platformFeedback}
+              onChange={(e) => setPlatformFeedback(e.target.value)}
+              placeholder="Ilova haqida fikringiz (ixtiyoriy)..."
+              rows={2}
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 resize-none"
+            />
+          </div>
 
           {/* Actions */}
           <div className="flex gap-2">

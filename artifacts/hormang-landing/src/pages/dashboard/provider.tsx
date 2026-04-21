@@ -100,8 +100,7 @@ export default function ProviderDashboard() {
       icon: Star,
       title: "Sharhlarim",
       desc: "Mijozlar fikr-mulohazalari",
-      action: undefined as (() => void) | undefined,
-      comingSoon: true,
+      action: () => setLocation("/provider-reviews"),
     },
     {
       icon: Settings,
@@ -193,7 +192,7 @@ export default function ProviderDashboard() {
 
                 {/* Rating — clickable */}
                 <button
-                  onClick={() => toast({ title: "Sharhlar modali tez kunda qo'shiladi" })}
+                  onClick={() => setLocation("/provider-reviews")}
                   className="flex items-center gap-1.5 mb-1.5 group"
                 >
                   <div className="flex items-center gap-0.5">

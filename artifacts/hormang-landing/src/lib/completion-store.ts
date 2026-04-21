@@ -28,6 +28,13 @@ export interface Review {
   reviewedRole: "customer" | "provider";
   rating: number;             // 1–5
   comment?: string;
+  photoUrl?: string;
+  platformSentiment?: "positive" | "negative";
+  platformFeedback?: string;
+  reviewerName?: string;
+  reviewerInitials?: string;
+  reviewerColor?: string;
+  reviewedName?: string;
   createdAt: string;
   serviceCategory?: string;
 }

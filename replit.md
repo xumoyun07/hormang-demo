@@ -108,6 +108,7 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 - `/dashboard` — Unified dashboard (also at `/dashboard/buyer`, `/dashboard/provider`)
 - `/profile/settings` — Account (name), Contact info (optional email), provider profile sections
 - `/providers/:id` — Public provider profile page
+- `/provider-reviews` — Provider review inbox with customer review cards, photo previews, and customer profile preview modal
 
 **Provider (Ijrochi) Pages:**
 - `/provider-home` — Provider home with profile completion, upcoming services, events placeholder, available requests (slide cards + tabbed list), share profile
@@ -208,10 +209,10 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 ## Offer Completion Flow
 
 ### Completion Store (`lib/completion-store.ts`)
-- Keys: `hormang_reviews` (Review[]), `hormang_completed_{userId}` (number)
-- `Review` interface: subjectId, reviewerId, reviewerName/Initials/Color, reviewerRole, offerId, rating (1–5), text, createdAt
-- Exported: `getReviews(subjectId)`, `getAverageRating(subjectId)`, `hasReviewed(offerId, reviewerId)`, `addReview(review)`, `getCompletedCount(userId)`, `incrementCompletedCount(userId)`
-- No circular deps: emits store events only, imported by requests-store
+- Keys: `hormang_reviews_v2` (Review[]), `hormang_completed_{role}_{userId}` (number)
+- `Review` interface stores reviewer/reviewed IDs + roles, request/offer linkage, rating, comment, optional review photo, optional Hormang platform feedback, createdAt, and service category
+- Exported: `getReviewsForUser(userId, role)`, `getAverageRatingForUser(userId, role)`, `hasReviewedRequest(requestId, reviewerId)`, `addReview(review)`, `getCompletedCount(userId, role)`, `incrementCompletedCount(userId, role)`
+- Review modal supports compressed photo upload plus "Hormang haqida fikringiz" thumbs up/down and textarea fields
 
 ### Offer Status Extensions
 - `Offer.status` now includes: `"pending" | "accepted" | "rejected" | "in_progress" | "completed"`
