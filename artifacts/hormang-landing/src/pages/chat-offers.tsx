@@ -49,8 +49,9 @@ function OfferCard({ offer, index, anyAccepted }: {
   const [, setLocation] = useLocation();
 
   const req = getRequestById(offer.requestId);
-  const isAccepted = offer.status === "accepted";
-  const isRejected = offer.status === "rejected";
+  const isAccepted  = offer.status === "accepted";
+  const isRejected  = offer.status === "rejected";
+  const isCompleted = offer.status === "completed" || offer.status === "in_progress";
   const providerLocal = getLocalProfile(offer.masterId);
 
   function handleAcceptClick(e: React.MouseEvent) {
@@ -114,7 +115,12 @@ function OfferCard({ offer, index, anyAccepted }: {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-bold text-sm text-gray-900">{offer.masterName}</p>
-                {isAccepted && (
+                {isCompleted && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
+                    Yakunlandi
+                  </span>
+                )}
+                {!isCompleted && isAccepted && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600">
                     Qabul qilingan
                   </span>
@@ -124,7 +130,7 @@ function OfferCard({ offer, index, anyAccepted }: {
                     Rad etilgan
                   </span>
                 )}
-                {!isAccepted && !isRejected && anyAccepted && (
+                {!isCompleted && !isAccepted && !isRejected && anyAccepted && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">
                     Boshqa taklif qabul qilindi
                   </span>
@@ -157,7 +163,27 @@ function OfferCard({ offer, index, anyAccepted }: {
           )}
 
           {/* Actions */}
-          {!isRejected && (
+          {isCompleted ? (
+            /* Completed: only Batafsil + Chat to review conversation */
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => { e.stopPropagation(); setShowDetail(true); }}
+                className="flex-1 h-9 text-xs font-bold border-gray-200 text-gray-500 hover:bg-gray-50 gap-1.5"
+              >
+                Batafsil
+              </Button>
+              <Button
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); setLocation(`/chat/${offer.requestId}_${offer.masterId}`); }}
+                className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                Chat
+              </Button>
+            </div>
+          ) : !isRejected ? (
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -195,7 +221,7 @@ function OfferCard({ offer, index, anyAccepted }: {
                 </>
               ) : null}
             </div>
-          )}
+          ) : null}
         </div>
       </motion.div>
 
@@ -226,13 +252,16 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
   const st = offer?.status ?? "pending";
 
   const badge =
-    st === "accepted"
+    st === "completed" || st === "in_progress"
+      ? { label: "Yakunlandi", cls: "text-blue-600 bg-blue-50 border-blue-200", icon: <CheckCircle2 className="w-3 h-3" /> }
+      : st === "accepted"
       ? { label: "Qabul qilindi", cls: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: <CheckCircle2 className="w-3 h-3" /> }
       : st === "rejected"
       ? { label: "Rad etildi", cls: "text-red-500 bg-red-50 border-red-200", icon: <X className="w-3 h-3" /> }
       : { label: "Kutilmoqda", cls: "text-amber-600 bg-amber-50 border-amber-200", icon: <Clock className="w-3 h-3" /> };
 
   const borderCls =
+    st === "completed" || st === "in_progress" ? "border-blue-100 hover:border-blue-200" :
     st === "accepted" ? "border-emerald-100 hover:border-emerald-200" :
     st === "rejected" ? "border-red-100 hover:border-red-200" :
     "border-gray-100 hover:border-blue-100";

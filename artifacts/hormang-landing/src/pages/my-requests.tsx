@@ -1,6 +1,6 @@
 /**
  * /my-requests — Customer's posted service requests
- * Sections: Faol so'rovlar (open) + Yakunlangan so'rovlar (closed)
+ * Sections: Faol (open) | Yakunlangan (completed) | Bekor qilingan (cancelled)
  */
 import { useState } from "react";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
@@ -8,7 +8,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardList, MessageCircle, ChevronRight,
-  Clock, Wallet, Plus, RefreshCw, X, CheckCircle2,
+  Clock, Wallet, Plus, RefreshCw, X, CheckCircle2, LayoutDashboard,
 } from "lucide-react";
 import { RequestPreviewModal } from "@/components/request-preview-modal";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,6 @@ const URGENCY_SHORT: Record<string, { label: string; cls: string }> = {
   flexible: { label: "Shoshilinch emas", cls: "bg-gray-50 text-gray-600 border-gray-200" },
 };
 
-/* ─── Briefcase icon (local) ──────────────────────────────────────── */
 function BriefcaseIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
@@ -43,11 +42,14 @@ function BriefcaseIcon({ className }: { className?: string }) {
 }
 
 /* ─── Request Card ───────────────────────────────────────────────── */
+type CardMode = "active" | "completed" | "cancelled";
+
 function RequestCard({
-  req, index, onClose, onReopen,
+  req, index, mode, onClose, onReopen,
 }: {
   req: CustomerRequest;
   index: number;
+  mode: CardMode;
   onClose: (id: string) => void;
   onReopen: (id: string) => void;
 }) {
@@ -58,7 +60,8 @@ function RequestCard({
   const budget = req.answers["budget"] as number | undefined;
   const openToOffers = req.answers["budget_open"] as boolean | undefined;
   const urgencyInfo = urgency ? URGENCY_SHORT[urgency] : null;
-  const isOpen = req.status === "open";
+
+  const isActive = mode === "active";
 
   function openChat() {
     if (offers.length === 0) return;
@@ -70,6 +73,14 @@ function RequestCard({
     setLocation(`/chat/${chat.id}`);
   }
 
+  /* Status chip config per mode */
+  const statusChip =
+    mode === "active"
+      ? { label: "Faol", cls: "bg-emerald-50 text-emerald-600" }
+      : mode === "completed"
+      ? { label: "Yakunlangan", cls: "bg-blue-50 text-blue-600" }
+      : { label: "Bekor qilindi", cls: "bg-gray-100 text-gray-500" };
+
   return (
     <motion.div
       layout
@@ -78,18 +89,18 @@ function RequestCard({
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ delay: index * 0.05, duration: 0.35 }}
       className={`bg-white rounded-2xl border overflow-hidden transition-all duration-200 ${
-        isOpen
+        isActive
           ? "border-gray-100 hover:border-gray-200 hover:shadow-sm"
           : "border-gray-100 opacity-75"
       }`}
     >
-      {/* Card header — click to preview request details */}
+      {/* Card header */}
       <div
         className="px-4 pt-4 pb-3 flex items-start gap-3 cursor-pointer active:bg-gray-50 transition-colors"
         onClick={() => setPreviewOpen(true)}
       >
         <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${
-          isOpen ? "bg-blue-50" : "bg-gray-100"
+          isActive ? "bg-blue-50" : "bg-gray-100"
         }`}>
           {req.emoji}
         </div>
@@ -97,10 +108,9 @@ function RequestCard({
           <p className="font-bold text-sm text-gray-900 leading-snug">{req.categoryName}</p>
           <p className="text-xs text-gray-400 mt-0.5">{formatDate(req.createdAt)}</p>
         </div>
-        {/* Offer count badge */}
         {offers.length > 0 && (
           <div className={`flex-shrink-0 flex items-center gap-1 text-white text-xs font-bold px-2.5 py-1 rounded-full ${
-            isOpen ? "bg-blue-600" : "bg-gray-400"
+            isActive ? "bg-blue-600" : "bg-gray-400"
           }`}>
             <BriefcaseIcon className="w-3 h-3" />
             {offers.length}
@@ -122,13 +132,8 @@ function RequestCard({
             {openToOffers ? "Taklifga ochiq" : `${Number(budget).toLocaleString()} so'm`}
           </span>
         )}
-        {/* Status chip */}
-        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
-          isOpen
-            ? "bg-emerald-50 text-emerald-600"
-            : "bg-gray-100 text-gray-500"
-        }`}>
-          {isOpen ? "Faol" : "Yopilgan"}
+        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${statusChip.cls}`}>
+          {statusChip.label}
         </span>
       </div>
 
@@ -142,7 +147,7 @@ function RequestCard({
         >
           Takliflar ko'rish
           {offers.length > 0 && (
-            <span className={`text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center text-white ${isOpen ? "bg-blue-600" : "bg-gray-400"}`}>
+            <span className={`text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center text-white ${isActive ? "bg-blue-600" : "bg-gray-400"}`}>
               {offers.length}
             </span>
           )}
@@ -159,8 +164,8 @@ function RequestCard({
           <MessageCircle className="w-4 h-4" />
         </button>
 
-        {/* Close / Reopen button */}
-        {isOpen ? (
+        {/* Close button (active only) */}
+        {mode === "active" && (
           <button
             onClick={() => onClose(req.id)}
             className="w-9 h-9 rounded-xl border border-red-100 bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-100 transition-colors"
@@ -168,7 +173,10 @@ function RequestCard({
           >
             <X className="w-4 h-4" />
           </button>
-        ) : (
+        )}
+
+        {/* Reopen button (cancelled only — NOT for completed) */}
+        {mode === "cancelled" && (
           <button
             onClick={() => onReopen(req.id)}
             className="w-9 h-9 rounded-xl border border-emerald-100 bg-emerald-50 flex items-center justify-center text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100 transition-colors"
@@ -177,9 +185,15 @@ function RequestCard({
             <CheckCircle2 className="w-4 h-4" />
           </button>
         )}
+
+        {/* Completed — no action button, just visual indicator */}
+        {mode === "completed" && (
+          <div className="w-9 h-9 rounded-xl border border-blue-100 bg-blue-50 flex items-center justify-center text-blue-400 flex-shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
+          </div>
+        )}
       </div>
 
-      {/* Request preview modal */}
       <AnimatePresence>
         {previewOpen && (
           <RequestPreviewModal req={req} onClose={() => setPreviewOpen(false)} />
@@ -216,8 +230,9 @@ export default function MyRequestsPage() {
     updateRequestStatus(id, "open");
   }
 
-  const active = requests.filter((r) => r.status === "open");
-  const closed = requests.filter((r) => r.status !== "open");
+  const active    = requests.filter((r) => r.status === "open");
+  const completed = requests.filter((r) => r.status === "completed");
+  const cancelled = requests.filter((r) => r.status === "cancelled");
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -230,7 +245,7 @@ export default function MyRequestsPage() {
           <div className="flex-1">
             <h1 className="font-extrabold text-sm text-gray-900">Mening so'rovlarim</h1>
             <p className="text-xs text-gray-400">
-              {active.length} faol · {closed.length} yopilgan
+              {active.length} faol · {completed.length} yakunlangan · {cancelled.length} bekor
             </p>
           </div>
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-300">
@@ -241,7 +256,6 @@ export default function MyRequestsPage() {
 
       <div className="max-w-lg mx-auto px-4 py-6">
         {requests.length === 0 ? (
-          /* Empty state */
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -264,11 +278,16 @@ export default function MyRequestsPage() {
           </motion.div>
         ) : (
           <>
-            {/* New request button */}
+            {/* Top bar: quick link + new request */}
             <div className="flex items-center justify-between mb-5">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                Jami {requests.length} ta so'rov
-              </p>
+              {/* Quick link to dashboard Buyurtmalarim */}
+              <button
+                onClick={() => setLocation("/dashboard")}
+                className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-blue-600 transition-colors"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                So'rov-xizmatlarim
+              </button>
               <button
                 onClick={() => setLocation("/questionnaire")}
                 className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700"
@@ -289,6 +308,7 @@ export default function MyRequestsPage() {
                         key={req.id}
                         req={req}
                         index={i}
+                        mode="active"
                         onClose={handleClose}
                         onReopen={handleReopen}
                       />
@@ -298,17 +318,39 @@ export default function MyRequestsPage() {
               </div>
             )}
 
-            {/* ── Closed section ── */}
-            {closed.length > 0 && (
-              <div>
-                <SectionLabel label="Yakunlangan so'rovlar" count={closed.length} color="bg-gray-400" />
+            {/* ── Completed section ── */}
+            {completed.length > 0 && (
+              <div className="mb-6">
+                <SectionLabel label="Yakunlangan xizmatlar" count={completed.length} color="bg-blue-400" />
                 <div className="space-y-3">
                   <AnimatePresence mode="popLayout">
-                    {closed.map((req, i) => (
+                    {completed.map((req, i) => (
                       <RequestCard
                         key={req.id}
                         req={req}
                         index={i}
+                        mode="completed"
+                        onClose={handleClose}
+                        onReopen={handleReopen}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </div>
+            )}
+
+            {/* ── Cancelled section ── */}
+            {cancelled.length > 0 && (
+              <div>
+                <SectionLabel label="Bekor qilingan" count={cancelled.length} color="bg-gray-400" />
+                <div className="space-y-3">
+                  <AnimatePresence mode="popLayout">
+                    {cancelled.map((req, i) => (
+                      <RequestCard
+                        key={req.id}
+                        req={req}
+                        index={i}
+                        mode="cancelled"
                         onClose={handleClose}
                         onReopen={handleReopen}
                       />

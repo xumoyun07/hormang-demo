@@ -25,8 +25,7 @@ export default function BuyerDashboard() {
       icon: ClipboardList,
       title: "Buyurtmalarim",
       desc: "Barcha buyurtmalar va holati",
-      action: undefined,
-      badge: "Tez kunda",
+      action: () => setLocation("/my-requests"),
     },
     {
       icon: Heart,

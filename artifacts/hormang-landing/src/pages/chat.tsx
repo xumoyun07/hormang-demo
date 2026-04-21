@@ -415,7 +415,7 @@ export default function ChatPage() {
             subjectName={chat.masterName}
             subjectInitials={chat.masterInitials}
             subjectColor={chat.masterColor}
-            prompt="Ustani baholang"
+            prompt="Ijrochini baholang"
             onSubmit={handleReviewSubmit}
             onSkip={() => setShowReview(false)}
           />
