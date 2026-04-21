@@ -644,10 +644,10 @@ function CategoriesSection() {
 /* ─── How It Works ──────────────────────────────────────────────── */
 function HowItWorksSection() {
   const steps = [
-    { num: "01", icon: Edit3, title: "Ehtiyojingizni yozing", desc: "Oddiy so'zlar bilan yozing — sun'iy intellekt eng yaxshi moslikni topadi." },
-    { num: "02", icon: Search, title: "Ijrochilarni ko'ring", desc: "Profillar, reytinglar, portfolio va narxlarni ko'ring." },
-    { num: "03", icon: MessageSquare, title: "Muzokaralar", desc: "Ijrochilar bilan to'g'ridan-to'g'ri muloqot qiling." },
-    { num: "04", icon: CreditCard, title: "Buyurtma, to'lov, baho", desc: "Karta yoki naqd to'lang, keyin sharh qoldiring." },
+    { num: "01", icon: Edit3, title: "So'rovnomani to'ldiring", desc: "O'z so'rovinggizni bepul yaratib unga mos takliflarni oling" },
+    { num: "02", icon: Search, title: "Ijrochilarni ko'ring", desc: "Profillar, reytinglar, portfolio va narxlarni ko'ring va taqqoslang" },
+    { num: "03", icon: MessageSquare, title: "Muloqot qiling", desc: "Ijrochilar bilan bepul muloqot qiling, xizmat narxi va shartlarini kelishib oling" },
+    { num: "04", icon: CreditCard, title: "Oldindan to'lovlarsiz", desc: "Xizmat yakunida kelishilgan narxni to'lang va xizmat sifatini baholang" },
   ];
 
   return (

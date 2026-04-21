@@ -147,6 +147,8 @@ export function getCompletionChecks(
 ): CompletionCheck[] {
   const portfolioCount = (local.portfolioItems ?? []).length
     || (local.portfolioImages ?? []).length;
+  const categories = (providerProfile?.categories?.length ? providerProfile.categories : local.categories) ?? [];
+  const bio = providerProfile?.bio?.trim() || local.bio?.trim() || "";
 
   return [
     {
@@ -177,14 +179,14 @@ export function getCompletionChecks(
       key: "services",
       label: "Kamida 1 ta xizmat turini tanlang",
       hint: "Tegishli buyurtmalar siz uchun ko'rsatiladi",
-      done: !!(providerProfile?.categories?.length),
+      done: categories.length > 0,
       weight: 20,
     },
     {
       key: "bio",
       label: "Bio: kamida 50 ta belgi yozing",
       hint: "O'zingizni taniting — bu ishonchni oshiradi",
-      done: !!(providerProfile?.bio && providerProfile.bio.length >= 50),
+      done: bio.length >= 50,
       weight: 20,
     },
     {

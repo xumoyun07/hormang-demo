@@ -235,6 +235,10 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 - `dashboard/index.tsx` buyer menu item "Buyurtmalarim" navigates to `/request-history`
 - `/my-requests` now shows only active (`open`) and cancelled requests; completed requests remain viewable in history with detail/offers/chat access
 
+### Provider Profile Completion
+- Completion checks now use locally saved provider `categories` and `bio` as fallback when the API profile returns empty after logout/login
+- 100% completion cards in `/dashboard` and `/provider-home` can be dismissed with an upper-right X per user
+
 ### Provider Chat (`pages/provider/chats.tsx`)
 - "Tugatildi" green button in header when offer is `accepted` or `in_progress`
 - "+" dashed button left of input (when accepted/in_progress) → opens `ScheduleModal`

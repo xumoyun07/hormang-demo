@@ -365,10 +365,21 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
   const { user, providerProfile } = useAuth();
   const { toast } = useToast();
   const [local, setLocal] = useState<LocalProfile>({});
+  const storeVersion = useStoreRefresh();
+  const completionDismissKey = user?.id ? `profile_completion_dismissed_${user.id}` : "";
+  const [completionDismissed, setCompletionDismissed] = useState(false);
 
   useEffect(() => {
     if (user?.id) setLocal(getLocalProfile(user.id));
-  }, [user?.id]);
+  }, [user?.id, storeVersion]);
+
+  useEffect(() => {
+    if (!completionDismissKey) {
+      setCompletionDismissed(false);
+      return;
+    }
+    setCompletionDismissed(localStorage.getItem(completionDismissKey) === "1");
+  }, [completionDismissKey]);
 
   const completionLocal = {
     photoUrl:       local.photoUrl,
@@ -376,6 +387,8 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
     district:       local.district,
     experience:     local.experience,
     portfolioItems: local.portfolioItems ?? [],
+    bio:            local.bio,
+    categories:     local.categories ?? [],
   };
   const checks  = getCompletionChecks(user ?? null, providerProfile ?? null, completionLocal);
   const pct     = getCompletionPct(checks);
@@ -388,8 +401,8 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
   const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`;
   const hasPhoto = !!local.photoUrl;
 
-  const serviceAreas = user?.id ? (getLocalProfile(user.id).serviceAreas ?? []) : [];
-  const selectedCategories = providerProfile?.categories ?? [];
+  const serviceAreas = local.serviceAreas ?? (local.region ? [local.region] : []);
+  const selectedCategories = providerProfile?.categories?.length ? providerProfile.categories : (local.categories ?? []);
   const requests = getMatchingRequests(selectedCategories, serviceAreas);
   const seen = getSeenIds(user?.id ?? "");
   const unseenCount = requests.filter((r) => !seen.includes(r.id) && r.status === "open").length;
@@ -507,17 +520,17 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
         </div>
 
         {/* Category chips */}
-        {(providerProfile?.categories?.length ?? 0) > 0 && (
+        {selectedCategories.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
-            {providerProfile!.categories.slice(0, 4).map(cat => (
+            {selectedCategories.slice(0, 4).map(cat => (
               <span key={cat}
                 className="text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-violet-50 text-violet-700 border border-violet-100">
                 {cat}
               </span>
             ))}
-            {providerProfile!.categories.length > 4 && (
+            {selectedCategories.length > 4 && (
               <span className="text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-gray-50 text-gray-400 border border-gray-100">
-                +{providerProfile!.categories.length - 4}
+                +{selectedCategories.length - 4}
               </span>
             )}
           </div>
@@ -541,12 +554,27 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
       </motion.div>
 
       {/* ── Completion card ── */}
+      {!(pct === 100 && completionDismissed) && (
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
         transition={{ delay: 0.05 }}
-        className="bg-white rounded-2xl border border-gray-100 card-shadow p-4"
+        className="relative bg-white rounded-2xl border border-gray-100 card-shadow p-4"
       >
+        {pct === 100 && (
+          <button
+            type="button"
+            onClick={() => {
+              if (completionDismissKey) localStorage.setItem(completionDismissKey, "1");
+              setCompletionDismissed(true);
+            }}
+            className="absolute right-3 top-3 w-7 h-7 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            aria-label="Profil tugallangan kartasini yopish"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
         <div className="flex items-center gap-4">
           {/* Ring */}
           <div className="relative flex-shrink-0 flex items-center justify-center">
@@ -612,6 +640,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
           </div>
         )}
       </motion.div>
+      )}
 
       {/* ── Menu items ── */}
       {menuItems.map(({ icon: Icon, title, desc, action, badge, badgeColor, comingSoon }, i) => (
