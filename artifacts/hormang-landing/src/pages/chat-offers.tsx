@@ -50,8 +50,9 @@ function OfferCard({ offer, index, anyAccepted }: {
 
   const req = getRequestById(offer.requestId);
   const isAccepted  = offer.status === "accepted";
+  const isInProgress = offer.status === "in_progress";
   const isRejected  = offer.status === "rejected";
-  const isCompleted = offer.status === "completed" || offer.status === "in_progress";
+  const isCompleted = offer.status === "completed";
   const providerLocal = getLocalProfile(offer.masterId);
 
   function handleAcceptClick(e: React.MouseEvent) {
@@ -120,7 +121,12 @@ function OfferCard({ offer, index, anyAccepted }: {
                     Yakunlandi
                   </span>
                 )}
-                {!isCompleted && isAccepted && (
+                {isInProgress && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
+                    Bajarilmoqda
+                  </span>
+                )}
+                {!isCompleted && !isInProgress && isAccepted && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600">
                     Qabul qilingan
                   </span>
@@ -130,7 +136,7 @@ function OfferCard({ offer, index, anyAccepted }: {
                     Rad etilgan
                   </span>
                 )}
-                {!isCompleted && !isAccepted && !isRejected && anyAccepted && (
+                {!isCompleted && !isInProgress && !isAccepted && !isRejected && anyAccepted && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">
                     Boshqa taklif qabul qilindi
                   </span>
@@ -193,7 +199,7 @@ function OfferCard({ offer, index, anyAccepted }: {
               >
                 Batafsil
               </Button>
-              {isAccepted ? (
+              {isAccepted || isInProgress ? (
                 <Button
                   size="sm"
                   onClick={(e) => { e.stopPropagation(); setLocation(`/chat/${offer.requestId}_${offer.masterId}`); }}
@@ -252,8 +258,10 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
   const st = offer?.status ?? "pending";
 
   const badge =
-    st === "completed" || st === "in_progress"
+    st === "completed"
       ? { label: "Yakunlandi", cls: "text-blue-600 bg-blue-50 border-blue-200", icon: <CheckCircle2 className="w-3 h-3" /> }
+      : st === "in_progress"
+      ? { label: "Bajarilmoqda", cls: "text-blue-600 bg-blue-50 border-blue-200", icon: <Clock className="w-3 h-3" /> }
       : st === "accepted"
       ? { label: "Qabul qilindi", cls: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: <CheckCircle2 className="w-3 h-3" /> }
       : st === "rejected"
@@ -335,8 +343,10 @@ export default function ChatOffersPage() {
   const chats = getChatsByCustomer(customerId);
 
   // Requests that already have one accepted offer — used to disable Accept on other cards
-  const acceptedRequestIds = new Set(
-    allOffers.filter((o) => o.status === "accepted").map((o) => o.requestId)
+  const activeRequestIds = new Set(
+    allOffers
+      .filter((o) => o.status === "accepted" || o.status === "in_progress" || o.status === "completed")
+      .map((o) => o.requestId)
   );
 
   const filteredReq = filterRequestId ? getRequestById(filterRequestId) : undefined;
@@ -439,7 +449,12 @@ export default function ChatOffersPage() {
                       key={offer.id}
                       offer={offer}
                       index={i}
-                      anyAccepted={offer.status !== "accepted" && acceptedRequestIds.has(offer.requestId)}
+                      anyAccepted={
+                        offer.status !== "accepted" &&
+                        offer.status !== "in_progress" &&
+                        offer.status !== "completed" &&
+                        activeRequestIds.has(offer.requestId)
+                      }
                     />
                   ))}
                 </div>

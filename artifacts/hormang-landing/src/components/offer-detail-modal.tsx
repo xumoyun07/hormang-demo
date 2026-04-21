@@ -101,15 +101,21 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
   /* Has ANY other offer on this same request already been accepted? */
   const anyAccepted =
     liveOffer.status !== "accepted" &&
+    liveOffer.status !== "in_progress" &&
+    liveOffer.status !== "completed" &&
     allOffers.some(
-      (o) => o.requestId === offer.requestId && o.id !== offer.id && o.status === "accepted"
+      (o) =>
+        o.requestId === offer.requestId &&
+        o.id !== offer.id &&
+        (o.status === "accepted" || o.status === "in_progress" || o.status === "completed")
     );
 
   const isAccepted = liveOffer.status === "accepted";
+  const isInProgress = liveOffer.status === "in_progress";
   const isRejected = liveOffer.status === "rejected";
-  const isCompleted = liveOffer.status === "completed" || liveOffer.status === "in_progress";
+  const isCompleted = liveOffer.status === "completed";
   /* Can still accept: offer is pending and no sibling offer is accepted */
-  const canAccept = !isAccepted && !isRejected && !isCompleted && !anyAccepted;
+  const canAccept = !isAccepted && !isInProgress && !isRejected && !isCompleted && !anyAccepted;
 
   const req = getRequestById(offer.requestId);
   const providerLocal = getLocalProfile(offer.masterId);
@@ -206,6 +212,8 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
               <p className="text-xs text-gray-400">
                 {isCompleted
                   ? "✅ Xizmat yakunlangan"
+                  : isInProgress
+                  ? "🔵 Xizmat bajarilmoqda"
                   : readOnly
                   ? "Faqat ko'rish rejimi"
                   : "Ko'rish rejimi · o'qish uchun"}
@@ -251,6 +259,16 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                     </div>
                   </div>
                   {/* Status badge */}
+                  {isCompleted && (
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
+                      Yakunlandi
+                    </span>
+                  )}
+                  {isInProgress && (
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
+                      Bajarilmoqda
+                    </span>
+                  )}
                   {isAccepted && (
                     <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-600 flex-shrink-0">
                       Qabul qilingan
@@ -426,6 +444,16 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                     {liveOffer.status === "pending" && (
                       <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
                         Kutilmoqda
+                      </span>
+                    )}
+                    {liveOffer.status === "in_progress" && (
+                      <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
+                        Bajarilmoqda
+                      </span>
+                    )}
+                    {liveOffer.status === "completed" && (
+                      <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
+                        Yakunlandi
                       </span>
                     )}
                   </div>

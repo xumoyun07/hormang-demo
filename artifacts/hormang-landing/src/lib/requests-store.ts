@@ -253,8 +253,10 @@ export function getOfferById(offerId: string): Offer | undefined {
 /** Set offer status to in_progress (when provider schedules the work) */
 export function markOfferInProgress(offerId: string): void {
   const allOffers = getOffers();
-  if (!allOffers.find((o) => o.id === offerId)) return;
+  const target = allOffers.find((o) => o.id === offerId);
+  if (!target || target.status !== "accepted") return;
   writeJSON(OFFERS_KEY, allOffers.map((o) => o.id === offerId ? { ...o, status: "in_progress" as const } : o));
+  emitStoreChange();
 }
 
 /**
