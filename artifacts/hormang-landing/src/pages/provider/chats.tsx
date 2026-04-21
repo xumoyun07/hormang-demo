@@ -14,7 +14,7 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, MessageCircle, ChevronRight, X, ChevronDown,
-  Circle, Send, CheckCircle2, Clock, Loader2, Flag, CalendarPlus, Calendar,
+  Circle, Send, CheckCircle2, Clock, Loader2, Flag, CalendarPlus, CalendarCheck2,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import {
@@ -234,7 +234,7 @@ function ScheduleModal({ onSave, onClose, defaultLocation = "" }: ScheduleModalP
           </div>
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-violet-600" />
+              <CalendarPlus className="w-4 h-4 text-violet-600" />
               <h3 className="font-extrabold text-gray-900 text-base">Xizmatni rejalashtirish</h3>
             </div>
             <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-colors">
@@ -527,10 +527,9 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
                 <button
                   disabled
                   className="flex items-center gap-1.5 h-11 px-3 rounded-2xl border border-gray-200 bg-gray-50 text-gray-400 text-[11px] font-semibold flex-shrink-0 cursor-not-allowed opacity-60 select-none"
-                  title="Xizmat allaqachon rejalashtirilgan"
+                  title="Xizmat rejalashtirilgan"
                 >
-                  <Calendar className="w-4 h-4" />
-                  Rejalashtirilgan
+                  <CalendarCheck2 className="w-4 h-4" />
                 </button>
               ) : (
                 <button

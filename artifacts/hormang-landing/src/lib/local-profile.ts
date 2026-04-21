@@ -76,25 +76,27 @@ export function saveLocalProfile(userId: string, data: LocalProfile): void {
   /* Strip the legacy `portfolioImages` field before saving */
   const { portfolioImages: _dropped, ...clean } = data;
 
-  console.log(`[Hormang] 💾 saveLocalProfile: user=${userId.slice(0, 8)} photo=${!!clean.photoUrl} region=${clean.region ?? "—"}`);
+  console.log(
+    `[Hormang] 💾 saveLocalProfile: user=${userId.slice(0, 8)} photo=${!!clean.photoUrl} portfolio=${clean.portfolioItems?.length ?? 0} cats=${clean.categories?.length ?? 0} bio=${!!clean.bio} region=${clean.region ?? "—"}`,
+  );
 
   try {
     localStorage.setItem(key(userId), JSON.stringify(clean));
     emitStoreChange();
   } catch (error) {
     if (error instanceof Error && error.name === "QuotaExceededError") {
-      console.warn("[Hormang] LocalStorage quota exceeded — portfolio tushirilmoqda.");
-      /* First fallback: keep photo + metadata, drop portfolio only */
-      const withoutPortfolio: LocalProfile = {
-        ...clean,
-        portfolioItems: [],
-      };
+      console.warn(
+        `[Hormang] ⚠️ LocalStorage quota oshdi — portfolio tushirilmoqda (user=${userId.slice(0, 8)}).`,
+      );
+      /* First fallback: keep photo + text fields, drop only portfolio images */
+      const withoutPortfolio: LocalProfile = { ...clean, portfolioItems: [] };
       try {
         localStorage.setItem(key(userId), JSON.stringify(withoutPortfolio));
         emitStoreChange();
+        console.warn("[Hormang] ⚠️ Portfolio rasmlari saqlanmadi (xotira to'liq). Matnli maydonlar saqlandi.");
         return;
       } catch {
-        /* Second fallback: keep only non-image fields */
+        /* Second fallback: keep only text fields */
       }
       const minimal: LocalProfile = {
         bio: clean.bio,
@@ -108,8 +110,9 @@ export function saveLocalProfile(userId: string, data: LocalProfile): void {
       try {
         localStorage.setItem(key(userId), JSON.stringify(minimal));
         emitStoreChange();
+        console.warn("[Hormang] ⚠️ Faqat matnli maydonlar saqlandi (rasm ham sig'madi).");
       } catch (fallbackError) {
-        console.error("[Hormang] Profil saqlanmadi (minimal ham sig'madi):", fallbackError);
+        console.error("[Hormang] ❌ Profil saqlanmadi (minimal ham sig'madi):", fallbackError);
       }
     } else {
       throw error;

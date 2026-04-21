@@ -41,6 +41,26 @@ const SERVICE_CATEGORIES = [
   "Ko'chirish / yuk yetkazish", "Go'zallik", "Avto xizmat", "Repetitorlar", "Ustachilik",
 ];
 
+/* ─── Image compression ──────────────────────────────────────────── */
+function compressDataUrl(dataUrl: string, maxWidth = 1024, quality = 0.75): Promise<string> {
+  return new Promise((resolve) => {
+    if (!dataUrl.startsWith("data:image")) { resolve(dataUrl); return; }
+    const img = new Image();
+    img.onload = () => {
+      const ratio = Math.min(maxWidth / img.width, 1);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve(dataUrl); return; }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 /* ─── Debounce hook ──────────────────────────────────────────────── */
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -274,21 +294,6 @@ export default function ProfileSettingsPage() {
 
   /* Local profile state */
   const [local, setLocal] = useState<LocalProfile>({});
-  useEffect(() => {
-    if (user) {
-      const loaded = getLocalProfile(user.id);
-      setLocal(loaded);
-      /* Reset photo IMMEDIATELY on user switch — prevents a 300ms race where
-         the debounced auto-save writes the old user's photo to the new user. */
-      setPhotoUrl(loaded.photoUrl);
-    } else {
-      /* User logged out → wipe ALL form state so no stale data lingers in the
-         component if it stays mounted through a logout/login cycle. */
-      setLocal({});
-      setPhotoUrl(undefined);
-      setPortfolioItems([]);
-    }
-  }, [user?.id]);
 
   /* Form fields */
   const [firstName, setFirstName]   = useState("");
@@ -300,53 +305,85 @@ export default function ProfileSettingsPage() {
   const [experience, setExperience] = useState("");
   const [bio, setBio]               = useState("");
 
-  /* Populate from auth/local once loaded — also clear on logout */
+  /* ── Consolidated init effect ─────────────────────────────────────
+   * Runs whenever the authenticated user or their server-side providerProfile
+   * changes. Reads localStorage synchronously so categories/bio are always
+   * available as a fallback even when the API returns empty data (e.g. after
+   * a server restart). This replaces three separate effects that had
+   * a timing race between each other. */
   useEffect(() => {
-    if (user) {
-      setFirstName(user.firstName ?? "");
-      setLastName(user.lastName ?? "");
-    } else {
+    if (!user) {
+      setLocal({});
+      setPhotoUrl(undefined);
+      setPortfolioItems([]);
       setFirstName("");
       setLastName("");
       setBio("");
       setSelectedServices([]);
+      setRegion("");
+      setDistrict("");
+      setServiceAreas([]);
+      setExperience("");
+      return;
     }
-    if (providerProfile) {
-      setSelectedServices(providerProfile.categories ?? []);
-      setBio(providerProfile.bio ?? "");
-    }
-  }, [user?.id, providerProfile?.id]);
 
-  useEffect(() => {
-    setRegion(local.region ?? "");
-    setDistrict(local.district ?? "");
-    setServiceAreas(local.serviceAreas ?? []);
-    setExperience(local.experience !== undefined ? String(local.experience) : "");
-  }, [local]);
+    const loaded = getLocalProfile(user.id);
+    console.log(
+      `[Hormang] 🔍 loadProfile: user=${user.id.slice(0, 8)} bio=${!!loaded.bio} cats=${loaded.categories?.length ?? 0} portfolio=${loaded.portfolioItems?.length ?? 0}`,
+    );
+    setLocal(loaded);
+    setPhotoUrl(loaded.photoUrl);
+
+    setFirstName(user.firstName ?? "");
+    setLastName(user.lastName ?? "");
+    setRegion(loaded.region ?? "");
+    setDistrict(loaded.district ?? "");
+    setServiceAreas(loaded.serviceAreas ?? []);
+    setExperience(loaded.experience !== undefined ? String(loaded.experience) : "");
+
+    const items = loaded.portfolioItems ?? (loaded.portfolioImages ?? []).map((url) => ({ url }));
+    setPortfolioItems(items);
+
+    /* Categories: server wins, local is authoritative fallback.
+     * This ensures categories survive an API restart / empty getMe response. */
+    if (providerProfile?.categories?.length) {
+      setSelectedServices(providerProfile.categories);
+    } else if (loaded.categories?.length) {
+      console.log(`[Hormang] 📦 categories — local fallback: ${loaded.categories.join(", ")}`);
+      setSelectedServices(loaded.categories);
+    } else {
+      setSelectedServices([]);
+    }
+
+    /* Bio: same logic — server wins, local is authoritative fallback. */
+    if (providerProfile?.bio?.trim()) {
+      setBio(providerProfile.bio);
+    } else if (loaded.bio?.trim()) {
+      console.log("[Hormang] 📦 bio — local fallback");
+      setBio(loaded.bio);
+    } else {
+      setBio("");
+    }
+  }, [user?.id, providerProfile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* Photo */
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [photoUrl, setPhotoUrl]   = useState<string | undefined>(undefined);
   const [photoLoading, setPhotoLoading] = useState(false);
-  /* NOTE: photoUrl is reset directly inside the user.id effect above.
-     There is intentionally NO separate useEffect(() => setPhotoUrl(local.photoUrl))
-     here — that pattern introduced a 300ms race window where a stale
-     debouncedPhoto could be written to the wrong user's profile. */
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !user) return;
     setPhotoLoading(true);
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const newPhotoUrl = ev.target?.result as string;
+    reader.onload = async (ev) => {
+      const raw = ev.target?.result as string;
+      const newPhotoUrl = await compressDataUrl(raw, 512, 0.80);
       setPhotoUrl(newPhotoUrl);
       setPhotoLoading(false);
-      /* Immediately persist to localStorage under THIS user's key.
-         This prevents the debounced auto-save (persistLocal) from
-         writing a stale photo to a different user during a user switch. */
       const currentLocal = getLocalProfile(user.id);
       saveLocalProfile(user.id, { ...currentLocal, photoUrl: newPhotoUrl });
+      console.log(`[Hormang] 📷 Photo saved (user=${user.id.slice(0, 8)})`);
     };
     reader.readAsDataURL(file);
     e.target.value = "";
@@ -358,23 +395,33 @@ export default function ProfileSettingsPage() {
   const [portfolioLoading, setPortfolioLoading] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
 
-  useEffect(() => {
-    const items = local.portfolioItems ?? (local.portfolioImages ?? []).map((url) => ({ url }));
-    setPortfolioItems(items);
-  }, [local.portfolioItems, local.portfolioImages]);
-
   function handlePortfolioChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     const remaining = 6 - portfolioItems.length;
-    if (remaining <= 0) return;
+    if (remaining <= 0 || !user) return;
     setPortfolioLoading(true);
-    let loaded = 0;
-    files.slice(0, remaining).forEach((file) => {
+    const toRead = files.slice(0, remaining);
+    let doneCount = 0;
+    const newItems: PortfolioItem[] = [];
+
+    toRead.forEach((file) => {
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        setPortfolioItems((prev) => [...prev, { url: ev.target?.result as string }].slice(0, 6));
-        loaded++;
-        if (loaded === Math.min(files.length, remaining)) setPortfolioLoading(false);
+      reader.onload = async (ev) => {
+        const raw = ev.target?.result as string;
+        const compressed = await compressDataUrl(raw, 1024, 0.72);
+        newItems.push({ url: compressed });
+        doneCount++;
+        if (doneCount === toRead.length) {
+          setPortfolioItems((prev) => {
+            const merged = [...prev, ...newItems].slice(0, 6);
+            /* Immediately persist so clicking Save isn't required to avoid loss */
+            const currentLocal = getLocalProfile(user.id);
+            saveLocalProfile(user.id, { ...currentLocal, portfolioItems: merged });
+            console.log(`[Hormang] 🖼 Portfolio saved immediately (${merged.length} items, user=${user.id.slice(0, 8)})`);
+            return merged;
+          });
+          setPortfolioLoading(false);
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -382,7 +429,14 @@ export default function ProfileSettingsPage() {
   }
 
   function removePortfolioItem(idx: number) {
-    setPortfolioItems((prev) => prev.filter((_, i) => i !== idx));
+    setPortfolioItems((prev) => {
+      const next = prev.filter((_, i) => i !== idx);
+      if (user) {
+        const currentLocal = getLocalProfile(user.id);
+        saveLocalProfile(user.id, { ...currentLocal, portfolioItems: next });
+      }
+      return next;
+    });
   }
 
   function updateCaption(idx: number, caption: string) {
@@ -516,14 +570,19 @@ export default function ProfileSettingsPage() {
     setSaving(true);
 
     try {
-      const shouldUpdateProvider = isProvider && selectedServices.length > 0;
+      console.log(
+        `[Hormang] 💾 handleSave: user=${user.id.slice(0, 8)} isProvider=${isProvider} cats=${selectedServices.length} bio=${bio.length} portfolio=${portfolioItems.length}`,
+      );
 
+      /* Always update the provider profile when the user is a provider —
+       * even if no categories are selected — so bio and other fields are
+       * persisted on the server correctly. */
       const [userRes, profileRes] = await Promise.all([
-        updateProfile({ 
-          firstName: firstName.trim(), 
-          lastName: lastName.trim() 
+        updateProfile({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
         }),
-        shouldUpdateProvider
+        isProvider
           ? updateProviderProfile({
               categories: selectedServices,
               bio: bio || undefined,
@@ -532,35 +591,32 @@ export default function ProfileSettingsPage() {
           : Promise.resolve(null),
       ]);
 
-      // === CRITICAL FIX: Always use the current user's ID ===
-      if (user) {
-        const newLocal: LocalProfile = {
-          photoUrl,
-          region,
-          district,
-          serviceAreas,
-          experience: experience ? Number(experience) : undefined,
-          portfolioItems,
-          bio: bio || undefined,
-          categories: selectedServices.length > 0 ? selectedServices : undefined,
-        };
+      const newLocal: LocalProfile = {
+        photoUrl,
+        region,
+        district,
+        serviceAreas,
+        experience: experience ? Number(experience) : undefined,
+        portfolioItems,
+        bio: bio || undefined,
+        categories: selectedServices.length > 0 ? selectedServices : undefined,
+      };
 
-        // Save with strict per-user key
-        saveLocalProfile(user.id, newLocal);
-        setLocal(newLocal);
+      saveLocalProfile(user.id, newLocal);
+      setLocal(newLocal);
+      console.log(`[Hormang] ✅ handleSave complete: user=${user.id.slice(0, 8)}`);
 
-        // Only update auth with the correct user data
-        setAuth(userRes.user, profileRes ? profileRes.profile : providerProfile);
-      }
+      setAuth(userRes.user, profileRes ? profileRes.profile : providerProfile);
 
       setSaved(true);
       toast({ title: "Profil muvaffaqiyatli saqlandi!" });
       setTimeout(() => setSaved(false), 3000);
 
     } catch (err: unknown) {
-      toast({ 
-        title: err instanceof Error ? err.message : "Xatolik yuz berdi", 
-        variant: "destructive" 
+      console.error("[Hormang] ❌ handleSave failed:", err);
+      toast({
+        title: err instanceof Error ? err.message : "Xatolik yuz berdi",
+        variant: "destructive",
       });
     } finally {
       setSaving(false);
