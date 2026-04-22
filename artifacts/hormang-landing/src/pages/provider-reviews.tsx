@@ -24,7 +24,7 @@ const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 10
 const METRIC_LABELS: Array<{ key: keyof ProviderReviewMetrics; label: string }> = [
   { key: "serviceQuality", label: "Xizmat sifati" },
   { key: "providerAttitude", label: "Ijrochi muomalasi" },
-  { key: "servicePrice", label: "Xizmat narxi" },
+  { key: "servicePrice", label: "Xizmat narxi adolatliligi" },
 ];
 
 function initials(name: string): string {

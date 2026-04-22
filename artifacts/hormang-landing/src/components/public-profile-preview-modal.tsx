@@ -147,22 +147,19 @@ function ProviderPreviewSheet({
           </div>
 
           {/* ── Close button ── */}
-          <div className="flex justify-end px-4 pb-1 flex-shrink-0">
+          <div className="flex justify-end px-4 flex-shrink-0">
             <button
               onClick={onClose}
               className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
-          </div>
-
-          {/* ── Scrollable body ── */}
-          <div className="overflow-y-auto flex-1 px-5 pb-6">
-
+          </div> 
             {/* Hero: avatar + name + badge */}
-            <div className="flex flex-col items-center text-center mb-6">
+            
+            <div className="flex flex-col items-center text-center mb-4">
               {/* Avatar */}
-              <div className="relative mb-4">
+              <div className="relative mb-2">
                 {local.photoUrl ? (
                   <img
                     src={local.photoUrl}
@@ -215,7 +212,11 @@ function ProviderPreviewSheet({
                   </span>
                 )}
               </div>
-            </div>
+            </div>  
+          {/* ── Scrollable body ── */}
+          <div className="overflow-y-auto flex-1 px-5 pb-6">
+
+          
 
             {/* ── Metrics row: Rating | Completed services | Verified ── */}
             <div

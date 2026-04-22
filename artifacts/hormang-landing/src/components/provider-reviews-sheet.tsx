@@ -30,7 +30,7 @@ const BLUE = "hsl(221,78%,48%)";
 const METRIC_LABELS: Array<{ key: keyof ProviderReviewMetrics; label: string }> = [
   { key: "serviceQuality", label: "Xizmat sifati" },
   { key: "providerAttitude", label: "Ijrochi muomalasi" },
-  { key: "servicePrice", label: "Xizmat narxi" },
+  { key: "servicePrice", label: "Xizmat narxi adolatliligi" },
 ];
 
 function initials(name: string): string {
@@ -60,7 +60,7 @@ function MetricBar({ label, value }: { label: string; value: number }) {
       </div>
       <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-amber-300 to-violet-500"
+          className="h-full rounded-full bg-gradient-to-r from-gray-50 to-violet-500"
           style={{ width: `${safe}%` }}
         />
       </div>
@@ -95,16 +95,19 @@ function ReviewDetailModal({
         transition={{ type: "spring", stiffness: 400, damping: 38 }}
         className="fixed inset-x-0 bottom-0 z-[81] flex justify-center"
       >
+        
         <div
-          className="bg-white w-full max-w-lg rounded-t-3xl px-5 pt-4 pb-8 max-h-[88dvh] overflow-y-auto"
-          style={{ boxShadow: "0 -8px 40px rgba(0,0,0,0.18)" }}
+          className="bg-white w-full max-w-lg rounded-t-3xl flex flex-col"
+          style={{ maxHeight: "88dvh", boxShadow: "0 -8px 40px rgba(0,0,0,0.18)" }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex justify-center mb-4">
+          {/* Drag handle */}
+          <div className="flex justify-center pt-4 pb-1 flex-shrink-0">
             <div className="w-10 h-1 rounded-full bg-gray-200" />
           </div>
 
-          <div className="flex items-start justify-between gap-3 mb-4">
+          {/* Header — fixed, does not scroll */}
+          <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-gray-100 flex-shrink-0">
             <div className="flex items-center gap-3 min-w-0">
               {meta.photoUrl ? (
                 <img src={meta.photoUrl} alt={meta.name} className="w-12 h-12 rounded-2xl object-cover flex-shrink-0" />
@@ -129,52 +132,55 @@ function ReviewDetailModal({
             </button>
           </div>
 
-          <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 mb-4">
-            <div className="flex items-center justify-between mb-3">
-              <StarRating rating={review.rating} size="w-5 h-5" />
-              {review.serviceCategory && (
-                <span className="text-[11px] font-black text-violet-700 bg-violet-50 border border-violet-100 rounded-full px-2.5 py-1">
-                  {review.serviceCategory}
-                </span>
-              )}
-            </div>
-            <p className="text-sm leading-relaxed text-gray-700">
-              {review.comment || "Izoh qoldirilmagan."}
-            </p>
-          </div>
-
-          {review.providerMetrics && (
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 mb-4 space-y-3">
-              {METRIC_LABELS.map((m) => (
-                <MetricBar key={m.key} label={m.label} value={review.providerMetrics![m.key] ?? 0} />
-              ))}
-            </div>
-          )}
-
-          {review.photoUrl && (
-            <button
-              onClick={() => setExpandedPhoto(true)}
-              className="w-full overflow-hidden rounded-2xl border border-gray-100 mb-4 bg-gray-50"
-            >
-              <img src={review.photoUrl} alt="Sharh rasmi" className="w-full h-52 object-cover" />
-            </button>
-          )}
-
-          {(review.platformSentiment || review.platformFeedback) && (
-            <div className="rounded-2xl border border-gray-100 bg-white p-4">
-              <div className="flex items-center gap-2 mb-2">
-                {review.platformSentiment === "positive" ? (
-                  <ThumbsUp className="w-4 h-4 text-emerald-600" />
-                ) : review.platformSentiment === "negative" ? (
-                  <ThumbsDown className="w-4 h-4 text-red-500" />
-                ) : (
-                  <MessageCircle className="w-4 h-4 text-gray-400" />
+          {/* Scrollable content */}
+          <div className="overflow-y-auto flex-1 px-5 py-4 pb-8 space-y-3">
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <StarRating rating={review.rating} size="w-5 h-5" />
+                {review.serviceCategory && (
+                  <span className="text-[11px] font-black text-violet-700 bg-violet-50 border border-violet-100 rounded-full px-2.5 py-1">
+                    {review.serviceCategory}
+                  </span>
                 )}
-                <p className="text-sm font-black text-gray-900">Hormang haqida fikri</p>
               </div>
-              <p className="text-sm text-gray-600">{review.platformFeedback || "Qo'shimcha izoh yo'q."}</p>
+              <p className="text-sm leading-relaxed text-gray-700">
+                {review.comment || "Izoh qoldirilmagan."}
+              </p>
             </div>
-          )}
+
+            {review.providerMetrics && (
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 space-y-3">
+                {METRIC_LABELS.map((m) => (
+                  <MetricBar key={m.key} label={m.label} value={review.providerMetrics![m.key] ?? 0} />
+                ))}
+              </div>
+            )}
+
+            {review.photoUrl && (
+              <button
+                onClick={() => setExpandedPhoto(true)}
+                className="w-full overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
+              >
+                <img src={review.photoUrl} alt="Sharh rasmi" className="w-full h-52 object-cover" />
+              </button>
+            )}
+
+            {(review.platformSentiment || review.platformFeedback) && (
+              <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  {review.platformSentiment === "positive" ? (
+                    <ThumbsUp className="w-4 h-4 text-emerald-600" />
+                  ) : review.platformSentiment === "negative" ? (
+                    <ThumbsDown className="w-4 h-4 text-red-500" />
+                  ) : (
+                    <MessageCircle className="w-4 h-4 text-gray-400" />
+                  )}
+                  <p className="text-sm font-black text-gray-900">Hormang haqida fikri</p>
+                </div>
+                <p className="text-sm text-gray-600">{review.platformFeedback || "Qo'shimcha izoh yo'q."}</p>
+              </div>
+            )}
+          </div>
         </div>
       </motion.div>
 
@@ -239,7 +245,7 @@ function ReviewRow({ review, onOpen }: { review: Review; onOpen: () => void }) {
               <span className="w-28 text-[10px] font-bold text-gray-400 truncate">{m.label}</span>
               <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-300 to-violet-500"
+                  className="h-full rounded-full bg-gradient-to-r from-gray-50 to-violet-500"
                   style={{ width: `${metrics[m.key] ?? 0}%` }}
                 />
               </div>
@@ -255,7 +261,7 @@ function ReviewRow({ review, onOpen }: { review: Review; onOpen: () => void }) {
         onClick={onOpen}
         className="w-full h-9 rounded-xl bg-violet-50 text-violet-700 text-xs font-black flex items-center justify-center gap-1.5 hover:bg-violet-100 transition-colors"
       >
-        Batafsil ko'rish
+        Batafsil
       </button>
     </div>
   );
@@ -314,7 +320,7 @@ export function ProviderReviewsSheet({
           <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-100 flex-shrink-0">
             <div>
               <p className="font-black text-gray-900">{providerName}</p>
-              <p className="text-xs text-gray-400">Mijozlar sharhlarim</p>
+              <p className="text-xs text-gray-400">Mijozlar qoldirgan fikrlar</p>
             </div>
             <button
               onClick={onClose}
@@ -328,7 +334,8 @@ export function ProviderReviewsSheet({
           <div className="overflow-y-auto flex-1 px-4 py-4 space-y-3 pb-6">
 
             {/* Summary card */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <div className="bg-gradient-to-br from-violet-50 to-white rounded-2xl border border-gray-100 p-4 shadow-sm mb-4"
+              style={{ background: "linear-gradient(-55deg, #ddcaff, #ffffff)" }}>
               <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wide mb-2">Umumiy baho</p>
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-3xl font-black text-gray-900">
@@ -338,7 +345,7 @@ export function ProviderReviewsSheet({
                 <span className="text-sm text-gray-500 ml-1">{reviews.length} ta sharh</span>
               </div>
               {hasMetrics && (
-                <div className="space-y-2.5 border-t border-gray-100 pt-3">
+                <div className="space-y-2.5 pt-3">
                   {METRIC_LABELS.map((m) => (
                     <MetricBar key={m.key} label={m.label} value={metricAverages[m.key]} />
                   ))}
