@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Eye, Image as ImageIcon, MessageCircle, Star, ThumbsDown, ThumbsUp, UserRound, X } from "lucide-react";
+import { ArrowLeft, Eye, Image as ImageIcon, MessageCircle, ThumbsDown, ThumbsUp, UserRound, X } from "lucide-react";
+import { StarRating } from "@/components/star-rating";
 import { BottomNav } from "@/components/bottom-nav";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { useAuth } from "@/contexts/auth-context";
@@ -50,18 +51,6 @@ function getReviewerMeta(review: Review) {
   };
 }
 
-function Stars({ value, size = "w-4 h-4" }: { value: number; size?: string }) {
-  return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <Star
-          key={star}
-          className={`${size} ${star <= value ? "text-amber-400 fill-amber-400" : "text-gray-200 fill-gray-200"}`}
-        />
-      ))}
-    </div>
-  );
-}
 
 function MetricScale({
   label,
@@ -188,7 +177,7 @@ function ReviewPreviewModal({
           </div>
           <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 mb-4">
             <div className="flex items-center justify-between gap-3 mb-3">
-              <Stars value={review.rating} size="w-5 h-5" />
+              <StarRating rating={review.rating} size="w-5 h-5" />
               {review.serviceCategory && (
                 <span className="text-[11px] font-black text-violet-700 bg-violet-50 border border-violet-100 rounded-full px-2.5 py-1">
                   {review.serviceCategory}
@@ -282,7 +271,7 @@ function ReviewCard({
             {meta.name}
           </button>
           <div className="flex items-center gap-2 flex-wrap mt-1">
-            <Stars value={review.rating} />
+            <StarRating rating={review.rating} />
             <span className="text-xs text-gray-400">{formatDate(review.createdAt)}</span>
           </div>
           {review.serviceCategory && (
@@ -392,12 +381,12 @@ export default function ProviderReviewsPage() {
                 Umumiy baho
               </p>
 
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <span className="text-3xl font-bold text-gray-900">
                   {avg > 0 ? avg.toFixed(1) : "—"}
                 </span>
 
-                <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
+                <StarRating rating={avg} size="w-5 h-5" />
 
                 <span className="text-sm text-gray-500">
                   {reviews.length} ta sharh
