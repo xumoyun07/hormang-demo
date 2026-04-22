@@ -37,12 +37,14 @@ function deriveInitials(name: string): string {
 /* ─── Metric cell ────────────────────────────────────────────────────── */
 function MetricCell({
   icon: Icon,
+  topNode,
   value,
   label,
   color,
   onClick,
 }: {
-  icon: React.FC<{ className?: string }>;
+  icon?: React.FC<{ className?: string }>;
+  topNode?: React.ReactNode;
   value: React.ReactNode;
   label: string;
   color: string;
@@ -50,7 +52,7 @@ function MetricCell({
 }) {
   const inner = (
     <>
-      <Icon className="w-3.5 h-3.5 mb-0.5" style={{ color }} />
+      {topNode ?? (Icon ? <Icon className="w-3.5 h-3.5 mb-0.5" style={{ color }} /> : null)}
       <span className="text-sm font-black text-gray-900 leading-none">{value}</span>
       <span className="text-[10px] text-gray-400 font-medium text-center leading-tight">{label}</span>
     </>
@@ -221,17 +223,8 @@ function ProviderPreviewSheet({
               style={{ background: "hsl(262,80%,99%)" }}
             >
               <MetricCell
-                icon={Star}
-                value={
-                  avgRating > 0
-                    ? (
-                      <span className="flex flex-col items-center gap-0.5">
-                        <span className="text-sm font-black text-gray-900">{avgRating.toFixed(1)}</span>
-                        <StarRating rating={avgRating} size="w-3 h-3" />
-                      </span>
-                    )
-                    : <span className="text-gray-400">—</span>
-                }
+                topNode={<StarRating rating={avgRating > 0 ? avgRating : 0} size="w-3 h-3" />}
+                value={avgRating > 0 ? avgRating.toFixed(1) : <span className="text-gray-400">—</span>}
                 label={reviewCount > 0 ? `${reviewCount} ta baho` : "Baholanmagan"}
                 color="hsl(37,95%,55%)"
                 onClick={reviewCount > 0 ? () => setShowReviews(true) : undefined}
