@@ -57,7 +57,7 @@ export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }
       {/* Main golden card */}
       <div
         className="rounded-2xl overflow-hidden shadow-lg relative before:absolute before:inset-0 before:bg-[radial-gradient(circle,rgba(255,248,211,0.15)_1px,transparent_1px)] before:bg-[size:10px_10px]"
-        style={{ background: "linear-gradient(135deg, #f59e0b, #92400e)" }}
+        style={{ background: "linear-gradient(135deg, #f59e0b 0%, #92400e 100%)" }}
       >
         {/* Decorative shimmer */}
         <div

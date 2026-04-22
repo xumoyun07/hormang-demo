@@ -503,7 +503,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
                     className={`w-3.5 h-3.5 ${s <= Math.round(avgRating) ? "text-amber-400 fill-amber-400" : "text-gray-200 fill-gray-200"}`}
                   />
                 ))}
-                <span className="text-xs font-bold text-gray-700 ml-0.5">
+                <span className="text-xs font-bold text-gray-700 ml-0.5 underline">
                   {avgRating > 0 ? avgRating.toFixed(1) : "–"}
                 </span>
                 {reviewCount > 0 && (

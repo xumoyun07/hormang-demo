@@ -398,7 +398,7 @@ function RequestSlideCard({
             onClick={() => onIgnore(request.id)}
             className="flex-1 h-11 rounded-2xl border-2 border-red-100 bg-red-50 text-red-600 font-bold text-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 hover:bg-red-100"
           >
-            O'tkazish
+            O'chirish
           </button>
           <button
             onClick={() => onRespond(request.id)}
@@ -614,24 +614,20 @@ function AvailableRequests() {
   const slideReqs = newUnseen;
   const current   = slideReqs[slideIndex];
 
-  function handleRespond(id: string) {
-    updateProviderRequestStatus(id, "responded", providerId);
-    markSeen(id, providerId);
-    toast({ title: "Javob yuborildi!", description: "Buyurtmachi siz bilan bog'lanadi." });
-    if (slideIndex >= slideReqs.length - 1) setSlideIndex(Math.max(0, slideReqs.length - 2));
-  }
-
   function handleIgnore(id: string) {
+    const nextIndex = Math.max(0, slideReqs.length - 2);
     updateProviderRequestStatus(id, "ignored", providerId);
     markSeen(id, providerId);
-    if (slideIndex >= slideReqs.length - 1) setSlideIndex(Math.max(0, slideReqs.length - 2));
+    setSlideIndex(slideIndex >= slideReqs.length - 1 ? nextIndex : slideIndex);
   }
 
   function handleRespondFromModal(id: string) {
+    const nextIndex = Math.max(0, slideReqs.length - 2);
     markSeen(id, providerId);
     const req = requests.find((r) => r.id === id) ?? null;
     setOfferRequest(req);
     setModal(null);
+    if (slideIndex >= slideReqs.length - 1) setSlideIndex(nextIndex);
   }
 
   function handleIgnoreFromModal(id: string) {
@@ -703,7 +699,7 @@ function AvailableRequests() {
                 <RequestSlideCard
                   key={current.id}
                   request={current}
-                  onRespond={handleRespond}
+                  onRespond={handleRespondFromModal}
                   onIgnore={handleIgnore}
                   onNext={() => setSlideIndex((i) => Math.min(i + 1, slideReqs.length - 1))}
                   isLast={slideIndex === slideReqs.length - 1}

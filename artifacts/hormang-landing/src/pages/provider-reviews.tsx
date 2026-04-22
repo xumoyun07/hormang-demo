@@ -382,51 +382,56 @@ export default function ProviderReviewsPage() {
 
       <main className="max-w-lg mx-auto px-4 py-4">
         {/* Summary Card */}
-        <div
-          className="rounded-2xl p-4 text-white mb-4"
-          style={{ background: VIOLET }}
-        >
-          {/* Title */}
-          <p className="text-[11px] uppercase tracking-wide text-white/70 mb-2">
-            Umumiy baho
-          </p>
+        <div className="bg-gradient-to-br from-violet-50 to-white rounded-2xl border border-gray-100 p-4 shadow-sm mb-4"
+          style={{ background: "linear-gradient(-55deg, #ddcaff, #ffffff)" }}>
 
-          {/* Top Row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl font-black">
-                {avg > 0 ? avg.toFixed(1) : "—"}
-              </span>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[11px] uppercase font-bold tracking-wide text-gray-500">
+                Umumiy baho
+              </p>
 
-              <Star className="w-6 h-6 text-amber-300 fill-amber-300" />
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-3xl font-bold text-gray-900">
+                  {avg > 0 ? avg.toFixed(1) : "—"}
+                </span>
 
-              <span className="text-sm text-white/80">
-                {reviews.length} ta sharh
-              </span>
-            </div>
+                <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
 
-            <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center">
-              <MessageCircle className="w-5 h-5" />
+                <span className="text-sm text-gray-500">
+                  {reviews.length} ta sharh
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="h-px bg-white/10 my-3" />
-
-          {/* Compact Metrics */}
+          {/* Metrics */}
           <div className="space-y-3">
-            <CompactMetric
-              label="Xizmat sifati"
-              value={metricAverages.serviceQuality}
-            />
-            <CompactMetric
-              label="Muomala"
-              value={metricAverages.providerAttitude}
-            />
-            <CompactMetric
-              label="Narx"
-              value={metricAverages.servicePrice}
-            />
+            {[
+              { label: "Xizmat sifati", value: metricAverages.serviceQuality },
+              { label: "Muomala", value: metricAverages.providerAttitude },
+              { label: "Narx", value: metricAverages.servicePrice },
+            ].map((item) => (
+              <div key={item.label}>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-gray-600 font-medium">
+                    {item.label}
+                  </span>
+                  <span className="text-gray-900 font-semibold">
+                    {item.value}%
+                  </span>
+                </div>
+
+                {/* Compact Bar */}
+                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-violet-500 rounded-full"
+                    style={{ width: `${item.value}%` }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

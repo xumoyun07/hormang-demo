@@ -101,7 +101,7 @@ export function getAverageRatingForUser(
   const reviews = getReviewsForUser(userId, asRole);
   if (!reviews.length) return 0;
   const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
-  return Math.round(avg * 10) / 10;
+  return Math.round(avg * 100) / 100;
 }
 
 export function getProviderReviewAverages(providerId: string): ProviderReviewMetrics {
