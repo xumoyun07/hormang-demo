@@ -25,6 +25,7 @@ import {
 } from "@/lib/provider-store";
 import { getAverageRatingForUser, getReviewsForUser, getCompletedCount } from "@/lib/completion-store";
 import { TangaChip } from "@/pages/plans";
+import { StarRating } from "@/components/star-rating";
 
 const VIOLET_SOLID = "hsl(262,80%,54%)";
 const VIOLET_GRAD  = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -497,12 +498,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
                 className="flex items-center gap-1"
                 onClick={() => onNavigate("/provider-reviews")}
               >
-                {[1,2,3,4,5].map(s => (
-                  <Star
-                    key={s}
-                    className={`w-3.5 h-3.5 ${s <= Math.round(avgRating) ? "text-amber-400 fill-amber-400" : "text-gray-200 fill-gray-200"}`}
-                  />
-                ))}
+                <StarRating rating={avgRating} size="w-3.5 h-3.5" />
                 <span className="text-xs font-bold text-gray-700 ml-0.5 underline">
                   {avgRating > 0 ? avgRating.toFixed(1) : "–"}
                 </span>

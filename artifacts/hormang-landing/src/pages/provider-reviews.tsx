@@ -68,19 +68,15 @@ function MetricScale({
     <div className={isDark ? "text-white" : "text-gray-900"}>
       <div className="flex items-center justify-between gap-3 mb-1.5">
         <p className={`text-xs font-black ${isDark ? "text-white/90" : "text-gray-800"}`}>{label}</p>
-        <span className={`text-xs font-black rounded-full px-2 py-0.5 ${
-          isDark ? "bg-white text-violet-700" : "bg-violet-50 text-violet-700 border border-violet-100"
-        }`}>
-          {safeValue}%
-        </span>
+        
       </div>
       <div className={`relative h-3 rounded-full overflow-hidden ${isDark ? "bg-white/20" : "bg-gray-100"}`}>
         <div
-          className={isDark ? "h-full bg-white rounded-full" : "h-full rounded-full bg-gradient-to-r from-red-300 via-amber-300 to-emerald-400"}
+          className={isDark ? "h-full bg-white rounded-full" : "h-full rounded-full bg-gradient-to-r from-gray-100 to-violet-400"}
           style={{ width: `${safeValue}%` }}
         />
         <span
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 text-[9px] font-black text-gray-900 bg-white rounded-full px-1.5 py-0.5 shadow-sm"
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 text-[9px] font-black text-gray-100 bg-violet-400 rounded-full px-1.5 py-0.5 shadow-sm"
           style={{ left: `${Math.max(12, Math.min(88, safeValue))}%` }}
         >
           {safeValue}%
@@ -294,7 +290,7 @@ function ReviewCard({
               <span className="w-24 text-[10px] font-black text-gray-500 truncate">{metric.label}</span>
               <div className="flex-1 h-2 rounded-full bg-gray-200 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-300 to-emerald-400"
+                  className="h-full rounded-full bg-gradient-to-r from-gray-50 to-violet-400"
                   style={{ width: `${metrics[metric.key] ?? 0}%` }}
                 />
               </div>

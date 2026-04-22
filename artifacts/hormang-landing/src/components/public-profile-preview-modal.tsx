@@ -62,7 +62,7 @@ function MetricCell({
     return (
       <button
         onClick={onClick}
-        className="flex-1 flex flex-col items-center gap-0.5 px-2 cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity"
+        className="flex-1 flex flex-col items-center gap-0.5 px-2 cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity underline"
       >
         {inner}
       </button>
@@ -225,7 +225,7 @@ function ProviderPreviewSheet({
               <MetricCell
                 topNode={<StarRating rating={avgRating > 0 ? avgRating : 0} size="w-3 h-3" />}
                 value={avgRating > 0 ? avgRating.toFixed(1) : <span className="text-gray-400">—</span>}
-                label={reviewCount > 0 ? `${reviewCount} ta baho` : "Baholanmagan"}
+                label={reviewCount > 0 ? `${reviewCount} ta sharh` : "Baholanmagan"}
                 color="hsl(37,95%,55%)"
                 onClick={reviewCount > 0 ? () => setShowReviews(true) : undefined}
               />
@@ -516,7 +516,7 @@ function CustomerPreviewSheet({
                     ? <span>{custAvgRating.toFixed(1)} <span className="text-amber-400">★</span></span>
                     : <span>— <span className="text-gray-300">★</span></span>
                 }
-                label={custReviewCount > 0 ? `${custReviewCount} ta baho` : "Baholanmagan"}
+                label={custReviewCount > 0 ? `${custReviewCount} ta sharh` : "Baholanmagan"}
                 color="hsl(37,95%,55%)"
               />
               <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
