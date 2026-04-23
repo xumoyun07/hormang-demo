@@ -5,6 +5,7 @@ import {
   ArrowLeft, CheckCircle2, ChevronRight, ClipboardList, Clock, MessageCircle, Wallet,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
+import { getReviewsForUser } from "@/lib/completion-store";
 import { Button } from "@/components/ui/button";
 import { RequestPreviewModal } from "@/components/request-preview-modal";
 import {
@@ -149,6 +150,7 @@ export default function RequestHistoryPage() {
   const completed = requests
     .filter((r) => r.status === "completed")
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const reviewCount = user ? getReviewsForUser(user.id, "customer").length : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -164,6 +166,19 @@ export default function RequestHistoryPage() {
             <h1 className="font-extrabold text-sm text-gray-900">Buyurtmalarim</h1>
             <p className="text-xs text-gray-400">{completed.length} ta yakunlangan xizmat</p>
           </div>
+          {completed.length > 0 && (
+            <button
+              onClick={() => setLocation("/customer-reviews")}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold hover:bg-blue-100 transition-colors flex-shrink-0"
+            >
+              Ijrochi fikrlari
+              {reviewCount > 0 && (
+                <span className="bg-blue-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none">
+                  {reviewCount}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
 

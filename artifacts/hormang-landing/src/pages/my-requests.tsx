@@ -8,7 +8,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardList, MessageCircle, ChevronRight,
-  Clock, Wallet, Plus, RefreshCw, X, CheckCircle2, LayoutDashboard,
+  Clock, Wallet, Plus, RefreshCw, X, CheckCircle2, History,
 } from "lucide-react";
 import { RequestPreviewModal } from "@/components/request-preview-modal";
 import { Button } from "@/components/ui/button";
@@ -281,20 +281,21 @@ export default function MyRequestsPage() {
           <>
             {/* Top bar: quick link + new request */}
             <div className="flex items-center justify-between mb-5">
-              {/* Quick link to dashboard Buyurtmalarim */}
-              <button
-                onClick={() => setLocation("/request-history")}
-                className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-blue-600 transition-colors"
+              {/* Quick link to dashboard Buyurtmalarim */}              
+              <button              
+               onClick={() => setLocation("/questionnaire")}
+                className="flex-3 h-7 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5 text-white rounded-xl flex items-center justify-center"
               >
-                <LayoutDashboard className="w-3.5 h-3.5" />
-                So'rov-xizmatlarim
+               <Plus className="w-3.5 h-3.5" />
+                Yangi so'rov
               </button>
               <button
-                onClick={() => setLocation("/questionnaire")}
-                className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700"
+                 onClick={() => setLocation("/request-history")}
+                className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-blue-600 transition-colors"
               >
-                <Plus className="w-3.5 h-3.5" />
-                Yangi so'rov
+                <History className="w-3.5 h-3.5" />
+                So'rovlar tarixi
+                
               </button>
             </div>
 

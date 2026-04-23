@@ -208,8 +208,8 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
     },
     {
       icon: ClipboardList,
-      title: "Buyurtmalarim",
-      desc: "Barcha buyurtmalar va holati",
+      title: "So'rovlarim",
+      desc: "Barcha so'rovlar tarixi",
       action: () => onNavigate("/request-history"),
     },
     {

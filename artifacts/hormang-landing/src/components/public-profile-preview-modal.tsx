@@ -17,6 +17,7 @@ import { getLocalProfile } from "@/lib/local-profile";
 import { getAverageRatingForUser, getReviewsForUser, getCompletedCount } from "@/lib/completion-store";
 import { StarRating } from "@/components/star-rating";
 import { ProviderReviewsSheet } from "@/components/provider-reviews-sheet";
+import { CustomerReviewsSheet } from "@/components/customer-reviews-sheet";
 import type {
   ProviderProfileData,
   CustomerProfileData,
@@ -339,14 +340,7 @@ function ProviderPreviewSheet({
               📵 Foydalanuvchi ma'lumotlarini himoya qilish maqsadida telefon raqam ko'rsatilmaydi
             </p>
 
-            {/* ── Close button ── */}
-            <button
-              onClick={onClose}
-              className="w-full h-12 rounded-2xl font-black text-sm text-white mt-2 transition-all active:scale-[0.98]"
-              style={{ background: `linear-gradient(135deg, ${VIOLET}, hsl(236,76%,60%))` }}
-            >
-              Yopish
-            </button>
+           
           </div>
         </div>
       </motion.div>
@@ -419,6 +413,7 @@ function CustomerPreviewSheet({
   const custAvgRating = data.customerId ? getAverageRatingForUser(data.customerId, "customer") : 0;
   const custReviewCount = data.customerId ? getReviewsForUser(data.customerId, "customer").length : 0;
   const custCompletedCount = data.customerId ? getCompletedCount(data.customerId, "customer") : 0;
+  const [showReviews, setShowReviews] = useState(false);
 
   return (
     <>
@@ -460,13 +455,12 @@ function CustomerPreviewSheet({
             </button>
           </div>
 
-          {/* Scrollable body */}
-          <div className="overflow-y-auto flex-1 px-5 pb-6">
+          
 
             {/* Hero */}
-            <div className="flex flex-col items-center text-center mb-6">
+            <div className="flex flex-col items-center text-center mb-4">
               {/* Avatar */}
-              <div className="relative mb-4">
+              <div className="relative mb-2">
                 {photoUrl ? (
                   <img
                     src={photoUrl}
@@ -504,21 +498,19 @@ function CustomerPreviewSheet({
                 </span>
               </div>
             </div>
-
+{/* Scrollable body */}
+          <div className="overflow-y-auto flex-1 px-5 pb-6">
             {/* ── Metrics row ── */}
             <div
               className="flex items-center rounded-2xl border border-gray-100 py-4 mb-5"
               style={{ background: BLUE_LIGHT }}
             >
               <MetricCell
-                icon={Star}
-                value={
-                  custAvgRating > 0
-                    ? <span>{custAvgRating.toFixed(1)} <span className="text-amber-400">★</span></span>
-                    : <span>— <span className="text-gray-300">★</span></span>
-                }
+                topNode={<StarRating rating={custAvgRating > 0 ? custAvgRating : 0} size="w-3 h-3" />}
+                value={custAvgRating > 0 ? custAvgRating.toFixed(1) : <span className="text-gray-400">—</span>}
                 label={custReviewCount > 0 ? `${custReviewCount} ta sharh` : "Baholanmagan"}
                 color="hsl(37,95%,55%)"
+                onClick={custReviewCount > 0 && data.customerId ? () => setShowReviews(true) : undefined}
               />
               <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
               <MetricCell
@@ -554,38 +546,29 @@ function CustomerPreviewSheet({
               </div>
             )}
 
-            {/* ── Category context ── */}
-            {data.categoryName && (
-              <div
-                className="flex items-center gap-2.5 rounded-2xl p-3.5 mb-5 border border-blue-100"
-                style={{ background: BLUE_LIGHT }}
-              >
-                <span className="text-xl flex-shrink-0">{data.categoryEmoji || "📋"}</span>
-                <div>
-                  <p className="text-[10px] text-blue-500 font-bold uppercase tracking-wide">
-                    So'rov kategoriyasi
-                  </p>
-                  <p className="text-sm font-bold text-blue-900">{data.categoryName}</p>
-                </div>
-              </div>
-            )}
+            
 
             {/* ── Privacy note ── */}
             <p className="text-center text-[11px] text-gray-400 leading-relaxed mb-4">
               📵 Foydalanuvchi ma'lumotlarini himoya qilish maqsadida telefon raqam ko'rsatilmaydi
             </p>
 
-            {/* ── Close button ── */}
-            <button
-              onClick={onClose}
-              className="w-full h-12 rounded-2xl font-black text-sm text-white transition-all active:scale-[0.98]"
-              style={{ background: `linear-gradient(135deg, ${BLUE}, hsl(199,89%,56%))` }}
-            >
-              Yopish
-            </button>
+            
           </div>
         </div>
       </motion.div>
+
+      {/* ── Customer reviews sheet ── */}
+      <AnimatePresence>
+        {showReviews && data.customerId && (
+          <CustomerReviewsSheet
+            key="customer-reviews-sheet"
+            customerId={data.customerId}
+            customerName={name}
+            onClose={() => setShowReviews(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }
