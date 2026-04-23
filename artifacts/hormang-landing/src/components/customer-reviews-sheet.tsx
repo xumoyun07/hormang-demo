@@ -12,6 +12,7 @@ import {
   type Review,
 } from "@/lib/completion-store";
 import { getLocalProfile } from "@/lib/local-profile";
+import { getOfferById } from "@/lib/requests-store";
 import { formatDate } from "@/lib/date-utils";
 
 const VIOLET = "hsl(262,80%,54%)";
@@ -22,11 +23,12 @@ function initials(name: string): string {
 
 function getReviewerMeta(review: Review) {
   const local = getLocalProfile(review.reviewerId);
-  const name = review.reviewerName || "Ijrochi";
+  const offer = review.offerId ? getOfferById(review.offerId) : null;
+  const name = review.reviewerName || offer?.masterName || "Ijrochi";
   return {
     name,
-    initials: review.reviewerInitials || initials(name),
-    color: review.reviewerColor || VIOLET,
+    initials: review.reviewerInitials || offer?.masterInitials || initials(name),
+    color: review.reviewerColor || offer?.masterColor || VIOLET,
     photoUrl: local.photoUrl,
   };
 }

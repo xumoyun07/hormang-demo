@@ -190,6 +190,7 @@ function UpcomingServices() {
   function handleReviewSubmit(data: ReviewSubmitData) {
     if (!reviewService) return;
     if (reviewService.customerId && reviewService.requestId) {
+      const offer = reviewService.offerId ? getOfferById(reviewService.offerId) : null;
       addReview({
         requestId: reviewService.requestId,
         offerId: reviewService.offerId,
@@ -202,6 +203,9 @@ function UpcomingServices() {
         photoUrl: data.photoUrl,
         platformSentiment: data.platformSentiment,
         platformFeedback: data.platformFeedback,
+        reviewerName: offer?.masterName,
+        reviewerInitials: offer?.masterInitials,
+        reviewerColor: offer?.masterColor,
         reviewedName: reviewService.customerName,
         serviceCategory: reviewService.title,
       });
