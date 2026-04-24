@@ -13,7 +13,8 @@ import {
   X, MapPin, Clock, ShieldCheck, Star, MessageCircle,
   Award, Briefcase,
 } from "lucide-react";
-import { getLocalProfile, getServiceAreaLabels, type PortfolioItem } from "@/lib/local-profile";
+import { getLocalProfile, getServiceAreaLabels } from "@/lib/local-profile";
+import { ImageGrid } from "@/components/image-grid";
 import { formatMonthYear } from "@/lib/date-utils";
 
 /* ─── Theme ────────────────────────────────────────────────────────── */
@@ -79,7 +80,8 @@ function ProviderSheet({ data, onClose }: { data: ProviderProfileData; onClose: 
 
   const serviceAreas = getServiceAreaLabels(local);
 
-  const portfolioItems: PortfolioItem[] = local.portfolioItems ?? [];
+  const albums = local.albums ?? [];
+  const allPhotos = albums.flatMap((a) => a.photos.map((p) => p.url));
 
   /* Bio and categories are now first-class fields in LocalProfile,
      written by settings.tsx on every auto-save and explicit save. */
@@ -253,26 +255,25 @@ function ProviderSheet({ data, onClose }: { data: ProviderProfileData; onClose: 
             </div>
           </div>
 
-          {/* Portfolio */}
-          {portfolioItems.length > 0 && (
-            <div>
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-1.5">
-                Portfolio ({portfolioItems.length} ta ish)
+          {/* Portfolio albums */}
+          {albums.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">
+                Portfolio ({allPhotos.length} ta rasm, {albums.length} ta albom)
               </p>
-              <div className="grid grid-cols-3 gap-2">
-                {portfolioItems.slice(0, 6).map((item, i) => (
-                  <div key={i} className="relative">
-                    <img
-                      src={item.url}
-                      alt={item.caption ?? `Ish ${i + 1}`}
-                      className="aspect-square object-cover rounded-xl border border-gray-200 w-full"
-                    />
-                    {item.caption && (
-                      <p className="text-[9px] text-gray-500 mt-0.5 truncate px-0.5">{item.caption}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
+              {albums.map((album) => (
+                <div key={album.id}>
+                  <p className="text-xs font-semibold text-gray-700 mb-1.5">
+                    {album.title} <span className="text-gray-400 font-normal">({album.photos.length})</span>
+                  </p>
+                  <ImageGrid
+                    urls={album.photos.map((p) => p.url)}
+                    maxVisible={6}
+                    columns={3}
+                    compact
+                  />
+                </div>
+              ))}
             </div>
           )}
 

@@ -7,11 +7,12 @@
  *  - "Mijoz profilini ko'rish" profile preview button
  *  - No editable avg-response-time field (removed)
  */
-import { useState, useRef } from "react";
+import { useState } from "react";
+import { CompactMediaUpload } from "@/components/media-upload";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  X, ChevronLeft, Send, Clock, MapPin, Calendar, FileImage,
+  X, ChevronLeft, Send, Clock, MapPin, Calendar,
   ChevronDown, CheckCircle2, AlertCircle, User,
   DollarSign,
 } from "lucide-react";
@@ -26,7 +27,6 @@ import { getRequests, getOffers } from "@/lib/requests-store";
 import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questionnaire-store";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
-import { compressImage } from "@/lib/image-utils";
 import { getTangaBalance, spendTangaBalance } from "@/lib/tanga-store";
 import { calculateOfferCost } from "@/lib/offer-cost";
 import { recordTangaTransaction } from "@/lib/tanga-history-store";
@@ -118,14 +118,12 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
     return d.toISOString().slice(0, 10);
   });
   const [termsChecked, setTermsChecked] = useState(false);
-  const [filePreviews, setFilePreviews] = useState<{ name: string; url: string }[]>([]);
+  const [offerPhotos, setOfferPhotos] = useState<string[]>([]);
 
   /* UI state */
   const [showCustomerProfile, setShowCustomerProfile] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const urg = urgencyLabel(request.urgency);
 
@@ -146,30 +144,10 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
     })
     .filter(Boolean) as { label: string; value: string }[];
 
-  /* Customer uploaded photos (from file-type questions stored as base64) */
-  const customerPhotoUrls = request.answers ? getAnswerImageUrls(request.answers as Record<string, unknown>) : [];
-
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = "";
-    files.forEach((file) => {
-      compressImage(file, 1024, 0.72)
-        .then((url) => {
-          setFilePreviews((prev) => [...prev, { name: file.name, url }]);
-        })
-        .catch(() => {
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-            setFilePreviews((prev) => [...prev, { name: file.name, url: ev.target?.result as string }]);
-          };
-          reader.readAsDataURL(file);
-        });
-    });
-  }
-
-  function removeFile(idx: number) {
-    setFilePreviews((prev) => prev.filter((_, i) => i !== idx));
-  }
+  /* Customer uploaded photos (from file-type questions + dedicated requestPhotos) */
+  const customerPhotoUrls = request.answers
+    ? getAnswerImageUrls(request.answers as Record<string, unknown>, request.requestPhotos)
+    : (request.requestPhotos ?? []);
 
   function validate(): boolean {
     const e: Record<string, string> = {};
@@ -208,7 +186,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
           completionTime,
           startDate,
           termsAccepted: termsChecked,
-          fileUrls: filePreviews.map((f) => f.url),
+          fileUrls: offerPhotos,
         },
         user ? { id: user.id, name: fullName, initials, color } : undefined,
       );
@@ -513,48 +491,16 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
               </div>
             </div>
 
-            {/* ── File upload ── */}
+            {/* ── Offer photo upload ── */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                Qo'shimcha fayllar (ixtiyoriy)
+              <label className="block text-xs font-bold text-gray-700 mb-2">
+                Namuna rasmlar <span className="font-normal text-gray-400">(ixtiyoriy)</span>
               </label>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full h-11 bg-white border-2 border-dashed border-gray-200 rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold text-gray-400 hover:border-violet-300 hover:text-violet-500 transition-colors"
-              >
-                <FileImage className="w-4 h-4" />
-                Rasm yoki hujjat yuklash
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,.pdf,.doc,.docx"
-                multiple
-                className="hidden"
-                onChange={handleFileChange}
+              <CompactMediaUpload
+                urls={offerPhotos}
+                onChange={setOfferPhotos}
+                max={3}
               />
-              {filePreviews.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {filePreviews.map((f, idx) => (
-                    <div key={idx} className="relative group">
-                      {f.url.startsWith("data:image") ? (
-                        <img src={f.url} alt={f.name} className="w-16 h-16 object-cover rounded-xl border border-gray-200" />
-                      ) : (
-                        <div className="w-16 h-16 bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center">
-                          <FileImage className="w-6 h-6 text-gray-400" />
-                        </div>
-                      )}
-                      <button
-                        onClick={() => removeFile(idx)}
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* ── Terms ── */}

@@ -14,8 +14,9 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, MessageCircle, ChevronRight, X, ChevronDown,
-  Circle, Send, CheckCircle2, Clock, Loader2, Flag, CalendarPlus, CalendarCheck2,
+  Circle, Send, CheckCircle2, Clock, Loader2, Flag, CalendarPlus, CalendarCheck2, ImageIcon,
 } from "lucide-react";
+import { compressImage } from "@/lib/image-utils";
 import { BottomNav } from "@/components/bottom-nav";
 import {
   getProviderChats, markChatRead, sendProviderMessage, getProviderChatById,
@@ -173,17 +174,27 @@ function MsgBubble({ msg, isFirst }: { msg: ProviderChatMessage; isFirst: boolea
       className={`flex ${isMe ? "justify-end" : "justify-start"} ${isFirst ? "" : "mt-1"}`}
     >
       <div
-        className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
+        className={`max-w-[75%] rounded-2xl text-sm leading-relaxed overflow-hidden ${
           isMe
             ? "text-white rounded-br-md shadow-sm"
             : "bg-white text-gray-900 border border-gray-100 rounded-bl-md shadow-sm"
         }`}
         style={isMe ? { background: VIOLET } : {}}
       >
-        <p style={{ whiteSpace: "pre-wrap" }}>{msg.text}</p>
-        <p className={`text-[10px] mt-1 text-right ${isMe ? "text-violet-200" : "text-gray-400"}`}>
-          {formatTime(msg.timestamp)}
-        </p>
+        {msg.attachment?.type === "image" && (
+          <img
+            src={msg.attachment.url}
+            alt="rasm"
+            className="w-full max-w-[220px] object-cover rounded-t-2xl"
+            style={{ display: "block" }}
+          />
+        )}
+        <div className="px-3.5 py-2.5">
+          {msg.text && <p style={{ whiteSpace: "pre-wrap" }}>{msg.text}</p>}
+          <p className={`text-[10px] mt-1 text-right ${isMe ? "text-violet-200" : "text-gray-400"}`}>
+            {formatTime(msg.timestamp)}
+          </p>
+        </div>
       </div>
     </motion.div>
   );
@@ -305,11 +316,13 @@ function ScheduleModal({ onSave, onClose, defaultLocation = "" }: ScheduleModalP
 function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) {
   useStoreRefresh();
   const [text, setText] = useState("");
+  const [attachPreview, setAttachPreview] = useState<string | null>(null);
   const [showCustomerProfile, setShowCustomerProfile] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const attachInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
   const masterId = user?.id ?? "";
 
@@ -347,9 +360,19 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   }, [offer?.status]);
 
   function send() {
-    if (!text.trim() || isRejected) return;
-    sendProviderMessage(chatId, "provider", text.trim());
+    if ((!text.trim() && !attachPreview) || isRejected) return;
+    const attachment = attachPreview ? { type: "image" as const, url: attachPreview } : undefined;
+    sendProviderMessage(chatId, "provider", text.trim(), attachment);
     setText("");
+    setAttachPreview(null);
+  }
+
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await compressImage(file, 800, 0.72);
+    setAttachPreview(url);
+    e.target.value = "";
   }
 
   function handleComplete() {
@@ -527,6 +550,19 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
         </div>
       ) : (
         <div className="shrink-0 bg-white border-t border-gray-100 z-20 pb-0">
+          {attachPreview && (
+            <div className="max-w-lg mx-auto px-4 pt-2">
+              <div className="relative inline-block">
+                <img src={attachPreview} alt="attachment" className="h-16 w-16 rounded-xl object-cover border border-gray-200" />
+                <button
+                  onClick={() => setAttachPreview(null)}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          )}
           <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-2">
             {/* Schedule button */}
             {canSchedule && (
@@ -549,6 +585,20 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
               )
             )}
             <input
+              ref={attachInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageSelect}
+            />
+            <button
+              onClick={() => attachInputRef.current?.click()}
+              disabled={isRejected}
+              className="w-11 h-11 rounded-2xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors flex-shrink-0 disabled:opacity-40"
+            >
+              <ImageIcon className="w-4 h-4" />
+            </button>
+            <input
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
@@ -557,7 +607,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             />
             <button
               onClick={send}
-              disabled={!text.trim()}
+              disabled={!text.trim() && !attachPreview}
               className="w-11 h-11 rounded-2xl flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shadow-sm"
               style={{ background: VIOLET }}
             >

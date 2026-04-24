@@ -18,6 +18,7 @@ import { getAverageRatingForUser, getReviewsForUser, getCompletedCount } from "@
 import { StarRating } from "@/components/star-rating";
 import { ProviderReviewsSheet } from "@/components/provider-reviews-sheet";
 import { CustomerReviewsSheet } from "@/components/customer-reviews-sheet";
+import { ImageGrid } from "@/components/image-grid";
 import type {
   ProviderProfileData,
   CustomerProfileData,
@@ -104,7 +105,8 @@ function ProviderPreviewSheet({
   onClose: () => void;
 }) {
   const local = getLocalProfile(data.masterId);
-  const portfolioItems = local.portfolioItems ?? [];
+  const albums = local.albums ?? [];
+  const allPhotos = albums.flatMap((a) => a.photos.map((p) => p.url));
   const bio = local.bio;
   const categories = local.categories ?? [];
   const serviceAreas = getServiceAreaLabels(local);
@@ -113,7 +115,6 @@ function ProviderPreviewSheet({
   const reviewCount = getReviewsForUser(data.masterId, "provider").length;
   const completedCount = getCompletedCount(data.masterId, "provider");
 
-  const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
   const [showReviews, setShowReviews] = useState(false);
 
   return (
@@ -300,37 +301,28 @@ function ProviderPreviewSheet({
               </div>
             )}
 
-            {/* ── Portfolio ── */}
-            {portfolioItems.length > 0 && (
-              <div className="mb-5">
-                <div className="flex items-center justify-between mb-2.5">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">
-                    Portfolio
-                  </p>
-                  <span className="text-xs text-violet-600 font-bold flex items-center gap-0.5">
-                    {portfolioItems.length} ta ish <ChevronRight className="w-3 h-3" />
+            {/* ── Portfolio albums ── */}
+            {albums.length > 0 && (
+              <div className="mb-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Portfolio</p>
+                  <span className="text-xs text-violet-600 font-bold">
+                    {allPhotos.length} rasm · {albums.length} albom
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {portfolioItems.slice(0, 6).map((item, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setExpandedPhoto(item.url)}
-                      className="relative group overflow-hidden rounded-xl aspect-square bg-gray-100 border border-gray-200 hover:border-violet-300 transition-colors"
-                    >
-                      <img
-                        src={item.url}
-                        alt={item.caption ?? `Ish ${i + 1}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      {item.caption && (
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 pb-1 pt-3">
-                          <p className="text-[9px] text-white font-semibold truncate">{item.caption}</p>
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                {albums.map((album) => (
+                  <div key={album.id}>
+                    <p className="text-xs font-semibold text-gray-700 mb-1.5">
+                      {album.title} <span className="text-gray-400 font-normal">({album.photos.length})</span>
+                    </p>
+                    <ImageGrid
+                      urls={album.photos.map((p) => p.url)}
+                      maxVisible={6}
+                      columns={3}
+                      compact
+                    />
+                  </div>
+                ))}
               </div>
             )}
 
@@ -343,37 +335,6 @@ function ProviderPreviewSheet({
           </div>
         </div>
       </motion.div>
-
-      {/* ── Lightbox for portfolio photo ── */}
-      <AnimatePresence>
-        {expandedPhoto && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-            style={{ background: "rgba(0,0,0,0.88)" }}
-            onClick={() => setExpandedPhoto(null)}
-          >
-            <motion.img
-              initial={{ scale: 0.85, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.85, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 400, damping: 32 }}
-              src={expandedPhoto}
-              alt="Portfolio"
-              className="max-w-full max-h-full rounded-2xl object-contain shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
-            <button
-              onClick={() => setExpandedPhoto(null)}
-              className="absolute top-5 right-5 w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center text-white hover:bg-white/25 transition-colors backdrop-blur-sm"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── Provider reviews sheet ── */}
       <AnimatePresence>

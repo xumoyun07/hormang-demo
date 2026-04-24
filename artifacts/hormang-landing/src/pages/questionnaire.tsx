@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLocation, useSearch } from "wouter";
 import {
   ChevronLeft, ChevronRight, Check, CheckCircle2,
-  FileText, Clock, Upload, X, MapPin, ChevronDown,
+  FileText, Clock, Upload, X, MapPin, ChevronDown, Camera,
 } from "lucide-react";
+import { MediaUploadZone } from "@/components/media-upload";
 import { Button } from "@/components/ui/button";
 import {
   getCategories, getAllQuestionsForCategory, getCategoryById, collectActiveQuestions,
@@ -1152,7 +1153,7 @@ function SummaryScreen({
 }: {
   categoryId: string;
   answers: Answers;
-  onSeeProviders: () => void;
+  onSeeProviders: (photos: string[]) => void;
   onBack: () => void;
 }) {
   const cat = getCategoryById(categoryId);
@@ -1162,10 +1163,11 @@ function SummaryScreen({
   const budget = answers["budget"] as number | undefined;
   const urgencyInfo = urgency ? URGENCY_LABELS[urgency] : null;
 
+  const [requestPhotos, setRequestPhotos] = useState<string[]>([]);
+
   // Include active branch questions so their answers are shown in the summary
   const activeQuestions = collectActiveQuestions(allQuestions, answers as Record<string, unknown>);
   const specificQs = activeQuestions.filter((q) => q.id !== "urgency" && q.id !== "budget");
-  const commonQs = allQuestions.filter((q) => q.id === "urgency" || q.id === "budget");
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1216,8 +1218,27 @@ function SummaryScreen({
           })}
         </div>
 
+        {/* ── Photo upload section ─────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-5">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <Camera className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-900">Rasmlar <span className="text-gray-400 font-normal">(ixtiyoriy)</span></p>
+              <p className="text-xs text-gray-500">Muammoni ko'rsatuvchi rasmlar qo'shing</p>
+            </div>
+          </div>
+          <MediaUploadZone
+            urls={requestPhotos}
+            onChange={setRequestPhotos}
+            max={10}
+            hint="JPEG, PNG — har biri maks 5 MB"
+          />
+        </div>
+
         <Button
-          onClick={onSeeProviders}
+          onClick={() => onSeeProviders(requestPhotos)}
           className="w-full py-4 text-base font-bold bg-blue-600 hover:bg-blue-700 rounded-2xl gap-2"
         >
           So`rov yuborish
@@ -1330,10 +1351,10 @@ export default function QuestionnairePage() {
     setStage("summary");
   }
 
-  function handleSeeProviders() {
+  function handleSeeProviders(photos: string[]) {
     const cat = getCategoryById(categoryId);
     const customerName = user ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || undefined : undefined;
-    const req = saveNewRequest(categoryId, cat?.name ?? categoryId, answers, undefined, user?.id, customerName);
+    const req = saveNewRequest(categoryId, cat?.name ?? categoryId, answers, undefined, user?.id, customerName, photos.length ? photos : undefined);
     setCurrentRequestId(req.id);
     setStage("recommendations");
   }

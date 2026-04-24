@@ -77,7 +77,9 @@ export function RequestPreviewModal({ req, onClose }: Props) {
     })
     .filter(Boolean) as { label: string; value: string }[];
 
-  const photoUrls = req.answers ? getAnswerImageUrls(req.answers as Record<string, unknown>) : [];
+  const photoUrls = req.answers
+    ? getAnswerImageUrls(req.answers as Record<string, unknown>, req.requestPhotos)
+    : (req.requestPhotos ?? []);
 
   const urgency = req.answers?.["urgency"] as string | undefined;
   const urgInfo = urgency ? (URGENCY_MAP[urgency] ?? null) : null;

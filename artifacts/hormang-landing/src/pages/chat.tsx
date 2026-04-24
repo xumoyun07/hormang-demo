@@ -7,7 +7,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock, Loader2, Flag } from "lucide-react";
+import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock, Loader2, Flag, ImageIcon } from "lucide-react";
+import { compressImage } from "@/lib/image-utils";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { ReviewModal, type ReviewSubmitData } from "@/components/review-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
@@ -136,16 +137,26 @@ function MessageBubble({ msg, isFirst }: { msg: ChatMessage; isFirst: boolean })
       className={`flex ${isCustomer ? "justify-end" : "justify-start"} ${isFirst ? "" : "mt-1"}`}
     >
       <div
-        className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
+        className={`max-w-[75%] rounded-2xl text-sm leading-relaxed overflow-hidden ${
           isCustomer
             ? "bg-blue-600 text-white rounded-br-md"
             : "bg-white text-gray-900 border border-gray-100 rounded-bl-md shadow-sm"
         }`}
       >
-        <p style={{ whiteSpace: "pre-wrap" }}>{msg.text}</p>
-        <p className={`text-[10px] mt-1 text-right ${isCustomer ? "text-blue-200" : "text-gray-400"}`}>
-          {formatTime(msg.timestamp)}
-        </p>
+        {msg.attachment?.type === "image" && (
+          <img
+            src={msg.attachment.url}
+            alt="rasm"
+            className="w-full max-w-[220px] object-cover rounded-t-2xl"
+            style={{ display: "block" }}
+          />
+        )}
+        <div className="px-3.5 py-2.5">
+          {msg.text && <p style={{ whiteSpace: "pre-wrap" }}>{msg.text}</p>}
+          <p className={`text-[10px] mt-1 text-right ${isCustomer ? "text-blue-200" : "text-gray-400"}`}>
+            {formatTime(msg.timestamp)}
+          </p>
+        </div>
       </div>
     </motion.div>
   );
@@ -172,11 +183,13 @@ export default function ChatPage() {
   useStoreRefresh();
 
   const [input, setInput] = useState("");
+  const [attachPreview, setAttachPreview] = useState<string | null>(null);
   const [showMasterProfile, setShowMasterProfile] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const attachInputRef = useRef<HTMLInputElement>(null);
 
   const chat: Chat | undefined = chatId ? getChatById(chatId) : undefined;
   const offer: Offer | undefined = chat
@@ -212,10 +225,20 @@ export default function ChatPage() {
   }
 
   function handleSend() {
-    if (!input.trim()) return;
+    if (!input.trim() && !attachPreview) return;
     const text = input.trim();
+    const attachment = attachPreview ? { type: "image" as const, url: attachPreview } : undefined;
     setInput("");
-    sendMessage(chatId, "customer", text);
+    setAttachPreview(null);
+    sendMessage(chatId, "customer", text, attachment);
+  }
+
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await compressImage(file, 800, 0.72);
+    setAttachPreview(url);
+    e.target.value = "";
   }
 
   function handleKey(e: React.KeyboardEvent) {
@@ -376,7 +399,33 @@ export default function ChatPage() {
 
       {/* Input bar — in flow, sits above BottomNav */}
       <div className="shrink-0 bg-white border-t border-gray-100 z-20 pb-16">
+        {attachPreview && (
+          <div className="max-w-lg mx-auto px-4 pt-2">
+            <div className="relative inline-block">
+              <img src={attachPreview} alt="attachment" className="h-16 w-16 rounded-xl object-cover border border-gray-200" />
+              <button
+                onClick={() => setAttachPreview(null)}
+                className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        )}
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-2">
+          <input
+            ref={attachInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageSelect}
+          />
+          <button
+            onClick={() => attachInputRef.current?.click()}
+            className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors flex-shrink-0"
+          >
+            <ImageIcon className="w-4 h-4" />
+          </button>
           <input
             ref={inputRef}
             value={input}
@@ -387,7 +436,7 @@ export default function ChatPage() {
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() && !attachPreview}
             className="w-10 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
           >
             <Send className="w-4 h-4" />

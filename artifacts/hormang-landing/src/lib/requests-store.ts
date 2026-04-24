@@ -21,6 +21,8 @@ export interface CustomerRequest {
   categoryName: string;
   emoji: string;
   answers: Record<string, unknown>;
+  /** Dedicated multi-photo upload (up to 10 images, stored as base64) */
+  requestPhotos?: string[];
   status: "open" | "accepted" | "completed" | "cancelled";
   createdAt: string;
   offerCount: number;
@@ -46,11 +48,18 @@ export interface Offer {
   status: "pending" | "accepted" | "rejected" | "in_progress" | "completed";
 }
 
+export interface ChatAttachment {
+  type: "image" | "file";
+  url: string;      // base64 data URL or object URL
+  name?: string;    // original filename
+}
+
 export interface ChatMessage {
   id: string;
   sender: "customer" | "master" | "system"; // master = provider/ijrochi; system = automated notification
   text: string;
   timestamp: string;
+  attachment?: ChatAttachment;
 }
 
 /**
@@ -175,6 +184,7 @@ export function saveNewRequest(
   location?: { region?: string; district?: string },
   customerId?: string,
   customerName?: string,
+  requestPhotos?: string[],
 ): CustomerRequest {
   let region = location?.region || (answers["region"] as string | undefined);
   let district = location?.district || (answers["district"] as string | undefined);
@@ -193,6 +203,7 @@ export function saveNewRequest(
     categoryName,
     emoji: CATEGORY_EMOJIS[categoryId] ?? "📋",
     answers,
+    requestPhotos: requestPhotos?.length ? requestPhotos : undefined,
     status: "open",
     createdAt: new Date().toISOString(),
     offerCount: 0,
@@ -420,17 +431,28 @@ export function getOrCreateChat(
  * - "customer" sends → providerUnread++  (provider has unread message)
  * - "master" sends   → providerUnread unchanged (provider just sent, not unread for them)
  */
-export function sendMessage(chatId: string, sender: "customer" | "master", text: string): Chat | null {
+export function sendMessage(
+  chatId: string,
+  sender: "customer" | "master",
+  text: string,
+  attachment?: ChatAttachment,
+): Chat | null {
   const chats = readJSON<Chat[]>(CHATS_KEY, []);
   const idx = chats.findIndex((c) => c.id === chatId);
   if (idx === -1) return null;
 
-  const msg: ChatMessage = { id: uid(), sender, text, timestamp: new Date().toISOString() };
+  const msg: ChatMessage = {
+    id: uid(),
+    sender,
+    text,
+    timestamp: new Date().toISOString(),
+    ...(attachment ? { attachment } : {}),
+  };
   const prevUnread = chats[idx].providerUnread ?? 0;
   const providerUnread = sender === "customer" ? prevUnread + 1 : prevUnread;
   chats[idx] = { ...chats[idx], messages: [...chats[idx].messages, msg], providerUnread };
   writeJSON(CHATS_KEY, chats);
-  console.log(`[Hormang] 💬 Xabar yuborildi`, { chatId, sender, text: text.slice(0, 50) });
+  console.log(`[Hormang] 💬 Xabar yuborildi`, { chatId, sender, text: text.slice(0, 50), hasAttachment: !!attachment });
   return chats[idx];
 }
 

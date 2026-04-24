@@ -182,11 +182,18 @@ export function ImageGrid({
   );
 }
 
-/* ─── Helper: extract data: image URLs from request answers ─────── */
-export function getAnswerImageUrls(answers: Record<string, unknown>): string[] {
-  return Object.values(answers)
-    .filter((v): v is string => typeof v === "string" && v.startsWith("data:image"))
-    .slice(0, 8);
+/* ─── Helper: extract data: image URLs from request answers + dedicated requestPhotos ─── */
+export function getAnswerImageUrls(
+  answers: Record<string, unknown>,
+  requestPhotos?: string[],
+): string[] {
+  const fromAnswers = Object.values(answers)
+    .filter((v): v is string => typeof v === "string" && v.startsWith("data:image"));
+  const fromPhotos = (requestPhotos ?? []).filter((u) => u.startsWith("data:image") || u.startsWith("http") || u.startsWith("blob:"));
+  // requestPhotos are shown first (they are the dedicated media upload)
+  const combined = [...fromPhotos, ...fromAnswers];
+  // deduplicate (in case same base64 appears in both)
+  return [...new Set(combined)].slice(0, 12);
 }
 
 /* ─── Inline compact strip (for list cards) ────────────────────── */

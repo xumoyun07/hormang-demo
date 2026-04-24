@@ -257,6 +257,15 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 - `public-profile-preview-modal.tsx`: provider + customer metrics rows now show real `avgRating`, `reviewCount`, `completedCount` from completion-store
 - `dashboard/index.tsx` (provider view): real star rating + completed count from completion-store
 
+### Media Upload System
+- **Shared component**: `components/media-upload.tsx` — `MediaUploadZone` (multi-photo, drag/drop, reorder, remove, counter) and `CompactMediaUpload` (compact variant for offer form)
+- **Request photos**: `CustomerRequest` has `requestPhotos?: string[]`; `SummaryScreen` in questionnaire allows up to 10 photos; shown in `image-grid.tsx` via `getAnswerImageUrls(answers, requestPhotos?)`
+- **Offer photos**: `offer-form.tsx` uses `CompactMediaUpload` (max 3 photos); stored as `fileUrls` in the offer
+- **Portfolio albums**: `LocalProfile` has `albums?: PortfolioAlbum[]` (up to 10 albums × 20 photos each); `settings.tsx` has accordion album management UI with `MediaUploadZone` per album; old flat `portfolioItems` migrated automatically to a single "Ishlarim" album on read
+- **Public profiles**: `public-profile-modal.tsx` and `public-profile-preview-modal.tsx` both show albums using `ImageGrid` (per-album accordion with photo count and built-in lightbox)
+- **Chat attachments**: Both `chat.tsx` (customer) and `provider/chats.tsx` (provider) have an image icon button next to the input bar; selected image is compressed (800px, q=0.72), shown as a preview thumbnail, and sent with the message; image bubbles render inline above the message text; `sendMessage` and `sendProviderMessage` both accept an optional `ChatAttachment`
+- **Image compression**: `image-utils.ts` — `compressImage(file, maxDim, quality)` used throughout (maxDim 800–1024, quality 0.70–0.80); base64 stored in localStorage
+
 ## Admin Panels
 
 ### Main Admin Dashboard — `/admin`

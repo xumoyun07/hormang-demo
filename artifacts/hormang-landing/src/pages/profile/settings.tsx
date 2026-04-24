@@ -29,10 +29,11 @@ import { regionsList } from "@/lib/regions";
 import {
   getLocalProfile, saveLocalProfile,
   getCompletionChecks, getCompletionPct,
-  type LocalProfile, type PortfolioItem, type ProviderServiceArea,
+  type LocalProfile, type PortfolioItem, type PortfolioAlbum, type ProviderServiceArea,
   emptyProviderServiceArea, isServiceAreaEmpty,
 } from "@/lib/local-profile";
 import { ProviderAreaSelector } from "@/components/provider-area-selector";
+import { MediaUploadZone } from "@/components/media-upload";
 
 /* ─── Theme constants ────────────────────────────────────────────── */
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -344,8 +345,7 @@ export default function ProfileSettingsPage() {
     setServiceAreaV2(loaded.serviceAreaV2 ?? emptyProviderServiceArea());
     setExperience(loaded.experience !== undefined ? String(loaded.experience) : "");
 
-    const items = loaded.portfolioItems ?? (loaded.portfolioImages ?? []).map((url) => ({ url }));
-    setPortfolioItems(items);
+    setAlbums(loaded.albums ?? []);
 
     /* Categories: server wins, local is authoritative fallback.
      * This ensures categories survive an API restart / empty getMe response. */
@@ -392,72 +392,44 @@ export default function ProfileSettingsPage() {
     e.target.value = "";
   }
 
-  /* Portfolio with captions + drag */
-  const portfolioInputRef = useRef<HTMLInputElement>(null);
-  const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
-  const [portfolioLoading, setPortfolioLoading] = useState(false);
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  /* ── Portfolio albums ── */
+  const [albums, setAlbums] = useState<PortfolioAlbum[]>([]);
+  const [expandedAlbumId, setExpandedAlbumId] = useState<string | null>(null);
 
-  function handlePortfolioChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
-    const remaining = 6 - portfolioItems.length;
-    if (remaining <= 0 || !user) return;
-    setPortfolioLoading(true);
-    const toRead = files.slice(0, remaining);
-    let doneCount = 0;
-    const newItems: PortfolioItem[] = [];
+  function albumUid() { return Math.random().toString(36).slice(2, 10); }
 
-    toRead.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        const raw = ev.target?.result as string;
-        const compressed = await compressDataUrl(raw, 1024, 0.72);
-        newItems.push({ url: compressed });
-        doneCount++;
-        if (doneCount === toRead.length) {
-          setPortfolioItems((prev) => {
-            const merged = [...prev, ...newItems].slice(0, 6);
-            /* Immediately persist so clicking Save isn't required to avoid loss */
-            const currentLocal = getLocalProfile(user.id);
-            saveLocalProfile(user.id, { ...currentLocal, portfolioItems: merged });
-            console.log(`[Hormang] 🖼 Portfolio saved immediately (${merged.length} items, user=${user.id.slice(0, 8)})`);
-            return merged;
-          });
-          setPortfolioLoading(false);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-    e.target.value = "";
+  function persistAlbums(next: PortfolioAlbum[]) {
+    if (!user) return;
+    const currentLocal = getLocalProfile(user.id);
+    saveLocalProfile(user.id, { ...currentLocal, albums: next, portfolioItems: next.flatMap((a) => a.photos).slice(0, 20) });
   }
 
-  function removePortfolioItem(idx: number) {
-    setPortfolioItems((prev) => {
-      const next = prev.filter((_, i) => i !== idx);
-      if (user) {
-        const currentLocal = getLocalProfile(user.id);
-        saveLocalProfile(user.id, { ...currentLocal, portfolioItems: next });
-      }
-      return next;
-    });
+  function addAlbum() {
+    if (albums.length >= 10) return;
+    const newAlbum: PortfolioAlbum = { id: albumUid(), title: `Album ${albums.length + 1}`, photos: [] };
+    const next = [...albums, newAlbum];
+    setAlbums(next);
+    setExpandedAlbumId(newAlbum.id);
+    persistAlbums(next);
   }
 
-  function updateCaption(idx: number, caption: string) {
-    setPortfolioItems((prev) => prev.map((item, i) => i === idx ? { ...item, caption } : item));
+  function deleteAlbum(albumId: string) {
+    const next = albums.filter((a) => a.id !== albumId);
+    setAlbums(next);
+    if (expandedAlbumId === albumId) setExpandedAlbumId(null);
+    persistAlbums(next);
   }
 
-  /* Drag to reorder */
-  function handleDragStart(idx: number) { setDragIdx(idx); }
-  function handleDragOver(e: React.DragEvent, idx: number) {
-    e.preventDefault();
-    if (dragIdx === null || dragIdx === idx) return;
-    const next = [...portfolioItems];
-    const [dragged] = next.splice(dragIdx, 1);
-    next.splice(idx, 0, dragged);
-    setPortfolioItems(next);
-    setDragIdx(idx);
+  function renameAlbum(albumId: string, title: string) {
+    const next = albums.map((a) => a.id === albumId ? { ...a, title } : a);
+    setAlbums(next);
   }
-  function handleDragEnd() { setDragIdx(null); }
+
+  function updateAlbumPhotos(albumId: string, photos: PortfolioItem[]) {
+    const next = albums.map((a) => a.id === albumId ? { ...a, photos } : a);
+    setAlbums(next);
+    persistAlbums(next);
+  }
 
   /* Region */
   const selectedRegionObj = regionsList.find((r) => r.value === region);
@@ -468,7 +440,7 @@ export default function ProfileSettingsPage() {
   const debouncedBio     = useDebounce(bio, 1200);
   const debouncedExp     = useDebounce(experience, 1200);
   const debouncedPhoto   = useDebounce(photoUrl, 300);
-  const debouncedPortf   = useDebounce(portfolioItems, 800);
+  const debouncedAlbums  = useDebounce(albums, 800);
   const debouncedRegion  = useDebounce(region, 600);
   const debouncedDistrict = useDebounce(district, 600);
   const debouncedServiceAreaV2 = useDebounce(serviceAreaV2, 600);
@@ -504,13 +476,14 @@ export default function ProfileSettingsPage() {
       district: debouncedDistrict,
       serviceAreaV2: debouncedServiceAreaV2,
       experience: debouncedExp ? Number(debouncedExp) : undefined,
-      portfolioItems: debouncedPortf,
+      albums: debouncedAlbums,
+      portfolioItems: debouncedAlbums.flatMap((a) => a.photos).slice(0, 20),
       bio: debouncedBio || undefined,
       categories: selectedServices.length > 0 ? selectedServices : undefined,
     };
     saveLocalProfile(user.id, next);
     setAutoSaveAt(new Date());
-  }, [user, photoUrl, debouncedPhoto, bio, debouncedBio, region, debouncedRegion, district, debouncedDistrict, experience, debouncedExp, debouncedServiceAreaV2, debouncedPortf, selectedServices]);
+  }, [user, photoUrl, debouncedPhoto, bio, debouncedBio, region, debouncedRegion, district, debouncedDistrict, experience, debouncedExp, debouncedServiceAreaV2, debouncedAlbums, selectedServices]);
 
   useEffect(() => { persistLocal(); }, [persistLocal]);
 
@@ -521,7 +494,8 @@ export default function ProfileSettingsPage() {
     district,
     serviceAreaV2,
     experience: experience ? Number(experience) : undefined,
-    portfolioItems,
+    albums,
+    portfolioItems: albums.flatMap((a) => a.photos).slice(0, 20),
   };
   const checks = getCompletionChecks(
     user ?? null,
@@ -549,7 +523,7 @@ export default function ProfileSettingsPage() {
     const ref = sectionRefs[key as keyof typeof sectionRefs];
     ref?.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     if (key === "photo") setTimeout(() => photoInputRef.current?.click(), 400);
-    if (key === "portfolio") setTimeout(() => portfolioInputRef.current?.click(), 400);
+    if (key === "portfolio") setTimeout(() => { if (albums.length > 0) setExpandedAlbumId(albums[0].id); }, 400);
   }
 
   /* ── Save ── */
@@ -575,7 +549,7 @@ export default function ProfileSettingsPage() {
 
     try {
       console.log(
-        `[Hormang] 💾 handleSave: user=${user.id.slice(0, 8)} isProvider=${isProvider} cats=${selectedServices.length} bio=${bio.length} portfolio=${portfolioItems.length}`,
+        `[Hormang] 💾 handleSave: user=${user.id.slice(0, 8)} isProvider=${isProvider} cats=${selectedServices.length} bio=${bio.length} albums=${albums.length}`,
       );
 
       /* Always update the provider profile when the user is a provider —
@@ -601,7 +575,8 @@ export default function ProfileSettingsPage() {
         district,
         serviceAreaV2,
         experience: experience ? Number(experience) : undefined,
-        portfolioItems,
+        albums,
+        portfolioItems: albums.flatMap((a) => a.photos).slice(0, 20),
         bio: bio || undefined,
         categories: selectedServices.length > 0 ? selectedServices : undefined,
       };
@@ -1040,72 +1015,122 @@ export default function ProfileSettingsPage() {
           <motion.div ref={refPortfolio}
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
             className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+
+            {/* Header */}
             <div className="flex items-center justify-between mb-1 pb-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center">
                   <ImagePlus className="w-4 h-4 text-violet-600" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-gray-900 text-sm">Portfolio rasmlari</h2>
-                  <p className="text-[11px] text-gray-400">Bajargan ishlaringizdan namunalar</p>
+                  <h2 className="font-bold text-gray-900 text-sm">Portfolio albomlar</h2>
+                  <p className="text-[11px] text-gray-400">Ishlaringizni albomlar bo'yicha saqlang</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                {portfolioLoading && <Loader2 className="w-3.5 h-3.5 text-violet-400 animate-spin" />}
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${portfolioItems.length >= 2 ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-violet-50 text-violet-600 border border-violet-100"}`}>
-                  {portfolioItems.length}/6
-                </span>
-              </div>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${albums.length > 0 ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-violet-50 text-violet-600 border border-violet-100"}`}>
+                {albums.length}/10
+              </span>
             </div>
 
-            {portfolioItems.length < 2 && (
+            {albums.length === 0 && (
               <div className="bg-violet-50 border border-violet-100 rounded-xl px-3 py-2 mb-3 flex items-center gap-2">
                 <Zap className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" />
                 <p className="text-xs text-violet-600 font-semibold">
-                  2+ rasm qo'shing — buyurtma olish ehtimoli 3x oshadi (+5% profil balli)
+                  Portfolio albom qo'shing — buyurtma olish ehtimoli 3x oshadi
                 </p>
               </div>
             )}
 
+            {/* Album list */}
             <div className="space-y-3">
-              {portfolioItems.map((item, idx) => (
-                <div key={idx}
-                  draggable
-                  onDragStart={() => handleDragStart(idx)}
-                  onDragOver={(e) => handleDragOver(e, idx)}
-                  onDragEnd={handleDragEnd}
-                  className={`flex items-start gap-3 p-2.5 rounded-xl border-2 transition-all cursor-grab active:cursor-grabbing ${
-                    dragIdx === idx ? "border-violet-300 bg-violet-50/50 shadow-lg scale-[1.01]" : "border-gray-100 bg-gray-50/30 hover:border-violet-100"
-                  }`}>
-                  <GripVertical className="w-4 h-4 text-gray-300 flex-shrink-0 mt-1.5" />
-                  <img src={item.url} alt={item.caption || `Portfolio ${idx + 1}`}
-                    className="w-16 h-16 rounded-lg object-cover border border-gray-100 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-wide">Tavsif (ixtiyoriy)</p>
-                    <input
-                      value={item.caption ?? ""}
-                      onChange={(e) => updateCaption(idx, e.target.value)}
-                      placeholder="Masalan: Oshxona ta'miri — oldin/keyin"
-                      className="w-full text-xs px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/20 bg-white transition-colors"
-                    />
+              {albums.map((album) => {
+                const isExpanded = expandedAlbumId === album.id;
+                const coverPhoto = album.photos[album.coverIdx ?? 0];
+                return (
+                  <div key={album.id} className="rounded-2xl border border-gray-100 overflow-hidden">
+                    {/* Album header row */}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedAlbumId(isExpanded ? null : album.id)}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors text-left"
+                    >
+                      {/* Cover thumbnail */}
+                      <div className="w-12 h-12 rounded-xl overflow-hidden border border-gray-100 bg-gray-100 flex-shrink-0">
+                        {coverPhoto ? (
+                          <img src={coverPhoto.url} alt={album.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ImagePlus className="w-5 h-5 text-gray-300" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-gray-900 truncate">{album.title}</p>
+                        <p className="text-xs text-gray-400">
+                          {album.photos.length === 0 ? "Bo'sh albom" : `${album.photos.length} ta rasm`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); deleteAlbum(album.id); }}
+                          className="w-6 h-6 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-400 hover:bg-red-100 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <Star className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? "rotate-180 text-violet-500" : "text-gray-300"}`} />
+                      </div>
+                    </button>
+
+                    {/* Expanded album editor */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="border-t border-gray-100 px-3 py-3 space-y-3"
+                        >
+                          {/* Album title rename */}
+                          <input
+                            value={album.title}
+                            onChange={(e) => renameAlbum(album.id, e.target.value)}
+                            onBlur={() => persistAlbums(albums)}
+                            placeholder="Albom nomi"
+                            className="w-full text-sm px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/20 transition-colors font-semibold"
+                          />
+
+                          {/* Photo upload zone (max 20 per album) */}
+                          <MediaUploadZone
+                            urls={album.photos.map((p) => p.url)}
+                            onChange={(urls) =>
+                              updateAlbumPhotos(album.id, urls.map((url) => ({ url })))
+                            }
+                            max={20}
+                            hint="Rasm qo'shish yoki olib tashlash uchun tortib tashlang"
+                            maxDim={900}
+                            quality={0.72}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                  <button onClick={() => removePortfolioItem(idx)}
-                    className="w-6 h-6 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-400 hover:bg-red-100 flex-shrink-0 mt-1.5 transition-colors">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            {portfolioItems.length < 6 && (
-              <button onClick={() => portfolioInputRef.current?.click()}
-                className="w-full mt-3 h-12 rounded-xl border-2 border-dashed border-violet-200 flex items-center justify-center gap-2 text-violet-500 hover:border-violet-400 hover:bg-violet-50/50 transition-colors">
+            {/* Add album button */}
+            {albums.length < 10 && (
+              <button
+                type="button"
+                onClick={addAlbum}
+                className="w-full mt-3 h-12 rounded-2xl border-2 border-dashed border-violet-200 flex items-center justify-center gap-2 text-violet-500 hover:border-violet-400 hover:bg-violet-50/50 transition-colors"
+              >
                 <ImagePlus className="w-4 h-4" />
-                <span className="text-sm font-semibold">Rasm qo'shish ({6 - portfolioItems.length} ta qoldi)</span>
+                <span className="text-sm font-semibold">Yangi albom qo'shish ({10 - albums.length} ta qoldi)</span>
               </button>
             )}
-
-            <input ref={portfolioInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handlePortfolioChange} />
           </motion.div>
         )}
 

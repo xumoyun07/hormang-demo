@@ -27,13 +27,22 @@ export interface PortfolioItem {
   caption?: string;
 }
 
+export interface PortfolioAlbum {
+  id: string;
+  title: string;
+  photos: PortfolioItem[];
+  coverIdx?: number; // index of the cover photo (default 0)
+}
+
 export interface LocalProfile {
   photoUrl?: string;
   experience?: number;
   /** Legacy — kept for backward compat on read. Never write this; use portfolioItems. */
   portfolioImages?: string[];
-  /** Portfolio items with captions */
+  /** Legacy flat portfolio items — kept for migration. Prefer albums. */
   portfolioItems?: PortfolioItem[];
+  /** Album-based portfolio system (up to 10 albums, 20 photos each) */
+  albums?: PortfolioAlbum[];
   region?: string;
   district?: string;
   /** @deprecated Use serviceAreaV2 instead */
@@ -112,6 +121,15 @@ export function getLocalProfile(userId: string): LocalProfile {
         }
       }
       if (!isServiceAreaEmpty(v2)) p.serviceAreaV2 = v2;
+    }
+    /* Migrate legacy portfolioItems → albums (create a default "Ishlarim" album) */
+    if (!p.albums && p.portfolioItems && p.portfolioItems.length > 0) {
+      p.albums = [{
+        id: "default",
+        title: "Ishlarim",
+        photos: p.portfolioItems,
+        coverIdx: 0,
+      }];
     }
     return p;
   } catch {

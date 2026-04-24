@@ -68,6 +68,7 @@ export interface ProviderChatMessage {
   sender: "provider" | "customer" | "system";
   text: string;
   timestamp: string;
+  attachment?: import("./requests-store").ChatAttachment;
 }
 
 export interface ProviderChat {
@@ -203,6 +204,7 @@ function chatToProviderChat(c: Chat): ProviderChat {
       sender: m.sender === "customer" ? "customer" as const : m.sender === "system" ? "system" as const : "provider" as const,
       text: m.text,
       timestamp: m.timestamp,
+      ...(m.attachment ? { attachment: m.attachment } : {}),
     })),
     unread: c.providerUnread ?? 0,
     createdAt: c.createdAt,
@@ -469,9 +471,14 @@ export function getProviderChatById(id: string, masterId: string = ""): Provider
  * Send a message as provider ("master" in unified store).
  * Triggers store change event so customer chat page refreshes.
  */
-export function sendProviderMessage(chatId: string, sender: "provider" | "customer", text: string): ProviderChat | null {
+export function sendProviderMessage(
+  chatId: string,
+  sender: "provider" | "customer",
+  text: string,
+  attachment?: import("./requests-store").ChatAttachment,
+): ProviderChat | null {
   const unifiedSender = sender === "provider" ? "master" : "customer";
-  const updated = sendMessage(chatId, unifiedSender, text);
+  const updated = sendMessage(chatId, unifiedSender, text, attachment);
   return updated ? chatToProviderChat(updated) : null;
 }
 
