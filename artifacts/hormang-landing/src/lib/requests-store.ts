@@ -176,8 +176,14 @@ export function saveNewRequest(
   customerId?: string,
   customerName?: string,
 ): CustomerRequest {
-  const region = location?.region || (answers["region"] as string | undefined);
-  const district = location?.district || (answers["district"] as string | undefined);
+  let region = location?.region || (answers["region"] as string | undefined);
+  let district = location?.district || (answers["district"] as string | undefined);
+  // Parse new unified location answer (type: "location" question)
+  const locAnswer = answers["location"];
+  if (locAnswer && typeof locAnswer === "object" && !Array.isArray(locAnswer)) {
+    const loc = locAnswer as { region?: string; district?: string };
+    if (loc.region) { region = loc.region; district = loc.district; }
+  }
 
   const req: CustomerRequest = {
     id: uid(),

@@ -14,7 +14,8 @@ export type QuestionType =
   | "date"
   | "file"
   | "range"
-  | "section-header";
+  | "section-header"
+  | "location";
 
 export interface QuestionOption {
   label: string;
@@ -56,57 +57,11 @@ export interface CategoryConfig {
 /** Default common questions (editable via admin, persisted separately) */
 export const DEFAULT_COMMON_QUESTIONS: Question[] = [
   {
-    id: "region",
-    label: "Xizmat qayerda kerak?",
-    type: "single-select",
+    id: "location",
+    label: "Manzilni kiriting",
+    type: "location",
     required: true,
     isCore: true,
-    options: [
-      { label: "Toshkent shahri", value: "Toshkent shahri" },
-      { label: "Angren", value: "Angren" },
-      { label: "Bekobod", value: "Bekobod" },
-      { label: "Bo'ka", value: "Bo'ka" },
-      { label: "Bo'stonliq", value: "Bo'stonliq" },
-      { label: "Chinoz", value: "Chinoz" },
-      { label: "Chirchiq", value: "Chirchiq" },
-      { label: "Chorvoq", value: "Chorvoq" },
-      { label: "Do'stobod", value: "Do'stobod" },
-      { label: "G'azalkent", value: "G'azalkent" },
-      { label: "Keles", value: "Keles" },
-      { label: "Ohangaron", value: "Ohangaron" },
-      { label: "Olmaliq", value: "Olmaliq" },
-      { label: "Oqqo'rg'on", value: "Oqqo'rg'on" },
-      { label: "O'rta Chirchiq", value: "O'rta Chirchiq" },
-      { label: "Parkent", value: "Parkent" },
-      { label: "Piskent", value: "Piskent" },
-      { label: "Qibray", value: "Qibray" },
-      { label: "Quyi Chirchiq", value: "Quyi Chirchiq" },
-      { label: "To'ytepa", value: "To'ytepa" },
-      { label: "Yangiobod", value: "Yangiobod" },
-      { label: "Yangiyо'l", value: "Yangiyо'l" },
-      { label: "Yuqori Chirchiq", value: "Yuqori Chirchiq" },
-      { label: "Zangiota", value: "Zangiota" },
-    ],
-  },
-  {
-    id: "district",
-    label: "Toshkent shahri tumani",
-    type: "single-select",
-    isCore: true,
-    options: [
-      { label: "Bektemir", value: "Bektemir" },
-      { label: "Chilonzor", value: "Chilonzor" },
-      { label: "Mirobod", value: "Mirobod" },
-      { label: "Mirzo Ulug'bek", value: "Mirzo Ulug'bek" },
-      { label: "Olmazor", value: "Olmazor" },
-      { label: "Sergeli", value: "Sergeli" },
-      { label: "Shayxontohur", value: "Shayxontohur" },
-      { label: "Uchtepa", value: "Uchtepa" },
-      { label: "Yakkasaroy", value: "Yakkasaroy" },
-      { label: "Yangihayot", value: "Yangihayot" },
-      { label: "Yashnobod", value: "Yashnobod" },
-      { label: "Yunusobod", value: "Yunusobod" },
-    ],
   },
   {
     id: "urgency",
@@ -520,10 +475,26 @@ export function getCategoryById(id: string): CategoryConfig | undefined {
   return getCategories().find((c) => c.id === id);
 }
 
+/** Migrate old region+district questions to single location question */
+function migrateCommonQuestions(qs: Question[]): Question[] {
+  const hasLocation = qs.some((q) => q.id === "location");
+  if (hasLocation) return qs;
+  const hasLegacyRegion = qs.some((q) => q.id === "region");
+  if (!hasLegacyRegion) return qs;
+  const locationQ: Question = {
+    id: "location",
+    label: "Manzilni kiriting",
+    type: "location",
+    required: true,
+    isCore: true,
+  };
+  return [locationQ, ...qs.filter((q) => q.id !== "region" && q.id !== "district")];
+}
+
 export function getCommonQuestions(): Question[] {
   try {
     const stored = localStorage.getItem(COMMON_LS_KEY);
-    if (stored) return JSON.parse(stored) as Question[];
+    if (stored) return migrateCommonQuestions(JSON.parse(stored) as Question[]);
   } catch (_) { /* ignore */ }
   return DEFAULT_COMMON_QUESTIONS;
 }

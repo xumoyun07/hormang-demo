@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLocation, useSearch } from "wouter";
 import {
   ChevronLeft, ChevronRight, Check, CheckCircle2,
-  FileText, Clock, Upload, X,
+  FileText, Clock, Upload, X, MapPin, ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,12 +14,20 @@ import {
   saveNewRequest,
 } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
+import { getLocalProfile } from "@/lib/local-profile";
 import { compressImage } from "@/lib/image-utils";
+import { regionsList, TOSHKENT_DISTRICTS } from "@/lib/regions";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
 type Stage = "select-category" | "questions" | "summary" | "recommendations";
-type Answers = Record<string, string | string[] | boolean | number | null>;
+export interface LocationAnswer {
+  mode: "profile" | "custom";
+  region: string;         // "Toshkent shahri" | "Angren" | ... | ""
+  district?: string;      // set only when region === "Toshkent shahri"
+  regionType?: "shahri" | "viloyati"; // tracks custom two-level state
+}
+type Answers = Record<string, string | string[] | boolean | number | null | LocationAnswer>;
 
 const URGENCY_LABELS: Record<string, { label: string; color: string }> = {
   today_tomorrow: { label: "Bugun yoki ertaga kerak", color: "text-red-600 bg-red-50 border-red-200" },
@@ -32,6 +40,12 @@ const URGENCY_LABELS: Record<string, { label: string; color: string }> = {
 /* ─── Answer formatting helpers ─────────────────────────────────── */
 function formatAnswer(question: Question, value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
+  if (question.type === "location") {
+    if (typeof value !== "object" || !value) return "—";
+    const loc = value as LocationAnswer;
+    if (!loc.region) return "—";
+    return loc.district ? `${loc.district}, ${loc.region}` : loc.region;
+  }
   if (question.type === "multi-select" && Array.isArray(value)) {
     if (value.length === 0) return "—";
     const opts = question.options ?? [];
@@ -306,6 +320,205 @@ function ConditionalInlineBlock({
   );
 }
 
+/* ─── Location Question Component ───────────────────────────────── */
+const VILOYAT_CITIES = regionsList.filter((r) => !r.isCapital).map((r) => r.value);
+
+function LocationQuestionInput({
+  value,
+  onChange,
+  userId,
+}: {
+  value: unknown;
+  onChange: (v: unknown) => void;
+  userId?: string;
+}) {
+  const profile = userId ? getLocalProfile(userId) : {};
+  const profileRegion = profile.region;
+  const profileDistrict = profile.district;
+  const hasProfileAddress = !!profileRegion;
+  const profileDisplay = profileDistrict
+    ? `${profileDistrict}, ${profileRegion}`
+    : profileRegion ?? "";
+
+  const loc: LocationAnswer | null =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as LocationAnswer)
+      : null;
+
+  const currentMode = loc?.mode ?? (hasProfileAddress ? "profile" : "custom");
+  const customRegionType = loc?.regionType;
+  const customRegion = loc?.region ?? "";
+  const customDistrict = loc?.district ?? "";
+
+  function selectProfile() {
+    if (!hasProfileAddress) return;
+    onChange({ mode: "profile", region: profileRegion!, district: profileDistrict });
+  }
+
+  function selectCustom() {
+    onChange({
+      mode: "custom",
+      region: loc?.mode === "custom" ? customRegion : "",
+      district: loc?.mode === "custom" ? customDistrict : undefined,
+      regionType: loc?.mode === "custom" ? customRegionType : undefined,
+    } as LocationAnswer);
+  }
+
+  function pickRegionType(rt: "shahri" | "viloyati") {
+    onChange({
+      mode: "custom",
+      regionType: rt,
+      region: rt === "shahri" ? "Toshkent shahri" : "",
+      district: undefined,
+    } as LocationAnswer);
+  }
+
+  function pickDistrict(d: string) {
+    onChange({ mode: "custom", regionType: "shahri", region: "Toshkent shahri", district: d } as LocationAnswer);
+  }
+
+  function pickViloyatCity(city: string) {
+    onChange({ mode: "custom", regionType: "viloyati", region: city, district: undefined } as LocationAnswer);
+  }
+
+  const radioBase = "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all";
+  const chipBase = "px-3 py-1.5 rounded-xl border text-sm font-medium transition-all cursor-pointer";
+  const chipOff = `${chipBase} border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:text-blue-600`;
+  const chipOn = `${chipBase} border-blue-500 bg-blue-600 text-white shadow-sm`;
+
+  return (
+    <div className="space-y-3">
+      {/* Option A — saved profile address */}
+      <button
+        onClick={selectProfile}
+        disabled={!hasProfileAddress}
+        className={`w-full flex items-start gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
+          currentMode === "profile" && hasProfileAddress
+            ? "border-blue-500 bg-blue-50/70"
+            : hasProfileAddress
+            ? "border-gray-200 bg-white hover:border-blue-200"
+            : "border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed"
+        }`}
+      >
+        <div className={`${radioBase} mt-0.5 ${currentMode === "profile" && hasProfileAddress ? "border-blue-500 bg-blue-500" : "border-gray-300"}`}>
+          {currentMode === "profile" && hasProfileAddress && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0" />
+            <p className="text-sm font-semibold text-gray-900">Mening manzilim</p>
+          </div>
+          {hasProfileAddress ? (
+            <p className="text-sm text-gray-500 truncate">{profileDisplay}</p>
+          ) : (
+            <p className="text-xs text-gray-400">Profilingizda manzil ko'rsatilmagan</p>
+          )}
+        </div>
+      </button>
+
+      {/* Option B — custom address */}
+      <button
+        onClick={selectCustom}
+        className={`w-full flex items-start gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
+          currentMode === "custom"
+            ? "border-blue-500 bg-blue-50/70"
+            : "border-gray-200 bg-white hover:border-blue-200"
+        }`}
+      >
+        <div className={`${radioBase} mt-0.5 ${currentMode === "custom" ? "border-blue-500 bg-blue-500" : "border-gray-300"}`}>
+          {currentMode === "custom" && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-gray-900">Boshqa manzil</p>
+          {currentMode === "custom" && customRegion && (
+            <p className="text-sm text-gray-500 mt-0.5">
+              {customDistrict ? `${customDistrict}, ${customRegion}` : customRegion}
+            </p>
+          )}
+        </div>
+        <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5 transition-transform ${currentMode === "custom" ? "rotate-180" : ""}`} />
+      </button>
+
+      {/* Expanded two-level selector */}
+      <AnimatePresence>
+        {currentMode === "custom" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="pl-2 pt-1 space-y-4">
+              {/* Level 1 — city / viloyat chooser */}
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Hudud tanlang</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => pickRegionType("shahri")}
+                    className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+                      customRegionType === "shahri"
+                        ? "border-blue-500 bg-blue-600 text-white shadow-sm"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-blue-300"
+                    }`}
+                  >
+                    🏙 Toshkent shahri
+                  </button>
+                  <button
+                    onClick={() => pickRegionType("viloyati")}
+                    className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+                      customRegionType === "viloyati"
+                        ? "border-blue-500 bg-blue-600 text-white shadow-sm"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-blue-300"
+                    }`}
+                  >
+                    🗺 Toshkent viloyati
+                  </button>
+                </div>
+              </div>
+
+              {/* Level 2A — Toshkent districts */}
+              {customRegionType === "shahri" && (
+                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Tumanni tanlang</p>
+                  <div className="flex flex-wrap gap-2">
+                    {TOSHKENT_DISTRICTS.map((d) => (
+                      <button
+                        key={d}
+                        onClick={() => pickDistrict(d)}
+                        className={customDistrict === d ? chipOn : chipOff}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Level 2B — viloyat cities */}
+              {customRegionType === "viloyati" && (
+                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Shahар/tuman tanlang</p>
+                  <div className="flex flex-wrap gap-2">
+                    {VILOYAT_CITIES.map((city) => (
+                      <button
+                        key={city}
+                        onClick={() => pickViloyatCity(city)}
+                        className={customRegion === city ? chipOn : chipOff}
+                      >
+                        {city}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 /* ─── Single question renderer ───────────────────────────────────── */
 function QuestionInput({
   question,
@@ -315,6 +528,7 @@ function QuestionInput({
   onOtherChange,
   openToOffers,
   onOpenToOffersChange,
+  userId,
 }: {
   question: Question;
   value: unknown;
@@ -323,6 +537,7 @@ function QuestionInput({
   onOtherChange?: (v: string) => void;
   openToOffers?: boolean;
   onOpenToOffersChange?: (v: boolean) => void;
+  userId?: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -331,6 +546,10 @@ function QuestionInput({
   const pillOn = `${pillBase} border-blue-500 bg-blue-600 text-white shadow-sm`;
 
   const otherInputClass = "w-full px-4 py-3.5 rounded-2xl border border-blue-300 bg-blue-50/60 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all";
+
+  if (question.type === "location") {
+    return <LocationQuestionInput value={value} onChange={onChange} userId={userId} />;
+  }
 
   if (question.type === "single-select") {
     const selectedOpt = question.options?.find((o) => o.value === value);
@@ -771,6 +990,7 @@ function QuestionsScreen({
   onComplete: (answers: Answers) => void;
   onBack: () => void;
 }) {
+  const { user } = useAuth();
   const cat = getCategoryById(categoryId);
   const allQuestions = getAllQuestionsForCategory(categoryId);
   const [step, setStep] = useState(0);
@@ -786,7 +1006,12 @@ function QuestionsScreen({
   const isAnswered = () => {
     // Check the current top-level question first
     if (q.required) {
-      if (q.type === "multi-select") {
+      if (q.type === "location") {
+        const loc = currentValue as LocationAnswer | null;
+        if (!loc || !loc.region) return false;
+        // Toshkent shahri requires a district
+        if (loc.region === "Toshkent shahri" && !loc.district) return false;
+      } else if (q.type === "multi-select") {
         if (!Array.isArray(currentValue) || currentValue.length === 0) return false;
       } else if (q.type === "range") {
         // range always has a displayable value — always passes required check
@@ -822,14 +1047,6 @@ function QuestionsScreen({
     setAnswers(updated);
 
     let nextStep = step + 1;
-    while (nextStep < allQuestions.length) {
-      const nextQ = allQuestions[nextStep];
-      if (nextQ.id === "district" && updated["region"] !== "Toshkent shahri") {
-        nextStep++;
-        continue;
-      }
-      break;
-    }
 
     if (nextStep < allQuestions.length) {
       setDirection(1);
@@ -841,17 +1058,8 @@ function QuestionsScreen({
 
   function goBack() {
     if (step === 0) { onBack(); return; }
-    let prevStep = step - 1;
-    while (prevStep > 0) {
-      const prevQ = allQuestions[prevStep];
-      if (prevQ.id === "district" && answers["region"] !== "Toshkent shahri") {
-        prevStep--;
-        continue;
-      }
-      break;
-    }
     setDirection(-1);
-    setStep(prevStep);
+    setStep(step - 1);
   }
 
   const isLast = step === allQuestions.length - 1;
@@ -899,6 +1107,7 @@ function QuestionsScreen({
               onOtherChange={(v) => setAnswers((prev) => ({ ...prev, [q.id + "_other"]: v }))}
               openToOffers={openToOffers}
               onOpenToOffersChange={setOpenToOffers}
+              userId={user?.id}
             />
 
             {/* Inline conditional follow-up questions */}
