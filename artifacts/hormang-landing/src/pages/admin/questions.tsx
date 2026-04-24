@@ -61,6 +61,7 @@ interface EditorState {
   max: string;
   step: string;
   options: EditorOption[];
+  autofillExamples: string[];
   condEnabled: boolean;
   condQuestionId: string;
   condValue: string;
@@ -82,6 +83,7 @@ function blankEditor(): EditorState {
     max: "",
     step: "",
     options: [{ _key: mkKey(), label: "", value: "", type: "fixed" as const, tangaCost: "0" }],
+    autofillExamples: [],
     condEnabled: false,
     condQuestionId: "",
     condValue: "",
@@ -110,6 +112,7 @@ function editorFromQuestion(q: Question): EditorState {
           tangaCost: o.tangaCost != null ? String(o.tangaCost) : "0",
         }))
       : [{ _key: mkKey(), label: "", value: "", type: "fixed" as const, tangaCost: "0" }],
+    autofillExamples: q.autofillExamples ?? [],
     condEnabled: !!q.conditional,
     condQuestionId: q.conditional?.questionId ?? "",
     condValue: q.conditional?.value ?? "",
@@ -140,6 +143,8 @@ function editorToQuestion(e: EditorState): Question {
         };
       });
   }
+  const filled = (e.autofillExamples ?? []).map((s) => s.trim()).filter(Boolean);
+  if (filled.length > 0) q.autofillExamples = filled;
   if (e.condEnabled && e.condQuestionId) {
     q.conditional = { questionId: e.condQuestionId, value: e.condValue };
   }
@@ -262,8 +267,30 @@ function QuestionPreview({ q }: { q: EditorState }) {
         </div>
       )}
 
-      {q.type === "text" && <input placeholder={q.placeholder || "Matn kiriting…"} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:border-blue-300" />}
-      {q.type === "textarea" && <textarea rows={2} placeholder={q.placeholder || "Matn kiriting…"} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:border-blue-300 resize-none" />}
+      {q.type === "text" && (
+        <div className="space-y-2">
+          <input placeholder={q.placeholder || "Matn kiriting…"} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:border-blue-300" />
+          {q.autofillExamples && q.autofillExamples.filter(Boolean).length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {q.autofillExamples.filter(Boolean).map((ex, i) => (
+                <span key={i} className="px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-[11px] font-medium cursor-pointer hover:bg-blue-100 transition-colors">{ex}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {q.type === "textarea" && (
+        <div className="space-y-2">
+          <textarea rows={2} placeholder={q.placeholder || "Matn kiriting…"} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:border-blue-300 resize-none" />
+          {q.autofillExamples && q.autofillExamples.filter(Boolean).length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {q.autofillExamples.filter(Boolean).map((ex, i) => (
+                <span key={i} className="px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-[11px] font-medium cursor-pointer hover:bg-blue-100 transition-colors">{ex}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {q.type === "number" && (
         <div className="flex items-center gap-2">
           <input type="number" placeholder={q.placeholder || "0"} min={q.min || undefined} max={q.max || undefined} step={q.step || undefined}
@@ -704,6 +731,46 @@ function QuestionEditorModal({
                 <input value={s.placeholder} onChange={(e) => set("placeholder", e.target.value)}
                   placeholder="Foydalanuvchi uchun misol matn…"
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all" />
+              </div>
+            )}
+
+            {/* Autofill examples — text / textarea only */}
+            {(s.type === "text" || s.type === "textarea") && (
+              <div>
+                <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                  Misol javoblar <span className="normal-case font-medium text-gray-400">(autofill chips)</span>
+                </label>
+                <div className="space-y-2">
+                  {s.autofillExamples.map((ex, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        value={ex}
+                        onChange={(e) => {
+                          const next = [...s.autofillExamples];
+                          next[idx] = e.target.value;
+                          set("autofillExamples", next);
+                        }}
+                        placeholder={`Misol ${idx + 1}…`}
+                        className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all"
+                      />
+                      <button
+                        onClick={() => {
+                          const next = s.autofillExamples.filter((_, i) => i !== idx);
+                          set("autofillExamples", next);
+                        }}
+                        className="p-1.5 text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => set("autofillExamples", [...s.autofillExamples, ""])}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-blue-300 text-blue-600 text-xs font-semibold hover:bg-blue-50 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Misol qo'shish
+                  </button>
+                </div>
               </div>
             )}
 

@@ -37,6 +37,8 @@ export interface Question {
   max?: number;
   step?: number;
   isCore?: boolean;
+  /** Example texts shown as clickable autofill chips below text/textarea inputs */
+  autofillExamples?: string[];
   conditional?: { questionId: string; value: string };
   /** option value → follow-up questions shown when that option is selected */
   conditionalBranches?: Record<string, Question[]>;

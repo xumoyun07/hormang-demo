@@ -200,14 +200,40 @@ function ConditionalInlineBlock({
                 </div>
               );
             })()}
-            {bq.type === "text" && (
-              <input type="text" value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder || "Matn kiriting…"}
-                className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all" />
-            )}
-            {bq.type === "textarea" && (
-              <textarea rows={3} value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder || "Matn kiriting…"}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none transition-all" />
-            )}
+            {bq.type === "text" && (() => {
+              const bExamples = (bq.autofillExamples ?? []).filter(Boolean);
+              return (
+                <div className="space-y-2">
+                  <input type="text" value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder || "Matn kiriting…"}
+                    className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all" />
+                  {bExamples.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {bExamples.map((ex, i) => (
+                        <button key={i} type="button" onClick={() => onChange(bq.id, ex)}
+                          className="px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 hover:border-blue-300 active:scale-95 transition-all">{ex}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            {bq.type === "textarea" && (() => {
+              const bExamples = (bq.autofillExamples ?? []).filter(Boolean);
+              return (
+                <div className="space-y-2">
+                  <textarea rows={3} value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder || "Matn kiriting…"}
+                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none transition-all" />
+                  {bExamples.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {bExamples.map((ex, i) => (
+                        <button key={i} type="button" onClick={() => onChange(bq.id, ex)}
+                          className="px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 hover:border-blue-300 active:scale-95 transition-all">{ex}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             {bq.type === "number" && (() => {
               const bNum = bVal as number | null;
               const bHasMin = bq.min != null;
@@ -397,26 +423,60 @@ function QuestionInput({
   }
 
   if (question.type === "textarea") {
+    const examples = (question.autofillExamples ?? []).filter(Boolean);
     return (
-      <textarea
-        rows={4}
-        value={(value as string) ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={question.placeholder || "Matn kiriting…"}
-        className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none transition-all"
-      />
+      <div className="space-y-2">
+        <textarea
+          rows={4}
+          value={(value as string) ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={question.placeholder || "Matn kiriting…"}
+          className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none transition-all"
+        />
+        {examples.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {examples.map((ex, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onChange(ex)}
+                className="px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 hover:border-blue-300 active:scale-95 transition-all"
+              >
+                {ex}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     );
   }
 
   if (question.type === "text") {
+    const examples = (question.autofillExamples ?? []).filter(Boolean);
     return (
-      <input
-        type="text"
-        value={(value as string) ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={question.placeholder || "Matn kiriting…"}
-        className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
-      />
+      <div className="space-y-2">
+        <input
+          type="text"
+          value={(value as string) ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={question.placeholder || "Matn kiriting…"}
+          className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
+        />
+        {examples.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {examples.map((ex, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onChange(ex)}
+                className="px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 hover:border-blue-300 active:scale-95 transition-all"
+              >
+                {ex}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     );
   }
 
