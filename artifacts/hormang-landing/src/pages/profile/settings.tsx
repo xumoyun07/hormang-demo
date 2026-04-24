@@ -17,7 +17,7 @@ import {
   ChevronLeft, Camera, Phone, Lock, CheckCircle2, AlertCircle,
   Save, Loader2, MapPin, Briefcase, ImagePlus, Star,
   X, ArrowRight, RefreshCw, ChevronDown, User, AlertTriangle,
-  Eye, Zap, GripVertical, TrendingUp,
+  Eye, Zap, GripVertical, TrendingUp, Info,
 } from "lucide-react";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import logoImg from "/hormang-logo.png";
@@ -306,6 +306,7 @@ export default function ProfileSettingsPage() {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [experience, setExperience] = useState("");
   const [bio, setBio]               = useState("");
+  const [showAreaInfo, setShowAreaInfo] = useState(false);
 
   /* ── Consolidated init effect ─────────────────────────────────────
    * Runs whenever the authenticated user or their server-side providerProfile
@@ -861,16 +862,62 @@ export default function ProfileSettingsPage() {
         {/* ── Region card ── */}
         <motion.div ref={refRegion}
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
-          className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          className="relative bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+
+          {/* Info button — only for providers */}
+          {isProvider && (
+            <div className="absolute top-4 right-4">
+              <button
+                type="button"
+                onClick={() => setShowAreaInfo((v) => !v)}
+                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                  showAreaInfo
+                    ? "bg-violet-600 text-white shadow-md"
+                    : "bg-violet-50 text-violet-500 hover:bg-violet-100 hover:text-violet-700"
+                }`}
+                aria-label="Ma'lumot"
+              >
+                <Info className="w-3.5 h-3.5" />
+              </button>
+
+              <AnimatePresence>
+                {showAreaInfo && (
+                  <>
+                    {/* Backdrop — close on outside click */}
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowAreaInfo(false)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-9 z-20 w-64 bg-white rounded-2xl shadow-xl border border-violet-100 p-4"
+                    >
+                      {/* Pointer arrow */}
+                      <div className="absolute -top-2 right-2.5 w-4 h-4 bg-white border-l border-t border-violet-100 rotate-45 rounded-sm" />
+                      <div className="flex items-start gap-2.5">
+                        <div className="w-7 h-7 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <MapPin className="w-3.5 h-3.5 text-violet-600" />
+                        </div>
+                        <p className="text-xs text-gray-600 leading-relaxed">
+                          Qaysi hududlarda xizmat ko'rsatasiz? Bir nechta tuman yoki shaharni tanlashingiz mumkin.
+                        </p>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
           <SectionHeader icon={MapPin}
             title={isProvider ? "Xizmat hududlarim" : "Asosiy manzilim"}
             sub={isProvider ? "Bir nechta hududni tanlashingiz mumkin" : "Yaqin atrofdagi xizmatlar ko'rsatiladi"} />
 
           {isProvider ? (
             <div className="space-y-3">
-              <p className="text-xs text-gray-500">
-                Qaysi hududlarda xizmat ko'rsatasiz? Bir nechta tuman yoki shaharni tanlashingiz mumkin.
-              </p>
               <ProviderAreaSelector value={serviceAreaV2} onChange={setServiceAreaV2} />
             </div>
           ) : (
