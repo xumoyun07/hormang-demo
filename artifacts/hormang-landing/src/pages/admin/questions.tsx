@@ -1081,6 +1081,139 @@ function CategoryPanel({
   );
 }
 
+/* ─── Embedded panel (used inside /admin Toifalar tab) ────────────── */
+export function QuestionsEmbedded() {
+  const [categories, setCategories] = useState<CategoryConfig[]>(getCategories);
+  const [commonQuestions, setCommonQuestions] = useState<Question[]>(getCommonQuestions);
+  const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  function updateCategory(updated: CategoryConfig) {
+    setCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    setDirty(true); setSaved(false);
+  }
+  function updateCommon(qs: Question[]) {
+    setCommonQuestions(qs); setDirty(true); setSaved(false);
+  }
+  function handleSave() {
+    saveCategories(categories);
+    saveCommonQuestions(commonQuestions);
+    setSaved(true); setDirty(false);
+    setTimeout(() => setSaved(false), 2500);
+  }
+  function handleReset() {
+    resetCategories(); resetCommonQuestions();
+    setCategories(getCategories()); setCommonQuestions(getCommonQuestions());
+    setDirty(false); setSaved(false); setShowResetConfirm(false);
+  }
+
+  const displayed = activeTab && activeTab !== "common"
+    ? categories.filter((c) => c.id === activeTab)
+    : categories;
+
+  return (
+    <div className="space-y-4">
+      {/* ── Toolbar ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3 flex flex-wrap items-center gap-3 shadow-sm">
+        <div className="flex-1 min-w-0">
+          <p className="font-extrabold text-sm text-gray-900">Savol muharriri</p>
+          <p className="text-xs text-gray-400">{categories.length} ta kategoriya · {commonQuestions.length} ta umumiy savol</p>
+        </div>
+        {dirty && (
+          <span className="flex items-center gap-1 text-xs text-amber-600 font-semibold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg flex-shrink-0">
+            <AlertTriangle className="w-3 h-3" /> Saqlanmagan
+          </span>
+        )}
+        <button
+          onClick={() => setShowResetConfirm(true)}
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
+          title="Asl holatga qaytarish">
+          <RefreshCw className="w-4 h-4" />
+        </button>
+        <Button onClick={handleSave}
+          className={`h-9 px-4 font-bold text-sm gap-2 flex-shrink-0 transition-all ${saved ? "bg-emerald-500 hover:bg-emerald-600" : "bg-blue-600 hover:bg-blue-700"}`}>
+          {saved ? <><Check className="w-4 h-4" /> Saqlandi!</> : <><Save className="w-4 h-4" /> Saqlash</>}
+        </Button>
+      </div>
+
+      {/* ── Category tabs ── */}
+      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
+        <button onClick={() => setActiveTab(null)}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${activeTab === null ? "bg-blue-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+          Hammasi
+        </button>
+        <button onClick={() => setActiveTab("common")}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-colors ${activeTab === "common" ? "bg-amber-500 text-white shadow-sm" : "bg-amber-50 text-amber-700 hover:bg-amber-100"}`}>
+          <Star className="w-3 h-3 fill-current" /> Umumiy
+        </button>
+        {categories.map((c) => (
+          <button key={c.id} onClick={() => setActiveTab(activeTab === c.id ? null : c.id)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${activeTab === c.id ? "bg-blue-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+            {c.emoji} {c.name}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Content ── */}
+      {(activeTab === null || activeTab === "common") && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+          <QuestionsPanel
+            title="Umumiy savollar (Barcha kategoriyalar)"
+            emoji="⭐"
+            subtitle="Bu savollar har bir kategoriyaning oxirida avtomatik qo'shiladi"
+            questions={commonQuestions}
+            onChange={updateCommon}
+            allQuestionsForCond={commonQuestions}
+            accent="amber"
+          />
+        </motion.div>
+      )}
+      {activeTab !== "common" && (
+        <AnimatePresence mode="popLayout">
+          {displayed.map((cat) => (
+            <motion.div key={cat.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.2 }}>
+              <CategoryPanel cat={cat} onChange={updateCategory} commonQuestions={commonQuestions} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      )}
+
+      <p className="text-center text-xs text-gray-400 pb-4">
+        O'zgarishlar faqat "Saqlash" tugmasini bosganingizda qo'llanadi
+      </p>
+
+      {/* ── Reset confirm modal ── */}
+      <AnimatePresence>
+        {showResetConfirm && (
+          <>
+            <div className="fixed inset-0 bg-black/40 z-50" onClick={() => setShowResetConfirm(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl border border-gray-100 p-6 w-full max-w-sm shadow-xl">
+                <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
+                  <AlertTriangle className="w-6 h-6 text-red-500" />
+                </div>
+                <h3 className="font-extrabold text-gray-900 mb-2">Qayta tiklash</h3>
+                <p className="text-sm text-gray-500 mb-6">Barcha savol konfiguratsiyasi <strong>asl holatga</strong> qaytariladi. Bu amalni bekor qilib bo'lmaydi.</p>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setShowResetConfirm(false)} className="flex-1 border-gray-200 font-semibold">Bekor</Button>
+                  <Button onClick={handleReset} className="flex-1 bg-red-500 hover:bg-red-600 font-bold text-white">Ha, tiklash</Button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 /* ─── Main Admin Page ─────────────────────────────────────────────── */
 export default function AdminQuestionsPage() {
   const [authed, setAuthed] = useState(false);

@@ -16,7 +16,7 @@
  * plus window "storage" for cross-tab updates.
  */
 import { useState, useEffect, useCallback } from "react";
-import { useLocation } from "wouter";
+import { QuestionsEmbedded } from "./questions";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -2252,35 +2252,13 @@ function AuditLogSection({ refreshKey }: { refreshKey: number }) {
    CATEGORIES SECTION
    ════════════════════════════════════════════════════════════════════ */
 function CategoriesSection() {
-  const [, setLocation] = useLocation();
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-extrabold text-gray-900">Toifalar va Savollar</h2>
-        <p className="text-sm text-gray-500">Questionnaire tizimini boshqarish</p>
+        <p className="text-sm text-gray-500">Savol va variantlarni qo'shish, tahrirlash yoki o'chirish</p>
       </div>
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        {CATEGORIES.map((c, i) => (
-          <div key={c} className="bg-white rounded-xl border border-red-50 p-3 shadow-sm flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-red-600 flex items-center justify-center text-white text-[10px] font-black flex-shrink-0">{i + 1}</div>
-            <span className="text-xs font-semibold text-gray-700 leading-tight">{c}</span>
-          </div>
-        ))}
-      </div>
-      <div className="bg-white rounded-2xl border border-red-100 p-8 shadow-sm text-center"
-        style={{ background: "linear-gradient(135deg, #fff 0%, #fff8f8 100%)" }}>
-        <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4 border border-red-100">
-          <Settings className="w-7 h-7 text-red-500" />
-        </div>
-        <h3 className="font-bold text-gray-800 mb-2">Savol muharriri</h3>
-        <p className="text-sm text-gray-500 mb-6">Har bir toifa uchun savol va variantlarni qo'shish, tahrirlash yoki o'chirish</p>
-        <button
-          onClick={() => { logAction("NAVIGATE", "admin/questions", "Toifalar sahifasiga o'tildi"); setLocation("/admin/questions"); }}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-bold text-sm transition-all shadow-sm hover:opacity-90 active:scale-95"
-          style={{ background: "linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)", boxShadow: "0 4px 14px rgba(220,38,38,0.35)" }}>
-          Savol muharririga o'tish <ChevronRight className="w-4 h-4" />
-        </button>
-      </div>
+      <QuestionsEmbedded />
     </div>
   );
 }
