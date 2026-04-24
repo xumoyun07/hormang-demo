@@ -13,7 +13,7 @@ import {
   X, MapPin, ShieldCheck, Star,
   Briefcase, Award, ChevronRight,
 } from "lucide-react";
-import { getLocalProfile } from "@/lib/local-profile";
+import { getLocalProfile, getServiceAreaLabels } from "@/lib/local-profile";
 import { getAverageRatingForUser, getReviewsForUser, getCompletedCount } from "@/lib/completion-store";
 import { StarRating } from "@/components/star-rating";
 import { ProviderReviewsSheet } from "@/components/provider-reviews-sheet";
@@ -107,8 +107,7 @@ function ProviderPreviewSheet({
   const portfolioItems = local.portfolioItems ?? [];
   const bio = local.bio;
   const categories = local.categories ?? [];
-  const serviceAreas: string[] =
-    local.serviceAreas?.length ? local.serviceAreas : local.region ? [local.region] : [];
+  const serviceAreas = getServiceAreaLabels(local);
 
   const avgRating = getAverageRatingForUser(data.masterId, "provider");
   const reviewCount = getReviewsForUser(data.masterId, "provider").length;

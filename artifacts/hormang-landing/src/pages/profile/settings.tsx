@@ -29,8 +29,10 @@ import { regionsList } from "@/lib/regions";
 import {
   getLocalProfile, saveLocalProfile,
   getCompletionChecks, getCompletionPct,
-  type LocalProfile, type PortfolioItem,
+  type LocalProfile, type PortfolioItem, type ProviderServiceArea,
+  emptyProviderServiceArea, isServiceAreaEmpty,
 } from "@/lib/local-profile";
+import { ProviderAreaSelector } from "@/components/provider-area-selector";
 
 /* ─── Theme constants ────────────────────────────────────────────── */
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -300,7 +302,7 @@ export default function ProfileSettingsPage() {
   const [lastName, setLastName]     = useState("");
   const [region, setRegion]         = useState("");
   const [district, setDistrict]     = useState("");
-  const [serviceAreas, setServiceAreas] = useState<string[]>([]);
+  const [serviceAreaV2, setServiceAreaV2] = useState<ProviderServiceArea>(emptyProviderServiceArea());
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [experience, setExperience] = useState("");
   const [bio, setBio]               = useState("");
@@ -322,7 +324,7 @@ export default function ProfileSettingsPage() {
       setSelectedServices([]);
       setRegion("");
       setDistrict("");
-      setServiceAreas([]);
+      setServiceAreaV2(emptyProviderServiceArea());
       setExperience("");
       return;
     }
@@ -338,7 +340,7 @@ export default function ProfileSettingsPage() {
     setLastName(user.lastName ?? "");
     setRegion(loaded.region ?? "");
     setDistrict(loaded.district ?? "");
-    setServiceAreas(loaded.serviceAreas ?? []);
+    setServiceAreaV2(loaded.serviceAreaV2 ?? emptyProviderServiceArea());
     setExperience(loaded.experience !== undefined ? String(loaded.experience) : "");
 
     const items = loaded.portfolioItems ?? (loaded.portfolioImages ?? []).map((url) => ({ url }));
@@ -468,7 +470,7 @@ export default function ProfileSettingsPage() {
   const debouncedPortf   = useDebounce(portfolioItems, 800);
   const debouncedRegion  = useDebounce(region, 600);
   const debouncedDistrict = useDebounce(district, 600);
-  const debouncedServiceAreas = useDebounce(serviceAreas, 600);
+  const debouncedServiceAreaV2 = useDebounce(serviceAreaV2, 600);
   const [autoSaveAt, setAutoSaveAt] = useState<Date | null>(null);
 
   const persistLocal = useCallback(() => {
@@ -499,7 +501,7 @@ export default function ProfileSettingsPage() {
       photoUrl: debouncedPhoto,
       region: debouncedRegion,
       district: debouncedDistrict,
-      serviceAreas: debouncedServiceAreas,
+      serviceAreaV2: debouncedServiceAreaV2,
       experience: debouncedExp ? Number(debouncedExp) : undefined,
       portfolioItems: debouncedPortf,
       bio: debouncedBio || undefined,
@@ -507,7 +509,7 @@ export default function ProfileSettingsPage() {
     };
     saveLocalProfile(user.id, next);
     setAutoSaveAt(new Date());
-  }, [user, photoUrl, debouncedPhoto, bio, debouncedBio, region, debouncedRegion, district, debouncedDistrict, experience, debouncedExp, debouncedServiceAreas, debouncedPortf, selectedServices]);
+  }, [user, photoUrl, debouncedPhoto, bio, debouncedBio, region, debouncedRegion, district, debouncedDistrict, experience, debouncedExp, debouncedServiceAreaV2, debouncedPortf, selectedServices]);
 
   useEffect(() => { persistLocal(); }, [persistLocal]);
 
@@ -516,6 +518,7 @@ export default function ProfileSettingsPage() {
     photoUrl,
     region,
     district,
+    serviceAreaV2,
     experience: experience ? Number(experience) : undefined,
     portfolioItems,
   };
@@ -595,7 +598,7 @@ export default function ProfileSettingsPage() {
         photoUrl,
         region,
         district,
-        serviceAreas,
+        serviceAreaV2,
         experience: experience ? Number(experience) : undefined,
         portfolioItems,
         bio: bio || undefined,
@@ -865,76 +868,10 @@ export default function ProfileSettingsPage() {
 
           {isProvider ? (
             <div className="space-y-3">
-              <Field label="Xizmat ko'rsatadigan hududlar" required
-                boost="To'g'ri hududlar → faqat tegishli buyurtmalar ko'rinadi">
-                {/* Selected area chips */}
-                {serviceAreas.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {serviceAreas.map((area) => (
-                      <span key={area}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-700 border border-violet-200">
-                        {area}
-                        <button type="button" onClick={() => setServiceAreas(serviceAreas.filter((a) => a !== area))}
-                          className="ml-0.5 hover:bg-violet-200 rounded-full p-0.5 transition-colors">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Dropdown + Select All row */}
-                <div className="flex gap-2 items-center">
-                  <div className="relative flex-1">
-                    <select value="" onChange={(e) => {
-                      const val = e.target.value;
-                      if (val && !serviceAreas.includes(val)) {
-                        setServiceAreas([...serviceAreas, val]);
-                        if (!region) setRegion(val);
-                      }
-                    }}
-                      className="w-full h-11 px-4 pr-9 rounded-2xl border-2 border-gray-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 appearance-none">
-                      <option value="">Hudud qo'shish...</option>
-                      {regionsList.filter((r) => !serviceAreas.includes(r.value)).map((r) => (
-                        <option key={r.value} value={r.value}>{r.label}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                  </div>
-
-                  {/* Select All button */}
-                  {serviceAreas.length < regionsList.length && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const all = regionsList.map((r) => r.value);
-                        setServiceAreas(all);
-                        if (!region && all.length > 0) setRegion(all[0]);
-                      }}
-                      className="h-11 px-3 rounded-2xl border-2 border-violet-200 bg-violet-50 text-xs font-bold text-violet-700 hover:bg-violet-100 hover:border-violet-300 transition-colors flex-shrink-0 whitespace-nowrap"
-                    >
-                      Barchasini tanlash
-                    </button>
-                  )}
-
-                  {/* Clear All button */}
-                  {serviceAreas.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setServiceAreas([])}
-                      className="h-11 px-3 rounded-2xl border-2 border-red-100 bg-red-50 text-xs font-bold text-red-500 hover:bg-red-100 hover:border-red-200 transition-colors flex-shrink-0 whitespace-nowrap"
-                    >
-                      Tozalash
-                    </button>
-                  )}
-                </div>
-              </Field>
-
-              {serviceAreas.length === 0 && (
-                <p className="text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl font-medium">
-                  ⚠️ Hech bo'lmasa bitta hudud tanlang — aks holda hech qanday so'rov ko'rinmaydi
-                </p>
-              )}
+              <p className="text-xs text-gray-500">
+                Qaysi hududlarda xizmat ko'rsatasiz? Bir nechta tuman yoki shaharni tanlashingiz mumkin.
+              </p>
+              <ProviderAreaSelector value={serviceAreaV2} onChange={setServiceAreaV2} />
             </div>
           ) : (
             <div className="space-y-3">

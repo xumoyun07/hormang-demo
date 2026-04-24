@@ -14,8 +14,13 @@
 
 import type { SafeUser, ProviderProfile } from "./auth-client";
 import { emitStoreChange } from "./store-events";
+import { type ProviderServiceArea, emptyProviderServiceArea, isServiceAreaEmpty } from "./matching";
+import { TOSHKENT_DISTRICTS, regionsList } from "./regions";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
+
+export type { ProviderServiceArea } from "./matching";
+export { emptyProviderServiceArea, isServiceAreaEmpty } from "./matching";
 
 export interface PortfolioItem {
   url: string;
@@ -31,7 +36,10 @@ export interface LocalProfile {
   portfolioItems?: PortfolioItem[];
   region?: string;
   district?: string;
+  /** @deprecated Use serviceAreaV2 instead */
   serviceAreas?: string[];
+  /** Structured provider service area (V2) */
+  serviceAreaV2?: ProviderServiceArea;
   /** Provider bio — stored locally so PublicProfileModal can display it without an API call */
   bio?: string;
   /** Provider service categories — stored locally for public profile display */
@@ -89,6 +97,21 @@ export function getLocalProfile(userId: string): LocalProfile {
     /* Migrate legacy region → serviceAreas for providers */
     if ((!p.serviceAreas || p.serviceAreas.length === 0) && p.region) {
       p.serviceAreas = [p.region];
+    }
+    /* Migrate legacy serviceAreas[] → serviceAreaV2 if V2 not yet set */
+    if (!p.serviceAreaV2 && p.serviceAreas && p.serviceAreas.length > 0) {
+      const viloyatValues = new Set(regionsList.filter((r) => !r.isCapital).map((r) => r.value));
+      const v2 = emptyProviderServiceArea();
+      for (const area of p.serviceAreas) {
+        if (area === "Toshkent shahri") {
+          v2.toshkent_city.all = true;
+        } else if (TOSHKENT_DISTRICTS.includes(area)) {
+          v2.toshkent_city.districts.push(area);
+        } else if (viloyatValues.has(area)) {
+          v2.toshkent_region.cities.push(area);
+        }
+      }
+      if (!isServiceAreaEmpty(v2)) p.serviceAreaV2 = v2;
     }
     return p;
   } catch {
@@ -201,9 +224,13 @@ export function getCompletionChecks(
     },
     {
       key: "region",
-      label: "Hudud / tumani tanlang",
+      label: "Xizmat hududini tanlang",
       hint: "Yaqin atrofdagi buyurtmalar ko'rsatiladi",
-      done: !!local.region,
+      done: !!(
+        (local.serviceAreaV2 && !isServiceAreaEmpty(local.serviceAreaV2)) ||
+        (local.serviceAreas && local.serviceAreas.length > 0) ||
+        !!local.region
+      ),
       weight: 15,
     },
     {
@@ -235,6 +262,31 @@ export function getCompletionChecks(
       weight: 5,
     },
   ];
+}
+
+/**
+ * Returns a flat list of human-readable service area labels from a LocalProfile.
+ * Prefers the new V2 structured format, falls back to legacy serviceAreas[].
+ */
+export function getServiceAreaLabels(local: LocalProfile): string[] {
+  if (local.serviceAreaV2) {
+    const v2 = local.serviceAreaV2;
+    const labels: string[] = [];
+    if (v2.toshkent_city.all) {
+      labels.push("Butun Toshkent shahri");
+    } else {
+      labels.push(...v2.toshkent_city.districts);
+    }
+    if (v2.toshkent_region.all) {
+      labels.push("Butun Toshkent viloyati");
+    } else {
+      labels.push(...v2.toshkent_region.cities);
+    }
+    return labels;
+  }
+  if (local.serviceAreas?.length) return local.serviceAreas;
+  if (local.region) return [local.region];
+  return [];
 }
 
 /** Returns weighted completion 0–100 (sum of done check weights). */

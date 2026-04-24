@@ -903,6 +903,7 @@ interface AdminUser {
   phoneVerified?:   boolean;
   location?:        string;
   serviceAreas?:    string[];
+  serviceAreaV2?:   { toshkent_city: { all: boolean; districts: string[] }; toshkent_region: { all: boolean; cities: string[] } };
   completionPct?:   number;  // % of offers accepted
   offerCount?:      number;
   acceptedCount?:   number;
@@ -996,14 +997,31 @@ function AdminUserProfileModal({
           </div>
 
           {/* Service areas (provider) */}
-          {u.serviceAreas && u.serviceAreas.length > 0 && (
+          {(u.serviceAreaV2 || (u.serviceAreas && u.serviceAreas.length > 0)) && (
             <div>
               <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Xizmat hududlari</h4>
-              <div className="flex flex-wrap gap-1.5">
-                {u.serviceAreas.map((a) => (
-                  <span key={a} className="px-2.5 py-1 bg-red-50 text-red-700 text-xs font-semibold rounded-lg border border-red-100">{a}</span>
-                ))}
-              </div>
+              {u.serviceAreaV2 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {u.serviceAreaV2.toshkent_city.all && (
+                    <span className="px-2.5 py-1 bg-violet-50 text-violet-700 text-xs font-semibold rounded-lg border border-violet-100">🏙 Butun Toshkent shahri</span>
+                  )}
+                  {!u.serviceAreaV2.toshkent_city.all && u.serviceAreaV2.toshkent_city.districts.map((d) => (
+                    <span key={d} className="px-2.5 py-1 bg-violet-50 text-violet-700 text-xs font-semibold rounded-lg border border-violet-100">🏙 {d}</span>
+                  ))}
+                  {u.serviceAreaV2.toshkent_region.all && (
+                    <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-100">🗺 Butun Toshkent viloyati</span>
+                  )}
+                  {!u.serviceAreaV2.toshkent_region.all && u.serviceAreaV2.toshkent_region.cities.map((c) => (
+                    <span key={c} className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-100">🗺 {c}</span>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {u.serviceAreas!.map((a) => (
+                    <span key={a} className="px-2.5 py-1 bg-red-50 text-red-700 text-xs font-semibold rounded-lg border border-red-100">{a}</span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -1141,15 +1159,17 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
         const raw = localStorage.getItem(lsKey);
         if (!raw) continue;
         const lp = JSON.parse(raw) as {
-          serviceAreas?: string[]; region?: string; district?: string;
+          serviceAreas?: string[]; serviceAreaV2?: AdminUser["serviceAreaV2"];
+          region?: string; district?: string;
           createdAt?: string; photoUrl?: string;
         };
         const uid_ = lsKey.replace(K.PROFILE_PREFIX, "");
         const provider = providerMap.get(uid_);
         if (provider) {
-          provider.serviceAreas = lp.serviceAreas ?? (lp.region ? [lp.region] : undefined);
-          provider.joinedAt     = lp.createdAt;
-          provider.location     = lp.district ?? lp.region;
+          provider.serviceAreas  = lp.serviceAreas ?? (lp.region ? [lp.region] : undefined);
+          provider.serviceAreaV2 = lp.serviceAreaV2;
+          provider.joinedAt      = lp.createdAt;
+          provider.location      = lp.district ?? lp.region;
         }
       } catch { /* skip */ }
     }
@@ -1413,7 +1433,26 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
 
                       {/* Location / Service Areas */}
                       <td className="px-3 py-3 max-w-[140px]">
-                        {u.serviceAreas && u.serviceAreas.length > 0 ? (
+                        {u.serviceAreaV2 ? (
+                          <div className="flex flex-wrap gap-0.5">
+                            {u.serviceAreaV2.toshkent_city.all && (
+                              <span className="px-1 py-0.5 bg-violet-50 text-violet-600 text-[8px] font-bold rounded border border-violet-100 whitespace-nowrap">🏙 Barchasi</span>
+                            )}
+                            {!u.serviceAreaV2.toshkent_city.all && u.serviceAreaV2.toshkent_city.districts.slice(0, 2).map((d) => (
+                              <span key={d} className="px-1 py-0.5 bg-violet-50 text-violet-600 text-[8px] font-bold rounded border border-violet-100 whitespace-nowrap">🏙 {d.slice(0, 10)}</span>
+                            ))}
+                            {u.serviceAreaV2.toshkent_region.all && (
+                              <span className="px-1 py-0.5 bg-blue-50 text-blue-600 text-[8px] font-bold rounded border border-blue-100 whitespace-nowrap">🗺 Barchasi</span>
+                            )}
+                            {!u.serviceAreaV2.toshkent_region.all && u.serviceAreaV2.toshkent_region.cities.slice(0, 1).map((c) => (
+                              <span key={c} className="px-1 py-0.5 bg-blue-50 text-blue-600 text-[8px] font-bold rounded border border-blue-100 whitespace-nowrap">🗺 {c.slice(0, 10)}</span>
+                            ))}
+                            {((!u.serviceAreaV2.toshkent_city.all && u.serviceAreaV2.toshkent_city.districts.length > 2) ||
+                              (!u.serviceAreaV2.toshkent_region.all && u.serviceAreaV2.toshkent_region.cities.length > 1)) && (
+                              <span className="text-[8px] text-gray-400">+boshqalar</span>
+                            )}
+                          </div>
+                        ) : u.serviceAreas && u.serviceAreas.length > 0 ? (
                           <div className="flex flex-wrap gap-0.5">
                             {u.serviceAreas.slice(0, 2).map((a) => (
                               <span key={a} className="px-1 py-0.5 bg-red-50 text-red-600 text-[8px] font-bold rounded border border-red-100 whitespace-nowrap">

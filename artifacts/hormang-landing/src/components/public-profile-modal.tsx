@@ -13,7 +13,7 @@ import {
   X, MapPin, Clock, ShieldCheck, Star, MessageCircle,
   Award, Briefcase,
 } from "lucide-react";
-import { getLocalProfile, type PortfolioItem } from "@/lib/local-profile";
+import { getLocalProfile, getServiceAreaLabels, type PortfolioItem } from "@/lib/local-profile";
 import { formatMonthYear } from "@/lib/date-utils";
 
 /* ─── Theme ────────────────────────────────────────────────────────── */
@@ -77,12 +77,7 @@ export interface PublicProfileModalProps {
 function ProviderSheet({ data, onClose }: { data: ProviderProfileData; onClose: () => void }) {
   const local = getLocalProfile(data.masterId);
 
-  const serviceAreas: string[] =
-    local.serviceAreas && local.serviceAreas.length > 0
-      ? local.serviceAreas
-      : local.region
-      ? [local.region]
-      : [];
+  const serviceAreas = getServiceAreaLabels(local);
 
   const portfolioItems: PortfolioItem[] = local.portfolioItems ?? [];
 

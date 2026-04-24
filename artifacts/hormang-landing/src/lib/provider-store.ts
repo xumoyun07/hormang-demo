@@ -18,7 +18,7 @@ import {
   getChatById, sendMessage, markProviderChatRead,
   getChats, getRequestById, markOfferInProgress,
 } from "./requests-store";
-import { doesRequestMatch } from "./matching";
+import { doesCategoryMatch, doesLocationMatchV2, type ProviderServiceArea } from "./matching";
 import {
   getAllQuestionsForCategory, collectActiveQuestions,
   type Question,
@@ -329,6 +329,7 @@ export function getMatchingRequests(
   selectedCategories: string[],
   serviceAreas: string[] = [],
   providerId: string = "",
+  serviceAreaV2?: ProviderServiceArea,
 ): ProviderRequest[] {
   const buyerReqs = readJSON<CustomerRequest[]>(BUYER_REQUESTS_KEY_CONST, []);
   const statuses = getProviderStatuses(providerId);
@@ -350,7 +351,8 @@ export function getMatchingRequests(
   return buyerReqs
     .filter((r) => {
       if (r.status !== "open") return false;
-      if (!doesRequestMatch(r.categoryName, r.region, selectedCategories, serviceAreas)) return false;
+      if (!doesCategoryMatch(r.categoryName, selectedCategories)) return false;
+      if (!doesLocationMatchV2(r.region, r.district, serviceAreaV2 ?? null, serviceAreas)) return false;
       // If another provider's offer was accepted, only show to this provider if they also offered
       if (acceptedByOtherRequestIds.has(r.id) && !providerOfferRequestIds.has(r.id)) return false;
       return true;
@@ -396,8 +398,9 @@ export function markAllSeen(
   selectedCategories: string[] = [],
   serviceAreas: string[] = [],
   providerId: string = "",
+  serviceAreaV2?: ProviderServiceArea,
 ): void {
-  const ids = getMatchingRequests(selectedCategories, serviceAreas, providerId).map((r) => r.id);
+  const ids = getMatchingRequests(selectedCategories, serviceAreas, providerId, serviceAreaV2).map((r) => r.id);
   const existing = getSeenIds(providerId);
   const merged = Array.from(new Set([...existing, ...ids]));
   writeJSON(seenKey(providerId || undefined), merged);
@@ -407,9 +410,10 @@ export function getUnseenRequests(
   selectedCategories: string[] = [],
   serviceAreas: string[] = [],
   providerId: string = "",
+  serviceAreaV2?: ProviderServiceArea,
 ): ProviderRequest[] {
   const seen = getSeenIds(providerId);
-  return getMatchingRequests(selectedCategories, serviceAreas, providerId).filter(
+  return getMatchingRequests(selectedCategories, serviceAreas, providerId, serviceAreaV2).filter(
     (r) => !seen.includes(r.id) && r.status === "open"
   );
 }
@@ -606,9 +610,10 @@ export function getRequestsWithZeroOffers(
   selectedCategories: string[] = [],
   serviceAreas: string[] = [],
   providerId: string = "",
+  serviceAreaV2?: ProviderServiceArea,
 ): ProviderRequest[] {
   const sharedOffers = readJSON<Array<{ requestId: string }>>(SHARED_OFFERS_KEY, []);
-  return getMatchingRequests(selectedCategories, serviceAreas, providerId).filter(
+  return getMatchingRequests(selectedCategories, serviceAreas, providerId, serviceAreaV2).filter(
     (r) => r.status !== "ignored" && !sharedOffers.some((o) => o.requestId === r.id)
   );
 }

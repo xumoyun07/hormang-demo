@@ -511,15 +511,17 @@ export default function ProviderRequestsPage() {
 
   const { user } = useAuth();
   const providerId = user?.id ?? "";
-  const serviceAreas = user?.id ? (getLocalProfile(user.id).serviceAreas ?? []) : [];
+  const reqLocalProfile = user?.id ? getLocalProfile(user.id) : {};
+  const serviceAreas = reqLocalProfile.serviceAreas ?? [];
+  const serviceAreaV2 = reqLocalProfile.serviceAreaV2;
   const selectedCategories = providerProfile?.categories ?? [];
   // Build filter tabs from the provider's own chosen categories.
   // Only show tabs (including "Barchasi") when provider has 2+ categories.
   const filterCategories: string[] = selectedCategories.length > 1
     ? ["Barchasi", ...selectedCategories]
     : [];
-  const requests = getMatchingRequests(selectedCategories, serviceAreas, providerId);
-  const unseen = getUnseenRequests(selectedCategories, serviceAreas, providerId);
+  const requests = getMatchingRequests(selectedCategories, serviceAreas, providerId, serviceAreaV2);
+  const unseen = getUnseenRequests(selectedCategories, serviceAreas, providerId, serviceAreaV2);
 
   // Toast on new unseen matching requests
   const prevUnseenCount = useRef<number | null>(null);
@@ -561,7 +563,7 @@ export default function ProviderRequestsPage() {
   }
 
   function handleMarkAllSeen() {
-    markAllSeen(selectedCategories, serviceAreas, providerId);
+    markAllSeen(selectedCategories, serviceAreas, providerId, serviceAreaV2);
     toast({ title: "Barchasi ko'rilgan deb belgilandi" });
   }
 

@@ -589,16 +589,18 @@ function AvailableRequests() {
   const { providerProfile, user: authUser } = useAuth();
 
   const selectedCategories = providerProfile?.categories ?? [];
-  const serviceAreas = authUser?.id ? (getLocalProfile(authUser.id).serviceAreas ?? []) : [];
+  const localProfile = authUser?.id ? getLocalProfile(authUser.id) : {};
+  const serviceAreas = localProfile.serviceAreas ?? [];
+  const serviceAreaV2 = localProfile.serviceAreaV2;
   const providerId = authUser?.id ?? "";
-  const requests = getMatchingRequests(selectedCategories, serviceAreas, providerId);
+  const requests = getMatchingRequests(selectedCategories, serviceAreas, providerId, serviceAreaV2);
   const seen = getSeenIds(providerId);
 
   // All non-ignored requests (open + responded) — visible to every provider
   const visibleRequests = requests.filter((r) => r.status !== "ignored");
   // New/unseen = only open requests the provider hasn't seen yet
   const newUnseen       = requests.filter((r) => !seen.includes(r.id) && r.status === "open");
-  const zeroOffers      = getRequestsWithZeroOffers(selectedCategories, serviceAreas, providerId);
+  const zeroOffers      = getRequestsWithZeroOffers(selectedCategories, serviceAreas, providerId, serviceAreaV2);
 
   const newCount      = newUnseen.length;
   const totalOpen     = visibleRequests.length;
@@ -806,8 +808,10 @@ export default function ProviderHomePage() {
   }, [user?.id]);
 
   const selectedCategories = providerProfile?.categories ?? [];
-  const headerServiceAreas = user?.id ? (getLocalProfile(user.id).serviceAreas ?? []) : [];
-  const unseenCount = getMatchingRequests(selectedCategories, headerServiceAreas).filter(
+  const headerLocalProfile = user?.id ? getLocalProfile(user.id) : {};
+  const headerServiceAreas = headerLocalProfile.serviceAreas ?? [];
+  const headerServiceAreaV2 = headerLocalProfile.serviceAreaV2;
+  const unseenCount = getMatchingRequests(selectedCategories, headerServiceAreas, user?.id ?? "", headerServiceAreaV2).filter(
     (r) => !getSeenIds(user?.id ?? "").includes(r.id) && r.status === "open"
   ).length;
 
