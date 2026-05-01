@@ -209,6 +209,11 @@ function mktFormatAnswer(
       })
       .join(", ");
   }
+  if (typeof value === "object" && value !== null) {
+    const loc = value as { region?: string; district?: string };
+    if (loc.region) return loc.district ? `${loc.district}, ${loc.region}` : loc.region;
+    return "—";
+  }
   return String(value);
 }
 
