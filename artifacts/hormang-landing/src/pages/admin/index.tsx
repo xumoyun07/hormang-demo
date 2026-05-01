@@ -1403,17 +1403,6 @@ function RequestCommandCenter({ row, onClose, onAcceptOffer, onRejectOffer, onRe
                   <MktInfoCard label="Byudjet" value={budgetLabel(r.answers)} icon={<Wallet className="w-3.5 h-3.5" />} />
                   <MktInfoCard label="Shoshilinchlik" value={urgencyFrom(r.answers)} icon={<Clock className="w-3.5 h-3.5" />} />
                 </div>
-                <div>
-                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">So'rov tafsilotlari</p>
-                  <div className="bg-gray-50 rounded-2xl p-4 space-y-1.5">
-                    {Object.entries(r.answers).map(([k, v]) => v ? (
-                      <div key={k} className="flex gap-2">
-                        <span className="text-[11px] font-bold text-gray-400 min-w-[110px] capitalize flex-shrink-0">{k.replace(/_/g, " ")}:</span>
-                        <span className="text-[11px] text-gray-700 break-all">{String(v)}</span>
-                      </div>
-                    ) : null)}
-                  </div>
-                </div>
                 {Array.isArray((r as any).requestPhotos) && (r as any).requestPhotos.length > 0 && (
                   <div>
                     <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Rasmlar ({(r as any).requestPhotos.length})</p>
