@@ -28,6 +28,7 @@ import {
   TrendingUp, AlertCircle, Check, X, Search, RefreshCw,
   Shield, Trash2, Ban, CheckCircle2, Inbox, DollarSign,
   Bell, Menu, ChevronLeft, Plus, MapPin, Clock, Wallet,
+  Store, LayoutGrid, TriangleAlert, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { onStoreChange, emitStoreChange } from "@/lib/store-events";
 import { formatDateTime, formatMonthYear } from "@/lib/date-utils";
@@ -92,7 +93,7 @@ const CATEGORIES = [
 ];
 
 /* ─── Types ─────────────────────────────────────────────────────── */
-type Section = "overview" | "requests" | "offers" | "users" | "monetization" | "audit" | "categories";
+type Section = "overview" | "marketplace" | "requests" | "offers" | "users" | "monetization" | "audit" | "categories";
 
 interface AdminLogEntry {
   id: string; action: string; target: string;
@@ -315,9 +316,8 @@ function LoginGate({ onSuccess }: { onSuccess: () => void }) {
    SIDEBAR
    ════════════════════════════════════════════════════════════════════ */
 const NAV_ITEMS: { id: Section; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { id: "overview",     label: "Umumiy ko'rinish", icon: LayoutDashboard },
-  { id: "requests",     label: "So'rovlar",         icon: ClipboardList   },
-  { id: "offers",       label: "Takliflar",          icon: MessageSquare   },
+  { id: "overview",     label: "Umumiy ko'rinish",  icon: LayoutDashboard },
+  { id: "marketplace",  label: "Bozor markazi",      icon: Store           },
   { id: "users",        label: "Foydalanuvchilar",   icon: Users           },
   { id: "monetization", label: "Monetizatsiya",      icon: CreditCard      },
   { id: "audit",        label: "Audit log",          icon: FileText        },
@@ -1084,6 +1084,734 @@ function AdminUserProfileModal({
           )}
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   MARKETPLACE SECTION — Unified Request + Offers Control Center
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Shared admin-chat interfaces (read from hormang_chats) ───────── */
+interface AdminChatMsg {
+  id: string;
+  sender: "customer" | "master" | "system";
+  text: string;
+  timestamp: string;
+  attachment?: { type: "image" | "file"; url: string };
+}
+interface AdminChatRow {
+  id: string;
+  requestId: string;
+  masterId: string;
+  masterName?: string;
+  customerName?: string;
+  messages: AdminChatMsg[];
+}
+
+/* ── Kanban column classifier ─────────────────────────────────────── */
+type KanbanCol = "new" | "incoming" | "assigned" | "completed" | "problem";
+function mktKanbanCol(req: CustomerRequest, offers: BuyerOffer[]): KanbanCol {
+  if (req.status === "completed") return "completed";
+  if (req.status === "cancelled") return "problem";
+  if (offers.some((o) => o.status === "accepted" || o.status === "in_progress")) return "assigned";
+  if (offers.length > 0) return "incoming";
+  const ageH = (Date.now() - new Date(req.createdAt).getTime()) / 3_600_000;
+  if (ageH > 1) return "problem";
+  return "new";
+}
+
+/* ── Small reusable cards (marketplace-specific) ─────────────────── */
+function MktInfoCard({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
+  return (
+    <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-1">{label}</p>
+      <div className="flex items-center gap-1.5">
+        {icon && <span className="text-gray-400 flex-shrink-0">{icon}</span>}
+        <p className="text-sm font-extrabold text-gray-800 truncate">{value}</p>
+      </div>
+    </div>
+  );
+}
+function MktMetricCard({ label, value, unit, color }: { label: string; value: string; unit?: string; color: string }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-1">{label}</p>
+      <p className={`text-xl font-extrabold ${color}`}>
+        {value}
+        {unit && <span className="text-sm font-semibold text-gray-400 ml-1">{unit}</span>}
+      </p>
+    </div>
+  );
+}
+
+/* ── Marketplace Table ────────────────────────────────────────────── */
+type MktRow = { request: CustomerRequest; offers: BuyerOffer[]; acceptedOffer?: BuyerOffer; col: KanbanCol; chat?: AdminChatRow };
+function MarketplaceTable({ rows, onOpen, onDelete }: {
+  rows: MktRow[];
+  onOpen: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  if (rows.length === 0) return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+      <Inbox className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+      <p className="text-gray-400 font-semibold">So'rovlar topilmadi</p>
+    </div>
+  );
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100 bg-red-50/40">
+              {["Xizmat / Toifa", "Mijoz", "Joylashuv", "Takliflar", "Holat", "Tanlangan ijrochi", "Vaqt", "Amallar"].map((h) => (
+                <th key={h} className="text-left text-[10px] font-bold text-red-400 uppercase tracking-widest px-4 py-3 whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {rows.map(({ request: r, offers, acceptedOffer, col }) => (
+              <tr key={r.id} className="hover:bg-red-50/20 transition-colors cursor-pointer" onClick={() => onOpen(r.id)}>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base">{r.emoji}</span>
+                    <div>
+                      <p className="font-semibold text-gray-800 text-xs leading-tight">{r.categoryName}</p>
+                      <p className="text-gray-400 text-[10px] font-mono">{r.id.slice(0, 8)}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <p className="text-xs font-semibold text-gray-700 max-w-[90px] truncate">
+                    {r.customerName ?? <span className="text-gray-300 italic">Noma'lum</span>}
+                  </p>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1 text-xs text-gray-500">
+                    <MapPin className="w-3 h-3 text-red-400 flex-shrink-0" />
+                    <span className="max-w-[90px] truncate">{r.district ?? r.region ?? locationFrom(r.answers)}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1">
+                    <span className={`font-extrabold text-sm ${offers.length > 0 ? "text-red-600" : "text-gray-300"}`}>{offers.length}</span>
+                    {col === "problem" && offers.length === 0 && (
+                      <TriangleAlert className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
+                <td className="px-4 py-3">
+                  {acceptedOffer ? (
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0"
+                        style={{ background: acceptedOffer.masterColor ?? "#DC2626" }}>
+                        {acceptedOffer.masterInitials}
+                      </div>
+                      <p className="text-xs font-semibold text-gray-700 max-w-[80px] truncate">{acceptedOffer.masterName}</p>
+                    </div>
+                  ) : <span className="text-gray-300 text-xs">—</span>}
+                </td>
+                <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{timeAgo(r.createdAt)}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => onOpen(r.id)}
+                      className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors" title="Boshqarish">
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => onDelete(r.id)}
+                      className="p-1.5 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors" title="O'chirish">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ── Marketplace Kanban ───────────────────────────────────────────── */
+const KANBAN_COL_DEFS: { key: KanbanCol; label: string; color: string; bg: string; border: string }[] = [
+  { key: "new",       label: "Yangi",            color: "text-blue-700",    bg: "bg-blue-50",    border: "border-blue-100"   },
+  { key: "incoming",  label: "Takliflar keldi",  color: "text-amber-700",   bg: "bg-amber-50",   border: "border-amber-100"  },
+  { key: "assigned",  label: "Tayinlangan",      color: "text-violet-700",  bg: "bg-violet-50",  border: "border-violet-100" },
+  { key: "completed", label: "Tugallangan",      color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-100"},
+  { key: "problem",   label: "Muammoli",         color: "text-rose-700",    bg: "bg-rose-50",    border: "border-rose-100"   },
+];
+function MarketplaceKanban({ rows, onOpen }: { rows: MktRow[]; onOpen: (id: string) => void }) {
+  return (
+    <div className="grid grid-cols-5 gap-3 min-h-[320px]">
+      {KANBAN_COL_DEFS.map((col) => {
+        const colRows = rows.filter((r) => r.col === col.key);
+        return (
+          <div key={col.key} className="flex flex-col gap-2">
+            <div className={`rounded-xl px-3 py-2 border ${col.bg} ${col.border}`}>
+              <p className={`text-[11px] font-extrabold ${col.color} uppercase tracking-wide`}>{col.label}</p>
+              <p className="text-xs text-gray-500 font-semibold">{colRows.length} ta</p>
+            </div>
+            <div className="space-y-2 flex-1">
+              {colRows.map(({ request: r, offers }) => (
+                <button key={r.id} onClick={() => onOpen(r.id)}
+                  className="w-full text-left bg-white rounded-xl border border-gray-100 p-3 hover:border-red-300 hover:shadow-sm transition-all shadow-xs">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-sm flex-shrink-0">{r.emoji}</span>
+                    <p className="text-xs font-extrabold text-gray-800 leading-tight truncate">{r.categoryName}</p>
+                  </div>
+                  <p className="text-[11px] text-gray-500 truncate mb-2">{r.customerName ?? "Noma'lum"}</p>
+                  <div className="flex items-center justify-between">
+                    <StatusBadge status={r.status} />
+                    <span className={`text-[11px] font-bold ${offers.length > 0 ? "text-red-600" : "text-gray-300"}`}>
+                      {offers.length} taklif
+                    </span>
+                  </div>
+                </button>
+              ))}
+              {colRows.length === 0 && (
+                <div className="rounded-xl border-2 border-dashed border-gray-100 p-4 text-center">
+                  <p className="text-[11px] text-gray-300 font-semibold">Bo'sh</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Request Command Center Modal ────────────────────────────────── */
+function RequestCommandCenter({ row, onClose, onAcceptOffer, onRejectOffer, onRemoveOffer, onUpdateStatus, onDelete }: {
+  row: MktRow;
+  onClose: () => void;
+  onAcceptOffer: (offerId: string, requestId: string) => void;
+  onRejectOffer: (offerId: string) => void;
+  onRemoveOffer: (offerId: string) => void;
+  onUpdateStatus: (reqId: string, status: string) => void;
+  onDelete: (reqId: string) => void;
+}) {
+  const [tab, setTab] = useState<"overview" | "offers" | "timeline" | "chat" | "metrics">("overview");
+  const { request: r, offers, acceptedOffer, chat } = row;
+
+  const avgPrice = offers.length > 0 ? offers.reduce((s, o) => s + o.price, 0) / offers.length : 0;
+  const minPrice = offers.length > 0 ? Math.min(...offers.map((o) => o.price)) : 0;
+  const maxPrice = offers.length > 0 ? Math.max(...offers.map((o) => o.price)) : 0;
+  const sortedOffers = [...offers].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  const firstOfferMs = sortedOffers.length > 0
+    ? new Date(sortedOffers[0].createdAt).getTime() - new Date(r.createdAt).getTime()
+    : null;
+
+  /* ── Timeline events ── */
+  const timeline: { time: string; label: string; icon: string }[] = [
+    { time: r.createdAt, label: "So'rov yaratildi", icon: "📋" },
+    ...sortedOffers.map((o) => ({
+      time: o.createdAt,
+      label: `Taklif keldi — ${o.masterName} (${o.priceLabel ?? fmtMoney(o.price)})`,
+      icon: "💼",
+    })),
+  ];
+  if (acceptedOffer) timeline.push({
+    time: acceptedOffer.createdAt,
+    label: `Taklif qabul qilindi — ${acceptedOffer.masterName}`,
+    icon: "✅",
+  });
+  if (r.status === "completed") timeline.push({ time: r.createdAt, label: "Xizmat tugallandi", icon: "🎉" });
+  timeline.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+  const TABS = [
+    { id: "overview" as const,  label: "Umumiy" },
+    { id: "offers"   as const,  label: `Takliflar (${offers.length})` },
+    { id: "timeline" as const,  label: "Timeline" },
+    { id: "chat"     as const,  label: "Suhbat" },
+    { id: "metrics"  as const,  label: "Metrikalar" },
+  ];
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, y: 40, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 40, scale: 0.97 }}
+        transition={{ type: "spring", stiffness: 380, damping: 32 }}
+        className="fixed inset-x-0 top-[4vh] bottom-0 z-[71] flex justify-center pointer-events-none"
+      >
+        <div
+          className="bg-white w-full max-w-3xl rounded-t-3xl flex flex-col shadow-2xl overflow-hidden pointer-events-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 flex-shrink-0">
+            <span className="text-2xl">{r.emoji}</span>
+            <div className="flex-1 min-w-0">
+              <p className="font-extrabold text-gray-900 text-base leading-tight">{r.categoryName}</p>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <StatusBadge status={r.status} />
+                <p className="text-[11px] text-gray-400 font-mono">{r.id.slice(0, 12)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {r.status === "open" && (
+                <>
+                  <button onClick={() => { onUpdateStatus(r.id, "completed"); onClose(); }}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 border border-emerald-100 transition-colors">
+                    Tugallangan
+                  </button>
+                  <button onClick={() => { onUpdateStatus(r.id, "cancelled"); onClose(); }}
+                    className="px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 text-xs font-bold hover:bg-amber-100 border border-amber-100 transition-colors">
+                    Bekor qilish
+                  </button>
+                </>
+              )}
+              <button onClick={() => { onDelete(r.id); onClose(); }}
+                className="p-2 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors" title="O'chirish">
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <button onClick={onClose}
+                className="p-2 rounded-xl bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex items-center gap-1 px-6 py-2.5 border-b border-gray-100 flex-shrink-0 overflow-x-auto">
+            {TABS.map((t) => (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${tab === t.id ? "bg-red-600 text-white" : "text-gray-500 hover:bg-gray-100"}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+
+            {/* ── OVERVIEW ── */}
+            {tab === "overview" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <MktInfoCard label="Mijoz" value={r.customerName ?? "Noma'lum"} />
+                  <MktInfoCard label="Joylashuv" value={r.district ?? r.region ?? locationFrom(r.answers)} icon={<MapPin className="w-3.5 h-3.5" />} />
+                  <MktInfoCard label="Byudjet" value={budgetLabel(r.answers)} icon={<Wallet className="w-3.5 h-3.5" />} />
+                  <MktInfoCard label="Shoshilinchlik" value={urgencyFrom(r.answers)} icon={<Clock className="w-3.5 h-3.5" />} />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">So'rov tafsilotlari</p>
+                  <div className="bg-gray-50 rounded-2xl p-4 space-y-1.5">
+                    {Object.entries(r.answers).map(([k, v]) => v ? (
+                      <div key={k} className="flex gap-2">
+                        <span className="text-[11px] font-bold text-gray-400 min-w-[110px] capitalize flex-shrink-0">{k.replace(/_/g, " ")}:</span>
+                        <span className="text-[11px] text-gray-700 break-all">{String(v)}</span>
+                      </div>
+                    ) : null)}
+                  </div>
+                </div>
+                {Array.isArray((r as any).requestPhotos) && (r as any).requestPhotos.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Rasmlar ({(r as any).requestPhotos.length})</p>
+                    <div className="grid grid-cols-5 gap-2">
+                      {((r as any).requestPhotos as string[]).map((url: string, i: number) => (
+                        <a key={i} href={url} target="_blank" rel="noreferrer">
+                          <img src={url} alt={`Photo ${i + 1}`} className="aspect-square object-cover rounded-xl border border-gray-200 hover:opacity-90 transition-opacity" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── OFFERS ── */}
+            {tab === "offers" && (
+              <div className="space-y-3">
+                {offers.length === 0 ? (
+                  <div className="text-center py-10">
+                    <Inbox className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                    <p className="text-gray-400 text-sm font-semibold">Hali hech qanday taklif yo'q</p>
+                  </div>
+                ) : sortedOffers.map((o) => (
+                  <div key={o.id} className={`bg-white border rounded-2xl p-4 ${o.status === "accepted" ? "border-emerald-300 bg-emerald-50/20" : o.status === "rejected" ? "border-rose-200 opacity-60" : "border-gray-100"}`}>
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                        style={{ background: o.masterColor ?? "#DC2626" }}>
+                        {o.masterInitials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <p className="font-extrabold text-gray-900 text-sm">{o.masterName}</p>
+                          <StatusBadge status={o.status} />
+                        </div>
+                        <p className="text-red-600 font-extrabold text-base mt-0.5">{o.priceLabel ?? fmtMoney(o.price)}</p>
+                        {o.completionTime && <p className="text-xs text-gray-500 mt-0.5">⏱ {o.completionTime}</p>}
+                        {o.message && <p className="text-sm text-gray-700 mt-2 leading-relaxed">{o.message}</p>}
+                        {Array.isArray((o as any).fileUrls) && (o as any).fileUrls.length > 0 && (
+                          <div className="flex gap-2 mt-2 flex-wrap">
+                            {((o as any).fileUrls as string[]).slice(0, 3).map((url: string, i: number) => (
+                              <img key={i} src={url} alt="" className="w-14 h-14 object-cover rounded-xl border border-gray-200" />
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between mt-3">
+                          <p className="text-[11px] text-gray-400">{timeAgo(o.createdAt)}</p>
+                          <div className="flex items-center gap-1">
+                            {o.status === "pending" && (
+                              <>
+                                <button onClick={() => onAcceptOffer(o.id, r.id)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-bold hover:bg-emerald-100 border border-emerald-200 transition-colors">
+                                  <Check className="w-3 h-3" /> Qabul
+                                </button>
+                                <button onClick={() => onRejectOffer(o.id)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 text-rose-600 text-[11px] font-bold hover:bg-rose-100 border border-rose-200 transition-colors">
+                                  <X className="w-3 h-3" /> Rad
+                                </button>
+                              </>
+                            )}
+                            <button onClick={() => onRemoveOffer(o.id)}
+                              className="p-1.5 rounded-lg bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-red-500 transition-colors border border-gray-200">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ── TIMELINE ── */}
+            {tab === "timeline" && (
+              <div className="space-y-3">
+                {timeline.map((ev, i) => (
+                  <div key={i} className="flex gap-4 items-start">
+                    <div className="flex flex-col items-center">
+                      <span className="text-xl">{ev.icon}</span>
+                      {i < timeline.length - 1 && <div className="w-px h-6 bg-gray-200 mt-1" />}
+                    </div>
+                    <div className="pb-2">
+                      <p className="text-sm font-semibold text-gray-800">{ev.label}</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">{fmtDate(ev.time)}</p>
+                    </div>
+                  </div>
+                ))}
+                {timeline.length === 0 && (
+                  <p className="text-gray-400 text-sm text-center py-8">Faoliyat yo'q</p>
+                )}
+              </div>
+            )}
+
+            {/* ── CHAT ── */}
+            {tab === "chat" && (
+              <div>
+                {!chat || chat.messages.length === 0 ? (
+                  <div className="text-center py-10">
+                    <MessageSquare className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                    <p className="text-gray-400 text-sm font-semibold">Suhbat topilmadi</p>
+                    <p className="text-gray-300 text-xs mt-1">Bu so'rov bo'yicha hali suhbat boshlangan emas</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wide mb-3">
+                      {chat.masterName ?? "Ijrochi"} ↔ {r.customerName ?? "Xaridor"} · {chat.messages.length} xabar
+                    </p>
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                      {chat.messages.map((msg) => {
+                        if (msg.sender === "system") return (
+                          <div key={msg.id} className="text-center">
+                            <span className="text-[11px] text-gray-400 bg-gray-100 px-3 py-1 rounded-full">{msg.text}</span>
+                          </div>
+                        );
+                        const isCustomer = msg.sender === "customer";
+                        return (
+                          <div key={msg.id} className={`flex ${isCustomer ? "justify-end" : "justify-start"}`}>
+                            <div className={`max-w-[70%] rounded-2xl overflow-hidden text-sm ${isCustomer ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-800"}`}>
+                              <div className="px-3 pt-2 pb-0.5">
+                                <p className="text-[10px] font-bold opacity-60">{isCustomer ? (r.customerName ?? "Xaridor") : (chat.masterName ?? "Ijrochi")}</p>
+                              </div>
+                              {msg.attachment?.type === "image" && (
+                                <img src={msg.attachment.url} alt="" className="max-w-full" style={{ display: "block" }} />
+                              )}
+                              <div className="px-3 pb-2">
+                                {msg.text && <p style={{ whiteSpace: "pre-wrap" }}>{msg.text}</p>}
+                                <p className="text-[10px] mt-1 opacity-50 text-right">{timeAgo(msg.timestamp)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* ── METRICS ── */}
+            {tab === "metrics" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <MktMetricCard label="Jami takliflar" value={offers.length.toString()} unit="ta" color="text-red-600" />
+                  <MktMetricCard label="O'rtacha narx" value={offers.length > 0 ? fmtMoney(Math.round(avgPrice)) : "—"} color="text-amber-600" />
+                  <MktMetricCard label="Eng arzon taklif" value={offers.length > 0 ? fmtMoney(minPrice) : "—"} color="text-emerald-600" />
+                  <MktMetricCard label="Eng qimmat taklif" value={offers.length > 0 ? fmtMoney(maxPrice) : "—"} color="text-violet-600" />
+                </div>
+                <div className="bg-gray-50 rounded-2xl p-4">
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-3">Javob ko'rsatkichlari</p>
+                  <div className="space-y-2">
+                    {[
+                      {
+                        label: "Birinchi taklifgacha vaqt",
+                        value: firstOfferMs !== null
+                          ? firstOfferMs < 3_600_000
+                            ? `${Math.round(firstOfferMs / 60_000)} daqiqa`
+                            : `${Math.round(firstOfferMs / 3_600_000)} soat`
+                          : "—"
+                      },
+                      { label: "Qabul qilingan takliflar", value: `${offers.filter((o) => o.status === "accepted").length} / ${offers.length}` },
+                      { label: "Rad etilgan takliflar", value: String(offers.filter((o) => o.status === "rejected").length) },
+                      { label: "So'rov holati", value: r.status === "completed" ? "Tugallangan ✅" : r.status === "accepted" ? "Qabul qilingan" : r.status === "cancelled" ? "Bekor qilingan" : "Ochiq" },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="flex justify-between text-sm gap-3">
+                        <span className="text-gray-500">{label}</span>
+                        <span className="font-bold text-gray-800 text-right">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
+/* ── Main Marketplace Section ─────────────────────────────────────── */
+function MarketplaceSection({ refreshKey }: { refreshKey: number }) {
+  const [view, setView] = useState<"table" | "kanban">("table");
+  const [requests, setRequests] = useState<CustomerRequest[]>([]);
+  const [offers, setOffers] = useState<BuyerOffer[]>([]);
+  const [chats, setChats] = useState<AdminChatRow[]>([]);
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterCat, setFilterCat] = useState("all");
+  const [sortBy, setSortBy] = useState<"newest" | "offers" | "budget">("newest");
+  const [showExceptions, setShowExceptions] = useState(false);
+  const [commandId, setCommandId] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    const reqs = readKey<CustomerRequest[]>(K.REQUESTS, [])
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const ofrs = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
+    const cts = readKey<AdminChatRow[]>(K.CHATS_BUYER, []);
+    setRequests(reqs);
+    setOffers(ofrs);
+    setChats(cts);
+  }, []);
+
+  useEffect(() => { load(); }, [load, refreshKey]);
+
+  const offersFor = (requestId: string) => offers.filter((o) => o.requestId === requestId);
+  const chatFor = (requestId: string) => chats.find((c) => c.requestId === requestId);
+
+  function acceptOffer(offerId: string, requestId: string) {
+    const updated = offers.map((o) => ({
+      ...o,
+      status: o.requestId === requestId ? (o.id === offerId ? "accepted" : o.status === "pending" ? "rejected" : o.status) : o.status,
+    }));
+    const updatedReqs = requests.map((r) => r.id === requestId ? { ...r, status: "accepted" } : r);
+    writeKey(K.OFFERS_BUYER, updated);
+    writeKey(K.REQUESTS, updatedReqs);
+    setOffers(updated);
+    setRequests(updatedReqs);
+    emitStoreChange();
+    logAction("ADMIN_ACCEPT_OFFER", offerId, `RequestId: ${requestId}`);
+  }
+  function rejectOffer(offerId: string) {
+    const updated = offers.map((o) => o.id === offerId ? { ...o, status: "rejected" } : o);
+    writeKey(K.OFFERS_BUYER, updated);
+    setOffers(updated);
+    emitStoreChange();
+    logAction("ADMIN_REJECT_OFFER", offerId, "");
+  }
+  function removeOffer(offerId: string) {
+    if (!confirm("Bu taklifni o'chirishni tasdiqlaysizmi?")) return;
+    const updated = offers.filter((o) => o.id !== offerId);
+    writeKey(K.OFFERS_BUYER, updated);
+    setOffers(updated);
+    emitStoreChange();
+    logAction("ADMIN_REMOVE_OFFER", offerId, "");
+  }
+  function updateRequestStatus(reqId: string, status: string) {
+    const updated = requests.map((r) => r.id === reqId ? { ...r, status } : r);
+    writeKey(K.REQUESTS, updated);
+    setRequests(updated);
+    emitStoreChange();
+    logAction("ADMIN_UPDATE_REQUEST", reqId, `Status → ${status}`);
+  }
+  function deleteRequest(reqId: string) {
+    if (!confirm("Bu so'rovni o'chirish tasdiqlaysizmi?\nBog'liq takliflar ham ko'rinmay qoladi.")) return;
+    writeKey(K.REQUESTS, requests.filter((r) => r.id !== reqId));
+    writeKey(K.OFFERS_BUYER, offers.filter((o) => o.requestId !== reqId));
+    setRequests((prev) => prev.filter((r) => r.id !== reqId));
+    setOffers((prev) => prev.filter((o) => o.requestId !== reqId));
+    if (commandId === reqId) setCommandId(null);
+    emitStoreChange();
+    logAction("ADMIN_DELETE_REQUEST", reqId, "");
+  }
+
+  /* ── Build rows ── */
+  const allRows: MktRow[] = requests.map((r) => {
+    const ro = offersFor(r.id);
+    return {
+      request: r,
+      offers: ro,
+      acceptedOffer: ro.find((o) => o.status === "accepted"),
+      col: mktKanbanCol(r, ro),
+      chat: chatFor(r.id),
+    };
+  });
+
+  const exceptionRows = allRows.filter((r) => r.col === "problem");
+
+  let filtered = showExceptions ? exceptionRows : allRows;
+  filtered = filtered.filter((r) => {
+    const q = search.toLowerCase();
+    const req = r.request;
+    const name = (req.customerName ?? "").toLowerCase();
+    return (
+      (!q || req.categoryName.toLowerCase().includes(q) || req.id.includes(q) || name.includes(q))
+      && (filterStatus === "all" || req.status === filterStatus)
+      && (filterCat === "all" || req.categoryName === filterCat)
+    );
+  });
+  if (sortBy === "offers")  filtered = [...filtered].sort((a, b) => b.offers.length - a.offers.length);
+  if (sortBy === "budget")  filtered = [...filtered].sort((a, b) => ((b.request.answers["budget"] as number) || 0) - ((a.request.answers["budget"] as number) || 0));
+
+  const commandRow = commandId ? allRows.find((r) => r.request.id === commandId) ?? null : null;
+
+  return (
+    <div className="space-y-4">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-lg font-extrabold text-gray-900">Bozor markazi</h2>
+          <p className="text-sm text-gray-500">
+            {filtered.length} / {allRows.length} ta so'rov · {offers.length} ta taklif
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {exceptionRows.length > 0 && (
+            <button
+              onClick={() => setShowExceptions((v) => !v)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold border transition-colors ${
+                showExceptions
+                  ? "bg-rose-600 text-white border-rose-600"
+                  : "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100"
+              }`}
+            >
+              <TriangleAlert className="w-3.5 h-3.5" />
+              Muammoli ({exceptionRows.length})
+            </button>
+          )}
+          <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden">
+            {(["table", "kanban"] as const).map((v) => (
+              <button key={v} onClick={() => setView(v)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-colors ${view === v ? "bg-red-600 text-white" : "text-gray-500 hover:bg-gray-50"}`}>
+                {v === "table" ? <><ClipboardList className="w-3.5 h-3.5" /> Jadval</> : <><LayoutGrid className="w-3.5 h-3.5" /> Kanban</>}
+              </button>
+            ))}
+          </div>
+          <button onClick={load} className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 transition-colors">
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* ── Pipeline stats strip ── */}
+      <div className="grid grid-cols-5 gap-2">
+        {KANBAN_COL_DEFS.map((col) => {
+          const count = allRows.filter((r) => r.col === col.key).length;
+          return (
+            <button key={col.key}
+              onClick={() => { setShowExceptions(false); setFilterStatus("all"); }}
+              className={`rounded-xl border p-2.5 text-left hover:shadow-sm transition-all ${col.bg} ${col.border}`}>
+              <p className={`text-lg font-extrabold ${col.color}`}>{count}</p>
+              <p className="text-[10px] text-gray-500 font-semibold truncate">{col.label}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Filters ── */}
+      <div className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Toifa, mijoz yoki ID..."
+            className={`${inputCls} w-full pl-9`} />
+        </div>
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={inputCls}>
+          <option value="all">Barcha holatlar</option>
+          <option value="open">Ochiq</option>
+          <option value="accepted">Qabul</option>
+          <option value="completed">Tugallangan</option>
+          <option value="cancelled">Bekor</option>
+        </select>
+        <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)} className={inputCls}>
+          <option value="all">Barcha toifalar</option>
+          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className={inputCls}>
+          <option value="newest">Yangi avval</option>
+          <option value="offers">Ko'p takliflar</option>
+          <option value="budget">Yuqori byudjet</option>
+        </select>
+      </div>
+
+      {/* ── Exception banner ── */}
+      {showExceptions && (
+        <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3">
+          <TriangleAlert className="w-5 h-5 text-rose-500 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-bold text-rose-700">Muammoli holatlar filtri yoqilgan</p>
+            <p className="text-xs text-rose-500">Taklif olmagan (1+ soat) va bekor qilingan so'rovlar ko'rsatilmoqda</p>
+          </div>
+          <button onClick={() => setShowExceptions(false)} className="ml-auto text-rose-400 hover:text-rose-600">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* ── Main view ── */}
+      {view === "table"
+        ? <MarketplaceTable rows={filtered} onOpen={setCommandId} onDelete={deleteRequest} />
+        : <MarketplaceKanban rows={filtered} onOpen={setCommandId} />
+      }
+
+      {/* ── Command Center Modal ── */}
+      <AnimatePresence>
+        {commandRow && (
+          <RequestCommandCenter
+            key={commandId!}
+            row={commandRow}
+            onClose={() => setCommandId(null)}
+            onAcceptOffer={acceptOffer}
+            onRejectOffer={rejectOffer}
+            onRemoveOffer={removeOffer}
+            onUpdateStatus={updateRequestStatus}
+            onDelete={deleteRequest}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -2392,6 +3120,7 @@ export default function AdminDashboard() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.18 }}>
               {section === "overview"     && <OverviewSection     {...sectionProps} />}
+              {section === "marketplace"  && <MarketplaceSection  {...sectionProps} />}
               {section === "requests"     && <RequestsSection     {...sectionProps} />}
               {section === "offers"       && <OffersSection       {...sectionProps} />}
               {section === "users"        && <UsersSection        {...sectionProps} />}
