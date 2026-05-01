@@ -31,7 +31,9 @@ import {
   Store, LayoutGrid, TriangleAlert, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { onStoreChange, emitStoreChange } from "@/lib/store-events";
-import { formatDateTime, formatMonthYear } from "@/lib/date-utils";
+import { formatDateTime, formatMonthYear, formatDate } from "@/lib/date-utils";
+import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questionnaire-store";
+import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
 import {
   getAllTangaTransactions, getTangaTransactions,
@@ -180,6 +182,43 @@ function timeAgo(iso: string) {
   if (d < 1440) return `${Math.floor(d / 60)} soat oldin`;
   return `${Math.floor(d / 1440)} kun oldin`;
 }
+
+/* ─── Request Q&A helpers (mirrors RequestPreviewModal) ─────────── */
+const MKT_SKIP_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district"]);
+
+function mktFormatAnswer(
+  value: unknown,
+  options?: { label: string; value: string; type?: string }[],
+  otherText?: string,
+): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "string" && value.startsWith("data:")) return "__IMAGE__";
+  if (typeof value === "boolean") return value ? "Ha" : "Yo'q";
+  if (typeof value === "number")
+    return value.toLocaleString("uz-Latn-UZ") + (String(value).length > 3 ? " so'm" : "");
+  const otherOpt = options?.find((o) => o.type === "other");
+  if (typeof value === "string") {
+    if (otherOpt && value === otherOpt.value && otherText) return otherText;
+    return options?.find((o) => o.value === value)?.label ?? value;
+  }
+  if (Array.isArray(value)) {
+    return (value as string[])
+      .map((v) => {
+        if (otherOpt && v === otherOpt.value && otherText) return otherText;
+        return options?.find((o) => o.value === v)?.label ?? v;
+      })
+      .join(", ");
+  }
+  return String(value);
+}
+
+const MKT_URGENCY_MAP: Record<string, { label: string; color: string }> = {
+  today_tomorrow: { label: "Bugun / ertaga",  color: "text-red-600 bg-red-50 border-red-100"       },
+  "3_7_days":     { label: "3–7 kun",         color: "text-orange-600 bg-orange-50 border-orange-100" },
+  "1_2_weeks":    { label: "1–2 hafta",       color: "text-yellow-700 bg-yellow-50 border-yellow-100" },
+  "1_month":      { label: "1 oy",            color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
+  flexible:       { label: "Shoshilinch emas", color: "text-gray-500 bg-gray-100 border-gray-200"   },
+};
 
 /* ─── Status badge ──────────────────────────────────────────────── */
 function StatusBadge({ status }: { status: string }) {
@@ -1304,6 +1343,34 @@ function RequestCommandCenter({ row, onClose, onAcceptOffer, onRejectOffer, onRe
     ? new Date(sortedOffers[0].createdAt).getTime() - new Date(r.createdAt).getTime()
     : null;
 
+  /* ── Q&A from questionnaire (mirrors RequestPreviewModal) ── */
+  const allQuestions = getAllQuestionsForCategory(r.categoryId);
+  const activeQuestions = collectActiveQuestions(allQuestions, (r.answers ?? {}) as Record<string, unknown>);
+  const qaPairs = activeQuestions
+    .filter((q) => !MKT_SKIP_KEYS.has(q.id))
+    .map((q) => {
+      const raw = r.answers?.[q.id];
+      if (raw === null || raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0)) return null;
+      const otherText = r.answers?.[q.id + "_other"] as string | undefined;
+      const formatted = mktFormatAnswer(raw, q.options, otherText);
+      if (formatted === "__IMAGE__") return null;
+      return { label: q.label, value: formatted };
+    })
+    .filter(Boolean) as { label: string; value: string }[];
+  const photoUrls = r.answers
+    ? getAnswerImageUrls(r.answers as Record<string, unknown>, r.requestPhotos)
+    : (r.requestPhotos ?? []);
+  const urgInfo = r.answers?.["urgency"]
+    ? (MKT_URGENCY_MAP[r.answers["urgency"] as string] ?? null) : null;
+  const location = [r.district, r.region].filter(Boolean).join(", ");
+  const budgetAnswer = r.answers?.["budget"];
+  const openToOffers = r.answers?.["budget_open"] as boolean | undefined;
+  const budgetDisplay = openToOffers
+    ? "Taklifga ochiq"
+    : typeof budgetAnswer === "number"
+    ? budgetAnswer.toLocaleString("uz-Latn-UZ") + " so'm"
+    : null;
+
   /* ── Timeline events ── */
   const timeline: { time: string; label: string; icon: string }[] = [
     { time: r.createdAt, label: "So'rov yaratildi", icon: "📋" },
@@ -1396,23 +1463,75 @@ function RequestCommandCenter({ row, onClose, onAcceptOffer, onRejectOffer, onRe
 
             {/* ── OVERVIEW ── */}
             {tab === "overview" && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <MktInfoCard label="Mijoz" value={r.customerName ?? "Noma'lum"} />
-                  <MktInfoCard label="Joylashuv" value={r.district ?? r.region ?? locationFrom(r.answers)} icon={<MapPin className="w-3.5 h-3.5" />} />
-                  <MktInfoCard label="Byudjet" value={budgetLabel(r.answers)} icon={<Wallet className="w-3.5 h-3.5" />} />
-                  <MktInfoCard label="Shoshilinchlik" value={urgencyFrom(r.answers)} icon={<Clock className="w-3.5 h-3.5" />} />
-                </div>
-                {Array.isArray((r as any).requestPhotos) && (r as any).requestPhotos.length > 0 && (
-                  <div>
-                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">Rasmlar ({(r as any).requestPhotos.length})</p>
-                    <div className="grid grid-cols-5 gap-2">
-                      {((r as any).requestPhotos as string[]).map((url: string, i: number) => (
-                        <a key={i} href={url} target="_blank" rel="noreferrer">
-                          <img src={url} alt={`Photo ${i + 1}`} className="aspect-square object-cover rounded-xl border border-gray-200 hover:opacity-90 transition-opacity" />
-                        </a>
-                      ))}
+              <div className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
+
+                {/* Request top bar */}
+                <div className="px-4 pt-4 pb-3 border-b border-gray-100">
+                  <div className="flex items-start gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-white border border-gray-200 flex items-center justify-center flex-shrink-0 text-xl shadow-sm">
+                      {r.emoji}
                     </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-extrabold text-sm text-gray-900">{r.categoryName}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{formatDate(r.createdAt)}</p>
+                      {r.customerName && (
+                        <p className="text-xs text-gray-500 mt-0.5 font-semibold">👤 {r.customerName}</p>
+                      )}
+                    </div>
+                    {urgInfo && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${urgInfo.color}`}>
+                        <Clock className="w-3 h-3 inline mr-1" />
+                        {urgInfo.label}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Key meta: location + budget */}
+                  {(location || budgetDisplay) && (
+                    <div className="flex flex-wrap gap-3 mt-3">
+                      {location && (
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                          <MapPin className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                          <span>{location}</span>
+                        </div>
+                      )}
+                      {budgetDisplay && (
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-red-700">
+                          <DollarSign className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>{budgetDisplay}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Q&A pairs */}
+                {qaPairs.length > 0 && (
+                  <div className="px-4 py-3 space-y-2.5 border-b border-gray-100">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Savol · Javob</p>
+                    {qaPairs.map((pair, i) => (
+                      <div key={i} className="flex gap-2 text-xs">
+                        <div className="flex-shrink-0 w-1 rounded-full bg-red-200 self-stretch" />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-gray-400 font-medium">{pair.label}:</span>
+                          <span className="font-bold text-gray-800 ml-1">{pair.value}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Customer uploaded photos */}
+                {photoUrls.length > 0 && (
+                  <div className="px-4 py-3">
+                    <ImageGrid urls={photoUrls} label="Mijoz rasmlari" columns={4} />
+                  </div>
+                )}
+
+                {/* Empty state */}
+                {qaPairs.length === 0 && photoUrls.length === 0 && (
+                  <div className="px-4 py-6 text-center">
+                    <p className="text-xs text-gray-400">Qo'shimcha ma'lumot yo'q</p>
                   </div>
                 )}
               </div>
