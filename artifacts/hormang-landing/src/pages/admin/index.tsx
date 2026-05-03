@@ -29,7 +29,7 @@ import {
   Shield, Trash2, Ban, CheckCircle2, Inbox, DollarSign,
   Bell, Menu, ChevronLeft, Plus, MapPin, Clock, Wallet,
   Store, LayoutGrid, TriangleAlert, ChevronDown, ChevronUp,
-  Flag, Tag, Star, UserCheck, Zap, Activity, StickyNote,
+  Flag, Tag, Star, UserCheck, Zap, Activity, StickyNote, Download,
 } from "lucide-react";
 import { onStoreChange, emitStoreChange } from "@/lib/store-events";
 import { formatDateTime, formatMonthYear, formatDate } from "@/lib/date-utils";
@@ -84,7 +84,7 @@ function resetPlatformData(): boolean {
   if (!confirm("⚠️ Barcha so'rovlar, takliflar, chatlar va foydalanuvchi ro'yxati o'chiriladi.\nFaqat joriy admin sessiyasi saqlanib qoladi.\n\nDavom etasizmi?")) return false;
   RESET_KEYS.forEach((key) => localStorage.removeItem(key));
   RESET_INIT_EMPTY.forEach((key) => localStorage.setItem(key, "[]"));
-  logAction("PLATFORM_RESET", "all", "Barcha platform ma'lumotlari tozalandi");
+  logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "PLATFORM_RESET", category: "admin", targetId: "all", targetType: "platform", description: "Barcha platform ma'lumotlari tozalandi" });
   emitStoreChange();
   return true;
 }
@@ -99,9 +99,20 @@ const CATEGORIES = [
 /* ─── Types ─────────────────────────────────────────────────────── */
 type Section = "overview" | "marketplace" | "requests" | "offers" | "users" | "monetization" | "audit" | "categories";
 
-interface AdminLogEntry {
-  id: string; action: string; target: string;
-  details: string; timestamp: string; adminUser: string;
+type AuditLogCategory   = "admin" | "marketplace" | "financial" | "referral" | "risk";
+type AuditLogActorRole  = "admin" | "provider" | "customer" | "system";
+type AuditLogTargetType = "user" | "request" | "offer" | "referral" | "tanga" | "platform" | "pricing";
+interface AuditLog {
+  id: string;
+  actorId: string;
+  actorRole: AuditLogActorRole;
+  action: string;
+  category: AuditLogCategory;
+  targetId?: string;
+  targetType?: AuditLogTargetType;
+  description: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
 }
 interface CustomerRequest {
   id: string; categoryId: string; categoryName: string; emoji: string;
@@ -159,13 +170,10 @@ function locationFrom(answers: Record<string, unknown>): string {
 }
 
 /* ─── Audit log ─────────────────────────────────────────────────── */
-function logAction(action: string, target: string, details: string) {
-  const entry: AdminLogEntry = {
-    id: uid(), action, target, details,
-    timestamp: new Date().toISOString(), adminUser: ADMIN_USER,
-  };
-  const log = readKey<AdminLogEntry[]>(K.ADMIN_LOG, []);
-  writeKey(K.ADMIN_LOG, [entry, ...log].slice(0, 500));
+function logAction(params: Omit<AuditLog, "id" | "createdAt">) {
+  const entry: AuditLog = { ...params, id: uid(), createdAt: new Date().toISOString() };
+  const log = readKey<AuditLog[]>(K.ADMIN_LOG, []);
+  writeKey(K.ADMIN_LOG, [entry, ...log].slice(0, 1000));
 }
 
 /* ─── User Metadata Helpers (flags / tags / notes / verified) ──── */
@@ -308,7 +316,7 @@ function LoginGate({ onSuccess }: { onSuccess: () => void }) {
     setTimeout(() => {
       if (username === ADMIN_USER && password === ADMIN_PASS) {
         setSession();
-        logAction("LOGIN", "admin", "Admin tizimga kirdi");
+        logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "LOGIN", category: "admin", description: "Admin tizimga kirdi" });
         onSuccess();
       } else {
         setError("Noto'g'ri login yoki parol");
@@ -685,7 +693,7 @@ function RequestsSection({ refreshKey }: { refreshKey: number }) {
     writeKey(K.REQUESTS, updated);
     setRequests(updated);
     emitStoreChange();
-    logAction("UPDATE_REQUEST_STATUS", id, `Status: ${status}`);
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "UPDATE_REQUEST_STATUS", category: "marketplace", targetId: id, targetType: "request", description: `Status o'zgartirildi: ${status}`, metadata: { newStatus: status } });
   }
   function deleteRequest(id: string) {
     if (!confirm("Bu so'rovni o'chirishni tasdiqlaysizmi?\nBarcha bog'liq takliflar ham ko'rinmay qoladi.")) return;
@@ -693,7 +701,7 @@ function RequestsSection({ refreshKey }: { refreshKey: number }) {
     writeKey(K.REQUESTS, updated);
     setRequests(updated);
     emitStoreChange();
-    logAction("DELETE_REQUEST", id, "So'rov o'chirildi");
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "DELETE_REQUEST", category: "marketplace", targetId: id, targetType: "request", description: "So'rov o'chirildi" });
   }
 
   const filtered = requests.filter((r) => {
@@ -1058,20 +1066,20 @@ function AdvancedUserDetailModal({
     const cur = u.flagCount ?? 0;
     const next = cur > 0 ? 0 : 1;
     setUserFlagCount(u.userId, next);
-    logAction(next > 0 ? "FLAG_USER" : "UNFLAG_USER", u.userId, `${u.name} ${next > 0 ? "flaglandi" : "flag olib tashlandi"}`);
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: next > 0 ? "FLAG_USER" : "UNFLAG_USER", category: "risk", targetId: u.userId, targetType: "user", description: `${u.name} ${next > 0 ? "flaglandi" : "flag olib tashlandi"}`, metadata: { userName: u.name, flagCount: next } });
     refreshMeta();
   }
   function handleVerifyToggle() {
     const next = !(u.verified ?? false);
     setUserVerifiedStatus(u.userId, next);
-    logAction(next ? "VERIFY_USER" : "UNVERIFY_USER", u.userId, `${u.name} ${next ? "tasdiqlandi" : "tasdiq bekor qilindi"}`);
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: next ? "VERIFY_USER" : "UNVERIFY_USER", category: "admin", targetId: u.userId, targetType: "user", description: `${u.name} ${next ? "tasdiqlandi" : "tasdiq bekor qilindi"}`, metadata: { userName: u.name, verified: next } });
     refreshMeta();
   }
   function handleAddNote() {
     const t = noteInput.trim();
     if (!t) return;
     addAdminNote(u.userId, t);
-    logAction("ADD_NOTE", u.userId, `Izoh: ${t.slice(0, 60)}`);
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADD_NOTE", category: "admin", targetId: u.userId, targetType: "user", description: `Izoh: ${t.slice(0, 60)}`, metadata: { userName: u.name } });
     setNoteInput("");
     refreshMeta();
   }
@@ -1085,7 +1093,7 @@ function AdvancedUserDetailModal({
     const cur = u.tags ?? [];
     if (!cur.includes(t)) {
       setUserTagsList(u.userId, [...cur, t]);
-      logAction("ADD_TAG", u.userId, `Tag: ${t}`);
+      logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADD_TAG", category: "admin", targetId: u.userId, targetType: "user", description: `Tag qo'shildi: ${t}`, metadata: { userName: u.name, tag: t } });
     }
     setTagInput("");
     refreshMeta();
@@ -2120,14 +2128,14 @@ function MarketplaceSection({ refreshKey }: { refreshKey: number }) {
     setOffers(updated);
     setRequests(updatedReqs);
     emitStoreChange();
-    logAction("ADMIN_ACCEPT_OFFER", offerId, `RequestId: ${requestId}`);
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_ACCEPT_OFFER", category: "marketplace", targetId: offerId, targetType: "offer", description: "Taklif qabul qilindi", metadata: { requestId } });
   }
   function rejectOffer(offerId: string) {
     const updated = offers.map((o) => o.id === offerId ? { ...o, status: "rejected" } : o);
     writeKey(K.OFFERS_BUYER, updated);
     setOffers(updated);
     emitStoreChange();
-    logAction("ADMIN_REJECT_OFFER", offerId, "");
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_REJECT_OFFER", category: "marketplace", targetId: offerId, targetType: "offer", description: "Taklif rad etildi" });
   }
   function removeOffer(offerId: string) {
     if (!confirm("Bu taklifni o'chirishni tasdiqlaysizmi?")) return;
@@ -2135,14 +2143,14 @@ function MarketplaceSection({ refreshKey }: { refreshKey: number }) {
     writeKey(K.OFFERS_BUYER, updated);
     setOffers(updated);
     emitStoreChange();
-    logAction("ADMIN_REMOVE_OFFER", offerId, "");
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_REMOVE_OFFER", category: "marketplace", targetId: offerId, targetType: "offer", description: "Taklif o'chirildi" });
   }
   function updateRequestStatus(reqId: string, status: string) {
     const updated = requests.map((r) => r.id === reqId ? { ...r, status } : r);
     writeKey(K.REQUESTS, updated);
     setRequests(updated);
     emitStoreChange();
-    logAction("ADMIN_UPDATE_REQUEST", reqId, `Status → ${status}`);
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_UPDATE_REQUEST", category: "marketplace", targetId: reqId, targetType: "request", description: `So'rov statusi yangilandi: ${status}`, metadata: { newStatus: status } });
   }
   function deleteRequest(reqId: string) {
     if (!confirm("Bu so'rovni o'chirish tasdiqlaysizmi?\nBog'liq takliflar ham ko'rinmay qoladi.")) return;
@@ -2152,7 +2160,7 @@ function MarketplaceSection({ refreshKey }: { refreshKey: number }) {
     setOffers((prev) => prev.filter((o) => o.requestId !== reqId));
     if (commandId === reqId) setCommandId(null);
     emitStoreChange();
-    logAction("ADMIN_DELETE_REQUEST", reqId, "");
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_DELETE_REQUEST", category: "marketplace", targetId: reqId, targetType: "request", description: "So'rov o'chirildi" });
   }
 
   /* ── Build rows ── */
@@ -2460,7 +2468,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
       u.userId === userId ? { ...u, status: next.has(userId) ? "suspended" : "active" } : u
     ));
     const u = users.find((x) => x.userId === userId);
-    logAction("TOGGLE_USER_STATUS", userId, `${u?.name ?? userId} holati o'zgartirildi`);
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: next.has(userId) ? "SUSPEND_USER" : "RESTORE_USER", category: "admin", targetId: userId, targetType: "user", description: `${u?.name ?? userId} ${next.has(userId) ? "to'xtatildi" : "faollashtirildi"}`, metadata: { userName: u?.name, suspended: next.has(userId) } });
   }
 
   function deleteUser(user: AdminUser) {
@@ -2478,7 +2486,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
     writeKey("hormang_admin_suspended_users", Array.from(next));
     // 4. Update local state
     setUsers((prev) => prev.filter((u) => u.userId !== user.userId));
-    logAction("DELETE_USER", user.userId, `${user.name} o'chirildi`);
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "DELETE_USER", category: "risk", targetId: user.userId, targetType: "user", description: `${user.name} o'chirildi`, metadata: { userName: user.name } });
     emitStoreChange();
   }
 
@@ -3490,10 +3498,17 @@ function TangaTransactionsPanel({ refreshKey }: { refreshKey: number }) {
    AUDIT LOG SECTION
    ════════════════════════════════════════════════════════════════════ */
 function AuditLogSection({ refreshKey }: { refreshKey: number }) {
-  const [log, setLog] = useState<AdminLogEntry[]>([]);
-  const [search, setSearch] = useState("");
+  const [log, setLog]                       = useState<AuditLog[]>([]);
+  const [search, setSearch]                 = useState("");
+  const [filterCategory, setFilterCategory] = useState<"all" | AuditLogCategory>("all");
+  const [filterActorRole, setFilterActorRole]   = useState<"all" | AuditLogActorRole>("all");
+  const [filterTargetType, setFilterTargetType] = useState<"all" | AuditLogTargetType>("all");
+  const [filterDate, setFilterDate]         = useState<"all" | "today" | "week" | "month">("all");
+  const [expandedId, setExpandedId]         = useState<string | null>(null);
+  const [page, setPage]                     = useState(1);
+  const PAGE_SIZE = 50;
 
-  const load = useCallback(() => { setLog(readKey<AdminLogEntry[]>(K.ADMIN_LOG, [])); }, []);
+  const load = useCallback(() => { setLog(readKey<AuditLog[]>(K.ADMIN_LOG, [])); }, []);
   useEffect(() => { load(); }, [load, refreshKey]);
 
   function clearLog() {
@@ -3501,71 +3516,291 @@ function AuditLogSection({ refreshKey }: { refreshKey: number }) {
     writeKey(K.ADMIN_LOG, []); setLog([]);
   }
 
+  function exportCSV() {
+    const rows = [["Vaqt", "Amal", "Toifa", "Aktor roli", "Nishon ID", "Nishon turi", "Tavsif"]];
+    filtered.forEach((e) => {
+      rows.push([e.createdAt, e.action, e.category, e.actorRole, e.targetId ?? "", e.targetType ?? "", e.description]);
+    });
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url; a.download = `hormang_audit_${Date.now()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /* ── Filtering ── */
+  const now = Date.now();
   const filtered = log.filter((e) => {
+    if (filterCategory   !== "all" && e.category   !== filterCategory)   return false;
+    if (filterActorRole  !== "all" && e.actorRole  !== filterActorRole)  return false;
+    if (filterTargetType !== "all" && e.targetType !== filterTargetType) return false;
+    if (filterDate !== "all") {
+      const age = now - new Date(e.createdAt).getTime();
+      if (filterDate === "today" && age > 86_400_000)    return false;
+      if (filterDate === "week"  && age > 7*86_400_000)  return false;
+      if (filterDate === "month" && age > 30*86_400_000) return false;
+    }
     const q = search.toLowerCase();
-    return !q || e.action.toLowerCase().includes(q) || e.target.includes(q) || e.details.toLowerCase().includes(q);
+    if (q && !e.action.toLowerCase().includes(q) && !(e.targetId ?? "").toLowerCase().includes(q) && !e.description.toLowerCase().includes(q)) return false;
+    return true;
   });
 
-  const ACTION_COLORS: Record<string, string> = {
-    LOGIN:                 "bg-red-50 text-red-700 border border-red-100",
-    LOGOUT:                "bg-rose-50 text-rose-500 border border-rose-100",
-    DELETE_REQUEST:        "bg-rose-100 text-rose-700 border border-rose-200",
-    UPDATE_REQUEST_STATUS: "bg-amber-50 text-amber-700 border border-amber-100",
-    UPDATE_OFFER_STATUS:   "bg-red-50 text-red-600 border border-red-100",
-    TOGGLE_USER_STATUS:    "bg-orange-50 text-orange-700 border border-orange-100",
-    UPDATE_PRICING:        "bg-emerald-50 text-emerald-700 border border-emerald-100",
-    ADD_PRICING_TIER:      "bg-teal-50 text-teal-700 border border-teal-100",
-    DELETE_PRICING_TIER:   "bg-rose-100 text-rose-600 border border-rose-200",
-    TOGGLE_PRICING_TIER:   "bg-orange-50 text-orange-600 border border-orange-100",
-    NAVIGATE:              "bg-gray-100 text-gray-500 border border-gray-200",
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  /* ── Summary metrics ── */
+  const todayCount     = log.filter((e) => (now - new Date(e.createdAt).getTime()) < 86_400_000).length;
+  const adminCount     = log.filter((e) => e.category === "admin").length;
+  const riskCount      = log.filter((e) => e.category === "risk").length;
+  const marketplaceCount = log.filter((e) => e.category === "marketplace").length;
+
+  /* ── Action config (color + dot) ── */
+  const ACTION_CFG: Record<string, { badge: string; dot: string }> = {
+    LOGIN:                 { badge: "bg-red-50 text-red-700 border border-red-100",            dot: "bg-red-400"     },
+    LOGOUT:                { badge: "bg-rose-50 text-rose-500 border border-rose-100",         dot: "bg-rose-400"    },
+    DELETE_REQUEST:        { badge: "bg-rose-100 text-rose-700 border border-rose-200",        dot: "bg-rose-600"    },
+    ADMIN_DELETE_REQUEST:  { badge: "bg-rose-100 text-rose-700 border border-rose-200",        dot: "bg-rose-600"    },
+    UPDATE_REQUEST_STATUS: { badge: "bg-amber-50 text-amber-700 border border-amber-100",      dot: "bg-amber-400"   },
+    ADMIN_UPDATE_REQUEST:  { badge: "bg-amber-50 text-amber-700 border border-amber-100",      dot: "bg-amber-400"   },
+    ADMIN_ACCEPT_OFFER:    { badge: "bg-emerald-50 text-emerald-700 border border-emerald-100",dot: "bg-emerald-500" },
+    ADMIN_REJECT_OFFER:    { badge: "bg-orange-50 text-orange-700 border border-orange-100",   dot: "bg-orange-400"  },
+    ADMIN_REMOVE_OFFER:    { badge: "bg-rose-100 text-rose-600 border border-rose-200",        dot: "bg-rose-500"    },
+    SUSPEND_USER:          { badge: "bg-orange-100 text-orange-700 border border-orange-200",  dot: "bg-orange-500"  },
+    RESTORE_USER:          { badge: "bg-teal-50 text-teal-700 border border-teal-100",         dot: "bg-teal-400"    },
+    DELETE_USER:           { badge: "bg-red-100 text-red-700 border border-red-200",           dot: "bg-red-600"     },
+    FLAG_USER:             { badge: "bg-yellow-50 text-yellow-700 border border-yellow-200",   dot: "bg-yellow-500"  },
+    UNFLAG_USER:           { badge: "bg-gray-100 text-gray-600 border border-gray-200",        dot: "bg-gray-400"    },
+    VERIFY_USER:           { badge: "bg-teal-50 text-teal-700 border border-teal-100",         dot: "bg-teal-500"    },
+    UNVERIFY_USER:         { badge: "bg-amber-50 text-amber-600 border border-amber-100",      dot: "bg-amber-400"   },
+    ADD_NOTE:              { badge: "bg-violet-50 text-violet-700 border border-violet-100",   dot: "bg-violet-400"  },
+    ADD_TAG:               { badge: "bg-blue-50 text-blue-700 border border-blue-100",         dot: "bg-blue-400"    },
+    PLATFORM_RESET:        { badge: "bg-red-100 text-red-700 border border-red-200",           dot: "bg-red-700"     },
   };
+  const DEFAULT_CFG = { badge: "bg-gray-100 text-gray-600 border border-gray-200", dot: "bg-gray-400" };
+
+  /* ── Category tabs ── */
+  const CATEGORY_TABS: { id: "all" | AuditLogCategory; label: string; emoji: string }[] = [
+    { id: "all",         label: "Hammasi",   emoji: "📋" },
+    { id: "admin",       label: "Admin",     emoji: "🛡" },
+    { id: "marketplace", label: "Bozor",     emoji: "🏪" },
+    { id: "financial",   label: "Moliyaviy", emoji: "💰" },
+    { id: "referral",    label: "Referral",  emoji: "🔗" },
+    { id: "risk",        label: "Risk",      emoji: "⚠️" },
+  ];
+
+  const ACTOR_LABELS:  Record<string, string> = { admin: "Admin", provider: "Ijrochi", customer: "Xaridor", system: "Tizim" };
+  const TARGET_LABELS: Record<string, string> = { user: "Foydalanuvchi", request: "So'rov", offer: "Taklif", referral: "Referral", tanga: "Tanga", platform: "Platforma", pricing: "Narx" };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-lg font-extrabold text-gray-900">Audit Log</h2>
-          <p className="text-sm text-gray-500">{log.length} ta yozuv</p>
+          <p className="text-sm text-gray-500 mt-0.5">Tizim harakatlari tarixi · {log.length} ta yozuv</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100 transition-colors border border-red-100">
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={exportCSV}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-sm font-semibold hover:bg-emerald-100 transition-colors border border-emerald-100">
+            <Download className="w-3.5 h-3.5" /> CSV
+          </button>
+          <button onClick={load}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100 transition-colors border border-red-100">
             <RefreshCw className="w-3.5 h-3.5" /> Yangilash
           </button>
-          <button onClick={clearLog} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 text-rose-600 text-sm font-semibold hover:bg-rose-100 transition-colors border border-rose-100">
+          <button onClick={clearLog}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 text-rose-600 text-sm font-semibold hover:bg-rose-100 transition-colors border border-rose-100">
             <Trash2 className="w-3.5 h-3.5" /> Tozalash
           </button>
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Amallarni qidirish..."
-          className={`${inputCls} w-full pl-9`} />
+      {/* ── Metrics bar ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Jami yozuvlar",  value: log.length,       color: "text-gray-900",  emoji: "📋" },
+          { label: "Bugun",          value: todayCount,        color: "text-blue-700",  emoji: "🕐" },
+          { label: "Admin amallar",  value: adminCount,        color: "text-red-700",   emoji: "🛡" },
+          { label: "Risk hodisalar", value: riskCount + marketplaceCount, color: "text-amber-700", emoji: "⚠️" },
+        ].map((m) => (
+          <div key={m.label} className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{m.label}</span>
+              <span className="text-sm">{m.emoji}</span>
+            </div>
+            <span className={`text-xl font-extrabold ${m.color}`}>{m.value}</span>
+          </div>
+        ))}
       </div>
 
+      {/* ── Category tabs ── */}
+      <div className="flex gap-1.5 flex-wrap">
+        {CATEGORY_TABS.map((t) => {
+          const count = t.id === "all" ? log.length : log.filter((e) => e.category === t.id).length;
+          return (
+            <button key={t.id} onClick={() => { setFilterCategory(t.id); setPage(1); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-all ${
+                filterCategory === t.id
+                  ? "bg-red-600 text-white border-red-600 shadow-sm"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
+              }`}>
+              {t.emoji} {t.label}
+              <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-extrabold ${
+                filterCategory === t.id ? "bg-white/25 text-white" : "bg-gray-100 text-gray-500"
+              }`}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Filters row ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Amal, nishon, tavsifni qidirish..."
+            className={`${inputCls} w-full pl-9`} />
+        </div>
+        <select value={filterActorRole} onChange={(e) => { setFilterActorRole(e.target.value as "all" | AuditLogActorRole); setPage(1); }}
+          className={inputCls}>
+          <option value="all">Barcha aktorlar</option>
+          <option value="admin">Admin</option>
+          <option value="provider">Ijrochi</option>
+          <option value="customer">Xaridor</option>
+          <option value="system">Tizim</option>
+        </select>
+        <select value={filterTargetType} onChange={(e) => { setFilterTargetType(e.target.value as "all" | AuditLogTargetType); setPage(1); }}
+          className={inputCls}>
+          <option value="all">Barcha nishonlar</option>
+          <option value="user">Foydalanuvchi</option>
+          <option value="request">So'rov</option>
+          <option value="offer">Taklif</option>
+          <option value="tanga">Tanga</option>
+          <option value="referral">Referral</option>
+          <option value="platform">Platforma</option>
+          <option value="pricing">Narx</option>
+        </select>
+        <select value={filterDate} onChange={(e) => { setFilterDate(e.target.value as "all" | "today" | "week" | "month"); setPage(1); }}
+          className={inputCls}>
+          <option value="all">Barcha vaqt</option>
+          <option value="today">Bugun</option>
+          <option value="week">So'nggi 7 kun</option>
+          <option value="month">So'nggi 30 kun</option>
+        </select>
+      </div>
+
+      {/* ── Log list ── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {filtered.length === 0 ? (
+        {paginated.length === 0 ? (
           <div className="p-12 text-center">
             <FileText className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400 font-semibold">Loglar yo'q</p>
+            <p className="text-gray-400 font-semibold">
+              {log.length === 0 ? "Hali hech qanday amal qayd etilmagan" : "Filtr bo'yicha topilmadi"}
+            </p>
+            <p className="text-gray-300 text-sm mt-1">
+              {log.length === 0
+                ? "Admin amallari amalga oshirilganda bu yerda ko'rinadi"
+                : "Filtr yoki qidiruvni o'zgartiring"}
+            </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-50 max-h-[60vh] overflow-y-auto">
-            {filtered.map((entry) => (
-              <div key={entry.id} className="px-4 py-3 flex items-start gap-3 hover:bg-red-50/20 transition-colors">
-                <span className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wide flex-shrink-0 mt-0.5 ${ACTION_COLORS[entry.action] ?? "bg-gray-100 text-gray-600"}`}>
-                  {entry.action}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-700 truncate">{entry.details}</p>
-                  <p className="text-xs text-gray-400 mt-0.5 font-mono">{entry.target}</p>
+          <div className="divide-y divide-gray-50">
+            {paginated.map((entry) => {
+              const cfg      = ACTION_CFG[entry.action] ?? DEFAULT_CFG;
+              const expanded = expandedId === entry.id;
+              const hasMeta  = !!entry.metadata && Object.keys(entry.metadata).length > 0;
+              return (
+                <div key={entry.id}
+                  className="hover:bg-red-50/20 transition-colors cursor-pointer"
+                  onClick={() => setExpandedId(expanded ? null : entry.id)}>
+                  <div className="px-4 py-3 flex items-start gap-3">
+                    {/* color dot */}
+                    <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${cfg.dot}`} />
+                    {/* action badge */}
+                    <span className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wide flex-shrink-0 mt-0.5 ${cfg.badge}`}>
+                      {entry.action}
+                    </span>
+                    {/* content */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-700">{entry.description}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-[9px] font-bold text-gray-400 uppercase">{ACTOR_LABELS[entry.actorRole] ?? entry.actorRole}</span>
+                        {entry.targetId && (
+                          <>
+                            <span className="text-[9px] text-gray-300">→</span>
+                            <span className="text-[9px] font-mono text-gray-400">{entry.targetId.slice(0, 18)}</span>
+                          </>
+                        )}
+                        {entry.targetType && (
+                          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-gray-100 text-gray-500 border border-gray-200">
+                            {TARGET_LABELS[entry.targetType] ?? entry.targetType}
+                          </span>
+                        )}
+                        {hasMeta && (
+                          <span className="text-[8px] text-violet-500 font-bold">● metadata</span>
+                        )}
+                      </div>
+                    </div>
+                    {/* timestamp + chevron */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <p className="text-[10px] text-gray-400 whitespace-nowrap">{fmtDate(entry.createdAt)}</p>
+                      {hasMeta && (
+                        expanded
+                          ? <ChevronUp   className="w-3.5 h-3.5 text-gray-400" />
+                          : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                      )}
+                    </div>
+                  </div>
+                  {/* expanded metadata panel */}
+                  {expanded && hasMeta && (
+                    <div className="px-4 pb-3 ml-5">
+                      <div className="bg-gray-50 rounded-xl border border-gray-100 p-3">
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-2">Metadata</p>
+                        <div className="space-y-1">
+                          {Object.entries(entry.metadata!).map(([k, v]) => (
+                            <div key={k} className="flex items-start gap-2">
+                              <span className="text-[10px] font-bold text-gray-500 w-28 flex-shrink-0">{k}:</span>
+                              <span className="text-[10px] font-mono text-gray-700">{String(v)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs text-gray-400 flex-shrink-0 whitespace-nowrap">{fmtDate(entry.timestamp)}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* ── Pagination ── */}
+      {pageCount > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] text-gray-400">
+            {filtered.length} ta yozuv · {page} / {pageCount} sahifa
+          </p>
+          <div className="flex gap-1.5">
+            <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}
+              className="px-3 py-1.5 rounded-lg text-sm font-semibold text-gray-600 border border-gray-200 hover:border-red-300 hover:text-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+              ← Oldingi
+            </button>
+            <button disabled={page === pageCount} onClick={() => setPage((p) => p + 1)}
+              className="px-3 py-1.5 rounded-lg text-sm font-semibold text-gray-600 border border-gray-200 hover:border-red-300 hover:text-red-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+              Keyingi →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* result count when no pagination */}
+      {pageCount <= 1 && filtered.length > 0 && (
+        <p className="text-[11px] text-gray-400 text-right">
+          {filtered.length} / {log.length} yozuv ko'rsatilmoqda
+        </p>
+      )}
     </div>
   );
 }
@@ -3645,7 +3880,7 @@ export default function AdminDashboard() {
   }, [authed]);
 
   function logout() {
-    logAction("LOGOUT", "admin", "Admin tizimdan chiqdi");
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "LOGOUT", category: "admin", description: "Admin tizimdan chiqdi" });
     clearSession();
     setAuthed(false);
   }

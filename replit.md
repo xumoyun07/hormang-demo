@@ -280,6 +280,7 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
   - Token Tarixi: summary stats (today/month/all-time), filter by date/search, table with Batafsil button → OfferDetailModal
 - **Users table:** New "Tanga 🪙" column shows balance + clickable "N tranzaksiya" link
   - Opens `AdminUserTxModal`: per-user transactions slide-up sheet with balance stats + Batafsil per row
+- **Full Audit Log System** — upgraded `AuditLog` type (actorId, actorRole, category, targetId, targetType, description, metadata, createdAt), `logAction` accepts rich object, all 16 call sites updated with category/metadata. `AuditLogSection` rebuilt with: 4-metric bar, 6 category tabs (all/admin/bozor/moliyaviy/referral/risk), 4-filter row (search, actorRole, targetType, date range), paginated list (50/page), expandable metadata rows, color-coded action badges, CSV export.
 - **Advanced Users Management System** (full rebuild of `UsersSection`):
   - 6-metric bar: Jami, Ijrochilar, Xaridorlar, Tasdiqlangan, Flaglangan, Yangi (7k)
   - Smart alerts: suspended users, low-balance, flagged, no-offer providers
