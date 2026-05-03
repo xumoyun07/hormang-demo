@@ -58,7 +58,9 @@ const K = {
   CHATS_BUYER:     "hormang_chats",
   PRICING_TIERS:   "hormang_pricing_tiers",
   ADMIN_LOG:       "hormang_admin_log",
-  PROFILE_PREFIX:  "hormang_local_profile_",
+  /** LocalProfile key shape (lib/local-profile.ts): `user_<userId>_localProfile` */
+  PROFILE_PREFIX:  "user_",
+  PROFILE_SUFFIX:  "_localProfile",
 } as const;
 
 /* ─── Platform reset ─────────────────────────────────────────────── */
@@ -2346,12 +2348,43 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
     /* ── Phone registry — populated on every user login ── */
     const phoneRegistry = getPhoneRegistry();
 
-    /* ── Step 1: Build provider map from offers (canonical provider source) ── */
-    const providerMap = new Map<string, AdminUser>();
+    /* ── Step 1a: Seed user map from canonical auth store (hormang_auth_users) ── */
+    /* This is the source of truth for who is a registered provider vs buyer.
+       A user marked role="provider" here MUST appear as a provider in admin,
+       even if they have not yet posted any offer. */
+    const userMap = new Map<string, AdminUser>();
+    const authUsers = readKey<Array<{
+      id: string; firstName?: string; lastName?: string; phone?: string | null;
+      role: "buyer" | "provider"; createdAt?: string;
+    }>>("hormang_auth_users", []);
+
+    for (const au of authUsers) {
+      if (!au.id) continue;
+      const fullName = `${au.firstName ?? ""} ${au.lastName ?? ""}`.trim();
+      const initials = ((au.firstName?.[0] ?? "") + (au.lastName?.[0] ?? "")).toUpperCase()
+                    || fullName[0]?.toUpperCase() || "U";
+      const isProvider = au.role === "provider";
+      userMap.set(au.id, {
+        userId:    au.id,
+        name:      fullName || (isProvider ? "Ijrochi" : "Xaridor"),
+        initials,
+        color:     isProvider ? "#7C3AED" : "#2563EB",
+        role:      isProvider ? "provider" : "customer",
+        phone:     au.phone ?? phoneRegistry[au.id],
+        joinedAt:  au.createdAt,
+        status:    suspSet.has(au.id) ? "suspended" : "active",
+        offerCount:    isProvider ? 0 : undefined,
+        acceptedCount: isProvider ? 0 : undefined,
+        avgResponseTime: isProvider ? 0 : undefined,
+      });
+    }
+
+    /* ── Step 1b: Enrich/seed from offers (canonical provider activity source) ── */
     for (const offer of allOffers) {
       if (!offer.masterId) continue;
-      if (!providerMap.has(offer.masterId)) {
-        providerMap.set(offer.masterId, {
+      let p = userMap.get(offer.masterId);
+      if (!p) {
+        p = {
           userId:    offer.masterId,
           name:      offer.masterName   ?? "Ijrochi",
           initials:  offer.masterInitials ?? offer.masterName?.[0] ?? "I",
@@ -2362,10 +2395,17 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
           avgResponseTime: 0,
           phone:     phoneRegistry[offer.masterId],
           status:    suspSet.has(offer.masterId) ? "suspended" : "active",
-        });
+        };
+        userMap.set(offer.masterId, p);
+      } else {
+        // User exists from auth — make sure they're flagged as a provider
+        if (p.role === "customer") p.role = "both";
+        else if (!p.role) p.role = "provider";
+        if (p.offerCount === undefined) p.offerCount = 0;
+        if (p.acceptedCount === undefined) p.acceptedCount = 0;
+        if (p.avgResponseTime === undefined) p.avgResponseTime = 0;
       }
-      const p = providerMap.get(offer.masterId)!;
-      p.offerCount = (p.offerCount ?? 0) + 1;
+      p.offerCount    = (p.offerCount ?? 0) + 1;
       if (offer.status === "accepted") p.acceptedCount = (p.acceptedCount ?? 0) + 1;
       if (offer.avgResponseTime) {
         p.avgResponseTime = Math.round(
@@ -2374,38 +2414,42 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
       }
     }
     // Compute completionPct
-    for (const p of providerMap.values()) {
+    for (const p of userMap.values()) {
       if (p.offerCount && p.offerCount > 0) {
         p.completionPct = Math.round(((p.acceptedCount ?? 0) / p.offerCount) * 100);
       }
     }
 
-    /* ── Step 2: Enrich providers with LocalProfile data (serviceAreas, joinedAt) ── */
+    /* ── Step 2: Enrich providers with LocalProfile data (serviceAreas, joinedAt) ──
+       Real key (lib/local-profile.ts): `user_<userId>_localProfile` */
     for (let i = 0; i < localStorage.length; i++) {
       const lsKey = localStorage.key(i);
-      if (!lsKey?.startsWith(K.PROFILE_PREFIX)) continue;
+      if (!lsKey?.startsWith("user_") || !lsKey.endsWith("_localProfile")) continue;
       try {
         const raw = localStorage.getItem(lsKey);
         if (!raw) continue;
         const lp = JSON.parse(raw) as {
           serviceAreas?: string[]; serviceAreaV2?: AdminUser["serviceAreaV2"];
           region?: string; district?: string;
+          categories?: string[];
           createdAt?: string; photoUrl?: string;
         };
-        const uid_ = lsKey.replace(K.PROFILE_PREFIX, "");
-        const provider = providerMap.get(uid_);
-        if (provider) {
-          provider.serviceAreas  = lp.serviceAreas ?? (lp.region ? [lp.region] : undefined);
-          provider.serviceAreaV2 = lp.serviceAreaV2;
-          provider.joinedAt      = lp.createdAt;
-          provider.location      = lp.district ?? lp.region;
+        const uid_ = lsKey.slice("user_".length, -("_localProfile".length));
+        const u_ = userMap.get(uid_);
+        if (u_) {
+          u_.serviceAreas  = lp.serviceAreas ?? (lp.region ? [lp.region] : undefined);
+          u_.serviceAreaV2 = lp.serviceAreaV2;
+          u_.joinedAt      = u_.joinedAt ?? lp.createdAt;
+          u_.location      = u_.location ?? lp.district ?? lp.region;
+          if (lp.categories?.length) u_.categories = lp.categories;
+          // Categories present → ensure role reflects provider access
+          if (lp.categories?.length && u_.role === "customer") u_.role = "both";
         }
       } catch { /* skip */ }
     }
 
-    /* ── Step 3: Customer registry → build customer list ── */
-    const result: AdminUser[] = [...providerMap.values()];
-    const providerIds = new Set(providerMap.keys());
+    /* ── Step 3: Customer registry → enrich customers / upgrade to "both" ── */
+    const result: AdminUser[] = [];
 
     for (const [userId, entry] of Object.entries(registry)) {
       const custRequests = allRequests.filter((r) => r.customerId === userId);
@@ -2413,15 +2457,19 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
         ? (custRequests[0].district ?? custRequests[0].region ?? locationFrom(custRequests[0].answers))
         : undefined;
 
-      if (providerIds.has(userId)) {
-        // Upgrade existing provider to "both"
-        const provider = providerMap.get(userId)!;
-        provider.role         = "both";
-        provider.requestCount = custRequests.length;
-        provider.location     = provider.location ?? location;
-        provider.phone        = provider.phone ?? phoneRegistry[userId];
+      const existing = userMap.get(userId);
+      if (existing) {
+        // User already known (auth store or offers). If they show up in
+        // customer registry too, they have customer activity → expand role.
+        if (existing.role === "provider") existing.role = "both";
+        existing.requestCount = custRequests.length;
+        existing.location     = existing.location ?? location;
+        existing.phone        = existing.phone ?? phoneRegistry[userId];
+        existing.name         = existing.name && existing.name !== "Ijrochi" && existing.name !== "Xaridor"
+          ? existing.name
+          : (entry.name ?? existing.name);
       } else {
-        result.push({
+        userMap.set(userId, {
           userId,
           name:         entry.name ?? "Xaridor",
           initials:     entry.initials ?? "X",
@@ -2434,6 +2482,20 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
         });
       }
     }
+
+    // Also enrich customers (from auth store) with their request counts
+    for (const u of userMap.values()) {
+      if (u.requestCount === undefined) {
+        const reqs = allRequests.filter((r) => r.customerId === u.userId);
+        if (reqs.length > 0) {
+          u.requestCount = reqs.length;
+          u.location = u.location ?? reqs[0].district ?? reqs[0].region ?? locationFrom(reqs[0].answers);
+          if (u.role === "provider") u.role = "both";
+        }
+      }
+    }
+
+    result.push(...userMap.values());
 
     /* ── Step 4: Enrich all users with referral data ── */
     for (const u of result) {
@@ -2473,18 +2535,25 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
 
   function deleteUser(user: AdminUser) {
     if (!confirm(`"${user.name}" foydalanuvchisini o'chirishni tasdiqlaysizmi?\nBu amalni qaytarib bo'lmaydi.`)) return;
-    // 1. Remove local profile (provider physical data)
-    localStorage.removeItem(`${K.PROFILE_PREFIX}${user.userId}`);
-    // 2. Remove from customer registry
+    // 1. Remove local profile — real key shape: user_<id>_localProfile
+    localStorage.removeItem(`user_${user.userId}_localProfile`);
+    localStorage.removeItem(`user_${user.userId}_hasProviderAccess`);
+    // 2. Remove from customer registry & phone registry
     const registry = readKey<Record<string, unknown>>("hormang_customer_registry", {});
     delete registry[user.userId];
     writeKey("hormang_customer_registry", registry);
-    // 3. Remove from suspended list
+    const phoneReg = readKey<Record<string, string>>("hormang_phone_registry", {});
+    delete phoneReg[user.userId];
+    writeKey("hormang_phone_registry", phoneReg);
+    // 3. Remove from canonical auth users store
+    const authUsers = readKey<Array<{ id: string }>>("hormang_auth_users", []);
+    writeKey("hormang_auth_users", authUsers.filter((u) => u.id !== user.userId));
+    // 4. Remove from suspended list
     const next = new Set(suspended);
     next.delete(user.userId);
     setSuspended(next);
     writeKey("hormang_admin_suspended_users", Array.from(next));
-    // 4. Update local state
+    // 5. Update local state
     setUsers((prev) => prev.filter((u) => u.userId !== user.userId));
     logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "DELETE_USER", category: "risk", targetId: user.userId, targetType: "user", description: `${user.name} o'chirildi`, metadata: { userName: user.name } });
     emitStoreChange();
