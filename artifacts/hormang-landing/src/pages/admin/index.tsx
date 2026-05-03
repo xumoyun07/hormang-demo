@@ -3215,7 +3215,11 @@ function MonoOverview({ txs, providers, tiers }: { txs: TangaTx[]; providers: Pr
   const weekAgo  = new Date(now.getTime() - 7 * 86400000);
   const monthStr = now.toISOString().slice(0, 7);
 
-  const accepted     = allOffers.filter((o) => o.status === "accepted");
+  /* Revenue = any offer that the buyer accepted at some point.
+     Status flow: pending → accepted → in_progress → completed.
+     "rejected" never produced revenue; everything from "accepted" onward did. */
+  const REVENUE_STATUSES = new Set(["accepted", "in_progress", "completed"]);
+  const accepted     = allOffers.filter((o) => REVENUE_STATUSES.has(o.status));
   const totalRevenue = accepted.reduce((s, o) => s + (o.price ?? 0), 0);
   const todayRevenue = accepted.filter((o) => o.createdAt.startsWith(todayStr)).reduce((s, o) => s + (o.price ?? 0), 0);
   const weekRevenue  = accepted.filter((o) => new Date(o.createdAt) >= weekAgo).reduce((s, o) => s + (o.price ?? 0), 0);
@@ -3373,7 +3377,9 @@ function MonoPlans({ tiers, setTiers, reload }: { tiers: PricingTier[]; setTiers
   }
 
   const allOffers    = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
-  const totalRevenue = allOffers.filter((o) => o.status === "accepted").reduce((s, o) => s + (o.price ?? 0), 0);
+  /* Revenue counts every offer past "accepted": accepted/in_progress/completed */
+  const REVENUE_STATUSES = new Set(["accepted", "in_progress", "completed"]);
+  const totalRevenue = allOffers.filter((o) => REVENUE_STATUSES.has(o.status)).reduce((s, o) => s + (o.price ?? 0), 0);
   const commission   = Math.round(totalRevenue * 0.15);
 
   return (
