@@ -395,8 +395,8 @@ export default function ProviderReviewsPage() {
           <div className="space-y-3">
             {[
               { label: "Xizmat sifati", value: metricAverages.serviceQuality },
-              { label: "Muomala", value: metricAverages.providerAttitude },
-              { label: "Narx", value: metricAverages.servicePrice },
+              { label: "Ijrochi muomalasi", value: metricAverages.providerAttitude },
+              { label: "Narx adolatliligi", value: metricAverages.servicePrice },
             ].map((item) => (
               <div key={item.label}>
                 <div className="flex justify-between text-xs mb-1">

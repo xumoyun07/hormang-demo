@@ -37,10 +37,10 @@ import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questi
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
 import {
-  getAllTangaTransactions, getTangaTransactions,
+  getAllTangaTransactions, getTangaTransactions, recordTangaTransaction,
   type TangaTransaction as TangaTx,
 } from "@/lib/tanga-history-store";
-import { getTangaBalance } from "@/lib/tanga-store";
+import { getTangaBalance, addTangaBalance, spendTangaBalance } from "@/lib/tanga-store";
 import { getReferralCode, getReferralStats } from "@/lib/referral-store";
 import { getOffers, getPhoneRegistry, type Offer as BuyerOfferFull } from "@/lib/requests-store";
 
@@ -3025,129 +3025,273 @@ function AdminUserTxModal({
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   MONETIZATION SECTION — no DEFAULT_TIERS, load from localStorage only
+   MONETIZATION — Token Economy Control Center
    ════════════════════════════════════════════════════════════════════ */
+
+/* ─── Shared provider summary type ──────────────────────────────── */
+type ProviderSummary = {
+  userId: string; name: string; balance: number;
+  totalPurchased: number; totalSpent: number; referralEarned: number; txCount: number;
+};
+
+function getAllProviderSummaries(): ProviderSummary[] {
+  const map = new Map<string, { userId: string; name: string }>();
+  try {
+    const au = JSON.parse(localStorage.getItem("hormang_auth_users") ?? "[]") as { id: string; firstName: string; lastName: string; role: string }[];
+    for (const u of au) {
+      if (u.role === "provider") map.set(u.id, { userId: u.id, name: `${u.firstName} ${u.lastName}`.trim() });
+    }
+  } catch {}
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k?.startsWith("hormang_local_profile_")) continue;
+    const uid = k.replace("hormang_local_profile_", "");
+    if (!map.has(uid)) {
+      try { const p = JSON.parse(localStorage.getItem(k) ?? "{}"); map.set(uid, { userId: uid, name: p.name || `Ijrochi ${uid.slice(0, 6)}` }); } catch {}
+    }
+  }
+  const allTxs = getAllTangaTransactions();
+  for (const tx of allTxs) {
+    if (!map.has(tx.userId)) map.set(tx.userId, { userId: tx.userId, name: `Ijrochi ${tx.userId.slice(0, 6)}` });
+  }
+  return Array.from(map.values()).map(({ userId, name }) => {
+    const userTxs = allTxs.filter((t) => t.userId === userId);
+    const totalPurchased = userTxs.filter((t) => t.type === "purchase").reduce((s, t) => s + t.amount, 0);
+    const totalSpent     = userTxs.filter((t) => t.type === "spend" || (!t.type && t.amount > 0)).reduce((s, t) => s + t.amount, 0);
+    const referralEarned = userTxs.filter((t) => t.type === "referral").reduce((s, t) => s + t.amount, 0);
+    return { userId, name, balance: getTangaBalance(userId), totalPurchased, totalSpent, referralEarned, txCount: userTxs.length };
+  }).sort((a, b) => b.balance - a.balance);
+}
+
+/* ─── Root MonetizationSection ───────────────────────────────────── */
 function MonetizationSection({ refreshKey }: { refreshKey: number }) {
-  const [monoTab, setMonoTab] = useState<"tiers" | "transactions">("tiers");
+  type MonoTab = "overview" | "plans" | "transactions" | "balances" | "referral";
+  const [monoTab, setMonoTab] = useState<MonoTab>("overview");
   const [tiers, setTiers] = useState<PricingTier[]>(() => readKey<PricingTier[]>(K.PRICING_TIERS, []));
-  const [editId, setEditId]               = useState<string | null>(null);
-  const [editName, setEditName]           = useState("");
-  const [editDesc, setEditDesc]           = useState("");
-  const [editPrice, setEditPrice]         = useState(0);
-  const [editCredits, setEditCredits]     = useState(0);
-  const [editSalePrice, setEditSalePrice] = useState<number | "">("");
-  const [editSaleLimit, setEditSaleLimit] = useState<number | "">("");
-  const [editBonusTokens, setEditBonusTokens] = useState<number | "">("");
-  const [editValidUntil, setEditValidUntil]   = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newTier, setNewTier] = useState({
-    name: "", credits: 0, price: 0, salePrice: "", saleLimit: "", bonusTokens: "", validUntil: "", desc: "",
-  });
+  const [txs, setTxs]           = useState<TangaTx[]>([]);
+  const [providers, setProviders] = useState<ProviderSummary[]>([]);
 
   void refreshKey;
+
+  const reload = useCallback(() => {
+    setTxs(getAllTangaTransactions());
+    setTiers(readKey<PricingTier[]>(K.PRICING_TIERS, []));
+    setProviders(getAllProviderSummaries());
+  }, []);
+
+  useEffect(() => { reload(); }, [reload, refreshKey]);
+
+  const TABS: { id: MonoTab; label: string; emoji: string }[] = [
+    { id: "overview",     label: "Ko'rinish",      emoji: "📊" },
+    { id: "plans",        label: "Rejalar",         emoji: "💳" },
+    { id: "transactions", label: "Tranzaksiyalar",  emoji: "🪙" },
+    { id: "balances",     label: "Balanslar",       emoji: "⚖️" },
+    { id: "referral",     label: "Referral",        emoji: "🔗" },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-lg font-extrabold text-gray-900">💰 Token Iqtisodiyoti</h2>
+          <p className="text-sm text-gray-500">Tanga oqimi · monetizatsiya · referral boshqaruvi</p>
+        </div>
+        <button onClick={reload} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors border border-red-100">
+          <RefreshCw className="w-3.5 h-3.5" /> Yangilash
+        </button>
+      </div>
+
+      <div className="flex gap-1 p-1 rounded-xl bg-gray-100 overflow-x-auto">
+        {TABS.map((tab) => (
+          <button key={tab.id} onClick={() => setMonoTab(tab.id)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${
+              monoTab === tab.id ? "bg-white text-red-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}>
+            {tab.emoji} {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {monoTab === "overview"     && <MonoOverview txs={txs} providers={providers} tiers={tiers} />}
+      {monoTab === "plans"        && <MonoPlans tiers={tiers} setTiers={setTiers} reload={reload} />}
+      {monoTab === "transactions" && <MonoTransactions txs={txs} reload={reload} />}
+      {monoTab === "balances"     && <MonoBalances providers={providers} reload={reload} />}
+      {monoTab === "referral"     && <MonoReferral providers={providers} />}
+    </div>
+  );
+}
+
+/* ─── Overview Tab ───────────────────────────────────────────────── */
+function MonoOverview({ txs, providers, tiers }: { txs: TangaTx[]; providers: ProviderSummary[]; tiers: PricingTier[] }) {
+  const allOffers = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const weekAgo  = new Date(now.getTime() - 7 * 86400000);
+  const monthStr = now.toISOString().slice(0, 7);
+
+  const accepted     = allOffers.filter((o) => o.status === "accepted");
+  const totalRevenue = accepted.reduce((s, o) => s + (o.price ?? 0), 0);
+  const todayRevenue = accepted.filter((o) => o.createdAt.startsWith(todayStr)).reduce((s, o) => s + (o.price ?? 0), 0);
+  const weekRevenue  = accepted.filter((o) => new Date(o.createdAt) >= weekAgo).reduce((s, o) => s + (o.price ?? 0), 0);
+  const monthRevenue = accepted.filter((o) => o.createdAt.startsWith(monthStr)).reduce((s, o) => s + (o.price ?? 0), 0);
+
+  const totalSold  = txs.filter((t) => t.type === "purchase").reduce((s, t) => s + t.amount, 0);
+  const totalSpent = txs.filter((t) => t.type === "spend" || (!t.type && t.amount > 0)).reduce((s, t) => s + t.amount, 0);
+  const totalCirc  = providers.reduce((s, p) => s + p.balance, 0);
+
+  const avgTangaPerProv = providers.length > 0 ? Math.round(totalCirc / providers.length) : 0;
+  const requests        = readKey<CustomerRequest[]>(K.REQUESTS, []);
+  const avgOffersPerReq = requests.length > 0 ? (allOffers.length / requests.length).toFixed(1) : "—";
+  const spendTxs        = txs.filter((t) => t.type === "spend" || (!t.type && t.amount > 0));
+  const avgCostPerOffer = spendTxs.length > 0 ? Math.round(spendTxs.reduce((s, t) => s + t.amount, 0) / spendTxs.length) : 0;
+
+  const flowMap: Record<string, { sarflandi: number; sotildi: number }> = {};
+  for (const tx of txs) {
+    const m = tx.createdAt.slice(0, 7);
+    if (!flowMap[m]) flowMap[m] = { sarflandi: 0, sotildi: 0 };
+    if (tx.type === "spend" || (!tx.type && tx.amount > 0)) flowMap[m].sarflandi += tx.amount;
+    if (tx.type === "purchase") flowMap[m].sotildi += tx.amount;
+  }
+  const flowData = Object.entries(flowMap).sort(([a], [b]) => a.localeCompare(b)).map(([name, v]) => ({ name, ...v }));
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">💵 Daromad (qabul qilingan takliflar)</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Jami daromad", value: fmtMoney(totalRevenue), color: "text-emerald-700" },
+            { label: "Bugun",        value: fmtMoney(todayRevenue), color: "text-blue-700"    },
+            { label: "Bu hafta",     value: fmtMoney(weekRevenue),  color: "text-violet-700"  },
+            { label: "Bu oy",        value: fmtMoney(monthRevenue), color: "text-amber-700"   },
+          ].map((m) => (
+            <div key={m.label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+              <p className="text-[10px] font-semibold text-gray-400 mb-1">{m.label}</p>
+              <p className={`text-base font-extrabold ${m.color}`}>{m.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">🪙 Token ko'rsatkichlari</p>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Sotilgan Tanga",   value: `${totalSold} 🪙`,  color: "text-emerald-600" },
+            { label: "Sarflangan Tanga", value: `${totalSpent} 🪙`, color: "text-red-600"     },
+            { label: "Muomaladagi",      value: `${totalCirc} 🪙`,  color: "text-amber-600"   },
+          ].map((m) => (
+            <div key={m.label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+              <p className="text-[10px] font-semibold text-gray-400 mb-1">{m.label}</p>
+              <p className={`text-xl font-extrabold ${m.color}`}>{m.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">🏪 Bozor ko'rsatkichlari</p>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "O'rtacha Tanga/ijrochi",  value: `${avgTangaPerProv} 🪙`, color: "text-amber-600"  },
+            { label: "O'rtacha taklif/so'rov",  value: avgOffersPerReq,          color: "text-blue-600"   },
+            { label: "O'rtacha taklif xarajati", value: `${avgCostPerOffer} 🪙`, color: "text-violet-600" },
+          ].map((m) => (
+            <div key={m.label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+              <p className="text-[10px] font-semibold text-gray-400 mb-1">{m.label}</p>
+              <p className={`text-base font-extrabold ${m.color}`}>{m.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {flowData.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+          <h3 className="font-bold text-gray-900 text-sm mb-4">Oylik Tanga oqimi</h3>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={flowData}>
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #FEE2E2", fontSize: 11 }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Area type="monotone" dataKey="sotildi"   name="Sotildi"   stroke="#10B981" fill="#D1FAE5" strokeWidth={2} />
+              <Area type="monotone" dataKey="sarflandi" name="Sarflandi" stroke="#DC2626" fill="#FEE2E2" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-gray-900 text-sm">Faol rejalar</h3>
+          <span className="text-xs font-bold text-gray-400">{tiers.filter((t) => t.active).length}/{tiers.length} ta</span>
+        </div>
+        {tiers.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-4">Rejalar yo'q — "Rejalar" tabiga o'ting</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {tiers.filter((t) => t.active).map((t) => (
+              <span key={t.id} className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${t.color}`}>
+                {t.name} · {t.credits} 🪙 · {fmtMoney(t.price)}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Plans Tab ──────────────────────────────────────────────────── */
+function MonoPlans({ tiers, setTiers, reload }: { tiers: PricingTier[]; setTiers: React.Dispatch<React.SetStateAction<PricingTier[]>>; reload: () => void }) {
+  const [editId, setEditId]                   = useState<string | null>(null);
+  const [editName, setEditName]               = useState("");
+  const [editDesc, setEditDesc]               = useState("");
+  const [editPrice, setEditPrice]             = useState(0);
+  const [editCredits, setEditCredits]         = useState(0);
+  const [editSalePrice, setEditSalePrice]     = useState<number | "">("");
+  const [editSaleLimit, setEditSaleLimit]     = useState<number | "">("");
+  const [editBonusTokens, setEditBonusTokens] = useState<number | "">("");
+  const [editValidUntil, setEditValidUntil]   = useState("");
+  const [showAddForm, setShowAddForm]         = useState(false);
+  const [newTier, setNewTier] = useState({ name: "", credits: 0, price: 0, salePrice: "", saleLimit: "", bonusTokens: "", validUntil: "", desc: "" });
+
+  void reload;
+
+  function saveTiers(updated: PricingTier[]) { setTiers(updated); writeKey(K.PRICING_TIERS, updated); emitStoreChange(); }
+
+  function startEdit(t: PricingTier) {
+    setEditId(t.id); setEditName(t.name); setEditDesc(t.desc); setEditPrice(t.price); setEditCredits(t.credits);
+    setEditSalePrice(t.salePrice ?? ""); setEditSaleLimit(t.saleLimit ?? ""); setEditBonusTokens(t.bonusTokens ?? ""); setEditValidUntil(t.validUntil ?? "");
+  }
+  function saveEdit(id: string) {
+    saveTiers(tiers.map((t) => t.id !== id ? t : { ...t, name: editName.trim() || t.name, desc: editDesc, price: editPrice, credits: editCredits, salePrice: editSalePrice !== "" ? Number(editSalePrice) : undefined, saleLimit: editSaleLimit !== "" ? Number(editSaleLimit) : undefined, bonusTokens: editBonusTokens !== "" ? Number(editBonusTokens) : undefined, validUntil: editValidUntil || undefined }));
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "UPDATE_PRICING", category: "financial", targetId: id, targetType: "pricing", description: `Narx: ${editPrice} so'm, ${editCredits} Tanga` });
+    setEditId(null);
+  }
+  function toggleTier(id: string) {
+    saveTiers(tiers.map((t) => t.id === id ? { ...t, active: !t.active } : t));
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "TOGGLE_PRICING_TIER", category: "financial", targetId: id, targetType: "pricing", description: "Narx rejimi o'zgartirildi" });
+  }
+  function deleteTier(id: string) {
+    saveTiers(tiers.filter((t) => t.id !== id));
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "DELETE_PRICING_TIER", category: "financial", targetId: id, targetType: "pricing", description: "Narx rejimi o'chirildi" });
+  }
+  function addTier() {
+    if (!newTier.name.trim() || newTier.credits <= 0) return;
+    const tier: PricingTier = { id: uid(), name: newTier.name, credits: newTier.credits, price: newTier.price, salePrice: newTier.salePrice !== "" ? Number(newTier.salePrice) : undefined, saleLimit: newTier.saleLimit !== "" ? Number(newTier.saleLimit) : undefined, bonusTokens: newTier.bonusTokens !== "" ? Number(newTier.bonusTokens) : undefined, validUntil: newTier.validUntil || undefined, desc: newTier.desc, color: "bg-amber-50 text-amber-700", active: true };
+    saveTiers([...tiers, tier]);
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADD_PRICING_TIER", category: "financial", targetId: tier.id, targetType: "pricing", description: `Yangi reja: ${tier.name}` });
+    setNewTier({ name: "", credits: 0, price: 0, salePrice: "", saleLimit: "", bonusTokens: "", validUntil: "", desc: "" });
+    setShowAddForm(false);
+  }
 
   const allOffers    = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
   const totalRevenue = allOffers.filter((o) => o.status === "accepted").reduce((s, o) => s + (o.price ?? 0), 0);
   const commission   = Math.round(totalRevenue * 0.15);
 
-  // Real monthly breakdowns from accepted offers
-  const monthlyMap: Record<string, number> = {};
-  allOffers.filter((o) => o.status === "accepted").forEach((o) => {
-    const month = formatMonthYear(o.createdAt);
-    monthlyMap[month] = (monthlyMap[month] ?? 0) + (o.price ?? 0);
-  });
-  const revenueData = Object.entries(monthlyMap).map(([name, daromad]) => ({
-    name, daromad, komissiya: Math.round(daromad * 0.15),
-  }));
-  // If no real data yet, show an informative placeholder
-  const showRevenueChart = revenueData.length > 0;
-
-  function saveTiers(updated: PricingTier[]) {
-    setTiers(updated);
-    writeKey(K.PRICING_TIERS, updated);
-    emitStoreChange();
-  }
-  function startEdit(t: PricingTier) {
-    setEditId(t.id);
-    setEditName(t.name);
-    setEditDesc(t.desc);
-    setEditPrice(t.price);
-    setEditCredits(t.credits);
-    setEditSalePrice(t.salePrice ?? "");
-    setEditSaleLimit(t.saleLimit ?? "");
-    setEditBonusTokens(t.bonusTokens ?? "");
-    setEditValidUntil(t.validUntil ?? "");
-  }
-  function saveEdit(id: string) {
-    saveTiers(tiers.map((t) => t.id === id ? {
-      ...t,
-      name: editName.trim() || t.name,
-      desc: editDesc,
-      price: editPrice,
-      credits: editCredits,
-      salePrice: editSalePrice !== "" ? Number(editSalePrice) : undefined,
-      saleLimit: editSaleLimit !== "" ? Number(editSaleLimit) : undefined,
-      bonusTokens: editBonusTokens !== "" ? Number(editBonusTokens) : undefined,
-      validUntil: editValidUntil || undefined,
-    } : t));
-    logAction("UPDATE_PRICING", id, `Narx: ${editPrice} so'm, ${editCredits} Tanga`);
-    setEditId(null);
-  }
-  function toggleTier(id: string) {
-    saveTiers(tiers.map((t) => t.id === id ? { ...t, active: !t.active } : t));
-    logAction("TOGGLE_PRICING_TIER", id, "Narx rejimi o'zgartirildi");
-  }
-  function deleteTier(id: string) {
-    saveTiers(tiers.filter((t) => t.id !== id));
-    logAction("DELETE_PRICING_TIER", id, "Narx rejimi o'chirildi");
-  }
-  function addTier() {
-    if (!newTier.name.trim() || newTier.credits <= 0) return;
-    const tier: PricingTier = {
-      id: uid(),
-      name: newTier.name,
-      credits: newTier.credits,
-      price: newTier.price,
-      salePrice: newTier.salePrice !== "" ? Number(newTier.salePrice) : undefined,
-      saleLimit: newTier.saleLimit !== "" ? Number(newTier.saleLimit) : undefined,
-      bonusTokens: newTier.bonusTokens !== "" ? Number(newTier.bonusTokens) : undefined,
-      validUntil: newTier.validUntil || undefined,
-      desc: newTier.desc,
-      color: "bg-amber-50 text-amber-700",
-      active: true,
-    };
-    saveTiers([...tiers, tier]);
-    logAction("ADD_PRICING_TIER", tier.id, `Yangi reja: ${tier.name}`);
-    setNewTier({ name: "", credits: 0, price: 0, salePrice: "", saleLimit: "", bonusTokens: "", validUntil: "", desc: "" });
-    setShowAddForm(false);
-  }
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-lg font-extrabold text-gray-900">Monetizatsiya</h2>
-          <p className="text-sm text-gray-500">Narx rejalari va daromad boshqaruvi</p>
-        </div>
-        <div className="flex gap-1 p-1 rounded-xl bg-gray-100 flex-shrink-0">
-          {(["tiers", "transactions"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setMonoTab(tab)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                monoTab === tab
-                  ? "bg-white text-red-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {tab === "tiers" ? "Narx Rejalari" : "🪙 Token Tarixi"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {monoTab === "tiers" && <>
-
+    <div className="space-y-5">
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
           <p className="text-xs text-gray-400 font-semibold mb-1">Jami tranzaksiyalar</p>
@@ -3158,39 +3302,15 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
           <p className="text-xl font-extrabold text-red-600">{fmtMoney(commission)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-          <p className="text-xs text-gray-400 font-semibold mb-1">Faol rejalari</p>
+          <p className="text-xs text-gray-400 font-semibold mb-1">Faol rejalar</p>
           <p className="text-xl font-extrabold text-gray-900">{tiers.filter((t) => t.active).length} ta</p>
         </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-        <h3 className="font-bold text-gray-900 text-sm mb-4">Oylik daromad (qabul qilingan takliflar)</h3>
-        {showRevenueChart ? (
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={revenueData}>
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false}
-                tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #FEE2E2", fontSize: 11 }} formatter={(v: number) => fmtMoney(v)} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="daromad"   name="Tranzaksiyalar" fill={RED_HEX} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="komissiya" name="Komissiya"       fill="#10B981" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-[180px]">
-            <DollarSign className="w-8 h-8 text-red-100 mb-2" />
-            <p className="text-sm text-gray-400 font-semibold">Hali qabul qilingan takliflar yo'q</p>
-            <p className="text-xs text-gray-300 mt-1">Xaridorlar taklif qabul qilganda daromad ko'rinadi</p>
-          </div>
-        )}
       </div>
 
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-gray-900 text-sm">Narx rejalari</h3>
-          <button onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors">
+          <button onClick={() => setShowAddForm(!showAddForm)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors">
             <Plus className="w-3.5 h-3.5" /> Yangi reja
           </button>
         </div>
@@ -3199,62 +3319,18 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
           <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-4">
             <h4 className="font-bold text-amber-700 text-sm mb-3">Yangi Tanga rejasi qo'shish</h4>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Nomi</label>
-                <input value={newTier.name} onChange={(e) => setNewTier({ ...newTier, name: e.target.value })}
-                  placeholder="Pro" className={`${inputCls} w-full mt-1`} />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Tanga soni</label>
-                <input type="number" value={newTier.credits || ""}
-                  onChange={(e) => setNewTier({ ...newTier, credits: Number(e.target.value) })}
-                  placeholder="50" className={`${inputCls} w-full mt-1`} />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Narx (so'm)</label>
-                <input type="number" value={newTier.price || ""}
-                  onChange={(e) => setNewTier({ ...newTier, price: Number(e.target.value) })}
-                  placeholder="49000" className={`${inputCls} w-full mt-1`} />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Chegirma narx</label>
-                <input type="number" value={newTier.salePrice}
-                  onChange={(e) => setNewTier({ ...newTier, salePrice: e.target.value })}
-                  placeholder="39000 (ixtiyoriy)" className={`${inputCls} w-full mt-1`} />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Chegirma limiti (nechta)</label>
-                <input type="number" value={newTier.saleLimit}
-                  onChange={(e) => setNewTier({ ...newTier, saleLimit: e.target.value })}
-                  placeholder="10 (ixtiyoriy)" className={`${inputCls} w-full mt-1`} />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Bonus Tanga</label>
-                <input type="number" value={newTier.bonusTokens}
-                  onChange={(e) => setNewTier({ ...newTier, bonusTokens: e.target.value })}
-                  placeholder="10 (ixtiyoriy)" className={`${inputCls} w-full mt-1`} />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Muddati (sana/vaqt)</label>
-                <input type="datetime-local" value={newTier.validUntil}
-                  onChange={(e) => setNewTier({ ...newTier, validUntil: e.target.value })}
-                  className={`${inputCls} w-full mt-1`} />
-              </div>
-              <div className="col-span-2">
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Tavsif</label>
-                <input value={newTier.desc} onChange={(e) => setNewTier({ ...newTier, desc: e.target.value })}
-                  placeholder="Ijrochilar uchun" className={`${inputCls} w-full mt-1`} />
-              </div>
+              <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Nomi</label><input value={newTier.name} onChange={(e) => setNewTier({ ...newTier, name: e.target.value })} placeholder="Pro" className={`${inputCls} w-full mt-1`} /></div>
+              <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Tanga soni</label><input type="number" value={newTier.credits || ""} onChange={(e) => setNewTier({ ...newTier, credits: Number(e.target.value) })} placeholder="50" className={`${inputCls} w-full mt-1`} /></div>
+              <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Narx (so'm)</label><input type="number" value={newTier.price || ""} onChange={(e) => setNewTier({ ...newTier, price: Number(e.target.value) })} placeholder="49000" className={`${inputCls} w-full mt-1`} /></div>
+              <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Chegirma narx</label><input type="number" value={newTier.salePrice} onChange={(e) => setNewTier({ ...newTier, salePrice: e.target.value })} placeholder="39000 (ixtiyoriy)" className={`${inputCls} w-full mt-1`} /></div>
+              <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Chegirma limiti</label><input type="number" value={newTier.saleLimit} onChange={(e) => setNewTier({ ...newTier, saleLimit: e.target.value })} placeholder="10 (ixtiyoriy)" className={`${inputCls} w-full mt-1`} /></div>
+              <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Bonus Tanga</label><input type="number" value={newTier.bonusTokens} onChange={(e) => setNewTier({ ...newTier, bonusTokens: e.target.value })} placeholder="10 (ixtiyoriy)" className={`${inputCls} w-full mt-1`} /></div>
+              <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Muddati</label><input type="datetime-local" value={newTier.validUntil} onChange={(e) => setNewTier({ ...newTier, validUntil: e.target.value })} className={`${inputCls} w-full mt-1`} /></div>
+              <div className="col-span-2"><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Tavsif</label><input value={newTier.desc} onChange={(e) => setNewTier({ ...newTier, desc: e.target.value })} placeholder="Ijrochilar uchun" className={`${inputCls} w-full mt-1`} /></div>
             </div>
             <div className="flex gap-2 mt-3">
-              <button onClick={addTier}
-                className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors">
-                Qo'shish
-              </button>
-              <button onClick={() => setShowAddForm(false)}
-                className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors">
-                Bekor
-              </button>
+              <button onClick={addTier} className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700">Qo'shish</button>
+              <button onClick={() => setShowAddForm(false)} className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50">Bekor</button>
             </div>
           </div>
         )}
@@ -3266,41 +3342,26 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
             <p className="text-xs text-gray-300 mt-1">Yuqoridagi "Yangi reja" tugmasini bosing</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {tiers.map((t) => (
               <div key={t.id} className={`bg-white rounded-2xl border p-4 shadow-sm transition-opacity ${t.active ? "border-red-100" : "border-gray-100 opacity-60"}`}>
                 <div className="flex items-center justify-between mb-3">
                   <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${t.color}`}>{t.name}</span>
                   <div className="flex gap-1.5">
-                    <button onClick={() => toggleTier(t.id)}
-                      className={`text-xs font-semibold ${t.active ? "text-red-400 hover:text-red-600" : "text-emerald-500 hover:text-emerald-700"}`}>
-                      {t.active ? "O'ch" : "Yoq"}
-                    </button>
+                    <button onClick={() => toggleTier(t.id)} className={`text-xs font-semibold ${t.active ? "text-red-400 hover:text-red-600" : "text-emerald-500 hover:text-emerald-700"}`}>{t.active ? "O'ch" : "Yoq"}</button>
                     <button onClick={() => deleteTier(t.id)} className="text-xs font-semibold text-gray-300 hover:text-red-500">✕</button>
                   </div>
                 </div>
                 {editId === t.id ? (
                   <div className="space-y-2">
-                    <input value={editName} onChange={(e) => setEditName(e.target.value)}
-                      placeholder="Nomi" className={`${inputCls} w-full font-semibold`} />
-                    <input value={editDesc} onChange={(e) => setEditDesc(e.target.value)}
-                      placeholder="Tavsif" className={`${inputCls} w-full`} />
-                    <input type="number" value={editCredits} onChange={(e) => setEditCredits(Number(e.target.value))}
-                      placeholder="Tanga soni" className={`${inputCls} w-full`} />
-                    <input type="number" value={editPrice} onChange={(e) => setEditPrice(Number(e.target.value))}
-                      placeholder="Narx (so'm)" className={`${inputCls} w-full`} />
-                    <input type="number" value={editSalePrice}
-                      onChange={(e) => setEditSalePrice(e.target.value === "" ? "" : Number(e.target.value))}
-                      placeholder="Chegirma narx (ixtiyoriy)" className={`${inputCls} w-full`} />
-                    <input type="number" value={editSaleLimit}
-                      onChange={(e) => setEditSaleLimit(e.target.value === "" ? "" : Number(e.target.value))}
-                      placeholder="Chegirma limiti — nechta (ixtiyoriy)" className={`${inputCls} w-full`} />
-                    <input type="number" value={editBonusTokens}
-                      onChange={(e) => setEditBonusTokens(e.target.value === "" ? "" : Number(e.target.value))}
-                      placeholder="Bonus Tanga (ixtiyoriy)" className={`${inputCls} w-full`} />
-                    <input type="datetime-local" value={editValidUntil}
-                      onChange={(e) => setEditValidUntil(e.target.value)}
-                      className={`${inputCls} w-full`} />
+                    <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Nomi" className={`${inputCls} w-full font-semibold`} />
+                    <input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Tavsif" className={`${inputCls} w-full`} />
+                    <input type="number" value={editCredits} onChange={(e) => setEditCredits(Number(e.target.value))} placeholder="Tanga soni" className={`${inputCls} w-full`} />
+                    <input type="number" value={editPrice} onChange={(e) => setEditPrice(Number(e.target.value))} placeholder="Narx (so'm)" className={`${inputCls} w-full`} />
+                    <input type="number" value={editSalePrice} onChange={(e) => setEditSalePrice(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Chegirma narx (ixtiyoriy)" className={`${inputCls} w-full`} />
+                    <input type="number" value={editSaleLimit} onChange={(e) => setEditSaleLimit(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Chegirma limiti (ixtiyoriy)" className={`${inputCls} w-full`} />
+                    <input type="number" value={editBonusTokens} onChange={(e) => setEditBonusTokens(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Bonus Tanga (ixtiyoriy)" className={`${inputCls} w-full`} />
+                    <input type="datetime-local" value={editValidUntil} onChange={(e) => setEditValidUntil(e.target.value)} className={`${inputCls} w-full`} />
                     <div className="flex gap-1.5">
                       <button onClick={() => saveEdit(t.id)} className="flex-1 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700">Saqlash</button>
                       <button onClick={() => setEditId(null)} className="flex-1 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold hover:bg-gray-200">Bekor</button>
@@ -3309,34 +3370,21 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
                 ) : (
                   <>
                     <p className="text-2xl font-extrabold text-gray-900 mb-0.5">
-                      {t.credits}
-                      <span className="text-sm font-semibold text-gray-400 ml-1">Tanga</span>
-                      {(t.bonusTokens ?? 0) > 0 && (
-                        <span className="text-xs font-bold text-emerald-600 ml-1.5">+{t.bonusTokens} bonus</span>
-                      )}
+                      {t.credits}<span className="text-sm font-semibold text-gray-400 ml-1">Tanga</span>
+                      {(t.bonusTokens ?? 0) > 0 && <span className="text-xs font-bold text-emerald-600 ml-1.5">+{t.bonusTokens} bonus</span>}
                     </p>
                     <div className="flex items-baseline gap-2 mb-1">
                       <p className="text-sm font-bold text-gray-600">{t.price === 0 ? "Bepul" : fmtMoney(t.salePrice ?? t.price)}</p>
-                      {t.salePrice !== undefined && t.price > t.salePrice && (
-                        <p className="text-xs text-gray-400 line-through">{fmtMoney(t.price)}</p>
-                      )}
+                      {t.salePrice !== undefined && t.price > t.salePrice && <p className="text-xs text-gray-400 line-through">{fmtMoney(t.price)}</p>}
                     </div>
                     {t.salePrice !== undefined && t.saleLimit !== undefined && (
                       <p className="text-[10px] font-bold text-orange-600 mb-1">
-                        Chegirma: {t.salePurchaseCount ?? 0}/{t.saleLimit} ta sotilgan
-                        {(t.salePurchaseCount ?? 0) >= t.saleLimit && (
-                          <span className="ml-1 text-gray-400">(tugadi)</span>
-                        )}
+                        Chegirma: {t.salePurchaseCount ?? 0}/{t.saleLimit} ta{(t.salePurchaseCount ?? 0) >= t.saleLimit ? " (tugadi)" : ""}
                       </p>
                     )}
-                    {t.validUntil && (
-                      <p className="text-[10px] text-amber-600 font-semibold mb-1 truncate">
-                        Muddat: {new Date(t.validUntil).toLocaleDateString("uz-UZ")}
-                      </p>
-                    )}
+                    {t.validUntil && <p className="text-[10px] text-amber-600 font-semibold mb-1">Muddat: {new Date(t.validUntil).toLocaleDateString("uz-UZ")}</p>}
                     <p className="text-xs text-gray-400 mb-3">{t.desc || "—"}</p>
-                    <button onClick={() => startEdit(t)}
-                      className="w-full py-1.5 rounded-xl bg-amber-50 border border-amber-100 text-xs font-bold text-amber-700 hover:bg-amber-100 transition-colors">
+                    <button onClick={() => startEdit(t)} className="w-full py-1.5 rounded-xl bg-amber-50 border border-amber-100 text-xs font-bold text-amber-700 hover:bg-amber-100 transition-colors">
                       Tahrirlash
                     </button>
                   </>
@@ -3346,131 +3394,151 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
           </div>
         )}
       </div>
-
-      </>}
-
-      {monoTab === "transactions" && (
-        <TangaTransactionsPanel refreshKey={refreshKey} />
-      )}
-
     </div>
   );
 }
 
-/* ─── Global Tanga Transactions Panel ───────────────────────────────── */
-function TangaTransactionsPanel({ refreshKey }: { refreshKey: number }) {
-  const [txs, setTxs] = useState<TangaTx[]>([]);
-  const [search, setSearch] = useState("");
-  const [filterDate, setFilterDate] = useState<"all" | "today" | "month">("all");
+/* ─── Transactions Tab ───────────────────────────────────────────── */
+function MonoTransactions({ txs, reload }: { txs: TangaTx[]; reload: () => void }) {
+  const [search, setSearch]           = useState("");
+  const [filterType, setFilterType]   = useState<"all" | "spend" | "purchase" | "referral" | "admin_adjustment">("all");
+  const [filterDate, setFilterDate]   = useState<"all" | "today" | "week" | "month">("all");
   const [viewOfferId, setViewOfferId] = useState<string | null>(null);
-
-  const load = useCallback(() => { setTxs(getAllTangaTransactions()); }, []);
-  useEffect(() => { load(); }, [load, refreshKey]);
-
   const allOffers = getOffers() as BuyerOfferFull[];
-
-  /* Summary stats */
-  const now = new Date();
+  const now      = new Date();
   const todayStr = now.toISOString().slice(0, 10);
+  const weekAgo  = new Date(now.getTime() - 7 * 86400000);
   const monthStr = now.toISOString().slice(0, 7);
-  const todaySpent  = txs.filter((t) => t.createdAt.startsWith(todayStr)).reduce((s, t) => s + t.amount, 0);
-  const monthSpent  = txs.filter((t) => t.createdAt.startsWith(monthStr)).reduce((s, t) => s + t.amount, 0);
-  const totalSpent  = txs.reduce((s, t) => s + t.amount, 0);
 
-  const filtered = txs.filter((t) => {
+  function txSignedAmount(tx: TangaTx): number {
+    if (tx.type === "spend" || (!tx.type && tx.amount > 0)) return -tx.amount;
+    return tx.amount;
+  }
+  function txTypeInfo(tx: TangaTx): { label: string; cls: string } {
+    if (tx.type === "purchase")         return { label: "Xarid",      cls: "bg-emerald-50 text-emerald-700 border-emerald-100" };
+    if (tx.type === "referral")         return { label: "Referral",   cls: "bg-blue-50 text-blue-700 border-blue-100" };
+    if (tx.type === "admin_adjustment") return { label: "Admin",      cls: "bg-violet-50 text-violet-700 border-violet-100" };
+    return                                     { label: "Sarflandi",  cls: "bg-rose-50 text-rose-700 border-rose-100" };
+  }
+
+  const filtered = txs.filter((tx) => {
+    const effectiveType = tx.type ?? "spend";
+    if (filterType !== "all" && effectiveType !== filterType) return false;
+    if (filterDate === "today" && !tx.createdAt.startsWith(todayStr)) return false;
+    if (filterDate === "week"  && new Date(tx.createdAt) < weekAgo)   return false;
+    if (filterDate === "month" && !tx.createdAt.startsWith(monthStr)) return false;
     if (search) {
       const q = search.toLowerCase();
-      if (!t.categoryName.toLowerCase().includes(q) && !t.userId.includes(q) && !t.offerId.includes(q)) return false;
+      if (!tx.userId.toLowerCase().includes(q) && !tx.categoryName.toLowerCase().includes(q) && !(tx.description ?? "").toLowerCase().includes(q)) return false;
     }
-    if (filterDate === "today" && !t.createdAt.startsWith(todayStr)) return false;
-    if (filterDate === "month" && !t.createdAt.startsWith(monthStr)) return false;
     return true;
   });
+
+  const totalIn  = filtered.filter((t) => txSignedAmount(t) > 0).reduce((s, t) => s + txSignedAmount(t), 0);
+  const totalOut = filtered.filter((t) => txSignedAmount(t) < 0).reduce((s, t) => s + txSignedAmount(t), 0);
+
+  function exportCSV() {
+    const rows = [["Sana", "Foydalanuvchi", "Turi", "Miqdor", "Kategoriya", "Tavsif", "Offer ID"]];
+    filtered.forEach((tx) => {
+      rows.push([tx.createdAt, tx.userId, tx.type || "spend", String(txSignedAmount(tx)), tx.categoryName, tx.description ?? "", tx.offerId ?? ""]);
+    });
+    const csv  = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a"); a.href = url; a.download = `tanga_txs_${Date.now()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const viewedOffer = viewOfferId ? allOffers.find((o) => o.id === viewOfferId) : undefined;
 
   return (
     <div className="space-y-4">
-      {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: "Bugun sarflandi", value: todaySpent, color: "text-amber-600" },
-          { label: "Bu oy sarflandi", value: monthSpent, color: "text-violet-600" },
-          { label: "Jami sarflandi", value: totalSpent, color: "text-red-600" },
-        ].map((s) => (
-          <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
-            <p className="text-[10px] font-semibold text-gray-400 mb-1">{s.label}</p>
-            <p className={`text-xl font-extrabold ${s.color}`}>{s.value} 🪙</p>
-          </div>
-        ))}
+        <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm text-center">
+          <p className="text-[10px] text-gray-400 font-semibold">Kirdi</p>
+          <p className="text-xl font-extrabold text-emerald-600">+{totalIn} 🪙</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm text-center">
+          <p className="text-[10px] text-gray-400 font-semibold">Chiqdi</p>
+          <p className="text-xl font-extrabold text-red-600">{totalOut} 🪙</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm text-center">
+          <p className="text-[10px] text-gray-400 font-semibold">Ko'rsatildi</p>
+          <p className="text-xl font-extrabold text-gray-700">{filtered.length} ta</p>
+        </div>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-[180px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Ijrochi ID, kategoriya bo'yicha qidirish..."
-            className={`${inputCls} w-full pl-9`} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Foydalanuvchi ID, kategoriya..." className={`${inputCls} w-full pl-9`} />
         </div>
-        <select value={filterDate} onChange={(e) => setFilterDate(e.target.value as "all" | "today" | "month")}
-          className={inputCls}>
+        <select value={filterType} onChange={(e) => setFilterType(e.target.value as typeof filterType)} className={inputCls}>
+          <option value="all">Barcha tur</option>
+          <option value="spend">Sarflandi</option>
+          <option value="purchase">Xarid</option>
+          <option value="referral">Referral</option>
+          <option value="admin_adjustment">Admin</option>
+        </select>
+        <select value={filterDate} onChange={(e) => setFilterDate(e.target.value as typeof filterDate)} className={inputCls}>
           <option value="all">Barcha vaqt</option>
           <option value="today">Bugun</option>
+          <option value="week">Bu hafta</option>
           <option value="month">Bu oy</option>
         </select>
-        <button onClick={load} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors border border-red-100">
-          <RefreshCw className="w-3.5 h-3.5" /> Yangilash
+        <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 border border-emerald-100">
+          <Download className="w-3.5 h-3.5" /> CSV
+        </button>
+        <button onClick={reload} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 border border-red-100">
+          <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {filtered.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-2xl mb-2">🪙</p>
-            <p className="text-gray-400 font-semibold text-sm">
-              {txs.length === 0 ? "Hali tranzaksiyalar yo'q" : "Topilmadi"}
-            </p>
+            <p className="text-gray-400 font-semibold text-sm">{txs.length === 0 ? "Hali tranzaksiyalar yo'q" : "Topilmadi"}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-red-50/40">
-                  {["Ijrochi ID", "Sana va vaqt", "Kategoriya", "Sarflandi", "Offer ID", "Amal"].map((h) => (
-                    <th key={h} className="text-left text-[9px] font-bold text-red-400 uppercase tracking-widest px-3 py-3 whitespace-nowrap">
-                      {h}
-                    </th>
+                  {["Foydalanuvchi", "Turi", "Miqdor", "Manba", "Sana", "Amal"].map((h) => (
+                    <th key={h} className="text-left text-[9px] font-bold text-red-400 uppercase tracking-widest px-3 py-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {filtered.map((tx) => {
-                  const offer = allOffers.find((o) => o.id === tx.offerId);
+                  const signed        = txSignedAmount(tx);
+                  const { label, cls } = txTypeInfo(tx);
+                  const offer         = allOffers.find((o) => o.id === tx.offerId);
                   return (
-                    <tr key={tx.id} className="hover:bg-red-50/20 transition-colors">
-                      <td className="px-3 py-3 font-mono text-[10px] text-gray-500">{tx.userId.slice(0, 14)}</td>
-                      <td className="px-3 py-3 text-[11px] text-gray-600 whitespace-nowrap">
-                        {new Date(tx.createdAt).toLocaleDateString("uz-UZ")}
-                        {" "}
+                    <tr key={tx.id} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="px-3 py-3 font-mono text-[10px] text-gray-500">{tx.userId.slice(0, 12)}</td>
+                      <td className="px-3 py-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${cls}`}>
+                          {tx.categoryEmoji || "📋"} {label}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className={`font-extrabold text-[13px] ${signed >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                          {signed >= 0 ? "+" : ""}{signed} 🪙
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 max-w-[140px]">
+                        <p className="text-[11px] text-gray-600 truncate">{tx.categoryName}</p>
+                        {tx.offerId && <p className="text-[10px] text-gray-400 font-mono truncate">{tx.offerId.slice(0, 10)}</p>}
+                      </td>
+                      <td className="px-3 py-3 text-[11px] text-gray-500 whitespace-nowrap">
+                        {new Date(tx.createdAt).toLocaleDateString("uz-UZ")}{" "}
                         {new Date(tx.createdAt).toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" })}
                       </td>
                       <td className="px-3 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <span>{tx.categoryEmoji || "📋"}</span>
-                          <span className="text-[11px] font-semibold text-gray-700">{tx.categoryName}</span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span className="font-extrabold text-amber-600 text-[12px]">−{tx.amount} 🪙</span>
-                      </td>
-                      <td className="px-3 py-3 font-mono text-[10px] text-gray-400">{tx.offerId.slice(0, 12)}</td>
-                      <td className="px-3 py-3">
                         {offer && (
-                          <button
-                            onClick={() => setViewOfferId(offer.id)}
-                            className="px-2 py-1 rounded-lg bg-violet-50 text-violet-600 text-[10px] font-bold hover:bg-violet-100 transition-colors border border-violet-100">
+                          <button onClick={() => setViewOfferId(offer.id)} className="px-2 py-1 rounded-lg bg-violet-50 text-violet-600 text-[10px] font-bold hover:bg-violet-100 border border-violet-100">
                             Batafsil
                           </button>
                         )}
@@ -3486,10 +3554,217 @@ function TangaTransactionsPanel({ refreshKey }: { refreshKey: number }) {
       <p className="text-[11px] text-gray-400 text-right">{filtered.length} / {txs.length} tranzaksiya</p>
 
       <AnimatePresence>
-        {viewedOffer && (
-          <OfferDetailModal offer={viewedOffer} onClose={() => setViewOfferId(null)} readOnly />
-        )}
+        {viewedOffer && <OfferDetailModal offer={viewedOffer} onClose={() => setViewOfferId(null)} readOnly />}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/* ─── Provider Balances Tab ──────────────────────────────────────── */
+function MonoBalances({ providers, reload }: { providers: ProviderSummary[]; reload: () => void }) {
+  const [filterBal, setFilterBal]   = useState<"all" | "low" | "zero" | "high">("all");
+  const [search, setSearch]         = useState("");
+  const [adjustId, setAdjustId]     = useState<string | null>(null);
+  const [adjustAmt, setAdjustAmt]   = useState(0);
+  const [adjustType, setAdjustType] = useState<"add" | "remove">("add");
+
+  const filtered = providers.filter((p) => {
+    if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.userId.includes(search)) return false;
+    if (filterBal === "low"  && p.balance >= 5)  return false;
+    if (filterBal === "zero" && p.balance !== 0) return false;
+    if (filterBal === "high" && p.balance < 20)  return false;
+    return true;
+  });
+
+  function applyAdjust(userId: string, name: string) {
+    if (adjustAmt <= 0) return;
+    if (adjustType === "add") {
+      addTangaBalance(userId, adjustAmt);
+      recordTangaTransaction({ userId, offerId: "", requestId: "", categoryName: "Admin sozlamasi", categoryEmoji: "🛡", description: `Admin +${adjustAmt} Tanga qo'shdi`, amount: adjustAmt, type: "admin_adjustment" });
+      logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_ADD_TANGA", category: "financial", targetId: userId, targetType: "tanga", description: `${name}ga +${adjustAmt} Tanga qo'shildi`, metadata: { amount: adjustAmt } });
+    } else {
+      const bal    = getTangaBalance(userId);
+      const deduct = Math.min(adjustAmt, bal);
+      if (deduct > 0) {
+        spendTangaBalance(userId, deduct);
+        recordTangaTransaction({ userId, offerId: "", requestId: "", categoryName: "Admin sozlamasi", categoryEmoji: "🛡", description: `Admin −${deduct} Tanga ayirdi`, amount: deduct, type: "admin_adjustment" });
+        logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_REMOVE_TANGA", category: "financial", targetId: userId, targetType: "tanga", description: `${name}dan −${deduct} Tanga ayirildi`, metadata: { amount: deduct } });
+      }
+    }
+    setAdjustId(null); setAdjustAmt(0);
+    reload();
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm text-center">
+          <p className="text-[10px] text-gray-400 font-semibold">Jami ijrochilar</p>
+          <p className="text-xl font-extrabold text-gray-900">{providers.length} ta</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm text-center">
+          <p className="text-[10px] text-gray-400 font-semibold">Muomala Tanga</p>
+          <p className="text-xl font-extrabold text-amber-600">{providers.reduce((s, p) => s + p.balance, 0)} 🪙</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm text-center">
+          <p className="text-[10px] text-gray-400 font-semibold">Kam balans (&lt;5)</p>
+          <p className="text-xl font-extrabold text-red-600">{providers.filter((p) => p.balance < 5).length} ta</p>
+        </div>
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Ijrochi nomi yoki ID..." className={`${inputCls} w-full pl-9`} />
+        </div>
+        <select value={filterBal} onChange={(e) => setFilterBal(e.target.value as typeof filterBal)} className={inputCls}>
+          <option value="all">Barcha balans</option>
+          <option value="low">Kam (&lt;5 🪙)</option>
+          <option value="zero">Nol</option>
+          <option value="high">Yuqori (≥20 🪙)</option>
+        </select>
+      </div>
+
+      {providers.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
+          <Wallet className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+          <p className="text-gray-400 text-sm font-semibold">Ijrochilar topilmadi</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-red-50/40">
+                  {["Ijrochi", "Balans", "Sotib oldi", "Sarfladi", "Referral", "Amal"].map((h) => (
+                    <th key={h} className="text-left text-[9px] font-bold text-red-400 uppercase tracking-widest px-3 py-3 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filtered.map((p) => (
+                  <tr key={p.userId} className="hover:bg-gray-50/60 transition-colors">
+                    <td className="px-3 py-3">
+                      <p className="text-xs font-bold text-gray-800">{p.name}</p>
+                      <p className="text-[10px] text-gray-400 font-mono">{p.userId.slice(0, 10)}</p>
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`font-extrabold text-sm ${p.balance === 0 ? "text-gray-300" : p.balance < 5 ? "text-red-500" : "text-amber-600"}`}>{p.balance} 🪙</span>
+                        {p.balance < 5 && p.balance > 0 && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-red-600 border border-red-100">Kam</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-[11px] font-semibold text-emerald-600">+{p.totalPurchased} 🪙</td>
+                    <td className="px-3 py-3 text-[11px] font-semibold text-red-500">−{p.totalSpent} 🪙</td>
+                    <td className="px-3 py-3 text-[11px] font-semibold text-blue-600">+{p.referralEarned} 🪙</td>
+                    <td className="px-3 py-3">
+                      {adjustId === p.userId ? (
+                        <div className="flex items-center gap-1.5">
+                          <select value={adjustType} onChange={(e) => setAdjustType(e.target.value as "add" | "remove")} className="text-[10px] px-2 py-1 rounded-lg border border-gray-200 bg-white focus:outline-none">
+                            <option value="add">Qo'shish</option>
+                            <option value="remove">Ayirish</option>
+                          </select>
+                          <input type="number" min={1} value={adjustAmt || ""} onChange={(e) => setAdjustAmt(Number(e.target.value))} placeholder="🪙" className="w-14 text-xs px-2 py-1 rounded-lg border border-gray-200 bg-white focus:outline-none focus:border-red-400" />
+                          <button onClick={() => applyAdjust(p.userId, p.name)} className="px-2 py-1 rounded-lg bg-emerald-500 text-white text-[10px] font-bold hover:bg-emerald-600">✓</button>
+                          <button onClick={() => { setAdjustId(null); setAdjustAmt(0); }} className="px-2 py-1 rounded-lg bg-gray-100 text-gray-600 text-[10px] font-bold hover:bg-gray-200">✕</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setAdjustId(p.userId); setAdjustAmt(0); setAdjustType("add"); }} className="px-2.5 py-1.5 rounded-xl bg-amber-50 text-amber-700 text-[10px] font-bold hover:bg-amber-100 border border-amber-100 whitespace-nowrap">
+                          ± Sozlash
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[11px] text-gray-400 text-right px-4 py-2">{filtered.length}/{providers.length} ijrochi</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Referral Economy Tab ───────────────────────────────────────── */
+function MonoReferral({ providers }: { providers: ProviderSummary[] }) {
+  const referralData = providers.map((p) => {
+    const stats = getReferralStats(p.userId);
+    return { ...p, refCount: stats.count ?? 0, refEarned: stats.earned ?? p.referralEarned, invitees: stats.invitees ?? [] };
+  }).filter((p) => p.refCount > 0 || p.refEarned > 0).sort((a, b) => b.refEarned - a.refEarned);
+
+  const totalRefTanga     = referralData.reduce((s, r) => s + r.refEarned, 0);
+  const totalRefCompleted = referralData.reduce((s, r) => s + r.invitees.length, 0);
+  const topReferrers      = referralData.slice(0, 3);
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Referral Tanga berildi", value: `${totalRefTanga} 🪙`,       color: "text-emerald-600" },
+          { label: "Bajarilgan taklif",      value: `${totalRefCompleted} ta`,    color: "text-blue-700"   },
+          { label: "Faol referrerlar",       value: `${referralData.length} ta`,  color: "text-violet-700" },
+        ].map((m) => (
+          <div key={m.label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm text-center">
+            <p className="text-[10px] font-semibold text-gray-400 mb-1">{m.label}</p>
+            <p className={`text-xl font-extrabold ${m.color}`}>{m.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {topReferrers.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-100 p-4">
+          <p className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-3">🏆 Top referrerlar</p>
+          <div className="flex gap-3 flex-wrap">
+            {topReferrers.map((r, i) => (
+              <div key={r.userId} className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-amber-100 shadow-sm">
+                <span className="text-base">{i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}</span>
+                <div>
+                  <p className="text-xs font-bold text-gray-800">{r.name}</p>
+                  <p className="text-[10px] text-amber-600 font-semibold">{r.invitees.length} ta · +{r.refEarned} 🪙</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {referralData.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
+          <p className="text-3xl mb-2">🔗</p>
+          <p className="text-gray-400 text-sm font-semibold">Hali referral faoliyati yo'q</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-red-50/40">
+                  {["Referrer", "Taklif qildi", "Bajaraldi", "Tanga topdi", "Referral kodi"].map((h) => (
+                    <th key={h} className="text-left text-[9px] font-bold text-red-400 uppercase tracking-widest px-3 py-3 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {referralData.map((r) => (
+                  <tr key={r.userId} className="hover:bg-gray-50/60 transition-colors">
+                    <td className="px-3 py-3">
+                      <p className="text-xs font-bold text-gray-800">{r.name}</p>
+                      <p className="text-[10px] text-gray-400 font-mono">{r.userId.slice(0, 10)}</p>
+                    </td>
+                    <td className="px-3 py-3 text-xs text-gray-600">{r.refCount} ta</td>
+                    <td className="px-3 py-3 text-xs font-semibold text-emerald-600">{r.invitees.length} ta ✓</td>
+                    <td className="px-3 py-3"><span className="font-extrabold text-amber-600">+{r.refEarned} 🪙</span></td>
+                    <td className="px-3 py-3"><span className="font-mono text-[10px] text-gray-500 bg-gray-50 px-2 py-1 rounded-lg">{getReferralCode(r.userId)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
