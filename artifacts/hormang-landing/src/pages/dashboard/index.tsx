@@ -389,6 +389,8 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
     photoUrl:       local.photoUrl,
     region:         local.region,
     district:       local.district,
+    serviceAreas:   local.serviceAreas,
+    serviceAreaV2:  local.serviceAreaV2,
     experience:     local.experience,
     portfolioItems: local.portfolioItems ?? [],
     bio:            local.bio,
@@ -821,7 +823,7 @@ export default function UnifiedDashboard() {
             </div>
           </div>
         </header>
-
+      
         <main className="max-w-lg mx-auto px-4 py-8 pb-28">
           <motion.div
             key={activeRole}
