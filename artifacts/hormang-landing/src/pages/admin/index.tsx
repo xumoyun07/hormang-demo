@@ -3036,24 +3036,41 @@ type ProviderSummary = {
 
 function getAllProviderSummaries(): ProviderSummary[] {
   const map = new Map<string, { userId: string; name: string }>();
+
+  // 1. Real registered users (canonical source — auth-client.ts USERS_KEY)
   try {
     const au = JSON.parse(localStorage.getItem("hormang_auth_users") ?? "[]") as { id: string; firstName: string; lastName: string; role: string }[];
     for (const u of au) {
-      if (u.role === "provider") map.set(u.id, { userId: u.id, name: `${u.firstName} ${u.lastName}`.trim() });
+      if (u.role === "provider") {
+        const fullName = `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || `Ijrochi ${u.id.slice(0, 6)}`;
+        map.set(u.id, { userId: u.id, name: fullName });
+      }
     }
   } catch {}
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (!k?.startsWith("hormang_local_profile_")) continue;
-    const uid = k.replace("hormang_local_profile_", "");
-    if (!map.has(uid)) {
-      try { const p = JSON.parse(localStorage.getItem(k) ?? "{}"); map.set(uid, { userId: uid, name: p.name || `Ijrochi ${uid.slice(0, 6)}` }); } catch {}
+
+  const allTxs    = getAllTangaTransactions();
+  const offers    = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
+
+  // 2. Anyone who ever spent/purchased/received Tanga (catches role-swapped buyers, legacy users)
+  for (const tx of allTxs) {
+    if (!map.has(tx.userId)) {
+      // Try to enrich name from offer (masterName) if any
+      const offer = offers.find((o) => o.masterId === tx.userId);
+      const name  = offer?.masterName?.trim() || `Ijrochi ${tx.userId.slice(0, 6)}`;
+      map.set(tx.userId, { userId: tx.userId, name });
     }
   }
-  const allTxs = getAllTangaTransactions();
-  for (const tx of allTxs) {
-    if (!map.has(tx.userId)) map.set(tx.userId, { userId: tx.userId, name: `Ijrochi ${tx.userId.slice(0, 6)}` });
+
+  // 3. Anyone with a non-zero Tanga balance (provider_tokens_<id>) but no auth/tx record
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k?.startsWith("provider_tokens_")) continue;
+    const uid = k.replace("provider_tokens_", "");
+    if (!uid || map.has(uid)) continue;
+    const offer = offers.find((o) => o.masterId === uid);
+    map.set(uid, { userId: uid, name: offer?.masterName?.trim() || `Ijrochi ${uid.slice(0, 6)}` });
   }
+
   return Array.from(map.values()).map(({ userId, name }) => {
     const userTxs = allTxs.filter((t) => t.userId === userId);
     const totalPurchased = userTxs.filter((t) => t.type === "purchase").reduce((s, t) => s + t.amount, 0);
