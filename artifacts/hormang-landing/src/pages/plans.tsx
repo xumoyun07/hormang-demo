@@ -8,11 +8,12 @@ import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import logoImg from "/hormang-logo.png";
 import {
-  getTangaBalance, addTangaBalance, getActiveTiers, type PricingTier,
-  isSaleActive, getSaleRemaining, incrementSalePurchaseCount,
+  getTangaBalance, getActiveTiers, type PricingTier,
+  isSaleActive, getSaleRemaining, purchaseTier,
 } from "@/lib/tanga-store";
 import { recordTangaTransaction } from "@/lib/tanga-history-store";
 import { ReferralCard } from "@/components/referral-card";
+import { isUserSuspended, SUSPENDED_MESSAGE } from "@/lib/safety-store";
 
 const GOLD_GRAD = "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
 const GOLD_DARK = "linear-gradient(135deg, #f59e0b 0%, #92400e 100%)";
@@ -213,15 +214,26 @@ export default function PlansPage() {
 
   function handleBuy(tier: PricingTier) {
     if (!userId || buying) return;
-    const wasOnSale = isSaleActive(tier);
+    if (isUserSuspended(userId)) {
+      toast({ title: SUSPENDED_MESSAGE, variant: "destructive" });
+      return;
+    }
     setBuying(tier.id);
+    // Run the atomic purchase synchronously (no double-spend race) and only
+    // use the timeout for UI feedback.
+    const result = purchaseTier(userId, tier.id);
     setTimeout(() => {
-      const total = tier.credits + (tier.bonusTokens ?? 0);
-      const pricePaid = wasOnSale && tier.salePrice !== undefined ? tier.salePrice : tier.price;
-      if (wasOnSale && tier.saleLimit !== undefined) {
-        incrementSalePurchaseCount(tier.id);
+      setBuying(null);
+      if (!result.ok) {
+        const msg =
+          result.error === "sale_sold_out" ? "Chegirma joylari tugadi."
+          : result.error === "expired" ? "Reja muddati tugagan."
+          : result.error === "tier_inactive" ? "Reja faol emas."
+          : "Reja topilmadi.";
+        toast({ title: "Sotib olib bo'lmadi", description: msg, variant: "destructive" });
+        return;
       }
-      addTangaBalance(userId, total);
+      const total = result.total!;
       recordTangaTransaction({
         userId,
         offerId: "",
@@ -230,10 +242,9 @@ export default function PlansPage() {
         categoryEmoji: "💳",
         description: `"${tier.name}" rejasi xaridi: ${tier.credits} Tanga${(tier.bonusTokens ?? 0) > 0 ? ` + ${tier.bonusTokens} bonus` : ""}`,
         amount: total,
-        priceSom: pricePaid,
+        priceSom: result.pricePaid,
         type: "purchase",
       });
-      setBuying(null);
       setBought(tier.id);
       toast({
         title: `${total} Tanga qo'shildi! 🎉`,

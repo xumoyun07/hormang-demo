@@ -27,9 +27,10 @@ import { getRequests, getOffers } from "@/lib/requests-store";
 import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questionnaire-store";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
-import { getTangaBalance, spendTangaBalance } from "@/lib/tanga-store";
+import { getTangaBalance, spendTangaBalance, addTangaBalance } from "@/lib/tanga-store";
 import { calculateOfferCost } from "@/lib/offer-cost";
 import { recordTangaTransaction } from "@/lib/tanga-history-store";
+import { isUserSuspended, SUSPENDED_MESSAGE } from "@/lib/safety-store";
 import { useLocation } from "wouter";
 
 const COMPLETION_OPTIONS = [
@@ -168,6 +169,10 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
   function handleSubmit() {
     if (!hasEnoughTanga) return;
     if (!validate()) return;
+    if (user && isUserSuspended(user.id)) {
+      toast({ title: SUSPENDED_MESSAGE, variant: "destructive" });
+      return;
+    }
     setSubmitting(true);
 
     const numPrice = parseInt(priceRaw.replace(/\D/g, ""), 10);
@@ -179,6 +184,22 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
     const initials = `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase() || "IJ";
     const palette = ["#7C3AED", "#2563EB", "#059669", "#D97706", "#DC2626", "#0891B2"];
     const color = palette[(user?.id?.charCodeAt(0) ?? 0) % palette.length];
+
+    /* Deduct Tanga FIRST so a failed save doesn't leave behind an
+     * uncharged offer. If saveOffer throws we refund. */
+    if (user) {
+      try {
+        spendTangaBalance(user.id, offerCost);
+      } catch (_) {
+        setSubmitting(false);
+        toast({
+          title: "Yetarli Tanga yo'q",
+          description: `Balans yetarli emas. ${offerCost} Tanga kerak.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
 
     let offer;
     try {
@@ -195,29 +216,22 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
         },
         user ? { id: user.id, name: fullName, initials, color } : undefined,
       );
-    } catch (_) {
+    } catch (err) {
+      // Refund Tanga since the offer was never persisted.
+      if (user) addTangaBalance(user.id, offerCost);
       setSubmitting(false);
-      toast({
-        title: "Xatolik",
-        description: "Rasm hajmi katta. Kamroq yoki kichikroq rasmlar yuklang.",
-        variant: "destructive",
-      });
+      const code = err instanceof Error ? err.message : "";
+      const description =
+        code === "REQUEST_CLOSED" || code === "REQUEST_ALREADY_ACCEPTED"
+          ? "Bu so'rov yopilgan yoki boshqa taklif qabul qilingan."
+          : code === "DUPLICATE_OFFER"
+            ? "Siz bu so'rovga allaqachon taklif yuborgansiz."
+            : "Rasm hajmi katta. Kamroq yoki kichikroq rasmlar yuklang.";
+      toast({ title: "Xatolik", description, variant: "destructive" });
       return;
     }
 
-    /* Deduct Tanga balance and record transaction */
     if (user) {
-      try {
-        spendTangaBalance(user.id, offerCost);
-      } catch (_) {
-        setSubmitting(false);
-        toast({
-          title: "Yetarli Tanga yo'q",
-          description: `Balans yetarli emas. ${offerCost} Tanga kerak.`,
-          variant: "destructive",
-        });
-        return;
-      }
       recordTangaTransaction({
         userId: user.id,
         offerId: offer.id,

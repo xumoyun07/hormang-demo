@@ -10,6 +10,9 @@
 
 import { emitStoreChange } from "./store-events";
 import { incrementCompletedCount } from "./completion-store";
+import { addTangaBalance, spendTangaBalance } from "./tanga-store";
+import { recordTangaTransaction } from "./tanga-history-store";
+import { calculateOfferCost } from "./offer-cost";
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -299,23 +302,77 @@ export function markOfferCompleted(offerId: string): boolean {
   return true;
 }
 
+/**
+ * Refund the Tanga an offer originally cost back to its provider, and record
+ * a transaction. Idempotent per (offerId, reason): a "refund-applied" marker
+ * is written so a second call is a no-op.
+ */
+function refundOfferToProvider(
+  offer: Offer,
+  request: CustomerRequest | undefined,
+  reason: "rejected" | "request_deleted" | "request_cancelled",
+): void {
+  if (!offer.masterId) return;
+  const flagKey = `hormang_offer_refunded_${offer.id}`;
+  if (localStorage.getItem(flagKey)) return;
+
+  const cost = request
+    ? calculateOfferCost({ categoryId: request.categoryId, answers: request.answers as Record<string, unknown> | undefined })
+    : 2;
+
+  addTangaBalance(offer.masterId, cost);
+  recordTangaTransaction({
+    userId: offer.masterId,
+    offerId: offer.id,
+    requestId: offer.requestId,
+    categoryName: request?.categoryName ?? "",
+    categoryEmoji: request?.emoji ?? "↩️",
+    description:
+      reason === "rejected"
+        ? "Taklif rad etildi — Tanga qaytarildi"
+        : reason === "request_deleted"
+          ? "So'rov o'chirildi — Tanga qaytarildi"
+          : "So'rov bekor qilindi — Tanga qaytarildi",
+    amount: cost,
+    type: "refund",
+    direction: "in",
+  });
+  localStorage.setItem(flagKey, new Date().toISOString());
+  console.log(`[Hormang] 💰 Refund: +${cost} Tanga → provider=${offer.masterId.slice(0,8)} offer=${offer.id} (${reason})`);
+}
+
 export function updateOfferStatus(offerId: string, status: "accepted" | "rejected"): void {
   const allOffers = getOffers();
   const target = allOffers.find((o) => o.id === offerId);
+  if (!target) return;
+  const wasPending = target.status === "pending";
 
   // Mark the target offer with the new status
   let updated = allOffers.map((o) => o.id === offerId ? { ...o, status } : o);
 
   // When an offer is accepted, also reject ALL sibling offers on the same request
-  if (status === "accepted" && target) {
+  let siblingsToRefund: Offer[] = [];
+  if (status === "accepted") {
+    siblingsToRefund = allOffers.filter(
+      (o) => o.requestId === target.requestId && o.id !== offerId && o.status === "pending"
+    );
     updated = updated.map((o) =>
-      o.requestId === target.requestId && o.id !== offerId
+      o.requestId === target.requestId && o.id !== offerId && o.status === "pending"
         ? { ...o, status: "rejected" as const }
         : o
     );
   }
 
   writeJSON(OFFERS_KEY, updated);
+
+  // Refunds: reject path refunds the target; accept path refunds rejected siblings
+  const req = getRequestById(target.requestId);
+  if (status === "rejected" && wasPending) {
+    refundOfferToProvider(target, req, "rejected");
+  }
+  for (const sib of siblingsToRefund) {
+    refundOfferToProvider(sib, req, "rejected");
+  }
   console.log(`[Hormang] ✅ Offer ${status === "accepted" ? "qabul qilindi" : "rad etildi"}`, { offerId, status });
 
   // Inject a timeline system message into the offer's own chat
@@ -342,6 +399,169 @@ export function updateOfferStatus(offerId: string, status: "accepted" | "rejecte
   }
 
   emitStoreChange();
+}
+
+/**
+ * Re-open a previously rejected offer (only when the request is still open
+ * and no other offer has been accepted). Re-deducts the original Tanga cost
+ * from the provider so they cannot loop reject↔reopen for free Tanga.
+ */
+export function reopenOffer(
+  offerId: string,
+): { ok: boolean; reason?: "not_found" | "not_rejected" | "no_request" | "request_closed" | "already_accepted" | "insufficient_tanga" } {
+  const allOffers = getOffers();
+  const target = allOffers.find((o) => o.id === offerId);
+  if (!target) return { ok: false, reason: "not_found" };
+  if (target.status !== "rejected") return { ok: false, reason: "not_rejected" };
+
+  const req = getRequestById(target.requestId);
+  if (!req) return { ok: false, reason: "no_request" };
+  if (req.status !== "open") return { ok: false, reason: "request_closed" };
+  if (allOffers.some((o) => o.requestId === target.requestId && o.status === "accepted")) {
+    return { ok: false, reason: "already_accepted" };
+  }
+
+  // Re-charge the provider the original cost so a future rejection refund
+  // is not net-positive. Skip if no masterId (legacy data).
+  if (target.masterId) {
+    const cost = calculateOfferCost({ categoryId: req.categoryId, answers: req.answers as Record<string, unknown> | undefined });
+    try {
+      spendTangaBalance(target.masterId, cost);
+    } catch (_) {
+      return { ok: false, reason: "insufficient_tanga" };
+    }
+    recordTangaTransaction({
+      userId: target.masterId,
+      offerId: target.id,
+      requestId: target.requestId,
+      categoryName: req.categoryName ?? "",
+      categoryEmoji: req.emoji,
+      description: "Taklif qayta ochildi",
+      amount: cost,
+      type: "spend",
+    });
+  }
+
+  // Reset the refund marker so the next rejection can refund again.
+  localStorage.removeItem(`hormang_offer_refunded_${offerId}`);
+
+  const updated = allOffers.map((o) => o.id === offerId ? { ...o, status: "pending" as const } : o);
+  writeJSON(OFFERS_KEY, updated);
+  emitStoreChange();
+  return { ok: true };
+}
+
+/**
+ * Cascading delete of a request and ALL related rows (offers, chats).
+ * Refunds Tanga to providers whose pending offers get destroyed and also
+ * scrubs the request from every per-provider offer mirror.
+ */
+export function deleteRequestCascade(requestId: string): void {
+  const req = getRequestById(requestId);
+  const allOffers = getOffers();
+  // Only refund unresolved offers. Accepted/in_progress represent committed
+  // work and completed offers are already paid for, so we do not over-refund.
+  for (const o of allOffers) {
+    if (o.requestId === requestId && o.status === "pending") {
+      refundOfferToProvider(o, req, "request_deleted");
+    }
+  }
+  writeJSON(OFFERS_KEY, allOffers.filter((o) => o.requestId !== requestId));
+
+  const reqs = getRequests().filter((r) => r.id !== requestId);
+  writeJSON(REQUESTS_KEY, reqs);
+
+  const chats = readJSON<Chat[]>(CHATS_KEY, []);
+  writeJSON(CHATS_KEY, chats.filter((c) => c.requestId !== requestId));
+
+  // Per-provider offer mirrors live at hormang_provider_offers_<providerId>.
+  // Walk localStorage and prune entries pointing at this requestId.
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k || !k.startsWith("hormang_provider_offers_")) continue;
+    try {
+      const arr = JSON.parse(localStorage.getItem(k) ?? "[]") as Array<{ requestId?: string }>;
+      const next = arr.filter((o) => o.requestId !== requestId);
+      if (next.length !== arr.length) localStorage.setItem(k, JSON.stringify(next));
+    } catch (_) {}
+  }
+
+  emitStoreChange();
+}
+
+/**
+ * Cascading delete of every localStorage key tied to a single user.
+ * Used when admin deletes a user.
+ */
+export function deleteUserDataCascade(userId: string): void {
+  if (!userId) return;
+  // 1. Per-user prefixed keys (user_<id>_*, provider_tokens_<id>, etc.)
+  const PER_USER_PREFIXES = [
+    `user_${userId}_`,
+    `provider_tokens_${userId}`,
+    `hormang_referral_${userId}`,
+    `hormang_ref_pending_${userId}`,
+    `hormang_ref_inviter_${userId}`,
+    `hormang_tanga_history_${userId}`,
+    `provider_seen_${userId}`,
+    `provider_offers_${userId}`,
+    `provider_services_${userId}`,
+    `provider_statuses_${userId}`,
+  ];
+  const toRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k) continue;
+    if (PER_USER_PREFIXES.some((p) => k === p || k.startsWith(p))) toRemove.push(k);
+    if (k.endsWith(`_${userId}`) || k.includes(`_${userId}_`)) toRemove.push(k);
+  }
+  toRemove.forEach((k) => localStorage.removeItem(k));
+
+  // 2. Shared collections — drop rows owned by this user. We must also
+  //    purge offers/chats whose requestId belongs to a request we just
+  //    removed (the user was the customer), otherwise they orphan.
+  const allReqs = getRequests();
+  const removedReqIds = new Set(allReqs.filter((r) => r.customerId === userId).map((r) => r.id));
+  const reqs = allReqs.filter((r) => r.customerId !== userId);
+  writeJSON(REQUESTS_KEY, reqs);
+
+  const offers = getOffers().filter(
+    (o) => o.masterId !== userId && !removedReqIds.has(o.requestId),
+  );
+  writeJSON(OFFERS_KEY, offers);
+
+  const chats = readJSON<Chat[]>(CHATS_KEY, []).filter(
+    (c) => c.masterId !== userId && !removedReqIds.has(c.requestId),
+  );
+  writeJSON(CHATS_KEY, chats);
+
+  // Also scrub the deleted requestIds from every per-provider offer mirror.
+  if (removedReqIds.size > 0) {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith("hormang_provider_offers_")) continue;
+      try {
+        const arr = JSON.parse(localStorage.getItem(k) ?? "[]") as Array<{ requestId?: string }>;
+        const next = arr.filter((o) => o.requestId === undefined || !removedReqIds.has(o.requestId));
+        if (next.length !== arr.length) localStorage.setItem(k, JSON.stringify(next));
+      } catch (_) {}
+    }
+  }
+
+  // 3. Customer / phone registry
+  try {
+    const reg = JSON.parse(localStorage.getItem(CUSTOMER_REGISTRY_KEY) ?? "{}");
+    delete reg[userId];
+    localStorage.setItem(CUSTOMER_REGISTRY_KEY, JSON.stringify(reg));
+  } catch {}
+  try {
+    const phones = JSON.parse(localStorage.getItem("hormang_phone_registry") ?? "{}");
+    delete phones[userId];
+    localStorage.setItem("hormang_phone_registry", JSON.stringify(phones));
+  } catch {}
+
+  emitStoreChange();
+  console.log(`[Hormang] 🗑️ Foydalanuvchi ma'lumotlari to'liq o'chirildi: ${userId.slice(0,8)}`);
 }
 
 /**

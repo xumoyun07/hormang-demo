@@ -72,6 +72,50 @@ export function spendTangaBalance(userId: string, amount: number): number {
   return next;
 }
 
+/* ─── Atomic plan purchase ───────────────────────────────────────── */
+/**
+ * Single-call atomic purchase of a tier:
+ *   1. Re-reads tier from storage so sale-state can't be staled by UI.
+ *   2. Validates active + sale capacity in the same critical section.
+ *   3. Increments salePurchaseCount BEFORE crediting the user, so a
+ *      double-click can't double-mint Tanga at the sale price.
+ * Returns the credited total on success, or { error } on failure.
+ */
+export interface PurchaseResult {
+  ok: boolean;
+  total?: number;
+  pricePaid?: number;
+  wasOnSale?: boolean;
+  error?: "tier_missing" | "tier_inactive" | "expired" | "sale_sold_out";
+}
+
+export function purchaseTier(userId: string, tierId: string): PurchaseResult {
+  if (!userId) return { ok: false, error: "tier_missing" };
+  const tiers = getAllTiers();
+  const idx = tiers.findIndex((t) => t.id === tierId);
+  if (idx === -1) return { ok: false, error: "tier_missing" };
+  const tier = tiers[idx];
+  if (!tier.active) return { ok: false, error: "tier_inactive" };
+  if (tier.validUntil && new Date(tier.validUntil) <= new Date()) {
+    return { ok: false, error: "expired" };
+  }
+
+  const wasOnSale = isSaleActive(tier);
+  if (wasOnSale && tier.saleLimit !== undefined) {
+    const used = tier.salePurchaseCount ?? 0;
+    if (used >= tier.saleLimit) return { ok: false, error: "sale_sold_out" };
+    // Atomic seat reservation BEFORE credit.
+    tiers[idx] = { ...tier, salePurchaseCount: used + 1 };
+    saveAllTiers(tiers);
+  }
+
+  const pricePaid = wasOnSale && tier.salePrice !== undefined ? tier.salePrice : tier.price;
+  const total = tier.credits + (tier.bonusTokens ?? 0);
+  addTangaBalance(userId, total);
+
+  return { ok: true, total, pricePaid, wasOnSale };
+}
+
 /* ─── Tiers ──────────────────────────────────────────────────────── */
 export function getAllTiers(): PricingTier[] {
   try {

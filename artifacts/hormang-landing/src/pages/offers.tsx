@@ -13,9 +13,10 @@ import { ImageStrip } from "@/components/image-grid";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import {
-  getOffersByCustomer, getRequestById, updateOfferStatus,
+  getOffersByCustomer, getRequestById, updateOfferStatus, reopenOffer,
   type Offer,
 } from "@/lib/requests-store";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { getLocalProfile } from "@/lib/local-profile";
@@ -25,6 +26,7 @@ import { formatDate } from "@/lib/date-utils";
 /* ─── Offer Card ─────────────────────────────────────────────────── */
 function OfferCard({ offer, index }: { offer: Offer; index: number }) {
   const [showDetail, setShowDetail] = useState(false);
+  const { toast } = useToast();
 
   const req = getRequestById(offer.requestId);
   const isAccepted = offer.status === "accepted";
@@ -169,14 +171,16 @@ function OfferCard({ offer, index }: { offer: Offer; index: number }) {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                const raw = localStorage.getItem("hormang_offers");
-                if (!raw) return;
-                try {
-                  const all = JSON.parse(raw) as Array<{ id: string; status: string }>;
-                  const updated = all.map((o) => o.id === offer.id ? { ...o, status: "pending" } : o);
-                  localStorage.setItem("hormang_offers", JSON.stringify(updated));
-                  window.dispatchEvent(new CustomEvent("hormang:store-change"));
-                } catch (_) {}
+                const res = reopenOffer(offer.id);
+                if (!res.ok) {
+                  const msg =
+                    res.reason === "request_closed" ? "So'rov yopilgan."
+                    : res.reason === "already_accepted" ? "Boshqa taklif allaqachon qabul qilingan."
+                    : res.reason === "no_request" ? "So'rov topilmadi."
+                    : res.reason === "insufficient_tanga" ? "Tanga balansi yetarli emas."
+                    : "Qaytarib bo'lmadi.";
+                  toast({ title: "Qaytarib bo'lmadi", description: msg, variant: "destructive" });
+                }
               }}
               className="text-xs text-gray-400 underline"
             >

@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { saveProviderProfile } from "@/lib/auth-client";
+import { processReferralReward } from "@/lib/referral-store";
 import { useToast } from "@/hooks/use-toast";
 import {
   getLocalProfile, saveLocalProfile, hasProviderAccess,
@@ -719,6 +720,8 @@ export default function UnifiedDashboard() {
       setProviderProfile(res.profile);
       markProviderAccess(user.id);
       saveLocalProfile(user.id, { ...getLocalProfile(user.id), categories });
+      // Award referral reward to the inviter (if the new provider was invited).
+      try { processReferralReward(user.id); } catch (_) {}
       switchRole("provider");
       sessionStorage.setItem("justBecameProvider", "1");
       setShowBecomeModal(false);

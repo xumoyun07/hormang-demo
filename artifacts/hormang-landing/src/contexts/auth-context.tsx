@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { getMe, logoutUser, refreshToken, type SafeUser, type ProviderProfile } from "@/lib/auth-client";
 import { saveCustomerToRegistry, savePhoneToRegistry } from "@/lib/requests-store";
 import { getLocalProfile, hasProviderAccess, markProviderAccess } from "@/lib/local-profile";
+import { isUserSuspended } from "@/lib/safety-store";
 
 type Role = "buyer" | "provider";
 
@@ -147,6 +148,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Token changed (new login in another tab/iframe) → re-validate session
         getMe()
           .then(({ user: u, providerProfile: pp }) => {
+            // Suspended users are blocked even on cross-tab token sync.
+            if (isUserSuspended(u.id)) {
+              console.warn(`[Hormang] 🚫 Suspended user (cross-tab) bloklandi: ${u.id.slice(0, 8)}`);
+              logoutUser().catch(() => {});
+              setUser(null);
+              setProviderProfileState(null);
+              setActiveRoleState("buyer");
+              return;
+            }
             handleUserSwitch(u.id);
             persistUserToRegistry(u);
             if (hasProviderAccess(u, pp, getLocalProfile(u.id))) markProviderAccess(u.id);
@@ -174,6 +184,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!token) { setLoading(false); return; }
 
     function applyUser(u: SafeUser, pp: ProviderProfile | null) {
+      // Suspended users are immediately logged out — they cannot access the app.
+      if (isUserSuspended(u.id)) {
+        console.warn(`[Hormang] 🚫 Suspended user kirishga uringan: ${u.id.slice(0, 8)} — chiqarildi`);
+        logoutUser().finally(() => {
+          setUser(null);
+          setProviderProfileState(null);
+          setActiveRoleState("buyer");
+        });
+        return;
+      }
       persistUserToRegistry(u);
       handleUserSwitch(u.id);
       if (hasProviderAccess(u, pp, getLocalProfile(u.id))) markProviderAccess(u.id);
@@ -204,6 +224,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setAuth = useCallback((u: SafeUser, profile?: ProviderProfile | null) => {
     if (!u?.id) {
       console.error("[Hormang] setAuth: foydalanuvchi ID yo'q — auth o'rnatilmadi.");
+      return;
+    }
+
+    // Suspended users cannot log in.
+    if (isUserSuspended(u.id)) {
+      console.warn(`[Hormang] 🚫 Suspended user setAuth bloklandi: ${u.id.slice(0, 8)}`);
+      logoutUser().catch(() => {});
+      setUser(null);
+      setProviderProfileState(null);
+      setActiveRoleState("buyer");
       return;
     }
 

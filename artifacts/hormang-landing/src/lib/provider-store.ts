@@ -157,24 +157,10 @@ function uid(): string {
 }
 
 /* ─── Legacy Data Cleanup ─────────────────────────────────────────── */
-
-function clearLegacyData() {
-  const version = localStorage.getItem(SEED_VERSION_KEY);
-  if (version !== SEED_VERSION) {
-    localStorage.removeItem("hormang_provider_requests");  // old key
-    localStorage.removeItem("hormang_provider_services");  // old global (non-per-provider) key
-    localStorage.removeItem("hormang_provider_offers");    // old global key
-    localStorage.removeItem("hormang_provider_seen");      // old global key
-    localStorage.removeItem("hormang_provider_chats");     // old key
-    localStorage.removeItem("hormang_provider_statuses");  // old global key
-    localStorage.removeItem("hormang_requests");
-    localStorage.removeItem("hormang_offers");
-    localStorage.removeItem("hormang_chats");
-    localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
-  }
-}
-
-clearLegacyData();
+/* NOTE: Live keys (hormang_requests, hormang_offers, hormang_chats) were
+ * previously wiped here on a seed-version bump, destroying real customer
+ * data. Migrations now live in `./migration.ts` and are called explicitly
+ * from App bootstrap; they only purge truly legacy keys. */
 
 /* ─── Chat conversion helpers ─────────────────────────────────────── */
 
@@ -531,6 +517,32 @@ export function saveOffer(
 ): ProviderOffer {
   const providerId = providerMeta?.id ?? "";
   const offers = getOffers(providerId);
+  // Reject if the request is no longer open or has already accepted an offer
+  try {
+    const buyerRaw = localStorage.getItem(BUYER_REQUESTS_KEY_CONST);
+    if (buyerRaw) {
+      const buyerReqs = JSON.parse(buyerRaw) as Array<{ id: string; status?: string }>;
+      const br = buyerReqs.find((r) => r.id === data.requestId);
+      if (br && br.status && br.status !== "open") {
+        throw new Error("REQUEST_CLOSED");
+      }
+    }
+    const sharedAll = readJSON<Array<{ requestId: string; status?: string; masterId?: string }>>(SHARED_OFFERS_KEY, []);
+    if (sharedAll.some((o) => o.requestId === data.requestId && o.status === "accepted")) {
+      throw new Error("REQUEST_ALREADY_ACCEPTED");
+    }
+    if (providerMeta && sharedAll.some(
+      (o) => o.requestId === data.requestId && o.masterId === providerMeta.id && o.status === "pending"
+    )) {
+      throw new Error("DUPLICATE_OFFER");
+    }
+  } catch (e) {
+    if (e instanceof Error && (e.message === "REQUEST_CLOSED" || e.message === "REQUEST_ALREADY_ACCEPTED" || e.message === "DUPLICATE_OFFER")) {
+      throw e;
+    }
+    // Other read errors are non-fatal and we continue
+  }
+
   const offer: ProviderOffer = {
     ...data,
     id: uid(),
@@ -540,23 +552,7 @@ export function saveOffer(
   const allOffers = [...offers, offer];
   writeJSON(providerOffersKey(providerId), allOffers);
 
-  // Sync offer count to the buyer-side CustomerRequest using shared offers count
-  try {
-    const raw = localStorage.getItem(BUYER_REQUESTS_KEY_CONST);
-    if (raw) {
-      const buyerReqs = JSON.parse(raw) as Array<{ id: string; offerCount?: number }>;
-      const idx = buyerReqs.findIndex((r) => r.id === data.requestId);
-      if (idx !== -1) {
-        // Count ALL providers' shared offers for this request (not just this provider's)
-        const sharedOffers = readJSON<Array<{ requestId: string }>>(SHARED_OFFERS_KEY, []);
-        const count = sharedOffers.filter((o) => o.requestId === data.requestId).length + 1;
-        buyerReqs[idx] = { ...buyerReqs[idx], offerCount: count };
-        localStorage.setItem(BUYER_REQUESTS_KEY_CONST, JSON.stringify(buyerReqs));
-      }
-    }
-  } catch (_) {}
-
-  // Write to shared hormang_offers so customer can see and accept/reject
+  // Write to shared hormang_offers FIRST so the count below is accurate
   if (providerMeta) {
     try {
       const existingRaw = localStorage.getItem(SHARED_OFFERS_KEY);
@@ -581,6 +577,21 @@ export function saveOffer(
       localStorage.setItem(SHARED_OFFERS_KEY, JSON.stringify([...existing, buyerOffer]));
     } catch (_) {}
   }
+
+  // Sync offer count using the now-updated shared offers list (no off-by-one)
+  try {
+    const raw = localStorage.getItem(BUYER_REQUESTS_KEY_CONST);
+    if (raw) {
+      const buyerReqs = JSON.parse(raw) as Array<{ id: string; offerCount?: number }>;
+      const idx = buyerReqs.findIndex((r) => r.id === data.requestId);
+      if (idx !== -1) {
+        const sharedOffers = readJSON<Array<{ requestId: string }>>(SHARED_OFFERS_KEY, []);
+        const count = sharedOffers.filter((o) => o.requestId === data.requestId).length;
+        buyerReqs[idx] = { ...buyerReqs[idx], offerCount: count };
+        localStorage.setItem(BUYER_REQUESTS_KEY_CONST, JSON.stringify(buyerReqs));
+      }
+    }
+  } catch (_) {}
 
   return offer;
 }

@@ -42,7 +42,7 @@ import {
 } from "@/lib/tanga-history-store";
 import { getTangaBalance, addTangaBalance, spendTangaBalance } from "@/lib/tanga-store";
 import { getReferralCode, getReferralStats, getInviterId, processReferralReward, TANGA_PER_REFERRAL } from "@/lib/referral-store";
-import { getOffers, getPhoneRegistry, type Offer as BuyerOfferFull } from "@/lib/requests-store";
+import { getOffers, getPhoneRegistry, type Offer as BuyerOfferFull, updateOfferStatus, deleteRequestCascade, deleteUserDataCascade } from "@/lib/requests-store";
 
 /* ─── Credentials ───────────────────────────────────────────────── */
 const ADMIN_USER = "hormangVIP";
@@ -925,12 +925,10 @@ function RequestsSection({ refreshKey }: { refreshKey: number }) {
     logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "UPDATE_REQUEST_STATUS", category: "marketplace", targetId: id, targetType: "request", description: `Status o'zgartirildi: ${status}`, metadata: { newStatus: status } });
   }
   function deleteRequest(id: string) {
-    if (!confirm("Bu so'rovni o'chirishni tasdiqlaysizmi?\nBarcha bog'liq takliflar ham ko'rinmay qoladi.")) return;
-    const updated = requests.filter((r) => r.id !== id);
-    writeKey(K.REQUESTS, updated);
-    setRequests(updated);
-    emitStoreChange();
-    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "DELETE_REQUEST", category: "marketplace", targetId: id, targetType: "request", description: "So'rov o'chirildi" });
+    if (!confirm("Bu so'rovni o'chirishni tasdiqlaysizmi?\nBog'liq takliflar va suhbatlar ham o'chiriladi, ijrochilarga Tanga qaytariladi.")) return;
+    deleteRequestCascade(id);
+    setRequests((prev) => prev.filter((r) => r.id !== id));
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "DELETE_REQUEST", category: "marketplace", targetId: id, targetType: "request", description: "So'rov o'chirildi (cascade)" });
   }
 
   const filtered = requests.filter((r) => {
@@ -2391,27 +2389,31 @@ function MarketplaceSection({ refreshKey }: { refreshKey: number }) {
   const chatFor = (requestId: string) => chats.find((c) => c.requestId === requestId);
 
   function acceptOffer(offerId: string, requestId: string) {
-    const updated = offers.map((o) => ({
-      ...o,
-      status: o.requestId === requestId ? (o.id === offerId ? "accepted" : o.status === "pending" ? "rejected" : o.status) : o.status,
-    }));
+    // Route through the shared helper so sibling rejects refund Tanga properly.
+    updateOfferStatus(offerId, "accepted");
     const updatedReqs = requests.map((r) => r.id === requestId ? { ...r, status: "accepted" } : r);
-    writeKey(K.OFFERS_BUYER, updated);
     writeKey(K.REQUESTS, updatedReqs);
-    setOffers(updated);
     setRequests(updatedReqs);
-    emitStoreChange();
-    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_ACCEPT_OFFER", category: "marketplace", targetId: offerId, targetType: "offer", description: "Taklif qabul qilindi", metadata: { requestId } });
+    setOffers((prev) => prev.map((o) => ({
+      ...o,
+      status: o.requestId === requestId
+        ? (o.id === offerId ? "accepted" : o.status === "pending" ? "rejected" : o.status)
+        : o.status,
+    })));
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_ACCEPT_OFFER", category: "marketplace", targetId: offerId, targetType: "offer", description: "Taklif qabul qilindi (Tanga qaytarildi)", metadata: { requestId } });
   }
   function rejectOffer(offerId: string) {
-    const updated = offers.map((o) => o.id === offerId ? { ...o, status: "rejected" } : o);
-    writeKey(K.OFFERS_BUYER, updated);
-    setOffers(updated);
-    emitStoreChange();
-    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_REJECT_OFFER", category: "marketplace", targetId: offerId, targetType: "offer", description: "Taklif rad etildi" });
+    // Use the shared store helper so the provider's Tanga is refunded.
+    updateOfferStatus(offerId, "rejected");
+    setOffers((prev) => prev.map((o) => o.id === offerId ? { ...o, status: "rejected" } : o));
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_REJECT_OFFER", category: "marketplace", targetId: offerId, targetType: "offer", description: "Taklif rad etildi (Tanga qaytarildi)" });
   }
   function removeOffer(offerId: string) {
-    if (!confirm("Bu taklifni o'chirishni tasdiqlaysizmi?")) return;
+    if (!confirm("Bu taklifni o'chirishni tasdiqlaysizmi? Pending bo'lsa, ijrochiga Tanga qaytariladi.")) return;
+    const target = offers.find((o) => o.id === offerId);
+    if (target && target.status === "pending") {
+      updateOfferStatus(offerId, "rejected");
+    }
     const updated = offers.filter((o) => o.id !== offerId);
     writeKey(K.OFFERS_BUYER, updated);
     setOffers(updated);
@@ -2426,14 +2428,13 @@ function MarketplaceSection({ refreshKey }: { refreshKey: number }) {
     logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_UPDATE_REQUEST", category: "marketplace", targetId: reqId, targetType: "request", description: `So'rov statusi yangilandi: ${status}`, metadata: { newStatus: status } });
   }
   function deleteRequest(reqId: string) {
-    if (!confirm("Bu so'rovni o'chirish tasdiqlaysizmi?\nBog'liq takliflar ham ko'rinmay qoladi.")) return;
-    writeKey(K.REQUESTS, requests.filter((r) => r.id !== reqId));
-    writeKey(K.OFFERS_BUYER, offers.filter((o) => o.requestId !== reqId));
+    if (!confirm("Bu so'rovni o'chirish tasdiqlaysizmi?\nBog'liq takliflar va suhbatlar ham o'chiriladi, ijrochilarga Tanga qaytariladi.")) return;
+    deleteRequestCascade(reqId);
     setRequests((prev) => prev.filter((r) => r.id !== reqId));
     setOffers((prev) => prev.filter((o) => o.requestId !== reqId));
+    setChats((prev) => prev.filter((c) => c.requestId !== reqId));
     if (commandId === reqId) setCommandId(null);
-    emitStoreChange();
-    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_DELETE_REQUEST", category: "marketplace", targetId: reqId, targetType: "request", description: "So'rov o'chirildi" });
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_DELETE_REQUEST", category: "marketplace", targetId: reqId, targetType: "request", description: "So'rov o'chirildi (cascade)" });
   }
 
   /* ── Build rows ── */
@@ -2820,29 +2821,21 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
   }
 
   function deleteUser(user: AdminUser) {
-    if (!confirm(`"${user.name}" foydalanuvchisini o'chirishni tasdiqlaysizmi?\nBu amalni qaytarib bo'lmaydi.`)) return;
-    // 1. Remove local profile — real key shape: user_<id>_localProfile
-    localStorage.removeItem(`user_${user.userId}_localProfile`);
-    localStorage.removeItem(`user_${user.userId}_hasProviderAccess`);
-    // 2. Remove from customer registry & phone registry
-    const registry = readKey<Record<string, unknown>>("hormang_customer_registry", {});
-    delete registry[user.userId];
-    writeKey("hormang_customer_registry", registry);
-    const phoneReg = readKey<Record<string, string>>("hormang_phone_registry", {});
-    delete phoneReg[user.userId];
-    writeKey("hormang_phone_registry", phoneReg);
-    // 3. Remove from canonical auth users store
+    if (!confirm(`"${user.name}" foydalanuvchisini o'chirishni tasdiqlaysizmi?\nUning so'rovlari, takliflari, suhbatlari va Tanga balansi ham yo'qotiladi. Bu amalni qaytarib bo'lmaydi.`)) return;
+
+    // Cascading delete of every per-user key + shared rows.
+    deleteUserDataCascade(user.userId);
+
+    // Canonical auth user store + suspended list.
     const authUsers = readKey<Array<{ id: string }>>("hormang_auth_users", []);
     writeKey("hormang_auth_users", authUsers.filter((u) => u.id !== user.userId));
-    // 4. Remove from suspended list
     const next = new Set(suspended);
     next.delete(user.userId);
     setSuspended(next);
     writeKey("hormang_admin_suspended_users", Array.from(next));
-    // 5. Update local state
+
     setUsers((prev) => prev.filter((u) => u.userId !== user.userId));
-    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "DELETE_USER", category: "risk", targetId: user.userId, targetType: "user", description: `${user.name} o'chirildi`, metadata: { userName: user.name } });
-    emitStoreChange();
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "DELETE_USER", category: "risk", targetId: user.userId, targetType: "user", description: `${user.name} o'chirildi (cascade)`, metadata: { userName: user.name } });
   }
 
   /* ── Category pill toggle ── */

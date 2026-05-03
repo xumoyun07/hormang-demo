@@ -22,6 +22,8 @@ import {
   type Chat, type ChatMessage, type Offer,
 } from "@/lib/requests-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
+import { isUserSuspended, SUSPENDED_MESSAGE } from "@/lib/safety-store";
+import { useToast } from "@/hooks/use-toast";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" });
@@ -179,6 +181,7 @@ export default function ChatPage() {
   const [match, params] = useRoute("/chat/:chatId");
   const chatId = params?.chatId ?? "";
   const { user } = useAuth();
+  const { toast } = useToast();
 
   useStoreRefresh();
 
@@ -186,6 +189,7 @@ export default function ChatPage() {
   const [attachPreview, setAttachPreview] = useState<string | null>(null);
   const [showMasterProfile, setShowMasterProfile] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [reviewDismissed, setReviewDismissed] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -201,9 +205,16 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
   }, [chat?.messages.length]);
 
-  /* Auto-prompt review when the OTHER side marks the offer completed */
+  /* Auto-prompt review when the OTHER side marks the offer completed.
+   * Only triggers once per visit; user can re-open via the badge button. */
   useEffect(() => {
-    if (offer?.status === "completed" && user?.id && chat && !hasReviewedRequest(chat.requestId, user.id)) {
+    if (
+      offer?.status === "completed" &&
+      user?.id &&
+      chat &&
+      !hasReviewedRequest(chat.requestId, user.id) &&
+      !reviewDismissed
+    ) {
       setShowReview(true);
     }
   }, [offer?.status]);
@@ -226,6 +237,10 @@ export default function ChatPage() {
 
   function handleSend() {
     if (!input.trim() && !attachPreview) return;
+    if (user && isUserSuspended(user.id)) {
+      toast({ title: SUSPENDED_MESSAGE, variant: "destructive" });
+      return;
+    }
     const text = input.trim();
     const attachment = attachPreview ? { type: "image" as const, url: attachPreview } : undefined;
     setInput("");
@@ -250,6 +265,10 @@ export default function ChatPage() {
 
   function handleComplete() {
     if (!offer || !chat) return;
+    if (user && isUserSuspended(user.id)) {
+      toast({ title: SUSPENDED_MESSAGE, variant: "destructive" });
+      return;
+    }
     const wasNew = markOfferCompleted(offer.id);
     if (wasNew || !hasReviewedRequest(chat.requestId, user?.id ?? "")) {
       setShowReview(true);
@@ -278,6 +297,7 @@ export default function ChatPage() {
       serviceCategory: (chat as any).categoryName ?? undefined,
     });
     setShowReview(false);
+    setReviewDismissed(true);
   }
 
   const grouped: Array<{ day: string; messages: ChatMessage[] }> = [];
@@ -352,9 +372,17 @@ export default function ChatPage() {
             </button>
           )}
 
-          {/* Already completed badge */}
+          {/* Already completed: show review button if user hasn't rated yet */}
           {alreadyCompleted && (
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 flex items-center gap-2">
+              {chat && user && !hasReviewedRequest(chat.requestId, user.id) && (
+                <button
+                  onClick={() => { setReviewDismissed(false); setShowReview(true); }}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold transition-colors active:scale-95"
+                >
+                  Baholash
+                </button>
+              )}
               <OfferStatusBadge status="completed" />
             </div>
           )}
