@@ -239,14 +239,19 @@ function timeAgo(iso: string) {
  * we detect direction from the description text ("ayirdi" = deducted).
  */
 function txSignedAmount(tx: TangaTx): number {
-  if (tx.type === "spend" || (!tx.type && tx.amount > 0)) return -tx.amount;
+  // Explicit direction wins (new data).
+  if (tx.direction === "out") return -Math.abs(tx.amount);
+  if (tx.direction === "in")  return  Math.abs(tx.amount);
+  // Legacy / heuristic fallback.
+  if (tx.type === "spend" || (!tx.type && tx.amount > 0)) return -Math.abs(tx.amount);
   if (tx.type === "admin_adjustment") {
     const desc = tx.description ?? "";
-    if (desc.includes("ayirdi") || desc.includes("−") || desc.includes("-")) return -tx.amount;
-    return tx.amount;
+    // "ayirdi" / "−" / "-" → deducted; otherwise treat as added.
+    if (/ayirdi|deduct|−|-/i.test(desc)) return -Math.abs(tx.amount);
+    return Math.abs(tx.amount);
   }
-  // purchase, referral
-  return tx.amount;
+  // purchase, referral → in
+  return Math.abs(tx.amount);
 }
 /** True only for offer-cost spending (excludes admin deducts, purchases, etc). */
 function txIsOfferSpend(tx: TangaTx): boolean {
@@ -3861,7 +3866,7 @@ function MonoTransactions({ txs, reload }: { txs: TangaTx[]; reload: () => void 
                       </td>
                       <td className="px-3 py-3">
                         <span className={`font-extrabold text-[13px] ${signed >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                          {signed >= 0 ? "+" : ""}{signed} 🪙
+                          {signed >= 0 ? "+" : "−"}{Math.abs(signed)} 🪙
                         </span>
                       </td>
                       <td className="px-3 py-3 max-w-[140px]">
@@ -3916,14 +3921,14 @@ function MonoBalances({ providers, reload }: { providers: ProviderSummary[]; rel
     if (adjustAmt <= 0) return;
     if (adjustType === "add") {
       addTangaBalance(userId, adjustAmt);
-      recordTangaTransaction({ userId, offerId: "", requestId: "", categoryName: "Admin sozlamasi", categoryEmoji: "🛡", description: `Admin +${adjustAmt} Tanga qo'shdi`, amount: adjustAmt, type: "admin_adjustment" });
+      recordTangaTransaction({ userId, offerId: "", requestId: "", categoryName: "Admin sozlamasi", categoryEmoji: "🛡", description: `Admin +${adjustAmt} Tanga qo'shdi`, amount: adjustAmt, type: "admin_adjustment", direction: "in" });
       logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_ADD_TANGA", category: "financial", targetId: userId, targetType: "tanga", description: `${name}ga +${adjustAmt} Tanga qo'shildi`, metadata: { amount: adjustAmt } });
     } else {
       const bal    = getTangaBalance(userId);
       const deduct = Math.min(adjustAmt, bal);
       if (deduct > 0) {
         spendTangaBalance(userId, deduct);
-        recordTangaTransaction({ userId, offerId: "", requestId: "", categoryName: "Admin sozlamasi", categoryEmoji: "🛡", description: `Admin −${deduct} Tanga ayirdi`, amount: deduct, type: "admin_adjustment" });
+        recordTangaTransaction({ userId, offerId: "", requestId: "", categoryName: "Admin sozlamasi", categoryEmoji: "🛡", description: `Admin −${deduct} Tanga ayirdi`, amount: deduct, type: "admin_adjustment", direction: "out" });
         logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADMIN_REMOVE_TANGA", category: "financial", targetId: userId, targetType: "tanga", description: `${name}dan −${deduct} Tanga ayirildi`, metadata: { amount: deduct } });
       }
     }

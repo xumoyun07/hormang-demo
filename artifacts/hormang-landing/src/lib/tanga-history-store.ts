@@ -18,6 +18,8 @@ export interface TangaTransaction {
   amount: number;
   /** "spend" = offer cost (default), "referral" = reward earned, "purchase" = bought, "admin_adjustment" = manual admin change */
   type?: "spend" | "referral" | "purchase" | "admin_adjustment";
+  /** Explicit balance effect: "in" = added to user balance, "out" = removed. Required for `admin_adjustment` (since amount is always positive); optional for other types where direction is implied by `type`. */
+  direction?: "in" | "out";
   /** For "purchase" txs: the so'm price actually paid (after any sale discount). Used by admin revenue analytics. */
   priceSom?: number;
   createdAt: string;
