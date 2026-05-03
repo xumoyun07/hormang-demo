@@ -41,7 +41,7 @@ import {
   type TangaTransaction as TangaTx,
 } from "@/lib/tanga-history-store";
 import { getTangaBalance, addTangaBalance, spendTangaBalance } from "@/lib/tanga-store";
-import { getReferralCode, getReferralStats } from "@/lib/referral-store";
+import { getReferralCode, getReferralStats, getInviterId, processReferralReward } from "@/lib/referral-store";
 import { getOffers, getPhoneRegistry, type Offer as BuyerOfferFull } from "@/lib/requests-store";
 
 /* ─── Credentials ───────────────────────────────────────────────── */
@@ -2730,15 +2730,30 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
 
     result.push(...userMap.values());
 
-    /* ── Step 4: Enrich all users with referral data ── */
+    /* ── Step 4: Retroactively process any pending referral rewards ──
+       Earlier signups may have failed to award the inviter because the
+       referrer's code→userId index didn't exist yet. Only invitees who
+       completed a provider profile qualify — same rule as register flow. */
+    for (let i = 0; i < localStorage.length; i++) {
+      const lsKey = localStorage.key(i);
+      if (!lsKey?.startsWith("hormang_ref_pending_")) continue;
+      const uid = lsKey.slice("hormang_ref_pending_".length);
+      const hasProviderProfile = localStorage.getItem(`user_${uid}_localProfile`) !== null;
+      if (hasProviderProfile) processReferralReward(uid);
+    }
+
+    /* ── Step 5: Enrich all users with referral data ── */
+    const nameById = new Map(result.map((u) => [u.userId, u.name] as const));
     for (const u of result) {
       u.referralCode = getReferralCode(u.userId);
       const rStats = getReferralStats(u.userId);
       u.referralCount = rStats.count;
       u.referralEarned = rStats.earned;
-      // Check if this user was referred by someone
-      const pendingRef = localStorage.getItem(`hormang_ref_pending_${u.userId}`);
-      if (pendingRef) u.referredBy = pendingRef;
+      // Resolve who invited this user (stable userId, survives reward processing).
+      const inviterId = getInviterId(u.userId);
+      if (inviterId) {
+        u.referredBy = nameById.get(inviterId) ?? getReferralCode(inviterId);
+      }
     }
 
     setUsers(result.sort((a, b) => {
