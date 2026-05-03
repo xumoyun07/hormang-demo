@@ -11,6 +11,7 @@ import {
   getTangaBalance, addTangaBalance, getActiveTiers, type PricingTier,
   isSaleActive, getSaleRemaining, incrementSalePurchaseCount,
 } from "@/lib/tanga-store";
+import { recordTangaTransaction } from "@/lib/tanga-history-store";
 import { ReferralCard } from "@/components/referral-card";
 
 const GOLD_GRAD = "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
@@ -220,6 +221,16 @@ export default function PlansPage() {
         incrementSalePurchaseCount(tier.id);
       }
       addTangaBalance(userId, total);
+      recordTangaTransaction({
+        userId,
+        offerId: "",
+        requestId: "",
+        categoryName: tier.name,
+        categoryEmoji: "💳",
+        description: `"${tier.name}" rejasi xaridi: ${tier.credits} Tanga${(tier.bonusTokens ?? 0) > 0 ? ` + ${tier.bonusTokens} bonus` : ""}`,
+        amount: total,
+        type: "purchase",
+      });
       setBuying(null);
       setBought(tier.id);
       toast({

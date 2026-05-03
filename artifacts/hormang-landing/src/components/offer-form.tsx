@@ -226,6 +226,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
         categoryEmoji: request.emoji,
         description: request.categoryName ?? "",
         amount: offerCost,
+        type: "spend",
       });
     }
 
