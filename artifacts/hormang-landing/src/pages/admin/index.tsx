@@ -40,6 +40,7 @@ import {
   type TangaTransaction as TangaTx,
 } from "@/lib/tanga-history-store";
 import { getTangaBalance } from "@/lib/tanga-store";
+import { getReferralCode, getReferralStats } from "@/lib/referral-store";
 import { getOffers, getPhoneRegistry, type Offer as BuyerOfferFull } from "@/lib/requests-store";
 
 /* ─── Credentials ───────────────────────────────────────────────── */
@@ -958,6 +959,10 @@ interface AdminUser {
   verified?:        boolean;
   status:           "active" | "suspended";
   joinedAt?:        string;
+  referralCode?:    string;
+  referredBy?:      string;
+  referralCount?:   number;
+  referralEarned?:  number;
 }
 
 /* ─── UserProfileModal ────────────────────────────────────────────── */
@@ -2047,6 +2052,17 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
       }
     }
 
+    /* ── Step 4: Enrich all users with referral data ── */
+    for (const u of result) {
+      u.referralCode = getReferralCode(u.userId);
+      const rStats = getReferralStats(u.userId);
+      u.referralCount = rStats.count;
+      u.referralEarned = rStats.earned;
+      // Check if this user was referred by someone
+      const pendingRef = localStorage.getItem(`hormang_ref_pending_${u.userId}`);
+      if (pendingRef) u.referredBy = pendingRef;
+    }
+
     setUsers(result.sort((a, b) => {
       // providers + both first, then customers; within groups alphabetical
       const roleOrder = { both: 0, provider: 1, customer: 2 };
@@ -2210,7 +2226,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
                     "Foydalanuvchi", "Rol", "Telefon",
                     "Joylashuv / Hudud", "Toifalar",
                     "Takliflar / Qabul", "Javob vaqti",
-                    "So'rovlar", "Tanga 🪙", "Holat", "Qo'shilgan", "Amallar",
+                    "So'rovlar", "Tanga 🪙", "Referral 🔗", "Holat", "Qo'shilgan", "Amallar",
                   ].map((h) => (
                     <th key={h}
                       className="text-left text-[9px] font-bold text-red-400 uppercase tracking-widest px-3 py-3 whitespace-nowrap">
@@ -2386,6 +2402,35 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
                             </div>
                           );
                         })()}
+                      </td>
+
+                      {/* Referral */}
+                      <td className="px-3 py-3">
+                        <div className="flex flex-col gap-0.5">
+                          {u.referralCode && (
+                            <span className="text-[9px] font-mono text-gray-500">{u.referralCode}</span>
+                          )}
+                          {(u.referralCount ?? 0) > 0 ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[11px] font-extrabold text-emerald-600">
+                                {u.referralCount} ta
+                              </span>
+                              <span className="text-[9px] text-amber-600 font-bold">
+                                +{u.referralEarned}🪙
+                              </span>
+                              {(u.referralCount ?? 0) >= 3 && (
+                                <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-amber-50 text-amber-600 border border-amber-200">
+                                  Top
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-300 text-[11px]">—</span>
+                          )}
+                          {u.referredBy && (
+                            <span className="text-[8px] text-blue-500 font-mono">← {u.referredBy.slice(0, 12)}</span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Status */}
