@@ -28,23 +28,34 @@ function TxRow({
   offer: Offer | undefined;
   onView: () => void;
 }) {
-  const isReferral = tx.type === "referral";
+  // Direction: "in" = added to balance (+), "out" = deducted (−)
+  // Admin adjustments have positive `amount` regardless of direction; detect from description.
+  const isAdminDeduct =
+    tx.type === "admin_adjustment" &&
+    (tx.description?.includes("ayirdi") || tx.description?.includes("−"));
+  const direction: "in" | "out" =
+    tx.type === "spend"
+      ? "out"
+      : tx.type === "purchase" || tx.type === "referral"
+        ? "in"
+        : tx.type === "admin_adjustment"
+          ? (isAdminDeduct ? "out" : "in")
+          : "out"; // legacy untyped → spend
+
+  const isIn = direction === "in";
+  const tone = isIn
+    ? { card: "bg-emerald-50 border-emerald-100", icon: "bg-emerald-100", amount: "text-emerald-600", sign: "+" }
+    : { card: "bg-white border-gray-100",         icon: "bg-amber-50",    amount: "text-amber-600",   sign: "−" };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-2xl shadow-sm overflow-hidden border ${
-        isReferral
-          ? "bg-emerald-50 border-emerald-100"
-          : "bg-white border-gray-100"
-      }`}
+      className={`rounded-2xl shadow-sm overflow-hidden border ${tone.card}`}
     >
       <div className="px-4 py-3.5 flex items-center gap-3">
         <div
-          className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${
-            isReferral ? "bg-emerald-100" : "bg-amber-50"
-          }`}
+          className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${tone.icon}`}
         >
           {tx.categoryEmoji || "📋"}
         </div>
@@ -62,15 +73,9 @@ function TxRow({
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-          {isReferral ? (
-            <span className="text-sm font-extrabold text-emerald-600">
-              +{tx.amount}&nbsp;🪙
-            </span>
-          ) : (
-            <span className="text-sm font-extrabold text-amber-600">
-              −{tx.amount}&nbsp;🪙
-            </span>
-          )}
+          <span className={`text-sm font-extrabold ${tone.amount}`}>
+            {tone.sign}{tx.amount}&nbsp;🪙
+          </span>
           {offer && (
             <button
               onClick={onView}
@@ -96,14 +101,12 @@ export default function TangaHistoryPage() {
   const balance = user ? getTangaBalance(user.id) : 0;
   const allOffers = getOffers();
 
-  const spendTxs = transactions.filter((t) => t.type !== "referral");
+  // Only "spend" type counts as offer-sending cost
+  const spendTxs    = transactions.filter((t) => t.type === "spend" || (!t.type && t.amount > 0));
   const referralTxs = transactions.filter((t) => t.type === "referral");
-  const totalSpent = spendTxs.reduce((s, t) => s + t.amount, 0);
+  const totalSpent  = spendTxs.reduce((s, t) => s + t.amount, 0);
   const totalEarnedReferral = referralTxs.reduce((s, t) => s + t.amount, 0);
-  const avgSpent =
-    spendTxs.length > 0
-      ? Math.round(totalSpent / spendTxs.length)
-      : 0;
+  const avgSpent = spendTxs.length > 0 ? Math.round(totalSpent / spendTxs.length) : 0;
 
   const viewedOffer = viewOfferId
     ? allOffers.find((o) => o.id === viewOfferId)

@@ -3266,7 +3266,7 @@ function AdminUserTxModal({
                           {new Date(tx.createdAt).toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
-                      <span className="font-extrabold text-amber-600 text-sm flex-shrink-0">−{tx.amount} 🪙</span>
+                      <span className="font-extrabold text-amber-600 text-sm flex-shrink-0">{tx.amount} 🪙</span>
                       {offer && (
                         <button
                           onClick={() => setViewOfferId(offer.id)}
