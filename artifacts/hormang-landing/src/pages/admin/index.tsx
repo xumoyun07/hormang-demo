@@ -497,129 +497,328 @@ function MetricCard({ label, value, sub, icon: Icon, accent }: {
    ════════════════════════════════════════════════════════════════════ */
 const DAY_NAMES = ["Ya", "Du", "Se", "Ch", "Pa", "Ju", "Sh"];
 
-function OverviewSection({ refreshKey }: { refreshKey: number }) {
+function OverviewSection({ refreshKey, setSection }: { refreshKey: number; setSection: (s: Section) => void }) {
   void refreshKey;
 
-  const requests       = readKey<CustomerRequest[]>(K.REQUESTS, []);
-  const buyerOffers    = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
-  const chats          = readKey<{ id: string }[]>(K.CHATS_BUYER, []);
+  /* ─── Raw data sources (all real, all from localStorage) ──────── */
+  const requests   = readKey<CustomerRequest[]>(K.REQUESTS, []);
+  const offers     = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
+  const txs        = getAllTangaTransactions();
+  const tiers      = readKey<PricingTier[]>(K.PRICING_TIERS, []);
+  const auditLog   = readKey<AuditLog[]>(K.ADMIN_LOG, []);
+  const authUsers  = readKey<{ id: string; firstName?: string; lastName?: string; role: string; createdAt?: string }[]>("hormang_auth_users", []);
+  const userFlags  = getUserFlags();
+  const providers  = getAllProviderSummaries();
 
-  // Count unique provider IDs from offers
-  const uniqueProviderIds = new Set(buyerOffers.map((o) => o.masterId));
-  const totalProviders = uniqueProviderIds.size;
+  /* ─── Time helpers ────────────────────────────────────────────── */
+  const now       = Date.now();
+  const todayStr  = new Date(now).toISOString().slice(0, 10);
+  const weekAgoMs = now - 7 * 86400000;
+  const dayMs     = 86400000;
+  const isToday = (iso?: string) => !!iso && iso.slice(0, 10) === todayStr;
+  const isWeek  = (iso?: string) => !!iso && new Date(iso).getTime() >= weekAgoMs;
 
-  // Real accepted revenue from buyer offers
-  const totalRevenue = buyerOffers
-    .filter((o) => o.status === "accepted")
-    .reduce((s, o) => s + (o.price ?? 0), 0);
+  /* ─── 1. Marketplace Health ───────────────────────────────────── */
+  const activeRequests   = requests.filter((r) => r.status === "open");
+  const noOfferRequests  = activeRequests.filter((r) => !offers.some((o) => o.requestId === r.id));
+  const avgOffersPerReq  = requests.length > 0 ? (offers.length / requests.length).toFixed(1) : "—";
 
-  // Real activity for last 7 days — no fake sin/cos
+  /* Median time-to-first-offer (in minutes) */
+  const firstOfferMins: number[] = [];
+  for (const r of requests) {
+    if (!r.createdAt) continue;
+    const reqOffers = offers.filter((o) => o.requestId === r.id);
+    if (reqOffers.length === 0) continue;
+    const earliestMs = Math.min(...reqOffers.map((o) => new Date(o.createdAt).getTime()));
+    firstOfferMins.push(Math.max(0, (earliestMs - new Date(r.createdAt).getTime()) / 60000));
+  }
+  function fmtMins(arr: number[]): string {
+    if (arr.length === 0) return "—";
+    const sorted = [...arr].sort((a, b) => a - b);
+    const m = sorted[Math.floor(sorted.length / 2)];
+    if (m < 60)   return `${Math.round(m)} daq`;
+    if (m < 1440) return `${Math.round(m / 60)} soat`;
+    return `${Math.round(m / 1440)} kun`;
+  }
+  const timeFirstOffer = fmtMins(firstOfferMins);
+
+  /* ─── 2. Today snapshot ──────────────────────────────────────── */
+  const newUsersToday     = authUsers.filter((u) => isToday(u.createdAt)).length;
+  const newProvidersToday = authUsers.filter((u) => u.role === "provider" && isToday(u.createdAt)).length;
+  const requestsToday     = requests.filter((r) => isToday(r.createdAt)).length;
+  const offersToday       = offers.filter((o) => isToday(o.createdAt)).length;
+  const completedToday    = requests.filter((r) => r.status === "completed" && isToday(r.createdAt)).length;
+
+  /* ─── 3. Monetization (real Tanga purchases in so'm) ──────────── */
+  const tierPrice = new Map<string, number>();
+  tiers.forEach((t) => {
+    const eff = t.salePrice !== undefined && t.salePrice < t.price ? t.salePrice : t.price;
+    tierPrice.set(t.name, eff);
+  });
+  function txRevenue(t: TangaTx): number {
+    if (t.type !== "purchase") return 0;
+    return typeof t.priceSom === "number" ? t.priceSom : (tierPrice.get(t.categoryName) ?? 0);
+  }
+  const purchaseTxs = txs.filter((t) => t.type === "purchase");
+  const revenue     = purchaseTxs.reduce((s, t) => s + txRevenue(t), 0);
+  const tangaSold   = purchaseTxs.reduce((s, t) => s + t.amount, 0);
+  const tangaSpent  = txs.filter((t) => t.type === "spend" || (!t.type && t.amount > 0)).reduce((s, t) => s + t.amount, 0);
+  const avgSpendPerProvider = providers.length > 0 ? Math.round(tangaSpent / providers.length) : 0;
+
+  /* ─── 4. Users ────────────────────────────────────────────────── */
+  const totalUsers     = authUsers.length;
+  const totalProviders = authUsers.filter((u) => u.role === "provider").length;
+  const totalCustomers = totalUsers - totalProviders;
+  const activeUserIds  = new Set<string>();
+  txs.forEach((t)      => { if (isWeek(t.createdAt)) activeUserIds.add(t.userId); });
+  offers.forEach((o)   => { if (isWeek(o.createdAt)) activeUserIds.add(o.masterId); });
+  requests.forEach((r) => { if (isWeek(r.createdAt) && r.customerId) activeUserIds.add(r.customerId); });
+  const activeUsers7d   = activeUserIds.size;
+  const lowBalanceProvs = providers.filter((p) => p.balance < 3).length;
+
+  /* ─── 5. Alerts (real, only show if non-zero) ─────────────────── */
+  const STALE_HOURS = 24;
+  const staleNoOffer = noOfferRequests.filter((r) => {
+    if (!r.createdAt) return false;
+    return (now - new Date(r.createdAt).getTime()) / 3600000 >= STALE_HOURS;
+  }).length;
+  const flaggedUsers = Object.values(userFlags).filter((c) => (c as number) > 0).length;
+  const alerts: { icon: typeof AlertCircle; tone: string; text: string; cta?: () => void }[] = [];
+  if (staleNoOffer > 0)    alerts.push({ icon: Inbox,        tone: "amber",  text: `${staleNoOffer} ta so'rov ${STALE_HOURS} soatdan beri taklifsiz`, cta: () => setSection("marketplace") });
+  if (lowBalanceProvs > 0) alerts.push({ icon: Wallet,       tone: "rose",   text: `${lowBalanceProvs} ta ijrochi balansi <3 🪙`,                     cta: () => setSection("monetization") });
+  if (flaggedUsers > 0)    alerts.push({ icon: Flag,         tone: "red",    text: `${flaggedUsers} ta belgilangan foydalanuvchi`,                     cta: () => setSection("users") });
+
+  /* ─── 6. Referral (single pass over users) ────────────────────── */
+  let referralCount = 0;
+  let referralEarned = 0;
+  let activeReferrers = 0;
+  authUsers.forEach((u) => {
+    const s = getReferralStats(u.id);
+    referralCount  += s.count;
+    referralEarned += s.earned;
+    if (s.count > 0) activeReferrers += 1;
+  });
+
+  /* ─── 7. Trends — 7-day requests/offers + revenue ─────────────── */
   const activityData = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(Date.now() - (6 - i) * 86400000);
+    const d = new Date(now - (6 - i) * dayMs);
     const dayStr = d.toISOString().slice(0, 10);
     return {
       name: DAY_NAMES[d.getDay()],
       sorovlar:  requests.filter((r) => r.createdAt?.slice(0, 10) === dayStr).length,
-      takliflar: buyerOffers.filter((o) => o.createdAt?.slice(0, 10) === dayStr).length,
+      takliflar: offers.filter((o) => o.createdAt?.slice(0, 10) === dayStr).length,
+      daromad:   purchaseTxs.filter((t) => t.createdAt.slice(0, 10) === dayStr).reduce((s, t) => s + txRevenue(t), 0),
     };
   });
+  const hasRevenueTrend = activityData.some((d) => d.daromad > 0);
 
-  const catMap: Record<string, number> = {};
-  requests.forEach((r) => { catMap[r.categoryName] = (catMap[r.categoryName] ?? 0) + 1; });
-  const catData = Object.entries(catMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  /* ─── 8. Recent Activity Feed (last 15 audit logs) ────────────── */
+  const recentActivity = auditLog.slice(0, 15);
+  function categoryBadge(c: AuditLogCategory): string {
+    if (c === "admin")       return "bg-violet-50 text-violet-700 border-violet-100";
+    if (c === "marketplace") return "bg-blue-50 text-blue-700 border-blue-100";
+    if (c === "financial")   return "bg-emerald-50 text-emerald-700 border-emerald-100";
+    if (c === "referral")    return "bg-amber-50 text-amber-700 border-amber-100";
+    return                          "bg-rose-50 text-rose-700 border-rose-100";
+  }
 
-  const statusMap: Record<string, number> = {};
-  requests.forEach((r) => { statusMap[r.status] = (statusMap[r.status] ?? 0) + 1; });
-  const statusData = Object.entries(statusMap).map(([name, value]) => ({ name, value }));
+  /* ─── Tile components (compact) ───────────────────────────────── */
+  const Tile = ({ label, value, color = "text-gray-900", sub }: { label: string; value: string | number; color?: string; sub?: string }) => (
+    <div className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">{label}</p>
+      <p className={`text-lg font-extrabold ${color}`}>{value}</p>
+      {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-extrabold text-gray-900 mb-1">Umumiy ko'rinish</h2>
-        <p className="text-sm text-gray-500">Platformaning real-time holati</p>
+        <p className="text-sm text-gray-500">Platformaning real-time holati — barcha ko'rsatkichlar haqiqiy ma'lumotlardan</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label="Jami so'rovlar" value={requests.length}
-          sub={`${requests.filter(r => r.status === "open").length} ta ochiq`} icon={ClipboardList} accent />
-        <MetricCard label="Jami takliflar" value={buyerOffers.length}
-          sub={`${buyerOffers.filter(o => o.status === "accepted").length} ta qabul qilindi`} icon={MessageSquare} />
-        <MetricCard label="Suhbatlar / Ijrochilar" value={`${chats.length} / ${totalProviders}`}
-          sub="Faol chatlar · Noyob ijrochilar" icon={TrendingUp} />
-        <MetricCard label="Qabul qilingan summa" value={totalRevenue > 0 ? fmtMoney(totalRevenue) : "—"}
-          sub="Qabul qilingan takliflar asosida" icon={DollarSign} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-          <h3 className="font-bold text-gray-900 text-sm mb-4">Haftalik faollik</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={activityData}>
-              <defs>
-                <linearGradient id="gRed" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={RED_HEX} stopOpacity={0.28} />
-                  <stop offset="100%" stopColor={RED_HEX} stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="gOrange" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={ORANGE_HEX} stopOpacity={0.22} />
-                  <stop offset="100%" stopColor={ORANGE_HEX} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #FEE2E2", fontSize: 12 }} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Area type="monotone" dataKey="sorovlar"  name="So'rovlar"  stroke={RED_HEX}    fill="url(#gRed)"    strokeWidth={2.5} />
-              <Area type="monotone" dataKey="takliflar" name="Takliflar"  stroke={ORANGE_HEX} fill="url(#gOrange)" strokeWidth={2.5} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-          <h3 className="font-bold text-gray-900 text-sm mb-4">Toifa taqsimoti</h3>
-          {catData.length === 0 ? (
-            <div className="flex items-center justify-center h-[200px]">
-              <p className="text-sm text-gray-400">So'rovlar yo'q</p>
-            </div>
-          ) : (
-            <>
-              <ResponsiveContainer width="100%" height={140}>
-                <PieChart>
-                  <Pie data={catData} dataKey="value" cx="50%" cy="50%" outerRadius={55} innerRadius={28}>
-                    {catData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #FEE2E2", fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-1.5 mt-2">
-                {catData.slice(0, 4).map((d, i) => (
-                  <div key={d.name} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                      <span className="text-gray-600 truncate max-w-[120px]">{d.name}</span>
-                    </div>
-                    <span className="font-bold text-gray-800">{d.value}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+      {/* ─── 1. Marketplace Health ──────────────────────────────── */}
+      <div>
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">🏪 Bozor sog'lig'i</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <MetricCard label="Faol so'rovlar" value={activeRequests.length}
+            sub={`${requests.length} dan`} icon={ClipboardList} accent />
+          <MetricCard label="Taklifsiz" value={noOfferRequests.length}
+            sub={noOfferRequests.length > 0 ? "⚠️ E'tibor talab qiladi" : "Hammasi yopildi"}
+            icon={AlertCircle} />
+          <MetricCard label="O'rt. taklif/so'rov" value={avgOffersPerReq}
+            sub={`${offers.length} ta jami taklif`} icon={MessageSquare} />
+          <MetricCard label="Birinchi taklif vaqti" value={timeFirstOffer}
+            sub={firstOfferMins.length > 0 ? `${firstOfferMins.length} ta so'rov bo'yicha` : "Ma'lumot yo'q"} icon={Clock} />
         </div>
       </div>
 
-      {statusData.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-          <h3 className="font-bold text-gray-900 text-sm mb-4">So'rov holatlari</h3>
-          <ResponsiveContainer width="100%" height={120}>
-            <BarChart data={statusData} layout="vertical">
-              <XAxis type="number" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "#9CA3AF" }} width={90} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #FEE2E2", fontSize: 11 }} />
-              <Bar dataKey="value" fill={RED_HEX} radius={[0, 6, 6, 0]} maxBarSize={20} />
-            </BarChart>
-          </ResponsiveContainer>
+      {/* ─── 2. Today snapshot ──────────────────────────────────── */}
+      <div>
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">📅 Bugun</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <Tile label="Yangi foydalanuvchilar" value={newUsersToday} color="text-blue-700" />
+          <Tile label="Yangi ijrochilar"       value={newProvidersToday} color="text-violet-700" />
+          <Tile label="So'rovlar"              value={requestsToday} color="text-red-700" />
+          <Tile label="Takliflar"              value={offersToday} color="text-orange-700" />
+          <Tile label="Tugatilgan ishlar"      value={completedToday} color="text-emerald-700" />
+        </div>
+      </div>
+
+      {/* ─── 3. Alerts (only when present) ──────────────────────── */}
+      {alerts.length > 0 && (
+        <div>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">🚨 Ogohlantirishlar</p>
+          <div className="space-y-2">
+            {alerts.map((a, i) => {
+              const Icon = a.icon;
+              const toneCls =
+                a.tone === "amber" ? "bg-amber-50 border-amber-200 text-amber-800" :
+                a.tone === "rose"  ? "bg-rose-50  border-rose-200  text-rose-800"  :
+                                      "bg-red-50   border-red-200   text-red-800";
+              return (
+                <button key={i} onClick={a.cta}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border ${toneCls} hover:shadow-sm transition-shadow text-left`}>
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <span className="flex-1 text-sm font-semibold">{a.text}</span>
+                  {a.cta && <ChevronRight className="w-4 h-4 flex-shrink-0 opacity-60" />}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
+
+      {/* ─── 4. Money / Users / Referral (3-col panel row) ──────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2"><DollarSign className="w-4 h-4 text-emerald-600" />Monetizatsiya</h3>
+            <button onClick={() => setSection("monetization")} className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-0.5">
+              Ko'rish<ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Daromad</span><span className="font-extrabold text-emerald-700 text-sm">{fmtMoney(revenue)}</span></div>
+            <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Sotilgan Tanga</span><span className="font-extrabold text-amber-600 text-sm">{tangaSold} 🪙</span></div>
+            <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Sarflangan Tanga</span><span className="font-extrabold text-red-600 text-sm">{tangaSpent} 🪙</span></div>
+            <div className="flex items-center justify-between"><span className="text-xs text-gray-500">O'rt. ijrochi sarfi</span><span className="font-extrabold text-gray-700 text-sm">{avgSpendPerProvider} 🪙</span></div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2"><Users className="w-4 h-4 text-blue-600" />Foydalanuvchilar</h3>
+            <button onClick={() => setSection("users")} className="text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5">
+              Ko'rish<ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Jami</span><span className="font-extrabold text-gray-900 text-sm">{totalUsers}</span></div>
+            <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Faol (7 kun)</span><span className="font-extrabold text-emerald-600 text-sm">{activeUsers7d}</span></div>
+            <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Ijrochi / Xaridor</span><span className="font-extrabold text-violet-600 text-sm">{totalProviders} / {totalCustomers}</span></div>
+            <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Kam balans (&lt;3 🪙)</span><span className={`font-extrabold text-sm ${lowBalanceProvs > 0 ? "text-rose-600" : "text-gray-700"}`}>{lowBalanceProvs}</span></div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2"><Zap className="w-4 h-4 text-amber-600" />Referral</h3>
+            <button onClick={() => setSection("monetization")} className="text-[11px] font-bold text-amber-600 hover:text-amber-700 flex items-center gap-0.5">
+              Ko'rish<ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Jami referrallar</span><span className="font-extrabold text-gray-900 text-sm">{referralCount}</span></div>
+            <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Berilgan Tanga</span><span className="font-extrabold text-amber-600 text-sm">{referralEarned} 🪙</span></div>
+            <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Faol taklifchilar</span><span className="font-extrabold text-violet-600 text-sm">{activeReferrers}</span></div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── 5. Trend chart ─────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+        <h3 className="font-bold text-gray-900 text-sm mb-4">Haftalik faollik {hasRevenueTrend ? "+ daromad" : ""}</h3>
+        <ResponsiveContainer width="100%" height={220}>
+          <AreaChart data={activityData}>
+            <defs>
+              <linearGradient id="gRed" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={RED_HEX} stopOpacity={0.28} />
+                <stop offset="100%" stopColor={RED_HEX} stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gOrange" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={ORANGE_HEX} stopOpacity={0.22} />
+                <stop offset="100%" stopColor={ORANGE_HEX} stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gEmerald" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#10B981" stopOpacity={0.25} />
+                <stop offset="100%" stopColor="#10B981" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+            <YAxis yAxisId="left"  tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+            {hasRevenueTrend && <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />}
+            <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #FEE2E2", fontSize: 12 }}
+              formatter={(v: number, name: string) => name === "Daromad" ? fmtMoney(v) : v} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Area yAxisId="left"  type="monotone" dataKey="sorovlar"  name="So'rovlar"  stroke={RED_HEX}    fill="url(#gRed)"     strokeWidth={2.5} />
+            <Area yAxisId="left"  type="monotone" dataKey="takliflar" name="Takliflar"  stroke={ORANGE_HEX} fill="url(#gOrange)"  strokeWidth={2.5} />
+            {hasRevenueTrend && <Area yAxisId="right" type="monotone" dataKey="daromad" name="Daromad" stroke="#10B981" fill="url(#gEmerald)" strokeWidth={2.5} />}
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* ─── 6. Recent Activity Feed (audit log) ────────────────── */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2"><Activity className="w-4 h-4 text-red-500" />So'nggi faollik</h3>
+          <button onClick={() => setSection("audit")} className="text-[11px] font-bold text-red-500 hover:text-red-600 flex items-center gap-0.5">
+            Hammasi<ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+        {recentActivity.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">Hali audit yozuvlari yo'q</p>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {recentActivity.map((a) => (
+              <div key={a.id} className="flex items-start gap-3 py-2.5">
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap ${categoryBadge(a.category)}`}>{a.category}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-700 truncate">{a.description}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{a.actorRole} · {timeAgo(a.createdAt)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ─── 7. Quick Actions ───────────────────────────────────── */}
+      <div>
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">⚡ Tezkor amallar</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Bozor markazi",   sub: "So'rovlar va takliflar", icon: Store,       tone: "bg-red-50 text-red-700 border-red-100",         go: () => setSection("marketplace") },
+            { label: "Foydalanuvchilar", sub: `${totalUsers} ta`,        icon: Users,       tone: "bg-blue-50 text-blue-700 border-blue-100",      go: () => setSection("users") },
+            { label: "Monetizatsiya",   sub: "Tanga va rejalar",        icon: CreditCard,  tone: "bg-emerald-50 text-emerald-700 border-emerald-100", go: () => setSection("monetization") },
+            { label: "Audit log",       sub: `${auditLog.length} yozuv`, icon: FileText,    tone: "bg-violet-50 text-violet-700 border-violet-100", go: () => setSection("audit") },
+          ].map((q) => {
+            const Icon = q.icon;
+            return (
+              <button key={q.label} onClick={q.go}
+                className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${q.tone} hover:shadow-md transition-shadow text-left`}>
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-extrabold truncate">{q.label}</p>
+                  <p className="text-[10px] opacity-70 truncate">{q.sub}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 flex-shrink-0 opacity-60" />
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* ── Danger Zone ─────────────────────────────────────────── */}
       <DangerZone />
@@ -4292,7 +4491,7 @@ export default function AdminDashboard() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.18 }}>
-              {section === "overview"     && <OverviewSection     {...sectionProps} />}
+              {section === "overview"     && <OverviewSection     {...sectionProps} setSection={setSection} />}
               {section === "marketplace"  && <MarketplaceSection  {...sectionProps} />}
               {section === "requests"     && <RequestsSection     {...sectionProps} />}
               {section === "offers"       && <OffersSection       {...sectionProps} />}
