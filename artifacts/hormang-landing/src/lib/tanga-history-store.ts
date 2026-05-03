@@ -18,6 +18,8 @@ export interface TangaTransaction {
   amount: number;
   /** "spend" = offer cost (default), "referral" = reward earned, "purchase" = bought, "admin_adjustment" = manual admin change */
   type?: "spend" | "referral" | "purchase" | "admin_adjustment";
+  /** For "purchase" txs: the so'm price actually paid (after any sale discount). Used by admin revenue analytics. */
+  priceSom?: number;
   createdAt: string;
 }
 

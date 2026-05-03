@@ -217,6 +217,7 @@ export default function PlansPage() {
     setBuying(tier.id);
     setTimeout(() => {
       const total = tier.credits + (tier.bonusTokens ?? 0);
+      const pricePaid = wasOnSale && tier.salePrice !== undefined ? tier.salePrice : tier.price;
       if (wasOnSale && tier.saleLimit !== undefined) {
         incrementSalePurchaseCount(tier.id);
       }
@@ -229,6 +230,7 @@ export default function PlansPage() {
         categoryEmoji: "💳",
         description: `"${tier.name}" rejasi xaridi: ${tier.credits} Tanga${(tier.bonusTokens ?? 0) > 0 ? ` + ${tier.bonusTokens} bonus` : ""}`,
         amount: total,
+        priceSom: pricePaid,
         type: "purchase",
       });
       setBuying(null);

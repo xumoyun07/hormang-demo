@@ -3215,15 +3215,24 @@ function MonoOverview({ txs, providers, tiers }: { txs: TangaTx[]; providers: Pr
   const weekAgo  = new Date(now.getTime() - 7 * 86400000);
   const monthStr = now.toISOString().slice(0, 7);
 
-  /* Revenue = any offer that the buyer accepted at some point.
-     Status flow: pending → accepted → in_progress → completed.
-     "rejected" never produced revenue; everything from "accepted" onward did. */
-  const REVENUE_STATUSES = new Set(["accepted", "in_progress", "completed"]);
-  const accepted     = allOffers.filter((o) => REVENUE_STATUSES.has(o.status));
-  const totalRevenue = accepted.reduce((s, o) => s + (o.price ?? 0), 0);
-  const todayRevenue = accepted.filter((o) => o.createdAt.startsWith(todayStr)).reduce((s, o) => s + (o.price ?? 0), 0);
-  const weekRevenue  = accepted.filter((o) => new Date(o.createdAt) >= weekAgo).reduce((s, o) => s + (o.price ?? 0), 0);
-  const monthRevenue = accepted.filter((o) => o.createdAt.startsWith(monthStr)).reduce((s, o) => s + (o.price ?? 0), 0);
+  /* Revenue = real money received from Tanga PLAN SALES (purchase transactions).
+     For each purchase tx we use the so'm price actually paid. Older purchase txs
+     created before priceSom was tracked fall back to looking up the tier by name. */
+  const tierPriceByName = new Map<string, number>();
+  tiers.forEach((t) => {
+    const eff = t.salePrice !== undefined && t.salePrice < t.price ? t.salePrice : t.price;
+    tierPriceByName.set(t.name, eff);
+  });
+  function txRevenueSom(tx: TangaTx): number {
+    if (tx.type !== "purchase") return 0;
+    if (typeof tx.priceSom === "number") return tx.priceSom;
+    return tierPriceByName.get(tx.categoryName) ?? 0;
+  }
+  const purchases    = txs.filter((t) => t.type === "purchase");
+  const totalRevenue = purchases.reduce((s, t) => s + txRevenueSom(t), 0);
+  const todayRevenue = purchases.filter((t) => t.createdAt.startsWith(todayStr)).reduce((s, t) => s + txRevenueSom(t), 0);
+  const weekRevenue  = purchases.filter((t) => new Date(t.createdAt) >= weekAgo).reduce((s, t) => s + txRevenueSom(t), 0);
+  const monthRevenue = purchases.filter((t) => t.createdAt.startsWith(monthStr)).reduce((s, t) => s + txRevenueSom(t), 0);
 
   const totalSold  = txs.filter((t) => t.type === "purchase").reduce((s, t) => s + t.amount, 0);
   const totalSpent = txs.filter((t) => t.type === "spend" || (!t.type && t.amount > 0)).reduce((s, t) => s + t.amount, 0);
@@ -3247,7 +3256,7 @@ function MonoOverview({ txs, providers, tiers }: { txs: TangaTx[]; providers: Pr
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">💵 Daromad (qabul qilingan takliflar)</p>
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">💵 Daromad (Tanga rejalari sotuvi)</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "Jami daromad", value: fmtMoney(totalRevenue), color: "text-emerald-700" },
@@ -3376,22 +3385,29 @@ function MonoPlans({ tiers, setTiers, reload }: { tiers: PricingTier[]; setTiers
     setShowAddForm(false);
   }
 
-  const allOffers    = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
-  /* Revenue counts every offer past "accepted": accepted/in_progress/completed */
-  const REVENUE_STATUSES = new Set(["accepted", "in_progress", "completed"]);
-  const totalRevenue = allOffers.filter((o) => REVENUE_STATUSES.has(o.status)).reduce((s, o) => s + (o.price ?? 0), 0);
-  const commission   = Math.round(totalRevenue * 0.15);
+  /* Revenue from PLAN SALES: sum so'm price of every "purchase" Tanga transaction.
+     Falls back to current tier price for legacy purchases without priceSom. */
+  const allTxs = readKey<TangaTx[]>(K.TANGA_HISTORY, []);
+  const tierPriceByName = new Map<string, number>();
+  tiers.forEach((t) => {
+    const eff = t.salePrice !== undefined && t.salePrice < t.price ? t.salePrice : t.price;
+    tierPriceByName.set(t.name, eff);
+  });
+  const totalRevenue = allTxs
+    .filter((t) => t.type === "purchase")
+    .reduce((s, t) => s + (typeof t.priceSom === "number" ? t.priceSom : (tierPriceByName.get(t.categoryName) ?? 0)), 0);
+  const totalPurchases = allTxs.filter((t) => t.type === "purchase").length;
 
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-          <p className="text-xs text-gray-400 font-semibold mb-1">Jami tranzaksiyalar</p>
-          <p className="text-xl font-extrabold text-gray-900">{fmtMoney(totalRevenue)}</p>
+          <p className="text-xs text-gray-400 font-semibold mb-1">Jami daromad</p>
+          <p className="text-xl font-extrabold text-emerald-700">{fmtMoney(totalRevenue)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-          <p className="text-xs text-gray-400 font-semibold mb-1">Komissiya (15%)</p>
-          <p className="text-xl font-extrabold text-red-600">{fmtMoney(commission)}</p>
+          <p className="text-xs text-gray-400 font-semibold mb-1">Sotuvlar soni</p>
+          <p className="text-xl font-extrabold text-gray-900">{totalPurchases} ta</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
           <p className="text-xs text-gray-400 font-semibold mb-1">Faol rejalar</p>
