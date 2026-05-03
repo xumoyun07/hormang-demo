@@ -280,6 +280,14 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
   - Token Tarixi: summary stats (today/month/all-time), filter by date/search, table with Batafsil button → OfferDetailModal
 - **Users table:** New "Tanga 🪙" column shows balance + clickable "N tranzaksiya" link
   - Opens `AdminUserTxModal`: per-user transactions slide-up sheet with balance stats + Batafsil per row
+- **Advanced Users Management System** (full rebuild of `UsersSection`):
+  - 6-metric bar: Jami, Ijrochilar, Xaridorlar, Tasdiqlangan, Flaglangan, Yangi (7k)
+  - Smart alerts: suspended users, low-balance, flagged, no-offer providers
+  - 5-dimensional filter dropdowns: Role, Activity, Performance, Risk, Referral + category pills
+  - Enriched 11-column table: name/avatar, role badges, phone, service area, categories, offer rate + progress bar, avg response, request count, Tanga balance, referral stats, risk badge, flags+tags, status, joined date, actions (flag/view/delete)
+  - Row click → `AdvancedUserDetailModal` (6 tabs: Ko'rinish, So'rovlar, Takliflar, Referral, Tanga, Admin)
+  - Admin tab: flag/verify toggle, add/remove tags, suspend/restore, delete, add/remove admin notes
+  - localStorage keys: `hormang_admin_user_flags`, `hormang_admin_user_tags`, `hormang_admin_user_notes`, `hormang_admin_user_verified`
 
 ### Category/Question Manager — `/admin/questions`
 - **Password:** `hormang2024` (old panel, still active)

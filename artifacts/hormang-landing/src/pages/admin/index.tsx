@@ -29,6 +29,7 @@ import {
   Shield, Trash2, Ban, CheckCircle2, Inbox, DollarSign,
   Bell, Menu, ChevronLeft, Plus, MapPin, Clock, Wallet,
   Store, LayoutGrid, TriangleAlert, ChevronDown, ChevronUp,
+  Flag, Tag, Star, UserCheck, Zap, Activity, StickyNote,
 } from "lucide-react";
 import { onStoreChange, emitStoreChange } from "@/lib/store-events";
 import { formatDateTime, formatMonthYear, formatDate } from "@/lib/date-utils";
@@ -165,6 +166,41 @@ function logAction(action: string, target: string, details: string) {
   };
   const log = readKey<AdminLogEntry[]>(K.ADMIN_LOG, []);
   writeKey(K.ADMIN_LOG, [entry, ...log].slice(0, 500));
+}
+
+/* ─── User Metadata Helpers (flags / tags / notes / verified) ──── */
+const UMK = {
+  FLAGS:    "hormang_admin_user_flags",
+  TAGS:     "hormang_admin_user_tags",
+  NOTES:    "hormang_admin_user_notes",
+  VERIFIED: "hormang_admin_user_verified",
+} as const;
+
+type AdminNote = { text: string; at: string };
+
+function getUserFlags():    Record<string, number>    { return readKey(UMK.FLAGS,    {}); }
+function getUserTags():     Record<string, string[]>  { return readKey(UMK.TAGS,     {}); }
+function getUserNotes():    Record<string, AdminNote[]> { return readKey(UMK.NOTES, {}); }
+function getUserVerified(): Record<string, boolean>   { return readKey(UMK.VERIFIED, {}); }
+
+function setUserFlagCount(userId: string, count: number) {
+  const m = getUserFlags(); m[userId] = count; writeKey(UMK.FLAGS, m); emitStoreChange();
+}
+function setUserTagsList(userId: string, tags: string[]) {
+  const m = getUserTags(); m[userId] = tags; writeKey(UMK.TAGS, m); emitStoreChange();
+}
+function addAdminNote(userId: string, note: string) {
+  const m = getUserNotes();
+  m[userId] = [{ text: note, at: new Date().toISOString() }, ...(m[userId] ?? [])];
+  writeKey(UMK.NOTES, m); emitStoreChange();
+}
+function removeAdminNote(userId: string, idx: number) {
+  const m = getUserNotes();
+  m[userId] = (m[userId] ?? []).filter((_: AdminNote, i: number) => i !== idx);
+  writeKey(UMK.NOTES, m); emitStoreChange();
+}
+function setUserVerifiedStatus(userId: string, val: boolean) {
+  const m = getUserVerified(); m[userId] = val; writeKey(UMK.VERIFIED, m); emitStoreChange();
 }
 
 /* ─── Session ───────────────────────────────────────────────────── */
@@ -949,7 +985,7 @@ interface AdminUser {
   location?:        string;
   serviceAreas?:    string[];
   serviceAreaV2?:   { toshkent_city: { all: boolean; districts: string[] }; toshkent_region: { all: boolean; cities: string[] } };
-  completionPct?:   number;  // % of offers accepted
+  completionPct?:   number;
   offerCount?:      number;
   acceptedCount?:   number;
   requestCount?:    number;
@@ -963,177 +999,510 @@ interface AdminUser {
   referredBy?:      string;
   referralCount?:   number;
   referralEarned?:  number;
+  /* ── Admin-managed metadata ── */
+  flagCount?:       number;
+  tags?:            string[];
+  adminNotes?:      AdminNote[];
+  tangaBalance?:    number;
 }
 
-/* ─── UserProfileModal ────────────────────────────────────────────── */
-function AdminUserProfileModal({
-  user, onClose,
-}: { user: AdminUser | null; onClose: () => void }) {
-  if (!user) return null;
-  const u = user;
+/* ─── Advanced User Detail Modal ─────────────────────────────────── */
+type DetailTab = "overview" | "requests" | "offers" | "referral" | "tanga" | "admin";
+
+function AdvancedUserDetailModal({
+  user, onClose, onToggleSuspend, onDelete,
+}: {
+  user: AdminUser;
+  onClose: () => void;
+  onToggleSuspend: (u: AdminUser) => void;
+  onDelete: (u: AdminUser) => void;
+}) {
+  const [tab, setTab]               = useState<DetailTab>("overview");
+  const [noteInput, setNoteInput]   = useState("");
+  const [tagInput, setTagInput]     = useState("");
+  const [localUser, setLocalUser]   = useState<AdminUser>(user);
+
+  /* Refresh local copies of admin metadata */
+  function refreshMeta() {
+    const flags    = getUserFlags();
+    const tags     = getUserTags();
+    const notes    = getUserNotes();
+    const verified = getUserVerified();
+    setLocalUser((prev) => ({
+      ...prev,
+      flagCount:   flags[prev.userId]    ?? prev.flagCount    ?? 0,
+      tags:        tags[prev.userId]     ?? prev.tags         ?? [],
+      adminNotes:  notes[prev.userId]    ?? prev.adminNotes   ?? [],
+      verified:    verified[prev.userId] !== undefined
+                     ? verified[prev.userId]
+                     : prev.verified ?? false,
+    }));
+  }
+  useEffect(() => { refreshMeta(); }, []);
+
+  const u = localUser;
   const roleBg  = u.role === "provider" ? "bg-violet-600"
                 : u.role === "both"     ? "bg-gradient-to-br from-violet-600 to-blue-600"
                 :                        "bg-blue-600";
 
+  /* Data for sub-tabs */
+  const allOffers   = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
+  const allRequests = readKey<CustomerRequest[]>(K.REQUESTS, []);
+  const userOffers   = allOffers.filter((o) => o.masterId === u.userId);
+  const userRequests = allRequests.filter((r) => r.customerId === u.userId);
+  const tangaTxs     = getTangaTransactions(u.userId);
+  const tangaBalance = parseInt(localStorage.getItem(`provider_tokens_${u.userId}`) ?? "0", 10);
+
+  /* Admin actions */
+  function handleFlagToggle() {
+    const cur = u.flagCount ?? 0;
+    const next = cur > 0 ? 0 : 1;
+    setUserFlagCount(u.userId, next);
+    logAction(next > 0 ? "FLAG_USER" : "UNFLAG_USER", u.userId, `${u.name} ${next > 0 ? "flaglandi" : "flag olib tashlandi"}`);
+    refreshMeta();
+  }
+  function handleVerifyToggle() {
+    const next = !(u.verified ?? false);
+    setUserVerifiedStatus(u.userId, next);
+    logAction(next ? "VERIFY_USER" : "UNVERIFY_USER", u.userId, `${u.name} ${next ? "tasdiqlandi" : "tasdiq bekor qilindi"}`);
+    refreshMeta();
+  }
+  function handleAddNote() {
+    const t = noteInput.trim();
+    if (!t) return;
+    addAdminNote(u.userId, t);
+    logAction("ADD_NOTE", u.userId, `Izoh: ${t.slice(0, 60)}`);
+    setNoteInput("");
+    refreshMeta();
+  }
+  function handleRemoveNote(idx: number) {
+    removeAdminNote(u.userId, idx);
+    refreshMeta();
+  }
+  function handleAddTag() {
+    const t = tagInput.trim().toLowerCase().replace(/\s+/g, "-");
+    if (!t) return;
+    const cur = u.tags ?? [];
+    if (!cur.includes(t)) {
+      setUserTagsList(u.userId, [...cur, t]);
+      logAction("ADD_TAG", u.userId, `Tag: ${t}`);
+    }
+    setTagInput("");
+    refreshMeta();
+  }
+  function handleRemoveTag(tag: string) {
+    setUserTagsList(u.userId, (u.tags ?? []).filter((x) => x !== tag));
+    refreshMeta();
+  }
+
+  const TABS: { id: DetailTab; label: string }[] = [
+    { id: "overview",  label: "Umumiy" },
+    { id: "requests",  label: `So'rovlar (${userRequests.length})` },
+    { id: "offers",    label: `Takliflar (${userOffers.length})` },
+    { id: "referral",  label: "Referral" },
+    { id: "tanga",     label: `Tanga (${tangaTxs.length})` },
+    { id: "admin",     label: "Admin" },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-      onClick={onClose}>
+    <>
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.18, ease: "easeOut" }}
-        className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}>
-
-        {/* Header bar */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-gray-100 px-5 py-3.5 flex items-center justify-between z-10">
-          <h2 className="text-base font-extrabold text-gray-900">Foydalanuvchi profili</h2>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="p-5 space-y-5">
-          {/* Avatar + name */}
-          <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-extrabold text-white flex-shrink-0 shadow-md ${roleBg}`}>
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, y: 40, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 40, scale: 0.97 }}
+        transition={{ type: "spring", stiffness: 380, damping: 32 }}
+        className="fixed inset-x-0 top-[3vh] bottom-0 z-[71] flex justify-center pointer-events-none"
+      >
+        <div
+          className="bg-white w-full max-w-2xl rounded-t-3xl flex flex-col shadow-2xl overflow-hidden pointer-events-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* ── Header ── */}
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 flex-shrink-0 bg-gradient-to-r from-gray-50 to-white">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-extrabold text-white flex-shrink-0 shadow-md ${roleBg}`}>
               {u.initials}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-extrabold text-gray-900 truncate">{u.name}</h3>
-              <p className="text-[11px] text-gray-400 font-mono">{u.userId}</p>
-              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-extrabold text-gray-900 text-base leading-tight">{u.name}</h2>
+                {u.verified && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-teal-50 text-teal-700 border border-teal-200 flex items-center gap-0.5">
+                    <UserCheck className="w-2.5 h-2.5" /> Tasdiqlangan
+                  </span>
+                )}
+                {(u.flagCount ?? 0) > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-0.5">
+                    <Flag className="w-2.5 h-2.5" /> Flaglangan
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap mt-1">
                 {(u.role === "provider" || u.role === "both") && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-violet-50 text-violet-700 border-violet-100">Ijrochi</span>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-violet-50 text-violet-700 border border-violet-100">Ijrochi</span>
                 )}
                 {(u.role === "customer" || u.role === "both") && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-blue-50 text-blue-700 border-blue-100">Xaridor</span>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100">Xaridor</span>
                 )}
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
                   u.status === "suspended"
                     ? "bg-red-100 text-red-700 border-red-200"
                     : "bg-emerald-50 text-emerald-700 border-emerald-100"
-                }`}>
-                  {u.status === "suspended" ? "To'xtatilgan" : "Faol"}
-                </span>
-                {u.verified && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-teal-50 text-teal-700 border-teal-100">✓ Tasdiqlangan</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Contact */}
-          <div className="bg-gray-50 rounded-xl p-4 space-y-2.5 text-sm">
-            <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Kontakt</h4>
-            <div className="flex items-center gap-3">
-              <span className="text-gray-500 w-32 text-[12px]">Telefon</span>
-              <span className="font-semibold text-gray-800">{u.phone ?? "—"}</span>
-              {u.phoneVerified && <span className="text-emerald-600 text-[10px] font-bold">✓</span>}
-            </div>
-            {u.location && (
-              <div className="flex items-center gap-3">
-                <span className="text-gray-500 w-32 text-[12px]">Joylashuv</span>
-                <span className="font-semibold text-gray-800">{u.location}</span>
-              </div>
-            )}
-            {u.joinedAt && (
-              <div className="flex items-center gap-3">
-                <span className="text-gray-500 w-32 text-[12px]">Ro'yxatdan o'tgan</span>
-                <span className="font-semibold text-gray-800">{fmtDate(u.joinedAt)}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Service areas (provider) */}
-          {(u.serviceAreaV2 || (u.serviceAreas && u.serviceAreas.length > 0)) && (
-            <div>
-              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Xizmat hududlari</h4>
-              {u.serviceAreaV2 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {u.serviceAreaV2.toshkent_city.all && (
-                    <span className="px-2.5 py-1 bg-violet-50 text-violet-700 text-xs font-semibold rounded-lg border border-violet-100">🏙 Butun Toshkent shahri</span>
-                  )}
-                  {!u.serviceAreaV2.toshkent_city.all && u.serviceAreaV2.toshkent_city.districts.map((d) => (
-                    <span key={d} className="px-2.5 py-1 bg-violet-50 text-violet-700 text-xs font-semibold rounded-lg border border-violet-100">🏙 {d}</span>
-                  ))}
-                  {u.serviceAreaV2.toshkent_region.all && (
-                    <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-100">🗺 Butun Toshkent viloyati</span>
-                  )}
-                  {!u.serviceAreaV2.toshkent_region.all && u.serviceAreaV2.toshkent_region.cities.map((c) => (
-                    <span key={c} className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-100">🗺 {c}</span>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {u.serviceAreas!.map((a) => (
-                    <span key={a} className="px-2.5 py-1 bg-red-50 text-red-700 text-xs font-semibold rounded-lg border border-red-100">{a}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Categories (provider) */}
-          {u.categories && u.categories.length > 0 && (
-            <div>
-              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Toifalar</h4>
-              <div className="flex flex-wrap gap-1.5">
-                {u.categories.map((c) => (
-                  <span key={c} className="px-2.5 py-1 bg-violet-50 text-violet-700 text-xs font-semibold rounded-lg border border-violet-100">{c}</span>
+                }`}>{u.status === "suspended" ? "To'xtatilgan" : "Faol"}</span>
+                {(u.tags ?? []).map((tag) => (
+                  <span key={tag} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-100">#{tag}</span>
                 ))}
               </div>
             </div>
-          )}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button onClick={() => { onToggleSuspend(u); onClose(); }}
+                className={`p-2 rounded-xl text-xs font-bold transition-colors ${
+                  u.status === "suspended"
+                    ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                    : "bg-orange-50 text-orange-600 hover:bg-orange-100"
+                }`} title={u.status === "suspended" ? "Faollashtirish" : "To'xtatish"}>
+                {u.status === "suspended" ? <CheckCircle2 className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+              </button>
+              <button onClick={() => { if (confirm(`${u.name}ni o'chirish?`)) { onDelete(u); onClose(); } }}
+                className="p-2 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors" title="O'chirish">
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <button onClick={onClose} className="p-2 rounded-xl bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
 
-          {/* Provider stats */}
-          {(u.role === "provider" || u.role === "both") && (
-            <div>
-              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Ijrochi statistikasi</h4>
-              <div className="grid grid-cols-2 gap-3">
-                {u.rating !== undefined && (
-                  <div className="bg-amber-50 rounded-xl p-3 border border-amber-100 text-center">
-                    <p className="text-[9px] font-bold text-amber-500 uppercase mb-1">Reyting</p>
-                    <p className="text-2xl font-extrabold text-amber-700">★ {u.rating.toFixed(1)}</p>
-                    <p className="text-[10px] text-amber-600 mt-0.5">{u.reviewCount ?? 0} ta sharh</p>
+          {/* ── Tabs ── */}
+          <div className="flex items-center gap-0.5 px-5 py-2 border-b border-gray-100 flex-shrink-0 overflow-x-auto">
+            {TABS.map((t) => (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+                  tab === t.id ? "bg-red-600 text-white" : "text-gray-500 hover:bg-gray-100"
+                }`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Content ── */}
+          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+
+            {/* ── OVERVIEW ── */}
+            {tab === "overview" && (
+              <div className="space-y-4">
+                {/* Stats bar */}
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { label: "Tanga", value: `${tangaBalance} 🪙`, color: "text-amber-600" },
+                    { label: "Reyting", value: u.rating ? `★ ${u.rating.toFixed(1)}` : "—", color: "text-amber-700" },
+                    { label: u.role === "customer" ? "So'rovlar" : "Takliflar",
+                      value: String(u.role === "customer" ? (u.requestCount ?? 0) : (u.offerCount ?? 0)), color: "text-violet-700" },
+                    { label: "Referral", value: String(u.referralCount ?? 0), color: "text-blue-700" },
+                  ].map((s) => (
+                    <div key={s.label} className="bg-gray-50 rounded-xl p-2.5 border border-gray-100 text-center">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">{s.label}</p>
+                      <p className={`text-base font-extrabold ${s.color}`}>{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Contact */}
+                <div className="bg-gray-50 rounded-2xl p-4 space-y-2 border border-gray-100">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Kontakt</p>
+                  {[
+                    { label: "ID", val: <span className="font-mono text-[11px] text-gray-500">{u.userId}</span> },
+                    { label: "Telefon", val: <span className="font-semibold text-gray-800">{u.phone ?? "—"}{u.phoneVerified ? <span className="text-emerald-600 ml-1 text-[10px]">✓</span> : null}</span> },
+                    { label: "Joylashuv", val: <span className="font-semibold text-gray-800">{u.location ?? "—"}</span> },
+                    { label: "Ro'yxat", val: <span className="font-semibold text-gray-800">{u.joinedAt ? fmtDate(u.joinedAt) : "—"}</span> },
+                  ].map(({ label, val }) => (
+                    <div key={label} className="flex items-center gap-2">
+                      <span className="text-[11px] text-gray-400 w-24 flex-shrink-0">{label}</span>
+                      {val}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Provider stats */}
+                {(u.role === "provider" || u.role === "both") && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: "Qabul %", val: u.completionPct !== undefined ? `${u.completionPct}%` : "—", bg: "bg-emerald-50 border-emerald-100", tx: "text-emerald-700" },
+                      { label: "Qabul qilingan", val: `${u.acceptedCount ?? 0} ta`, bg: "bg-violet-50 border-violet-100", tx: "text-violet-700" },
+                      { label: "Sharhlar", val: `${u.reviewCount ?? 0} ta`, bg: "bg-amber-50 border-amber-100", tx: "text-amber-700" },
+                      { label: "Javob vaqti", val: u.avgResponseTime !== undefined ? `~${u.avgResponseTime}m` : "—", bg: "bg-blue-50 border-blue-100", tx: "text-blue-700" },
+                    ].map((s) => (
+                      <div key={s.label} className={`rounded-xl p-3 border text-center ${s.bg}`}>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{s.label}</p>
+                        <p className={`text-lg font-extrabold ${s.tx}`}>{s.val}</p>
+                      </div>
+                    ))}
                   </div>
                 )}
-                {u.offerCount !== undefined && (
-                  <div className="bg-violet-50 rounded-xl p-3 border border-violet-100 text-center">
-                    <p className="text-[9px] font-bold text-violet-500 uppercase mb-1">Takliflar</p>
-                    <p className="text-2xl font-extrabold text-violet-700">{u.offerCount}</p>
-                    <p className="text-[10px] text-violet-600 mt-0.5">{u.acceptedCount ?? 0} ta qabul</p>
+
+                {/* Service areas */}
+                {(u.serviceAreaV2 || (u.serviceAreas && u.serviceAreas.length > 0)) && (
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Xizmat hududlari</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {u.serviceAreaV2 ? (
+                        <>
+                          {u.serviceAreaV2.toshkent_city.all && <span className="px-2.5 py-1 bg-violet-50 text-violet-700 text-xs font-semibold rounded-lg border border-violet-100">🏙 Butun Toshkent</span>}
+                          {!u.serviceAreaV2.toshkent_city.all && u.serviceAreaV2.toshkent_city.districts.map((d) => (
+                            <span key={d} className="px-2.5 py-1 bg-violet-50 text-violet-700 text-xs font-semibold rounded-lg border border-violet-100">🏙 {d}</span>
+                          ))}
+                          {u.serviceAreaV2.toshkent_region.all && <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-100">🗺 Butun viloyat</span>}
+                          {!u.serviceAreaV2.toshkent_region.all && u.serviceAreaV2.toshkent_region.cities.map((c) => (
+                            <span key={c} className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-100">🗺 {c}</span>
+                          ))}
+                        </>
+                      ) : u.serviceAreas!.map((a) => (
+                        <span key={a} className="px-2.5 py-1 bg-red-50 text-red-700 text-xs font-semibold rounded-lg border border-red-100">{a}</span>
+                      ))}
+                    </div>
                   </div>
                 )}
-                {u.completionPct !== undefined && (
-                  <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100 text-center">
-                    <p className="text-[9px] font-bold text-emerald-500 uppercase mb-1">Qabul %</p>
-                    <p className="text-2xl font-extrabold text-emerald-700">{u.completionPct}%</p>
-                  </div>
-                )}
-                {u.avgResponseTime !== undefined && (
-                  <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 text-center">
-                    <p className="text-[9px] font-bold text-blue-500 uppercase mb-1">Javob vaqti</p>
-                    <p className="text-2xl font-extrabold text-blue-700">~{u.avgResponseTime}m</p>
+
+                {/* Categories */}
+                {u.categories && u.categories.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Toifalar</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {u.categories.map((c) => (
+                        <span key={c} className="px-2.5 py-1 bg-violet-50 text-violet-700 text-xs font-semibold rounded-lg border border-violet-100">{c}</span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Customer stats */}
-          {(u.role === "customer" || u.role === "both") && (
-            <div>
-              <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Xaridor statistikasi</h4>
-              <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 text-center inline-block min-w-[120px]">
-                <p className="text-[9px] font-bold text-blue-500 uppercase mb-1">So'rovlar</p>
-                <p className="text-2xl font-extrabold text-blue-700">{u.requestCount ?? 0}</p>
+            {/* ── REQUESTS ── */}
+            {tab === "requests" && (
+              <div className="space-y-2">
+                {userRequests.length === 0 ? (
+                  <div className="text-center py-10">
+                    <ClipboardList className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                    <p className="text-gray-400 text-sm font-semibold">So'rovlar yo'q</p>
+                  </div>
+                ) : userRequests.map((r) => (
+                  <div key={r.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center gap-3">
+                    <span className="text-xl flex-shrink-0">{r.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-800 text-xs truncate">{r.categoryName}</p>
+                      <p className="text-[10px] text-gray-400">{fmtDate(r.createdAt)} · {r.offerCount ?? 0} taklif</p>
+                    </div>
+                    <StatusBadge status={r.status} />
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
+            )}
+
+            {/* ── OFFERS ── */}
+            {tab === "offers" && (
+              <div className="space-y-2">
+                {userOffers.length === 0 ? (
+                  <div className="text-center py-10">
+                    <Inbox className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                    <p className="text-gray-400 text-sm font-semibold">Takliflar yo'q</p>
+                  </div>
+                ) : userOffers.map((o) => (
+                  <div key={o.id} className={`bg-gray-50 rounded-xl p-3 border flex items-center gap-3 ${o.status === "accepted" ? "border-emerald-200" : "border-gray-100"}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-800 text-xs truncate">{o.categoryName ?? "Xizmat"}</p>
+                      <p className="text-[10px] text-gray-400">{fmtDate(o.createdAt)}</p>
+                    </div>
+                    <span className="font-extrabold text-red-600 text-sm flex-shrink-0">{fmtMoney(o.price)}</span>
+                    <StatusBadge status={o.status} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ── REFERRAL ── */}
+            {tab === "referral" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Kod",        val: u.referralCode ?? "—",              color: "text-gray-800" },
+                    { label: "Taklif",     val: String(u.referralCount ?? 0),        color: "text-violet-700" },
+                    { label: "Daromad",    val: `${u.referralEarned ?? 0} 🪙`,       color: "text-amber-600" },
+                  ].map((s) => (
+                    <div key={s.label} className="bg-gray-50 rounded-xl p-3 border border-gray-100 text-center">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{s.label}</p>
+                      <p className={`text-base font-extrabold ${s.color}`}>{s.val}</p>
+                    </div>
+                  ))}
+                </div>
+                {u.referredBy && (
+                  <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 text-sm">
+                    <span className="text-blue-500 text-[11px] font-bold uppercase tracking-wide">Kim taklif qildi:</span>
+                    <p className="font-semibold text-blue-800 mt-0.5">{u.referredBy}</p>
+                  </div>
+                )}
+                {(u.referralCount ?? 0) === 0 && (
+                  <div className="text-center py-6">
+                    <p className="text-gray-400 text-sm">Hali hech kimni taklif qilmagan</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── TANGA ── */}
+            {tab === "tanga" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Balans",        val: `${tangaBalance} 🪙`,                   color: "text-amber-600" },
+                    { label: "Sarflandi",      val: `${tangaTxs.reduce((s,t)=>s+t.amount,0)} 🪙`, color: "text-red-600" },
+                    { label: "Tranzaksiyalar", val: String(tangaTxs.length),               color: "text-gray-700" },
+                  ].map((s) => (
+                    <div key={s.label} className="bg-gray-50 rounded-xl p-3 border border-gray-100 text-center">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{s.label}</p>
+                      <p className={`text-base font-extrabold ${s.color}`}>{s.val}</p>
+                    </div>
+                  ))}
+                </div>
+                {tangaTxs.length === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="text-2xl mb-1">🪙</p>
+                    <p className="text-gray-400 text-sm font-semibold">Tranzaksiyalar yo'q</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {tangaTxs.map((tx) => (
+                      <div key={tx.id} className="bg-gray-50 rounded-xl p-3 flex items-center gap-3 border border-gray-100">
+                        <span className="text-lg flex-shrink-0">{tx.categoryEmoji || "📋"}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-800 text-xs truncate">{tx.categoryName}</p>
+                          <p className="text-[10px] text-gray-400">{new Date(tx.createdAt).toLocaleDateString("uz-UZ")}</p>
+                        </div>
+                        <span className="font-extrabold text-amber-600 text-sm flex-shrink-0">−{tx.amount} 🪙</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── ADMIN ── */}
+            {tab === "admin" && (
+              <div className="space-y-5">
+                {/* Quick actions */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={handleVerifyToggle}
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm border transition-colors ${
+                      u.verified
+                        ? "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100"
+                        : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                    }`}>
+                    <UserCheck className="w-4 h-4" />
+                    {u.verified ? "Tasdiqlangan ✓" : "Tasdiqlash"}
+                  </button>
+                  <button onClick={handleFlagToggle}
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm border transition-colors ${
+                      (u.flagCount ?? 0) > 0
+                        ? "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
+                        : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                    }`}>
+                    <Flag className="w-4 h-4" />
+                    {(u.flagCount ?? 0) > 0 ? "Flaglangan 🚩" : "Flag qo'yish"}
+                  </button>
+                  <button onClick={() => { onToggleSuspend(u); refreshMeta(); }}
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm border transition-colors ${
+                      u.status === "suspended"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                        : "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
+                    }`}>
+                    {u.status === "suspended" ? <><CheckCircle2 className="w-4 h-4" /> Faollashtirish</> : <><Ban className="w-4 h-4" /> To'xtatish</>}
+                  </button>
+                  <button onClick={() => { if (confirm(`${u.name}ni o'chirish?`)) { onDelete(u); onClose(); } }}
+                    className="flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm border bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 transition-colors">
+                    <Trash2 className="w-4 h-4" /> O'chirish
+                  </button>
+                </div>
+
+                {/* Tags */}
+                <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Tag className="w-3 h-3" /> Teglar
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(u.tags ?? []).length === 0 && (
+                      <p className="text-xs text-gray-400">Hali teg qo'shilmagan</p>
+                    )}
+                    {(u.tags ?? []).map((tag) => (
+                      <span key={tag}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold">
+                        #{tag}
+                        <button onClick={() => handleRemoveTag(tag)} className="ml-0.5 text-amber-400 hover:text-rose-600 transition-colors">
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddTag(); } }}
+                      placeholder="yangi-teg"
+                      className={`${inputCls} flex-1 text-xs`}
+                    />
+                    <button onClick={handleAddTag}
+                      className="px-3 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors flex-shrink-0">
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <StickyNote className="w-3 h-3" /> Admin izohlari
+                  </p>
+                  {(u.adminNotes ?? []).length === 0 ? (
+                    <p className="text-xs text-gray-400">Hali izoh qo'shilmagan</p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {(u.adminNotes ?? []).map((note, i) => (
+                        <div key={i} className="bg-white rounded-xl p-2.5 border border-gray-100 flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-700 leading-relaxed">{note.text}</p>
+                            <p className="text-[9px] text-gray-400 mt-0.5">{fmtDate(note.at)}</p>
+                          </div>
+                          <button onClick={() => handleRemoveNote(i)}
+                            className="text-gray-300 hover:text-rose-500 transition-colors flex-shrink-0 mt-0.5">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input
+                      value={noteInput}
+                      onChange={(e) => setNoteInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddNote(); } }}
+                      placeholder="Izoh yozing..."
+                      className={`${inputCls} flex-1 text-xs`}
+                    />
+                    <button onClick={handleAddNote}
+                      className="px-3 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors flex-shrink-0">
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </motion.div>
-    </div>
+    </>
   );
 }
 
@@ -1934,22 +2303,28 @@ function MarketplaceSection({ refreshKey }: { refreshKey: number }) {
   );
 }
 
-/* ─── UsersSection ────────────────────────────────────────────────── */
-type RoleFilter   = "all" | "provider" | "customer" | "both";
-type StatusFilter = "all" | "active" | "suspended" | "verified";
+/* ─── UsersSection — Advanced Control Center ─────────────────────── */
+type RoleFilter     = "all" | "provider" | "customer" | "both";
+type ActivityFilter = "all" | "new7d" | "active7d" | "inactive30d";
+type PerfFilter     = "all" | "top" | "low" | "nojobs";
+type RiskFilter     = "all" | "flagged" | "suspended";
+type ReferralFilter = "all" | "top" | "none";
 
 function UsersSection({ refreshKey }: { refreshKey: number }) {
-  const [users, setUsers]               = useState<AdminUser[]>([]);
-  const [suspended, setSuspended]       = useState<Set<string>>(() =>
+  const [users, setUsers]                     = useState<AdminUser[]>([]);
+  const [suspended, setSuspended]             = useState<Set<string>>(() =>
     new Set(readKey<string[]>("hormang_admin_suspended_users", []))
   );
-  const [search, setSearch]             = useState("");
-  const [filterRole, setFilterRole]     = useState<RoleFilter>("all");
-  const [filterStatus, setFilterStatus] = useState<StatusFilter>("all");
-  const [filterCats, setFilterCats]     = useState<Set<string>>(new Set());
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
-  const [txUserId, setTxUserId]         = useState<string | null>(null);
-  const [txUserName, setTxUserName]     = useState<string>("");
+  const [search, setSearch]                   = useState("");
+  const [filterRole, setFilterRole]           = useState<RoleFilter>("all");
+  const [filterActivity, setFilterActivity]   = useState<ActivityFilter>("all");
+  const [filterPerf, setFilterPerf]           = useState<PerfFilter>("all");
+  const [filterRisk, setFilterRisk]           = useState<RiskFilter>("all");
+  const [filterReferral, setFilterReferral]   = useState<ReferralFilter>("all");
+  const [filterCats, setFilterCats]           = useState<Set<string>>(new Set());
+  const [selectedUser, setSelectedUser]       = useState<AdminUser | null>(null);
+  const [txUserId, setTxUserId]               = useState<string | null>(null);
+  const [txUserName, setTxUserName]           = useState<string>("");
 
   const load = useCallback(() => {
     const allOffers   = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
@@ -2116,36 +2491,71 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
     });
   }
 
+  /* ── Enrich with admin metadata ── */
+  const flags    = getUserFlags();
+  const tags     = getUserTags();
+  const notes    = getUserNotes();
+  const verified = getUserVerified();
+  const enriched = users.map((u) => ({
+    ...u,
+    flagCount:  flags[u.userId]    ?? 0,
+    tags:       tags[u.userId]     ?? [],
+    adminNotes: notes[u.userId]    ?? [],
+    verified:   verified[u.userId] !== undefined ? verified[u.userId] : (u.verified ?? false),
+  }));
+
   /* ── Filtering ── */
-  const filtered = users.filter((u) => {
+  const now7  = Date.now() - 7  * 24 * 60 * 60 * 1000;
+  const now30 = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
+  const filtered = enriched.filter((u) => {
     const q = search.toLowerCase().trim();
-    if (q && !u.name.toLowerCase().includes(q) && !u.userId.includes(q) && !(u.phone?.includes(q))) return false;
+    if (q) {
+      const inTags = (u.tags ?? []).some((t) => t.includes(q));
+      if (!u.name.toLowerCase().includes(q) && !u.userId.includes(q) && !(u.phone?.includes(q)) && !inTags) return false;
+    }
     if (filterRole !== "all" && u.role !== filterRole) return false;
-    if (filterStatus === "active"    && u.status !== "active")     return false;
-    if (filterStatus === "suspended" && u.status !== "suspended")  return false;
-    if (filterStatus === "verified"  && !u.verified)               return false;
+    /* Activity */
+    const joinedMs = u.joinedAt ? new Date(u.joinedAt).getTime() : 0;
+    if (filterActivity === "new7d"      && joinedMs < now7)  return false;
+    if (filterActivity === "inactive30d" && joinedMs > now30) return false;
+    if (filterActivity === "active7d"   && joinedMs < now7)  return false;
+    /* Performance */
+    if (filterPerf === "top"    && (u.rating === undefined || u.rating < 4.5))         return false;
+    if (filterPerf === "low"    && (u.rating === undefined || u.rating >= 3))           return false;
+    if (filterPerf === "nojobs" && (u.offerCount ?? 0) > 0)                            return false;
+    /* Risk */
+    if (filterRisk === "flagged"   && (u.flagCount ?? 0) === 0)    return false;
+    if (filterRisk === "suspended" && u.status !== "suspended")     return false;
+    /* Referral */
+    if (filterReferral === "top"  && (u.referralCount ?? 0) < 3)   return false;
+    if (filterReferral === "none" && (u.referralCount ?? 0) > 0)   return false;
     if (filterCats.size > 0 && !([...filterCats].some((c) => u.categories?.includes(c)))) return false;
     return true;
   });
 
-  const providerCount  = users.filter((u) => u.role === "provider" || u.role === "both").length;
-  const customerCount  = users.filter((u) => u.role === "customer" || u.role === "both").length;
-  const bothCount      = users.filter((u) => u.role === "both").length;
-  const verifiedCount  = users.filter((u) => u.verified).length;
+  /* ── Metrics ── */
+  const providerCount  = enriched.filter((u) => u.role === "provider" || u.role === "both").length;
+  const customerCount  = enriched.filter((u) => u.role === "customer" || u.role === "both").length;
+  const verifiedCount  = enriched.filter((u) => u.verified).length;
+  const flaggedCount   = enriched.filter((u) => (u.flagCount ?? 0) > 0).length;
+  const suspCount      = enriched.filter((u) => u.status === "suspended").length;
+  const newThisWeek    = enriched.filter((u) => u.joinedAt && new Date(u.joinedAt).getTime() > now7).length;
+
+  /* ── Smart alerts ── */
+  const alerts: { label: string; count: number; color: string }[] = [];
+  if (flaggedCount > 0)  alerts.push({ label: `${flaggedCount} ta flaglangan foydalanuvchi`, count: flaggedCount, color: "text-rose-700 bg-rose-50 border-rose-200" });
+  if (suspCount > 0)     alerts.push({ label: `${suspCount} ta to'xtatilgan akkaunt`, count: suspCount, color: "text-orange-700 bg-orange-50 border-orange-200" });
+  const noJobProviders = enriched.filter((u) => (u.role === "provider" || u.role === "both") && (u.offerCount ?? 0) === 0).length;
+  if (noJobProviders > 0) alerts.push({ label: `${noJobProviders} ta ijrochi hali taklif bermagan`, count: noJobProviders, color: "text-amber-700 bg-amber-50 border-amber-200" });
 
   return (
     <div className="space-y-4">
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-lg font-extrabold text-gray-900">Foydalanuvchilar</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {users.length} jami ·&nbsp;
-            <span className="text-violet-600 font-semibold">{providerCount} ijrochi</span> ·&nbsp;
-            <span className="text-blue-600 font-semibold">{customerCount} xaridor</span>
-            {bothCount > 0 && <> · <span className="text-indigo-600 font-semibold">{bothCount} ikkalasi</span></>}
-            {verifiedCount > 0 && <> · <span className="text-teal-600 font-semibold">{verifiedCount} tasdiqlangan</span></>}
-          </p>
+          <h2 className="text-lg font-extrabold text-gray-900">Foydalanuvchilar Boshqaruvi</h2>
+          <p className="text-sm text-gray-500 mt-0.5">Kengaytirilgan nazorat markazi</p>
         </div>
         <button onClick={load}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100 transition-colors border border-red-100 flex-shrink-0">
@@ -2153,55 +2563,107 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
         </button>
       </div>
 
-      {/* ── Filters row ── */}
-      <div className="flex flex-wrap gap-2">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Ism, telefon yoki ID bo'yicha qidirish..."
-            className={`${inputCls} w-full pl-9`} />
-        </div>
-        {/* Role filter */}
-        <select value={filterRole} onChange={(e) => setFilterRole(e.target.value as RoleFilter)} className={inputCls}>
-          <option value="all">Barcha rollar</option>
-          <option value="provider">Ijrochilar</option>
-          <option value="customer">Xaridorlar</option>
-          <option value="both">Ikkalasi ham</option>
-        </select>
-        {/* Status filter */}
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as StatusFilter)} className={inputCls}>
-          <option value="all">Barcha holatlari</option>
-          <option value="active">Faol</option>
-          <option value="suspended">To'xtatilgan</option>
-          <option value="verified">Tasdiqlangan</option>
-        </select>
+      {/* ── Metrics bar ── */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+        {[
+          { label: "Jami",        value: enriched.length,  color: "text-gray-900",     icon: <Users className="w-4 h-4 text-gray-400" /> },
+          { label: "Ijrochilar",  value: providerCount,    color: "text-violet-700",   icon: <Zap className="w-4 h-4 text-violet-400" /> },
+          { label: "Xaridorlar",  value: customerCount,    color: "text-blue-700",     icon: <Activity className="w-4 h-4 text-blue-400" /> },
+          { label: "Tasdiqlangan",value: verifiedCount,    color: "text-teal-700",     icon: <UserCheck className="w-4 h-4 text-teal-400" /> },
+          { label: "Flaglangan",  value: flaggedCount,     color: "text-rose-700",     icon: <Flag className="w-4 h-4 text-rose-400" /> },
+          { label: "Yangi (7k)",  value: newThisWeek,      color: "text-emerald-700",  icon: <Star className="w-4 h-4 text-emerald-400" /> },
+        ].map((m) => (
+          <div key={m.label} className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{m.label}</span>
+              {m.icon}
+            </div>
+            <span className={`text-xl font-extrabold ${m.color}`}>{m.value}</span>
+          </div>
+        ))}
       </div>
 
-      {/* ── Category multi-select pills ── */}
-      {(filterRole === "all" || filterRole === "provider" || filterRole === "both") && (
-        <div className="flex flex-wrap gap-1.5">
-          {CATEGORIES.map((cat) => {
-            const active = filterCats.has(cat);
-            return (
-              <button key={cat} onClick={() => toggleCat(cat)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
-                  active
-                    ? "bg-red-600 text-white border-red-600 shadow-sm"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
-                }`}>
-                {cat}
-              </button>
-            );
-          })}
-          {filterCats.size > 0 && (
-            <button onClick={() => setFilterCats(new Set())}
-              className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-gray-200 text-gray-400 hover:text-red-600 hover:border-red-300 transition-all">
-              Tozalash ✕
+      {/* ── Smart alerts ── */}
+      {alerts.length > 0 && (
+        <div className="space-y-2">
+          {alerts.map((a, i) => (
+            <div key={i} className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-semibold ${a.color}`}>
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {a.label}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Filters ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Ism, telefon, ID yoki teg bo'yicha qidirish..."
+            className={`${inputCls} w-full pl-9`} />
+        </div>
+
+        {/* Filter dropdowns */}
+        <div className="flex flex-wrap gap-2">
+          <select value={filterRole} onChange={(e) => setFilterRole(e.target.value as RoleFilter)} className={inputCls}>
+            <option value="all">Barcha rollar</option>
+            <option value="provider">Ijrochilar</option>
+            <option value="customer">Xaridorlar</option>
+            <option value="both">Ikkalasi ham</option>
+          </select>
+          <select value={filterActivity} onChange={(e) => setFilterActivity(e.target.value as ActivityFilter)} className={inputCls}>
+            <option value="all">Barcha faollik</option>
+            <option value="new7d">Yangi (7 kun)</option>
+            <option value="active7d">Faol (7 kun)</option>
+            <option value="inactive30d">Inaktiv (30+ kun)</option>
+          </select>
+          <select value={filterPerf} onChange={(e) => setFilterPerf(e.target.value as PerfFilter)} className={inputCls}>
+            <option value="all">Barcha samaradorlik</option>
+            <option value="top">Top (4.5+ reyting)</option>
+            <option value="low">Past (&lt;3 reyting)</option>
+            <option value="nojobs">Ishsiz ijrochilar</option>
+          </select>
+          <select value={filterRisk} onChange={(e) => setFilterRisk(e.target.value as RiskFilter)} className={inputCls}>
+            <option value="all">Barcha risk</option>
+            <option value="flagged">Flaglangan</option>
+            <option value="suspended">To'xtatilgan</option>
+          </select>
+          <select value={filterReferral} onChange={(e) => setFilterReferral(e.target.value as ReferralFilter)} className={inputCls}>
+            <option value="all">Barcha referral</option>
+            <option value="top">Top (3+ taklif)</option>
+            <option value="none">Referal yo'q</option>
+          </select>
+          {(filterActivity !== "all" || filterPerf !== "all" || filterRisk !== "all" || filterReferral !== "all" || filterCats.size > 0 || filterRole !== "all") && (
+            <button onClick={() => {
+              setFilterRole("all"); setFilterActivity("all"); setFilterPerf("all");
+              setFilterRisk("all"); setFilterReferral("all"); setFilterCats(new Set()); setSearch("");
+            }} className="px-3 py-2 rounded-xl bg-gray-100 text-gray-500 text-xs font-bold hover:bg-gray-200 transition-colors">
+              Filtrni tozalash ✕
             </button>
           )}
         </div>
-      )}
+
+        {/* Category pills (provider-relevant) */}
+        {(filterRole === "all" || filterRole === "provider" || filterRole === "both") && (
+          <div className="flex flex-wrap gap-1.5">
+            {CATEGORIES.map((cat) => {
+              const active = filterCats.has(cat);
+              return (
+                <button key={cat} onClick={() => toggleCat(cat)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
+                    active
+                      ? "bg-red-600 text-white border-red-600 shadow-sm"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600"
+                  }`}>
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* ── Table ── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -2209,10 +2671,10 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
           <div className="py-16 text-center">
             <Users className="w-12 h-12 text-gray-200 mx-auto mb-3" />
             <p className="text-gray-400 font-semibold text-base">
-              {users.length === 0 ? "Hali foydalanuvchilar yo'q" : "Topilmadi"}
+              {enriched.length === 0 ? "Hali foydalanuvchilar yo'q" : "Topilmadi"}
             </p>
             <p className="text-gray-300 text-sm mt-1.5">
-              {users.length === 0
+              {enriched.length === 0
                 ? "Tizimga kirgan foydalanuvchilar bu yerda ko'rinadi"
                 : "Qidiruv yoki filtrlash parametrlarini o'zgartiring"}
             </p>
@@ -2223,13 +2685,11 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
               <thead>
                 <tr className="border-b border-gray-100 bg-red-50/40">
                   {[
-                    "Foydalanuvchi", "Rol", "Telefon",
-                    "Joylashuv / Hudud", "Toifalar",
-                    "Takliflar / Qabul", "Javob vaqti",
-                    "So'rovlar", "Tanga 🪙", "Referral 🔗", "Holat", "Qo'shilgan", "Amallar",
+                    "Foydalanuvchi", "Rol", "Kontakt",
+                    "Samaradorlik", "Tanga 🪙", "Referral 🔗",
+                    "Risk", "Teglar", "Holat", "Amallar",
                   ].map((h) => (
-                    <th key={h}
-                      className="text-left text-[9px] font-bold text-red-400 uppercase tracking-widest px-3 py-3 whitespace-nowrap">
+                    <th key={h} className="text-left text-[9px] font-bold text-red-400 uppercase tracking-widest px-3 py-3 whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -2241,8 +2701,12 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
                     u.role === "both"     ? "bg-gradient-to-br from-violet-500 to-blue-500 text-white"
                     : u.role === "provider" ? "bg-violet-100 text-violet-700"
                     :                        "bg-blue-100 text-blue-700";
+                  const tangaBal = parseInt(localStorage.getItem(`provider_tokens_${u.userId}`) ?? "0", 10);
                   return (
-                    <tr key={u.userId} className="hover:bg-red-50/20 transition-colors group">
+                    <tr key={u.userId}
+                      className="hover:bg-red-50/20 transition-colors group cursor-pointer"
+                      onClick={() => setSelectedUser(u)}>
+
                       {/* User */}
                       <td className="px-3 py-3 min-w-[160px]">
                         <div className="flex items-center gap-2.5">
@@ -2250,12 +2714,11 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
                             {u.initials}
                           </div>
                           <div>
-                            <p className="font-semibold text-gray-800 text-[12px] leading-tight whitespace-nowrap">
-                              {u.name}
-                            </p>
-                            <p className="text-[9px] text-gray-400 font-mono">
-                              {u.userId.slice(0, 12)}
-                            </p>
+                            <div className="flex items-center gap-1">
+                              <p className="font-semibold text-gray-800 text-[12px] leading-tight whitespace-nowrap">{u.name}</p>
+                              {u.verified && <UserCheck className="w-3 h-3 text-teal-500 flex-shrink-0" />}
+                            </div>
+                            <p className="text-[9px] text-gray-400 font-mono">{u.userId.slice(0, 12)}</p>
                           </div>
                         </div>
                       </td>
@@ -2264,173 +2727,107 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
                       <td className="px-3 py-3">
                         <div className="flex flex-col gap-0.5">
                           {(u.role === "provider" || u.role === "both") && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-violet-50 text-violet-700 border-violet-100 w-fit">
-                              Ijrochi
-                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-violet-50 text-violet-700 border-violet-100 w-fit">Ijrochi</span>
                           )}
                           {(u.role === "customer" || u.role === "both") && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-blue-50 text-blue-700 border-blue-100 w-fit">
-                              Xaridor
-                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-blue-50 text-blue-700 border-blue-100 w-fit">Xaridor</span>
                           )}
                         </div>
                       </td>
 
-                      {/* Phone */}
+                      {/* Contact */}
                       <td className="px-3 py-3">
                         {u.phone ? (
                           <div>
                             <p className="text-[11px] font-semibold text-gray-700 whitespace-nowrap">{u.phone}</p>
-                            {u.phoneVerified
-                              ? <p className="text-[9px] text-emerald-600 font-bold">✓ Tasdiqlangan</p>
-                              : <p className="text-[9px] text-gray-400">Tasdiqlanmagan</p>}
+                            <p className={`text-[9px] font-bold ${u.phoneVerified ? "text-emerald-600" : "text-gray-300"}`}>
+                              {u.phoneVerified ? "✓ Tasdiqlangan" : "Tasdiqlanmagan"}
+                            </p>
                           </div>
                         ) : <span className="text-gray-300 text-[11px]">—</span>}
                       </td>
 
-                      {/* Location / Service Areas */}
-                      <td className="px-3 py-3 max-w-[140px]">
-                        {u.serviceAreaV2 ? (
-                          <div className="flex flex-wrap gap-0.5">
-                            {u.serviceAreaV2.toshkent_city.all && (
-                              <span className="px-1 py-0.5 bg-violet-50 text-violet-600 text-[8px] font-bold rounded border border-violet-100 whitespace-nowrap">🏙 Barchasi</span>
-                            )}
-                            {!u.serviceAreaV2.toshkent_city.all && u.serviceAreaV2.toshkent_city.districts.slice(0, 2).map((d) => (
-                              <span key={d} className="px-1 py-0.5 bg-violet-50 text-violet-600 text-[8px] font-bold rounded border border-violet-100 whitespace-nowrap">🏙 {d.slice(0, 10)}</span>
-                            ))}
-                            {u.serviceAreaV2.toshkent_region.all && (
-                              <span className="px-1 py-0.5 bg-blue-50 text-blue-600 text-[8px] font-bold rounded border border-blue-100 whitespace-nowrap">🗺 Barchasi</span>
-                            )}
-                            {!u.serviceAreaV2.toshkent_region.all && u.serviceAreaV2.toshkent_region.cities.slice(0, 1).map((c) => (
-                              <span key={c} className="px-1 py-0.5 bg-blue-50 text-blue-600 text-[8px] font-bold rounded border border-blue-100 whitespace-nowrap">🗺 {c.slice(0, 10)}</span>
-                            ))}
-                            {((!u.serviceAreaV2.toshkent_city.all && u.serviceAreaV2.toshkent_city.districts.length > 2) ||
-                              (!u.serviceAreaV2.toshkent_region.all && u.serviceAreaV2.toshkent_region.cities.length > 1)) && (
-                              <span className="text-[8px] text-gray-400">+boshqalar</span>
-                            )}
-                          </div>
-                        ) : u.serviceAreas && u.serviceAreas.length > 0 ? (
-                          <div className="flex flex-wrap gap-0.5">
-                            {u.serviceAreas.slice(0, 2).map((a) => (
-                              <span key={a} className="px-1 py-0.5 bg-red-50 text-red-600 text-[8px] font-bold rounded border border-red-100 whitespace-nowrap">
-                                {a.slice(0, 12)}
-                              </span>
-                            ))}
-                            {u.serviceAreas.length > 2 && (
-                              <span className="text-[8px] text-gray-400">+{u.serviceAreas.length - 2}</span>
-                            )}
-                          </div>
-                        ) : u.location ? (
-                          <span className="text-[11px] text-gray-600">{u.location}</span>
-                        ) : (
-                          <span className="text-gray-300 text-[11px]">—</span>
-                        )}
-                      </td>
-
-                      {/* Categories */}
-                      <td className="px-3 py-3 max-w-[130px]">
-                        {u.categories && u.categories.length > 0 ? (
-                          <div className="flex flex-wrap gap-0.5">
-                            {u.categories.slice(0, 2).map((c) => (
-                              <span key={c} className="px-1 py-0.5 bg-violet-50 text-violet-700 text-[8px] font-bold rounded border border-violet-100 whitespace-nowrap">
-                                {c.slice(0, 10)}
-                              </span>
-                            ))}
-                            {u.categories.length > 2 && (
-                              <span className="text-[8px] text-gray-400">+{u.categories.length - 2}</span>
-                            )}
-                          </div>
-                        ) : <span className="text-gray-300 text-[11px]">—</span>}
-                      </td>
-
-                      {/* Offers / Accepted */}
+                      {/* Performance */}
                       <td className="px-3 py-3">
                         {u.offerCount !== undefined ? (
                           <div>
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span className="text-[11px] font-bold text-gray-700">
-                                {u.acceptedCount}/{u.offerCount}
+                            <div className="flex items-center gap-1 mb-1">
+                              <span className="text-[10px] font-bold text-amber-600">
+                                {u.rating ? `★ ${u.rating.toFixed(1)}` : "—"}
                               </span>
+                              <span className="text-[9px] text-gray-400">({u.reviewCount ?? 0})</span>
                             </div>
-                            {u.completionPct !== undefined && (
-                              <div className="flex items-center gap-1">
-                                <div className="w-14 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                                  <div className="h-full rounded-full transition-all" style={{
-                                    width: `${u.completionPct}%`,
-                                    background: u.completionPct >= 70 ? "#10B981"
-                                              : u.completionPct >= 40 ? "#F59E0B"
-                                              : "#EF4444",
-                                  }} />
-                                </div>
-                                <span className="text-[9px] font-bold text-gray-500">{u.completionPct}%</span>
-                              </div>
-                            )}
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] font-semibold text-gray-600">{u.acceptedCount}/{u.offerCount}</span>
+                              {u.completionPct !== undefined && (
+                                <span className={`text-[9px] font-bold ${u.completionPct >= 70 ? "text-emerald-600" : u.completionPct >= 40 ? "text-amber-600" : "text-red-500"}`}>
+                                  {u.completionPct}%
+                                </span>
+                              )}
+                            </div>
                           </div>
+                        ) : u.requestCount !== undefined ? (
+                          <span className="text-[11px] font-semibold text-blue-600">{u.requestCount} so'rov</span>
                         ) : <span className="text-gray-300 text-[11px]">—</span>}
                       </td>
 
-                      {/* Avg Response Time */}
-                      <td className="px-3 py-3 text-[11px] text-gray-600 whitespace-nowrap">
-                        {u.avgResponseTime ? `~${u.avgResponseTime}m` : "—"}
-                      </td>
-
-                      {/* Request count (customer) */}
-                      <td className="px-3 py-3 text-center">
-                        {u.requestCount !== undefined ? (
-                          <span className="text-[12px] font-bold text-gray-700">{u.requestCount}</span>
-                        ) : <span className="text-gray-300">—</span>}
-                      </td>
-
-                      {/* Tanga balance */}
+                      {/* Tanga */}
                       <td className="px-3 py-3">
-                        {(() => {
-                          const bal = parseInt(localStorage.getItem(`provider_tokens_${u.userId}`) ?? "0", 10);
-                          const txCount = getTangaTransactions(u.userId).length;
-                          return (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-[12px] font-extrabold text-amber-600">
-                                {bal > 0 ? `${bal} 🪙` : "—"}
-                              </span>
-                              {txCount > 0 && (
-                                <button
-                                  onClick={() => { setTxUserId(u.userId); setTxUserName(u.name); }}
-                                  className="text-[9px] font-bold text-violet-600 hover:text-violet-800 underline whitespace-nowrap"
-                                >
-                                  {txCount} tranzaksiya
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })()}
+                        <div className="flex flex-col gap-0.5">
+                          <span className={`text-[12px] font-extrabold ${tangaBal > 0 ? "text-amber-600" : "text-gray-300"}`}>
+                            {tangaBal > 0 ? `${tangaBal} 🪙` : "—"}
+                          </span>
+                          {getTangaTransactions(u.userId).length > 0 && (
+                            <button onClick={(e) => { e.stopPropagation(); setTxUserId(u.userId); setTxUserName(u.name); }}
+                              className="text-[9px] font-bold text-violet-600 hover:text-violet-800 underline whitespace-nowrap text-left">
+                              {getTangaTransactions(u.userId).length} tx
+                            </button>
+                          )}
+                        </div>
                       </td>
 
                       {/* Referral */}
                       <td className="px-3 py-3">
+                        {(u.referralCount ?? 0) > 0 ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[11px] font-extrabold text-emerald-600">{u.referralCount} ta</span>
+                            <span className="text-[9px] text-amber-600 font-bold">+{u.referralEarned}🪙</span>
+                            {(u.referralCount ?? 0) >= 3 && (
+                              <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-amber-50 text-amber-600 border border-amber-200 w-fit">Top 🔥</span>
+                            )}
+                          </div>
+                        ) : <span className="text-gray-300 text-[11px]">—</span>}
+                      </td>
+
+                      {/* Risk */}
+                      <td className="px-3 py-3">
                         <div className="flex flex-col gap-0.5">
-                          {u.referralCode && (
-                            <span className="text-[9px] font-mono text-gray-500">{u.referralCode}</span>
+                          {(u.flagCount ?? 0) > 0 && (
+                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-rose-600">
+                              <Flag className="w-2.5 h-2.5" /> Flaglangan
+                            </span>
                           )}
-                          {(u.referralCount ?? 0) > 0 ? (
-                            <div className="flex items-center gap-1">
-                              <span className="text-[11px] font-extrabold text-emerald-600">
-                                {u.referralCount} ta
-                              </span>
-                              <span className="text-[9px] text-amber-600 font-bold">
-                                +{u.referralEarned}🪙
-                              </span>
-                              {(u.referralCount ?? 0) >= 3 && (
-                                <span className="px-1 py-0.5 rounded text-[8px] font-bold bg-amber-50 text-amber-600 border border-amber-200">
-                                  Top
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-gray-300 text-[11px]">—</span>
+                          {(u.adminNotes ?? []).length > 0 && (
+                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-blue-500">
+                              <StickyNote className="w-2.5 h-2.5" /> {(u.adminNotes ?? []).length} izoh
+                            </span>
                           )}
-                          {u.referredBy && (
-                            <span className="text-[8px] text-blue-500 font-mono">← {u.referredBy.slice(0, 12)}</span>
+                          {(u.flagCount ?? 0) === 0 && (u.adminNotes ?? []).length === 0 && (
+                            <span className="text-gray-200 text-[11px]">—</span>
                           )}
                         </div>
+                      </td>
+
+                      {/* Tags */}
+                      <td className="px-3 py-3 max-w-[100px]">
+                        {(u.tags ?? []).length > 0 ? (
+                          <div className="flex flex-wrap gap-0.5">
+                            {(u.tags ?? []).slice(0, 2).map((tag) => (
+                              <span key={tag} className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[8px] font-bold">#{tag}</span>
+                            ))}
+                            {(u.tags ?? []).length > 2 && <span className="text-[8px] text-gray-400">+{(u.tags ?? []).length - 2}</span>}
+                          </div>
+                        ) : <span className="text-gray-200 text-[11px]">—</span>}
                       </td>
 
                       {/* Status */}
@@ -2439,41 +2836,35 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
                           u.status === "suspended"
                             ? "bg-red-100 text-red-700 border-red-200"
                             : "bg-emerald-50 text-emerald-700 border-emerald-100"
-                        }`}>
-                          {u.status === "suspended" ? "To'xtatilgan" : "Faol"}
-                        </span>
-                      </td>
-
-                      {/* Joined date */}
-                      <td className="px-3 py-3 text-[10px] text-gray-400 whitespace-nowrap">
-                        {u.joinedAt ? fmtDate(u.joinedAt) : "—"}
+                        }`}>{u.status === "suspended" ? "To'xtatilgan" : "Faol"}</span>
                       </td>
 
                       {/* Actions */}
-                      <td className="px-3 py-3">
+                      <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => setSelectedUser(u)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                            title="Profilni ko'rish">
+                          <button onClick={() => setSelectedUser(u)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors" title="Batafsil">
                             <Eye className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={() => toggleSuspend(u.userId)}
+                          <button onClick={() => toggleSuspend(u.userId)}
                             className={`p-1.5 rounded-lg transition-colors ${
                               u.status === "suspended"
                                 ? "text-emerald-600 hover:bg-emerald-50"
                                 : "text-orange-500 hover:bg-orange-50"
-                            }`}
-                            title={u.status === "suspended" ? "Faollashtirish" : "To'xtatish"}>
-                            {u.status === "suspended"
-                              ? <CheckCircle2 className="w-3.5 h-3.5" />
-                              : <Ban className="w-3.5 h-3.5" />}
+                            }`} title={u.status === "suspended" ? "Faollashtirish" : "To'xtatish"}>
+                            {u.status === "suspended" ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
                           </button>
-                          <button
-                            onClick={() => deleteUser(u)}
-                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
-                            title="Foydalanuvchini o'chirish">
+                          <button onClick={() => {
+                            const cur = flags[u.userId] ?? 0;
+                            setUserFlagCount(u.userId, cur > 0 ? 0 : 1);
+                            load();
+                          }} className={`p-1.5 rounded-lg transition-colors ${
+                            (flags[u.userId] ?? 0) > 0 ? "text-rose-600 bg-rose-50 hover:bg-rose-100" : "text-gray-300 hover:text-rose-400 hover:bg-rose-50"
+                          }`} title="Flag qo'yish / olib tashlash">
+                            <Flag className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => deleteUser(u)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors" title="O'chirish">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -2488,20 +2879,25 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
       </div>
 
       {/* Result count */}
-      {users.length > 0 && (
+      {enriched.length > 0 && (
         <p className="text-[11px] text-gray-400 text-right">
-          {filtered.length} / {users.length} foydalanuvchi ko'rsatilmoqda
+          {filtered.length} / {enriched.length} foydalanuvchi ko'rsatilmoqda
         </p>
       )}
 
-      {/* Profile modal */}
+      {/* Advanced User Detail Modal */}
       <AnimatePresence>
         {selectedUser && (
-          <AdminUserProfileModal user={selectedUser} onClose={() => setSelectedUser(null)} />
+          <AdvancedUserDetailModal
+            user={selectedUser}
+            onClose={() => { setSelectedUser(null); load(); }}
+            onToggleSuspend={(u) => toggleSuspend(u.userId)}
+            onDelete={deleteUser}
+          />
         )}
       </AnimatePresence>
 
-      {/* User transactions modal */}
+      {/* Tanga transactions modal */}
       <AnimatePresence>
         {txUserId && (
           <AdminUserTxModal
@@ -2514,6 +2910,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
     </div>
   );
 }
+
 
 /* ─── Admin User Transactions Modal ─────────────────────────────────── */
 function AdminUserTxModal({
