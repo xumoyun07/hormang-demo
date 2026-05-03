@@ -29,7 +29,7 @@ import {
   Shield, Trash2, Ban, CheckCircle2, Inbox, DollarSign,
   Bell, Menu, ChevronLeft, Plus, MapPin, Clock, Wallet,
   Store, LayoutGrid, TriangleAlert, ChevronDown, ChevronUp,
-  Flag, Tag, Star, UserCheck, Zap, Activity, StickyNote, Download,
+  Flag, Tag, Star, UserCheck, Zap, Activity, StickyNote, Download, Gift,
 } from "lucide-react";
 import { onStoreChange, emitStoreChange } from "@/lib/store-events";
 import { formatDateTime, formatMonthYear, formatDate } from "@/lib/date-utils";
@@ -41,7 +41,7 @@ import {
   type TangaTransaction as TangaTx,
 } from "@/lib/tanga-history-store";
 import { getTangaBalance, addTangaBalance, spendTangaBalance } from "@/lib/tanga-store";
-import { getReferralCode, getReferralStats, getInviterId, processReferralReward } from "@/lib/referral-store";
+import { getReferralCode, getReferralStats, getInviterId, processReferralReward, TANGA_PER_REFERRAL } from "@/lib/referral-store";
 import { getOffers, getPhoneRegistry, type Offer as BuyerOfferFull } from "@/lib/requests-store";
 
 /* ─── Credentials ───────────────────────────────────────────────── */
@@ -1247,9 +1247,10 @@ interface AdminUser {
 type DetailTab = "overview" | "requests" | "offers" | "referral" | "tanga" | "admin";
 
 function AdvancedUserDetailModal({
-  user, onClose, onToggleSuspend, onDelete,
+  user, allUsers, onClose, onToggleSuspend, onDelete,
 }: {
   user: AdminUser;
+  allUsers: AdminUser[];
   onClose: () => void;
   onToggleSuspend: (u: AdminUser) => void;
   onDelete: (u: AdminUser) => void;
@@ -1561,33 +1562,70 @@ function AdvancedUserDetailModal({
             )}
 
             {/* ── REFERRAL ── */}
-            {tab === "referral" && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: "Kod",        val: u.referralCode ?? "—",              color: "text-gray-800" },
-                    { label: "Taklif",     val: String(u.referralCount ?? 0),        color: "text-violet-700" },
-                    { label: "Daromad",    val: `${u.referralEarned ?? 0} 🪙`,       color: "text-amber-600" },
-                  ].map((s) => (
-                    <div key={s.label} className="bg-gray-50 rounded-xl p-3 border border-gray-100 text-center">
-                      <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{s.label}</p>
-                      <p className={`text-base font-extrabold ${s.color}`}>{s.val}</p>
+            {tab === "referral" && (() => {
+              const refStats = getReferralStats(u.userId);
+              const userById = new Map(allUsers.map((x) => [x.userId, x] as const));
+              return (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { label: "Kod",        val: u.referralCode ?? "—",              color: "text-gray-800" },
+                      { label: "Taklif",     val: String(u.referralCount ?? 0),        color: "text-violet-700" },
+                      { label: "Daromad",    val: `${u.referralEarned ?? 0} 🪙`,       color: "text-amber-600" },
+                    ].map((s) => (
+                      <div key={s.label} className="bg-gray-50 rounded-xl p-3 border border-gray-100 text-center">
+                        <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{s.label}</p>
+                        <p className={`text-base font-extrabold ${s.color}`}>{s.val}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {u.referredBy && (
+                    <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 text-sm">
+                      <span className="text-blue-500 text-[11px] font-bold uppercase tracking-wide">Kim taklif qildi:</span>
+                      <p className="font-semibold text-blue-800 mt-0.5">{u.referredBy}</p>
                     </div>
-                  ))}
+                  )}
+
+                  {/* Invited users list */}
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                      <Gift className="w-3 h-3" /> Kimlarni taklif qilgan ({refStats.invitees.length})
+                    </p>
+                    {refStats.invitees.length === 0 ? (
+                      <div className="text-center py-6 bg-gray-50 rounded-xl border border-gray-100">
+                        <p className="text-gray-400 text-sm">Hali hech kimni taklif qilmagan</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {refStats.invitees.map((inv) => {
+                          const invitee = userById.get(inv.userId);
+                          const initials = invitee?.initials ?? inv.userId.slice(0, 2).toUpperCase();
+                          const color = invitee?.color ?? "#7C3AED";
+                          const name = invitee?.name ?? "Noma'lum foydalanuvchi";
+                          return (
+                            <div key={inv.userId} className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                                   style={{ background: color }}>
+                                {initials}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-800 text-sm truncate">{name}</p>
+                                <p className="text-[10px] text-gray-400 font-mono truncate">{inv.userId}</p>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-[10px] text-gray-400">{fmtDate(inv.completedAt)}</p>
+                                <p className="text-amber-600 font-extrabold text-xs">+{TANGA_PER_REFERRAL} 🪙</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                {u.referredBy && (
-                  <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 text-sm">
-                    <span className="text-blue-500 text-[11px] font-bold uppercase tracking-wide">Kim taklif qildi:</span>
-                    <p className="font-semibold text-blue-800 mt-0.5">{u.referredBy}</p>
-                  </div>
-                )}
-                {(u.referralCount ?? 0) === 0 && (
-                  <div className="text-center py-6">
-                    <p className="text-gray-400 text-sm">Hali hech kimni taklif qilmagan</p>
-                  </div>
-                )}
-              </div>
-            )}
+              );
+            })()}
 
             {/* ── TANGA ── */}
             {tab === "tanga" && (
@@ -3215,6 +3253,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
         {selectedUser && (
           <AdvancedUserDetailModal
             user={selectedUser}
+            allUsers={users}
             onClose={() => { setSelectedUser(null); load(); }}
             onToggleSuspend={(u) => toggleSuspend(u.userId)}
             onDelete={deleteUser}
