@@ -230,6 +230,29 @@ function timeAgo(iso: string) {
   return `${Math.floor(d / 1440)} kun oldin`;
 }
 
+/* ─── Tanga tx direction helpers ─────────────────────────────────── */
+/**
+ * Returns the *signed* effect on a user's balance:
+ *   spend / admin-deduct  → negative
+ *   purchase / referral / admin-add → positive
+ * Admin adjustments store `amount` as a positive number regardless of direction;
+ * we detect direction from the description text ("ayirdi" = deducted).
+ */
+function txSignedAmount(tx: TangaTx): number {
+  if (tx.type === "spend" || (!tx.type && tx.amount > 0)) return -tx.amount;
+  if (tx.type === "admin_adjustment") {
+    const desc = tx.description ?? "";
+    if (desc.includes("ayirdi") || desc.includes("−") || desc.includes("-")) return -tx.amount;
+    return tx.amount;
+  }
+  // purchase, referral
+  return tx.amount;
+}
+/** True only for offer-cost spending (excludes admin deducts, purchases, etc). */
+function txIsOfferSpend(tx: TangaTx): boolean {
+  return tx.type === "spend" || (!tx.type && tx.amount > 0);
+}
+
 /* ─── Request Q&A helpers (mirrors RequestPreviewModal) ─────────── */
 const MKT_SKIP_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district"]);
 
@@ -1566,9 +1589,9 @@ function AdvancedUserDetailModal({
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { label: "Balans",        val: `${tangaBalance} 🪙`,                   color: "text-amber-600" },
-                    { label: "Sarflandi",      val: `${tangaTxs.reduce((s,t)=>s+t.amount,0)} 🪙`, color: "text-red-600" },
-                    { label: "Tranzaksiyalar", val: String(tangaTxs.length),               color: "text-gray-700" },
+                    { label: "Balans",        val: `${tangaBalance} 🪙`,                                                        color: "text-amber-600" },
+                    { label: "Sarflandi",      val: `${tangaTxs.filter(txIsOfferSpend).reduce((s,t)=>s+t.amount,0)} 🪙`,        color: "text-red-600"   },
+                    { label: "Tranzaksiyalar", val: String(tangaTxs.length),                                                    color: "text-gray-700"  },
                   ].map((s) => (
                     <div key={s.label} className="bg-gray-50 rounded-xl p-3 border border-gray-100 text-center">
                       <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{s.label}</p>
@@ -1583,16 +1606,22 @@ function AdvancedUserDetailModal({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {tangaTxs.map((tx) => (
-                      <div key={tx.id} className="bg-gray-50 rounded-xl p-3 flex items-center gap-3 border border-gray-100">
-                        <span className="text-lg flex-shrink-0">{tx.categoryEmoji || "📋"}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-800 text-xs truncate">{tx.categoryName}</p>
-                          <p className="text-[10px] text-gray-400">{new Date(tx.createdAt).toLocaleDateString("uz-UZ")}</p>
+                    {tangaTxs.map((tx) => {
+                      const signed = txSignedAmount(tx);
+                      const isIn   = signed >= 0;
+                      return (
+                        <div key={tx.id} className="bg-gray-50 rounded-xl p-3 flex items-center gap-3 border border-gray-100">
+                          <span className="text-lg flex-shrink-0">{tx.categoryEmoji || "📋"}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-800 text-xs truncate">{tx.categoryName}</p>
+                            <p className="text-[10px] text-gray-400">{new Date(tx.createdAt).toLocaleDateString("uz-UZ")}</p>
+                          </div>
+                          <span className={`font-extrabold text-sm flex-shrink-0 ${isIn ? "text-emerald-600" : "text-amber-600"}`}>
+                            {isIn ? "+" : "−"}{Math.abs(signed)} 🪙
+                          </span>
                         </div>
-                        <span className="font-extrabold text-amber-600 text-sm flex-shrink-0">−{tx.amount} 🪙</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -3197,7 +3226,7 @@ function AdminUserTxModal({
   const txs = getTangaTransactions(userId);
   const allOffers = getOffers() as BuyerOfferFull[];
   const balance = parseInt(localStorage.getItem(`provider_tokens_${userId}`) ?? "0", 10);
-  const totalSpent = txs.reduce((s, t) => s + t.amount, 0);
+  const totalSpent = txs.filter(txIsOfferSpend).reduce((s, t) => s + t.amount, 0);
   const [viewOfferId, setViewOfferId] = useState<string | null>(null);
   const viewedOffer = viewOfferId ? allOffers.find((o) => o.id === viewOfferId) : undefined;
 
@@ -3255,7 +3284,9 @@ function AdminUserTxModal({
             ) : (
               <div className="space-y-2">
                 {txs.map((tx) => {
-                  const offer = allOffers.find((o) => o.id === tx.offerId);
+                  const offer  = allOffers.find((o) => o.id === tx.offerId);
+                  const signed = txSignedAmount(tx);
+                  const isIn   = signed >= 0;
                   return (
                     <div key={tx.id} className="bg-gray-50 rounded-xl p-3 flex items-center gap-3 border border-gray-100">
                       <span className="text-xl flex-shrink-0">{tx.categoryEmoji || "📋"}</span>
@@ -3266,7 +3297,9 @@ function AdminUserTxModal({
                           {new Date(tx.createdAt).toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
-                      <span className="font-extrabold text-amber-600 text-sm flex-shrink-0">{tx.amount} 🪙</span>
+                      <span className={`font-extrabold text-sm flex-shrink-0 ${isIn ? "text-emerald-600" : "text-amber-600"}`}>
+                        {isIn ? "+" : "−"}{Math.abs(signed)} 🪙
+                      </span>
                       {offer && (
                         <button
                           onClick={() => setViewOfferId(offer.id)}
@@ -3717,10 +3750,6 @@ function MonoTransactions({ txs, reload }: { txs: TangaTx[]; reload: () => void 
   const weekAgo  = new Date(now.getTime() - 7 * 86400000);
   const monthStr = now.toISOString().slice(0, 7);
 
-  function txSignedAmount(tx: TangaTx): number {
-    if (tx.type === "spend" || (!tx.type && tx.amount > 0)) return -tx.amount;
-    return tx.amount;
-  }
   function txTypeInfo(tx: TangaTx): { label: string; cls: string } {
     if (tx.type === "purchase")         return { label: "Xarid",      cls: "bg-emerald-50 text-emerald-700 border-emerald-100" };
     if (tx.type === "referral")         return { label: "Referral",   cls: "bg-blue-50 text-blue-700 border-blue-100" };
