@@ -19,30 +19,36 @@ import { formatDate } from "@/lib/date-utils";
 const VIOLET = "linear-gradient(135deg,#7C3AED 0%,#6D28D9 100%)";
 
 /* ─── Transaction row ────────────────────────────────────────────── */
+/** Signed balance effect of a transaction: positive = added, negative = deducted. */
+function signedAmount(tx: TangaTransaction): number {
+  // Explicit direction field always wins (set on new refund/adjustment records).
+  if (tx.direction === "out") return -Math.abs(tx.amount);
+  if (tx.direction === "in")  return  Math.abs(tx.amount);
+  // Type-based heuristic for older records.
+  if (tx.type === "spend") return -Math.abs(tx.amount);
+  if (tx.type === "purchase" || tx.type === "referral" || tx.type === "refund") return Math.abs(tx.amount);
+  if (tx.type === "admin_adjustment") {
+    const d = tx.description ?? "";
+    if (/ayirdi|deduct|−|-/i.test(d)) return -Math.abs(tx.amount);
+    return Math.abs(tx.amount);
+  }
+  // Legacy untyped → spend (deduction).
+  return -Math.abs(tx.amount);
+}
+
 function TxRow({
   tx,
   offer,
+  balanceAfter,
   onView,
 }: {
   tx: TangaTransaction;
   offer: Offer | undefined;
+  balanceAfter: number;
   onView: () => void;
 }) {
-  // Direction: "in" = added to balance (+), "out" = deducted (−)
-  // Admin adjustments have positive `amount` regardless of direction; detect from description.
-  const isAdminDeduct =
-    tx.type === "admin_adjustment" &&
-    (tx.description?.includes("ayirdi") || tx.description?.includes("−"));
-  const direction: "in" | "out" =
-    tx.type === "spend"
-      ? "out"
-      : tx.type === "purchase" || tx.type === "referral"
-        ? "in"
-        : tx.type === "admin_adjustment"
-          ? (isAdminDeduct ? "out" : "in")
-          : "out"; // legacy untyped → spend
-
-  const isIn = direction === "in";
+  const signed = signedAmount(tx);
+  const isIn   = signed >= 0;
   const tone = isIn
     ? { card: "bg-emerald-50 border-emerald-100", icon: "bg-emerald-100", amount: "text-emerald-600", sign: "+" }
     : { card: "bg-white border-gray-100",         icon: "bg-amber-50",    amount: "text-amber-600",   sign: "−" };
@@ -71,10 +77,13 @@ function TxRow({
               minute: "2-digit",
             })}
           </p>
+          <p className="text-[10px] text-gray-300 mt-0.5">
+            Qoldi:&nbsp;{balanceAfter}&nbsp;🪙
+          </p>
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           <span className={`text-sm font-extrabold ${tone.amount}`}>
-            {tone.sign}{tx.amount}&nbsp;🪙
+            {tone.sign}{Math.abs(signed)}&nbsp;🪙
           </span>
           {offer && (
             <button
@@ -107,6 +116,23 @@ export default function TangaHistoryPage() {
   const totalSpent  = spendTxs.reduce((s, t) => s + t.amount, 0);
   const totalEarnedReferral = referralTxs.reduce((s, t) => s + t.amount, 0);
   const avgSpent = spendTxs.length > 0 ? Math.round(totalSpent / spendTxs.length) : 0;
+
+  // ── Running balance per transaction ──────────────────────────────
+  // Sort oldest-first, accumulate signed amounts, build id→balanceAfter map.
+  // The total of all signed amounts equals the current balance (all changes go
+  // through transactions), so we anchor from 0 and walk forward.
+  const balanceAfterMap = (() => {
+    const sorted = [...transactions].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    let running = 0;
+    const map = new Map<string, number>();
+    for (const tx of sorted) {
+      running += signedAmount(tx);
+      map.set(tx.id, running);
+    }
+    return map;
+  })();
 
   const viewedOffer = viewOfferId
     ? allOffers.find((o) => o.id === viewOfferId)
@@ -212,6 +238,7 @@ export default function TangaHistoryPage() {
                   key={tx.id}
                   tx={tx}
                   offer={offer}
+                  balanceAfter={balanceAfterMap.get(tx.id) ?? 0}
                   onView={() => setViewOfferId(tx.offerId)}
                 />
               );
