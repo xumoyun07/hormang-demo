@@ -215,6 +215,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
           fileUrls: offerPhotos,
         },
         user ? { id: user.id, name: fullName, initials, color } : undefined,
+        offerCost,
       );
     } catch (err) {
       // Refund Tanga since the offer was never persisted.

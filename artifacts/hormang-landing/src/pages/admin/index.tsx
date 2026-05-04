@@ -42,7 +42,7 @@ import {
 } from "@/lib/tanga-history-store";
 import { getTangaBalance, addTangaBalance, spendTangaBalance } from "@/lib/tanga-store";
 import { getReferralCode, getReferralStats, getInviterId, processReferralReward, TANGA_PER_REFERRAL } from "@/lib/referral-store";
-import { getOffers, getPhoneRegistry, type Offer as BuyerOfferFull, updateOfferStatus, deleteRequestCascade, deleteUserDataCascade } from "@/lib/requests-store";
+import { getOffers, getPhoneRegistry, type Offer as BuyerOfferFull, updateOfferStatus, deleteRequestCascade, deleteUserDataCascade, getLast10RejectedEligibility, adminRefundProvider } from "@/lib/requests-store";
 
 /* ─── Credentials ───────────────────────────────────────────────── */
 const ADMIN_USER = "hormangVIP";
@@ -127,6 +127,8 @@ interface BuyerOffer {
   masterInitials: string; masterColor: string; price: number; message: string;
   priceLabel?: string; completionTime?: string; startDate?: string;
   avgResponseTime: number; createdAt: string; status: string;
+  tangaSpent?: number;
+  refunded?: boolean;
 }
 interface PricingTier {
   id: string; name: string; credits: number; price: number;
@@ -668,7 +670,7 @@ function OverviewSection({ refreshKey, setSection }: { refreshKey: number; setSe
 
       {/* ─── 1. Marketplace Health ──────────────────────────────── */}
       <div>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">🏪 Bozor sog'lig'i</p>
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">🏪 Bozor ko'rinishi</p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard label="Faol so'rovlar" value={activeRequests.length}
             sub={`${requests.length} dan`} icon={ClipboardList} accent />
@@ -1257,6 +1259,7 @@ function AdvancedUserDetailModal({
   const [noteInput, setNoteInput]   = useState("");
   const [tagInput, setTagInput]     = useState("");
   const [localUser, setLocalUser]   = useState<AdminUser>(user);
+  const [refundDone, setRefundDone] = useState(false);
 
   /* Refresh local copies of admin metadata */
   function refreshMeta() {
@@ -1539,25 +1542,126 @@ function AdvancedUserDetailModal({
             )}
 
             {/* ── OFFERS ── */}
-            {tab === "offers" && (
-              <div className="space-y-2">
-                {userOffers.length === 0 ? (
-                  <div className="text-center py-10">
-                    <Inbox className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-                    <p className="text-gray-400 text-sm font-semibold">Takliflar yo'q</p>
-                  </div>
-                ) : userOffers.map((o) => (
-                  <div key={o.id} className={`bg-gray-50 rounded-xl p-3 border flex items-center gap-3 ${o.status === "accepted" ? "border-emerald-200" : "border-gray-100"}`}>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-800 text-xs truncate">{o.categoryName ?? "Xizmat"}</p>
-                      <p className="text-[10px] text-gray-400">{fmtDate(o.createdAt)}</p>
+            {tab === "offers" && (() => {
+              const eligibility = getLast10RejectedEligibility(u.userId);
+              const { offers: last10, eligible, refundAmount } = eligibility;
+              const alreadyRefunded = !refundDone && last10.length === 10 && last10.every((o) => o.refunded);
+
+              function handleAdminRefund() {
+                if (!confirm(`${u.name}ga ${refundAmount} Tanga (50%) qaytarilsinmi?`)) return;
+                const result = adminRefundProvider(ADMIN_USER, u.userId);
+                if (result.ok) {
+                  logAction({
+                    actorId: ADMIN_USER, actorRole: "admin", action: "PROVIDER_REFUND",
+                    category: "financial", targetId: u.userId, targetType: "user",
+                    description: `50% admin qaytarish: +${result.refundAmount} Tanga — ${u.name}`,
+                    metadata: { userName: u.name, refundAmount: result.refundAmount },
+                  });
+                  setRefundDone(true);
+                } else {
+                  alert("Qaytarish amalga oshmadi: " + (result.reason ?? "noma'lum xato"));
+                }
+              }
+
+              return (
+                <div className="space-y-4">
+                  {/* ── Offer Performance Panel ── */}
+                  {(u.role === "provider" || u.role === "both") && (
+                    <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <TrendingUp className="w-3 h-3" /> Taklif natijalari (so'nggi 10)
+                      </p>
+
+                      {/* Last 10 offer status pills */}
+                      {last10.length === 0 ? (
+                        <p className="text-xs text-gray-400">Hali taklif yuborilmagan</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {last10.map((o, i) => (
+                            <span key={o.id}
+                              title={`#${i + 1} — ${fmtDate(o.createdAt)}${o.tangaSpent ? ` · ${o.tangaSpent} 🪙` : ""}`}
+                              className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                o.status === "accepted"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : o.status === "rejected"
+                                  ? "bg-red-50 text-red-600 border-red-200"
+                                  : "bg-amber-50 text-amber-700 border-amber-200"
+                              }`}>
+                              {o.status === "accepted" ? "✅" : o.status === "rejected" ? "❌" : "⏳"}
+                              {o.refunded && <span className="text-emerald-500 text-[9px]">↩</span>}
+                            </span>
+                          ))}
+                          {last10.length < 10 && (
+                            <span className="text-[10px] text-gray-400 self-center ml-1">
+                              ({10 - last10.length} ta yetishmaydi)
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Eligibility warning */}
+                      {eligible && !refundDone && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+                          <TriangleAlert className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-amber-800">
+                              So'nggi 10 taklif ham rad etilgan!
+                            </p>
+                            <p className="text-[10px] text-amber-700 mt-0.5">
+                              Ijrochi 50% qaytarish (
+                              {refundAmount} 🪙) uchun layoqatli.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Refund button */}
+                      {(u.role === "provider" || u.role === "both") && (
+                        <button
+                          onClick={handleAdminRefund}
+                          disabled={!eligible || refundDone || alreadyRefunded}
+                          className={`w-full py-2.5 rounded-xl font-bold text-sm border transition-colors flex items-center justify-center gap-2 ${
+                            refundDone || alreadyRefunded
+                              ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
+                              : eligible
+                              ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700"
+                              : "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
+                          }`}>
+                          {refundDone ? (
+                            <><CheckCircle2 className="w-4 h-4" /> Qaytarildi</>
+                          ) : alreadyRefunded ? (
+                            <><CheckCircle2 className="w-4 h-4" /> Allaqachon qaytarilgan</>
+                          ) : (
+                            <>50% qaytarish {eligible ? `(${refundAmount} 🪙)` : ""}</>
+                          )}
+                        </button>
+                      )}
                     </div>
-                    <span className="font-extrabold text-red-600 text-sm flex-shrink-0">{fmtMoney(o.price)}</span>
-                    <StatusBadge status={o.status} />
-                  </div>
-                ))}
-              </div>
-            )}
+                  )}
+
+                  {/* ── All offers list ── */}
+                  {userOffers.length === 0 ? (
+                    <div className="text-center py-10">
+                      <Inbox className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                      <p className="text-gray-400 text-sm font-semibold">Takliflar yo'q</p>
+                    </div>
+                  ) : userOffers.map((o) => (
+                    <div key={o.id} className={`bg-gray-50 rounded-xl p-3 border flex items-center gap-3 ${o.status === "accepted" ? "border-emerald-200" : "border-gray-100"}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-800 text-xs truncate">{(o as BuyerOffer & { categoryName?: string }).categoryName ?? "Xizmat"}</p>
+                        <p className="text-[10px] text-gray-400">
+                          {fmtDate(o.createdAt)}
+                          {o.tangaSpent != null && <span className="ml-1 text-amber-500">· {o.tangaSpent} 🪙</span>}
+                          {o.refunded && <span className="ml-1 text-emerald-500">· ↩ qaytarildi</span>}
+                        </p>
+                      </div>
+                      <span className="font-extrabold text-red-600 text-sm flex-shrink-0">{fmtMoney(o.price)}</span>
+                      <StatusBadge status={o.status} />
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* ── REFERRAL ── */}
             {tab === "referral" && (() => {

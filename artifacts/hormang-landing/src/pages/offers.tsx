@@ -177,7 +177,6 @@ function OfferCard({ offer, index }: { offer: Offer; index: number }) {
                     res.reason === "request_closed" ? "So'rov yopilgan."
                     : res.reason === "already_accepted" ? "Boshqa taklif allaqachon qabul qilingan."
                     : res.reason === "no_request" ? "So'rov topilmadi."
-                    : res.reason === "insufficient_tanga" ? "Tanga balansi yetarli emas."
                     : "Qaytarib bo'lmadi.";
                   toast({ title: "Qaytarib bo'lmadi", description: msg, variant: "destructive" });
                 }

@@ -101,6 +101,8 @@ export interface ProviderOffer {
   fileUrls: string[];
   createdAt: string;
   status: "pending" | "accepted" | "rejected";
+  /** Tanga spent when submitting this offer (stored for admin refund eligibility). */
+  tangaSpent?: number;
 }
 
 /* ─── Storage Keys ───────────────────────────────────────────────── */
@@ -514,6 +516,7 @@ export interface ProviderOfferExtra {
 export function saveOffer(
   data: Omit<ProviderOffer, "id" | "createdAt" | "status">,
   providerMeta?: { name: string; initials: string; color: string; id: string },
+  tangaSpent?: number,
 ): ProviderOffer {
   const providerId = providerMeta?.id ?? "";
   const offers = getOffers(providerId);
@@ -548,6 +551,7 @@ export function saveOffer(
     id: uid(),
     createdAt: new Date().toISOString(),
     status: "pending",
+    ...(tangaSpent !== undefined ? { tangaSpent } : {}),
   };
   const allOffers = [...offers, offer];
   writeJSON(providerOffersKey(providerId), allOffers);
@@ -573,6 +577,7 @@ export function saveOffer(
         avgResponseTime: getAvgResponseMinutes(),
         createdAt: offer.createdAt,
         status: "pending",
+        tangaSpent: offer.tangaSpent,
       };
       localStorage.setItem(SHARED_OFFERS_KEY, JSON.stringify([...existing, buyerOffer]));
     } catch (_) {}

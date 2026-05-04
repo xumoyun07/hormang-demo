@@ -49,6 +49,10 @@ export interface Offer {
   avgResponseTime: number; // minutes
   createdAt: string;
   status: "pending" | "accepted" | "rejected" | "in_progress" | "completed";
+  /** Tanga deducted from the provider when this offer was submitted. */
+  tangaSpent?: number;
+  /** true once admin has issued a batch 50% refund that included this offer. */
+  refunded?: boolean;
 }
 
 export interface ChatAttachment {
@@ -345,17 +349,13 @@ export function updateOfferStatus(offerId: string, status: "accepted" | "rejecte
   const allOffers = getOffers();
   const target = allOffers.find((o) => o.id === offerId);
   if (!target) return;
-  const wasPending = target.status === "pending";
 
   // Mark the target offer with the new status
   let updated = allOffers.map((o) => o.id === offerId ? { ...o, status } : o);
 
-  // When an offer is accepted, also reject ALL sibling offers on the same request
-  let siblingsToRefund: Offer[] = [];
+  // When an offer is accepted, also reject ALL sibling offers on the same request.
+  // No automatic Tanga refunds — admin controls refunds via the 10-offer batch system.
   if (status === "accepted") {
-    siblingsToRefund = allOffers.filter(
-      (o) => o.requestId === target.requestId && o.id !== offerId && o.status === "pending"
-    );
     updated = updated.map((o) =>
       o.requestId === target.requestId && o.id !== offerId && o.status === "pending"
         ? { ...o, status: "rejected" as const }
@@ -364,15 +364,6 @@ export function updateOfferStatus(offerId: string, status: "accepted" | "rejecte
   }
 
   writeJSON(OFFERS_KEY, updated);
-
-  // Refunds: reject path refunds the target; accept path refunds rejected siblings
-  const req = getRequestById(target.requestId);
-  if (status === "rejected" && wasPending) {
-    refundOfferToProvider(target, req, "rejected");
-  }
-  for (const sib of siblingsToRefund) {
-    refundOfferToProvider(sib, req, "rejected");
-  }
   console.log(`[Hormang] ✅ Offer ${status === "accepted" ? "qabul qilindi" : "rad etildi"}`, { offerId, status });
 
   // Inject a timeline system message into the offer's own chat
@@ -403,12 +394,13 @@ export function updateOfferStatus(offerId: string, status: "accepted" | "rejecte
 
 /**
  * Re-open a previously rejected offer (only when the request is still open
- * and no other offer has been accepted). Re-deducts the original Tanga cost
- * from the provider so they cannot loop reject↔reopen for free Tanga.
+ * and no other offer has been accepted).
+ * Since there are no automatic rejection refunds, no Tanga movement is needed
+ * on reopen — the original spend remains as-is.
  */
 export function reopenOffer(
   offerId: string,
-): { ok: boolean; reason?: "not_found" | "not_rejected" | "no_request" | "request_closed" | "already_accepted" | "insufficient_tanga" } {
+): { ok: boolean; reason?: "not_found" | "not_rejected" | "no_request" | "request_closed" | "already_accepted" } {
   const allOffers = getOffers();
   const target = allOffers.find((o) => o.id === offerId);
   if (!target) return { ok: false, reason: "not_found" };
@@ -421,34 +413,76 @@ export function reopenOffer(
     return { ok: false, reason: "already_accepted" };
   }
 
-  // Re-charge the provider the original cost so a future rejection refund
-  // is not net-positive. Skip if no masterId (legacy data).
-  if (target.masterId) {
-    const cost = calculateOfferCost({ categoryId: req.categoryId, answers: req.answers as Record<string, unknown> | undefined });
-    try {
-      spendTangaBalance(target.masterId, cost);
-    } catch (_) {
-      return { ok: false, reason: "insufficient_tanga" };
-    }
-    recordTangaTransaction({
-      userId: target.masterId,
-      offerId: target.id,
-      requestId: target.requestId,
-      categoryName: req.categoryName ?? "",
-      categoryEmoji: req.emoji,
-      description: "Taklif qayta ochildi",
-      amount: cost,
-      type: "spend",
-    });
-  }
-
-  // Reset the refund marker so the next rejection can refund again.
-  localStorage.removeItem(`hormang_offer_refunded_${offerId}`);
-
   const updated = allOffers.map((o) => o.id === offerId ? { ...o, status: "pending" as const } : o);
   writeJSON(OFFERS_KEY, updated);
   emitStoreChange();
   return { ok: true };
+}
+
+/* ─── Admin Refund System ────────────────────────────────────────── */
+
+/**
+ * Returns the last 10 offers submitted by a provider, sorted newest-first,
+ * and checks whether all 10 are rejected and not yet refunded.
+ */
+export function getLast10RejectedEligibility(providerId: string): {
+  offers: Offer[];
+  eligible: boolean;
+  totalSpent: number;
+  refundAmount: number;
+} {
+  const allOffers = getOffers();
+  const providerOffers = allOffers
+    .filter((o) => o.masterId === providerId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 10);
+
+  const eligible =
+    providerOffers.length === 10 &&
+    providerOffers.every((o) => o.status === "rejected" && !o.refunded);
+
+  const totalSpent = providerOffers.reduce((sum, o) => sum + (o.tangaSpent ?? 0), 0);
+  const refundAmount = Math.floor(totalSpent * 0.5);
+
+  return { offers: providerOffers, eligible, totalSpent, refundAmount };
+}
+
+/**
+ * Admin-triggered 50% refund for a provider whose last 10 offers are all rejected.
+ * Marks every offer as `refunded: true` to prevent double-payment.
+ */
+export function adminRefundProvider(
+  adminId: string,
+  providerId: string,
+): { ok: boolean; refundAmount?: number; reason?: string } {
+  const { offers, eligible, refundAmount } = getLast10RejectedEligibility(providerId);
+  if (!eligible) return { ok: false, reason: "not_eligible" };
+  if (refundAmount <= 0) return { ok: false, reason: "zero_refund" };
+
+  // Mark all 10 offers as refunded so this action cannot be repeated.
+  const allOffers = getOffers();
+  const offerIds = new Set(offers.map((o) => o.id));
+  writeJSON(OFFERS_KEY, allOffers.map((o) => offerIds.has(o.id) ? { ...o, refunded: true } : o));
+
+  // Credit the provider.
+  addTangaBalance(providerId, refundAmount);
+
+  // Record transaction.
+  recordTangaTransaction({
+    userId: providerId,
+    offerId: "",
+    requestId: "",
+    categoryName: "Admin qaytarish",
+    categoryEmoji: "↩️",
+    description: `So'nggi 10 rad etilgan taklif uchun 50% qaytarish — ${refundAmount} Tanga (admin: ${adminId})`,
+    amount: refundAmount,
+    type: "refund",
+    direction: "in",
+  });
+
+  emitStoreChange();
+  console.log(`[Hormang] 💰 Admin refund: +${refundAmount} Tanga → provider=${providerId.slice(0, 8)} by admin=${adminId}`);
+  return { ok: true, refundAmount };
 }
 
 /**
