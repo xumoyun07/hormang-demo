@@ -43,6 +43,11 @@ import {
 import { getTangaBalance, addTangaBalance, spendTangaBalance } from "@/lib/tanga-store";
 import { getReferralCode, getReferralStats, getInviterId, processReferralReward, TANGA_PER_REFERRAL } from "@/lib/referral-store";
 import { getOffers, getPhoneRegistry, type Offer as BuyerOfferFull, updateOfferStatus, deleteRequestCascade, deleteUserDataCascade, getLast10RejectedEligibility, adminRefundProvider } from "@/lib/requests-store";
+import {
+  getAllAnnouncements, saveAnnouncement, deleteAnnouncement,
+  toggleAnnouncementPublished, toggleAnnouncementPinned,
+  type Announcement,
+} from "@/lib/announcements-store";
 
 /* ─── Credentials ───────────────────────────────────────────────── */
 const ADMIN_USER = "hormangVIP";
@@ -99,7 +104,7 @@ const CATEGORIES = [
 ];
 
 /* ─── Types ─────────────────────────────────────────────────────── */
-type Section = "overview" | "marketplace" | "requests" | "offers" | "users" | "monetization" | "audit" | "categories";
+type Section = "overview" | "marketplace" | "requests" | "offers" | "users" | "monetization" | "audit" | "categories" | "announcements";
 
 type AuditLogCategory   = "admin" | "marketplace" | "financial" | "referral" | "risk";
 type AuditLogActorRole  = "admin" | "provider" | "customer" | "system";
@@ -437,12 +442,13 @@ function LoginGate({ onSuccess }: { onSuccess: () => void }) {
    SIDEBAR
    ════════════════════════════════════════════════════════════════════ */
 const NAV_ITEMS: { id: Section; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { id: "overview",     label: "Umumiy ko'rinish",  icon: LayoutDashboard },
-  { id: "marketplace",  label: "Bozor markazi",      icon: Store           },
-  { id: "users",        label: "Foydalanuvchilar",   icon: Users           },
-  { id: "monetization", label: "Monetizatsiya",      icon: CreditCard      },
-  { id: "audit",        label: "Audit log",          icon: FileText        },
-  { id: "categories",   label: "Toifalar",           icon: Settings        },
+  { id: "overview",       label: "Umumiy ko'rinish",  icon: LayoutDashboard },
+  { id: "marketplace",    label: "Bozor markazi",      icon: Store           },
+  { id: "users",          label: "Foydalanuvchilar",   icon: Users           },
+  { id: "monetization",   label: "Monetizatsiya",      icon: CreditCard      },
+  { id: "announcements",  label: "E'lonlar",           icon: Bell            },
+  { id: "audit",          label: "Audit log",          icon: FileText        },
+  { id: "categories",     label: "Toifalar",           icon: Settings        },
 ];
 
 function Sidebar({ active, onChange, collapsed, onToggle, onLogout }: {
@@ -4573,8 +4579,379 @@ function AuditLogSection({ refreshKey }: { refreshKey: number }) {
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   CATEGORIES SECTION
+   ANNOUNCEMENTS SECTION
    ════════════════════════════════════════════════════════════════════ */
+type AnnForm = Omit<Announcement, "id" | "createdAt" | "updatedAt">;
+const EMPTY_FORM: AnnForm = {
+  type: "news", title: "", content: "", image: "", ctaText: "", ctaLink: "",
+  target: "all", isPinned: false, expiresAt: "", status: "draft",
+};
+
+function AnnouncementsSection({ refreshKey }: { refreshKey: number }) {
+  const [items, setItems]         = useState<Announcement[]>([]);
+  const [editing, setEditing]     = useState<Announcement | null>(null);
+  const [showForm, setShowForm]   = useState(false);
+  const [form, setForm]           = useState<AnnForm>(EMPTY_FORM);
+  const [preview, setPreview]     = useState<Announcement | null>(null);
+  const [saving, setSaving]       = useState(false);
+
+  function load() { setItems(getAllAnnouncements()); }
+  useEffect(() => { load(); }, [refreshKey]);
+
+  function openCreate() { setEditing(null); setForm(EMPTY_FORM); setShowForm(true); }
+  function openEdit(a: Announcement) {
+    setEditing(a);
+    setForm({
+      type: a.type, title: a.title, content: a.content, image: a.image ?? "",
+      ctaText: a.ctaText ?? "", ctaLink: a.ctaLink ?? "", target: a.target,
+      isPinned: a.isPinned ?? false, expiresAt: a.expiresAt ?? "", status: a.status,
+    });
+    setShowForm(true);
+  }
+  function closeForm() { setShowForm(false); setEditing(null); }
+
+  function handleSave() {
+    if (!form.title.trim() || !form.content.trim()) return;
+    setSaving(true);
+    const payload = {
+      ...form,
+      id: editing?.id,
+      image: form.image?.trim() || undefined,
+      ctaText: form.ctaText?.trim() || undefined,
+      ctaLink: form.ctaLink?.trim() || undefined,
+      expiresAt: form.expiresAt?.trim() || undefined,
+    };
+    const saved = saveAnnouncement(payload as Parameters<typeof saveAnnouncement>[0]);
+    logAction({
+      actorId: ADMIN_USER, actorRole: "admin",
+      action: editing ? "ANNOUNCEMENT_UPDATED" : "ANNOUNCEMENT_CREATED",
+      category: "admin", targetId: saved.id, targetType: "platform",
+      description: `E'lon ${editing ? "tahrirlandi" : "yaratildi"}: ${saved.title}`,
+      metadata: { title: saved.title, type: saved.type, status: saved.status },
+    });
+    load(); closeForm(); setSaving(false);
+  }
+
+  function handleDelete(a: Announcement) {
+    if (!confirm(`"${a.title}" o'chirilsinmi?`)) return;
+    deleteAnnouncement(a.id);
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ANNOUNCEMENT_DELETED", category: "admin", targetId: a.id, targetType: "platform", description: `E'lon o'chirildi: ${a.title}` });
+    load();
+  }
+
+  function handleTogglePublish(a: Announcement) {
+    const updated = toggleAnnouncementPublished(a.id);
+    if (updated) {
+      logAction({ actorId: ADMIN_USER, actorRole: "admin", action: updated.status === "published" ? "ANNOUNCEMENT_PUBLISHED" : "ANNOUNCEMENT_UNPUBLISHED", category: "admin", targetId: a.id, targetType: "platform", description: `E'lon ${updated.status === "published" ? "chop etildi" : "qoralama qilindi"}: ${a.title}` });
+      load();
+    }
+  }
+
+  function handleTogglePin(a: Announcement) { toggleAnnouncementPinned(a.id); load(); }
+
+  const f = form;
+  const set = (k: keyof AnnForm, v: unknown) => setForm((p) => ({ ...p, [k]: v }));
+
+  const typeBadge = (t: Announcement["type"]) =>
+    t === "event"
+      ? "bg-orange-50 text-orange-700 border-orange-200"
+      : "bg-blue-50 text-blue-700 border-blue-200";
+
+  const statusBadge = (s: Announcement["status"]) =>
+    s === "published"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : "bg-gray-100 text-gray-500 border-gray-200";
+
+  const targetLabel = (t: Announcement["target"]) =>
+    t === "all" ? "Hammaga" : t === "providers" ? "Ijrochilar" : "Xaridorlar";
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-extrabold text-gray-900">E'lonlar (CMS)</h2>
+          <p className="text-sm text-gray-400">Yangiliklar va tadbirlarni boshqarish</p>
+        </div>
+        <button onClick={openCreate}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all active:scale-95"
+          style={{ background: "linear-gradient(135deg,#DC2626,#B91C1C)" }}>
+          <Plus className="w-4 h-4" /> Yangi e'lon
+        </button>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Jami",        val: items.length,                                    color: "text-gray-800"    },
+          { label: "Chop etilgan", val: items.filter((a) => a.status === "published").length, color: "text-emerald-600" },
+          { label: "Pinnlangan",   val: items.filter((a) => a.isPinned).length,           color: "text-amber-600"   },
+        ].map((s) => (
+          <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">{s.label}</p>
+            <p className={`text-2xl font-extrabold ${s.color}`}>{s.val}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {items.length === 0 ? (
+          <div className="text-center py-16">
+            <Bell className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+            <p className="font-bold text-gray-400">Hali e'lon yo'q</p>
+            <p className="text-sm text-gray-300 mt-1">Yangi e'lon yarating</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  {["Tur", "Sarlavha", "Status", "Auditoriya", "Xususiyatlar", "Harakatlar"].map((h) => (
+                    <th key={h} className="text-left px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((a) => (
+                  <tr key={a.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${typeBadge(a.type)}`}>
+                        {a.type === "event" ? "Tadbir" : "Yangilik"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 max-w-[200px]">
+                      <p className="font-semibold text-gray-800 truncate">{a.title}</p>
+                      <p className="text-[10px] text-gray-400 truncate">{a.content.slice(0, 60)}…</p>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <button onClick={() => handleTogglePublish(a)}
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors hover:opacity-80 ${statusBadge(a.status)}`}>
+                        {a.status === "published" ? "✓ Chop etilgan" : "Qoralama"}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-xs text-gray-600">{targetLabel(a.target)}</span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2 text-[10px]">
+                        {a.isPinned && <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full font-bold">📌 Pin</span>}
+                        {a.expiresAt && <span className="px-1.5 py-0.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-full font-bold whitespace-nowrap">
+                          ⏳ {new Date(a.expiresAt).toLocaleDateString("uz-UZ")}
+                        </span>}
+                        {a.ctaText && <span className="px-1.5 py-0.5 bg-violet-50 text-violet-700 border border-violet-200 rounded-full font-bold">CTA</span>}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => setPreview(a)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Ko'rinish">
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleTogglePin(a)}
+                          className={`p-1.5 rounded-lg transition-colors ${a.isPinned ? "text-amber-500 bg-amber-50" : "text-gray-400 hover:text-amber-500 hover:bg-amber-50"}`} title="Pin">
+                          <Star className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => openEdit(a)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors" title="Tahrirlash">
+                          <Settings className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleDelete(a)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors" title="O'chirish">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── Create / Edit drawer ── */}
+      <AnimatePresence>
+        {showForm && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm"
+              onClick={closeForm}
+            />
+            <motion.div
+              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+              transition={{ type: "spring", stiffness: 320, damping: 30 }}
+              className="fixed right-0 top-0 h-full z-[61] w-full max-w-lg bg-white shadow-2xl flex flex-col"
+            >
+              {/* Drawer header */}
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 flex-shrink-0">
+                <Bell className="w-5 h-5 text-red-600" />
+                <h2 className="font-extrabold text-gray-900 flex-1">{editing ? "E'lonni tahrirlash" : "Yangi e'lon"}</h2>
+                <button onClick={closeForm} className="p-1.5 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200"><X className="w-4 h-4" /></button>
+              </div>
+
+              {/* Drawer body */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+                {/* Basic info */}
+                <section className="space-y-3">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Asosiy ma'lumot</p>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Sarlavha *</label>
+                    <input value={f.title} onChange={(e) => set("title", e.target.value)}
+                      className={`${inputCls} w-full`} placeholder="E'lon sarlavhasi..." />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Tur</label>
+                      <select value={f.type} onChange={(e) => set("type", e.target.value)}
+                        className={`${inputCls} w-full`}>
+                        <option value="news">Yangilik</option>
+                        <option value="event">Tadbir</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Auditoriya</label>
+                      <select value={f.target} onChange={(e) => set("target", e.target.value as Announcement["target"])}
+                        className={`${inputCls} w-full`}>
+                        <option value="all">Hammaga</option>
+                        <option value="providers">Ijrochilar</option>
+                        <option value="customers">Xaridorlar</option>
+                      </select>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Content */}
+                <section className="space-y-3">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Kontent *</p>
+                  <textarea value={f.content} onChange={(e) => set("content", e.target.value)}
+                    rows={6} className={`${inputCls} w-full resize-y min-h-[120px]`}
+                    placeholder="E'lon matni... Markdown qo'llab-quvvatlanadi." />
+                </section>
+
+                {/* Media */}
+                <section className="space-y-3">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Muqova rasmi (ixtiyoriy)</p>
+                  <input value={f.image ?? ""} onChange={(e) => set("image", e.target.value)}
+                    className={`${inputCls} w-full`} placeholder="https://... yoki base64" />
+                  {f.image && (
+                    <img src={f.image} alt="preview" className="w-full h-36 object-cover rounded-xl border border-gray-100" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  )}
+                </section>
+
+                {/* CTA */}
+                <section className="space-y-3">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">CTA tugma (ixtiyoriy)</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Tugma matni</label>
+                      <input value={f.ctaText ?? ""} onChange={(e) => set("ctaText", e.target.value)}
+                        className={`${inputCls} w-full`} placeholder="Misol: Tanga sotib olish" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Havola</label>
+                      <input value={f.ctaLink ?? ""} onChange={(e) => set("ctaLink", e.target.value)}
+                        className={`${inputCls} w-full`} placeholder="/plans" />
+                    </div>
+                  </div>
+                </section>
+
+                {/* Visibility */}
+                <section className="space-y-3">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ko'rinish</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Status</label>
+                      <select value={f.status} onChange={(e) => set("status", e.target.value as Announcement["status"])}
+                        className={`${inputCls} w-full`}>
+                        <option value="draft">Qoralama</option>
+                        <option value="published">Chop etilgan</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Muddati (ixtiyoriy)</label>
+                      <input type="date" value={f.expiresAt ?? ""} onChange={(e) => set("expiresAt", e.target.value)}
+                        className={`${inputCls} w-full`} />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input type="checkbox" checked={f.isPinned ?? false} onChange={(e) => set("isPinned", e.target.checked)}
+                      className="w-4 h-4 rounded accent-amber-500" />
+                    <span className="text-sm font-semibold text-gray-700">📌 Tepada qo'yish (pin)</span>
+                  </label>
+                </section>
+              </div>
+
+              {/* Drawer footer */}
+              <div className="flex gap-2 px-5 py-4 border-t border-gray-100 flex-shrink-0">
+                <button onClick={closeForm} className="flex-1 py-2.5 rounded-xl font-bold text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                  Bekor qilish
+                </button>
+                <button onClick={handleSave} disabled={!f.title.trim() || !f.content.trim() || saving}
+                  className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white transition-all active:scale-95 disabled:opacity-50"
+                  style={{ background: "linear-gradient(135deg,#DC2626,#B91C1C)" }}>
+                  {saving ? "Saqlanmoqda…" : editing ? "Saqlash" : "Yaratish"}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Preview modal ── */}
+      <AnimatePresence>
+        {preview && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm"
+              onClick={() => setPreview(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              className="fixed inset-x-4 top-[10vh] z-[71] max-w-md mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {preview.image && (
+                <img src={preview.image} alt={preview.title} className="w-full h-44 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              )}
+              <div className="p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${typeBadge(preview.type)}`}>
+                    {preview.type === "event" ? "Tadbir" : "Yangilik"}
+                  </span>
+                  {preview.isPinned && <span className="text-sm">📌</span>}
+                </div>
+                <h3 className="font-extrabold text-gray-900 text-base leading-snug">{preview.title}</h3>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{preview.content}</p>
+                {preview.ctaText && preview.ctaLink && (
+                  <div className="pt-1">
+                    <span className="inline-block px-4 py-2 rounded-xl text-sm font-bold text-white"
+                      style={{ background: "linear-gradient(135deg,#7C3AED,#6D28D9)" }}>
+                      {preview.ctaText}
+                    </span>
+                  </div>
+                )}
+                <p className="text-[10px] text-gray-400">{targetLabel(preview.target)} · {new Date(preview.createdAt).toLocaleDateString("uz-UZ")}</p>
+              </div>
+              <div className="px-5 pb-5">
+                <button onClick={() => setPreview(null)}
+                  className="w-full py-2.5 rounded-xl font-bold text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                  Yopish
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function CategoriesSection() {
   return (
     <div className="space-y-4">
@@ -4676,14 +5053,15 @@ export default function AdminDashboard() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.18 }}>
-              {section === "overview"     && <OverviewSection     {...sectionProps} setSection={setSection} />}
-              {section === "marketplace"  && <MarketplaceSection  {...sectionProps} />}
-              {section === "requests"     && <RequestsSection     {...sectionProps} />}
-              {section === "offers"       && <OffersSection       {...sectionProps} />}
-              {section === "users"        && <UsersSection        {...sectionProps} />}
-              {section === "monetization" && <MonetizationSection {...sectionProps} />}
-              {section === "audit"        && <AuditLogSection     {...sectionProps} />}
-              {section === "categories"   && <CategoriesSection />}
+              {section === "overview"       && <OverviewSection       {...sectionProps} setSection={setSection} />}
+              {section === "marketplace"    && <MarketplaceSection    {...sectionProps} />}
+              {section === "requests"       && <RequestsSection       {...sectionProps} />}
+              {section === "offers"         && <OffersSection         {...sectionProps} />}
+              {section === "users"          && <UsersSection          {...sectionProps} />}
+              {section === "monetization"   && <MonetizationSection   {...sectionProps} />}
+              {section === "announcements"  && <AnnouncementsSection  {...sectionProps} />}
+              {section === "audit"          && <AuditLogSection       {...sectionProps} />}
+              {section === "categories"     && <CategoriesSection />}
             </motion.div>
           </AnimatePresence>
         </div>

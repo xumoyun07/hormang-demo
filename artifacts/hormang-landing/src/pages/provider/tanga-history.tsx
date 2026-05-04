@@ -77,8 +77,8 @@ function TxRow({
               minute: "2-digit",
             })}
           </p>
-          <p className="text-[10px] text-gray-300 mt-0.5">
-            Qoldi:&nbsp;{balanceAfter}&nbsp;🪙
+          <p className="text-[10px] text-violet-500 mt-0.5">
+            Balans:&nbsp;{balanceAfter}&nbsp;🪙
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">

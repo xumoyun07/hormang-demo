@@ -35,6 +35,10 @@ import { formatDate as formatUzDate } from "@/lib/date-utils";
 import { ReferralCard } from "@/components/referral-card";
 import logoImg from "/hormang-logo.png";
 import { TangaChip } from "@/pages/plans";
+import {
+  getPublishedAnnouncements, markAnnouncementSeen, getSeenAnnouncementIds,
+  type Announcement,
+} from "@/lib/announcements-store";
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
 function formatDate(iso: string): string {
@@ -776,22 +780,177 @@ function AvailableRequests() {
 }
 
 
-/* ─── Events Placeholder ─────────────────────────────────────────── */
-function EventsSection() {
+/* ─── Announcement full-content modal ───────────────────────────── */
+function AnnouncementModal({
+  ann,
+  onClose,
+}: {
+  ann: Announcement;
+  onClose: () => void;
+}) {
+  const [, setLocation] = useLocation();
   return (
-    <div className="mb-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="w-4 h-4 text-violet-600" />
-        <h2 className="font-bold text-sm text-gray-900">Tadbirlar</h2>
-      </div>
-      <div className="bg-white rounded-2xl border border-violet-50 card-shadow p-5 text-center">
-        <div className="w-10 h-10 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-2">
-          <Sparkles className="w-5 h-5 text-violet-400" />
+    <>
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, y: 40, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 40, scale: 0.97 }}
+        transition={{ type: "spring", stiffness: 360, damping: 30 }}
+        className="fixed inset-x-4 top-[8vh] bottom-[8vh] z-[61] max-w-md mx-auto bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {ann.image && (
+          <img
+            src={ann.image} alt={ann.title}
+            className="w-full h-44 object-cover flex-shrink-0"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+        )}
+        <div className="flex-1 overflow-y-auto p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+              ann.type === "event"
+                ? "bg-orange-50 text-orange-700 border-orange-200"
+                : "bg-blue-50 text-blue-700 border-blue-200"
+            }`}>
+              {ann.type === "event" ? "🎯 Tadbir" : "📰 Yangilik"}
+            </span>
+            {ann.isPinned && <span className="text-base">📌</span>}
+          </div>
+          <h2 className="font-extrabold text-gray-900 text-lg leading-snug">{ann.title}</h2>
+          <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{ann.content}</p>
+          {ann.expiresAt && (
+            <p className="text-[10px] text-gray-400">
+              ⏳ Muddat: {new Date(ann.expiresAt).toLocaleDateString("uz-UZ")}
+            </p>
+          )}
         </div>
-        <p className="font-bold text-gray-500 text-sm mb-0.5">Tez orada</p>
-        <p className="text-xs text-gray-400">Mahalliy tadbirlar va yangiliklar bu yerda ko'rsatiladi</p>
+        <div className="px-5 pb-5 space-y-2 flex-shrink-0">
+          {ann.ctaText && ann.ctaLink && (
+            <button
+              onClick={() => { onClose(); setLocation(ann.ctaLink!); }}
+              className="w-full py-3 rounded-2xl font-bold text-sm text-white shadow-sm active:scale-95 transition-all"
+              style={{ background: VIOLET }}
+            >
+              {ann.ctaText}
+            </button>
+          )}
+          <button onClick={onClose}
+            className="w-full py-2.5 rounded-2xl font-bold text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+            Yopish
+          </button>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
+/* ─── Announcements / Events Section ────────────────────────────── */
+function EventsSection() {
+  useStoreRefresh();
+  const { user } = useAuth();
+  const [selected, setSelected] = useState<Announcement | null>(null);
+
+  const items = getPublishedAnnouncements("providers");
+  const seenIds = user?.id ? getSeenAnnouncementIds(user.id) : [];
+  const unseenCount = items.filter((a) => !seenIds.includes(a.id)).length;
+
+  if (items.length === 0) return null;
+
+  function openAnn(a: Announcement) {
+    if (user?.id) markAnnouncementSeen(user!.id, a.id);
+    setSelected(a);
+  }
+
+  return (
+    <>
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-violet-600" />
+            <h2 className="font-bold text-sm text-gray-900">Yangiliklar va tadbirlar</h2>
+            {unseenCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-red-500 text-white">
+                {unseenCount}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] text-gray-400">{items.length} ta</span>
+        </div>
+
+        <div className="space-y-2">
+          {items.map((ann) => {
+            const isNew = !seenIds.includes(ann.id);
+            return (
+              <button
+                key={ann.id}
+                onClick={() => openAnn(ann)}
+                className="w-full text-left"
+              >
+                <div className={`bg-white rounded-2xl border overflow-hidden card-shadow transition-all active:scale-[0.99] ${
+                  ann.isPinned ? "border-amber-200" : "border-gray-100"
+                }`}>
+                  {ann.image && (
+                    <img
+                      src={ann.image} alt={ann.title}
+                      className="w-full h-28 object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                  )}
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${
+                            ann.type === "event"
+                              ? "bg-orange-50 text-orange-700 border-orange-200"
+                              : "bg-blue-50 text-blue-700 border-blue-200"
+                          }`}>
+                            {ann.type === "event" ? "🎯 Tadbir" : "📰 Yangilik"}
+                          </span>
+                          {ann.isPinned && <span className="text-[11px]">📌</span>}
+                          {isNew && (
+                            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-red-600 border border-red-200">
+                              Yangi
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-bold text-gray-900 text-sm leading-snug truncate">{ann.title}</p>
+                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-snug">
+                          {ann.content}
+                        </p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0 mt-1" />
+                    </div>
+                    {ann.ctaText && (
+                      <div className="mt-3">
+                        <span
+                          className="inline-block px-3 py-1.5 rounded-xl text-xs font-bold text-white"
+                          style={{ background: VIOLET }}
+                        >
+                          {ann.ctaText}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </div>
+
+      <AnimatePresence>
+        {selected && (
+          <AnnouncementModal ann={selected} onClose={() => setSelected(null)} />
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 

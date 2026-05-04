@@ -111,7 +111,7 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 - `/provider-reviews` — Provider review inbox with customer review cards, photo previews, and customer profile preview modal
 
 **Provider (Ijrochi) Pages:**
-- `/provider-home` — Provider home with profile completion, upcoming services, events placeholder, available requests (slide cards + tabbed list), share profile
+- `/provider-home` — Provider home with profile completion, upcoming services, announcements feed (published news & events), available requests (slide cards + tabbed list), share profile
 - `/provider/requests` — So'rovlar: unseen badge, fullscreen slide modal (swipe left/right), category filter chips, respond/ignore actions
 - `/provider/chats` — Suhbatlarim: search bar, tabs (All | Unread | By service), chat rows with unread badges, inline chat view
 
@@ -268,10 +268,32 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 
 ## Admin Panels
 
+### Announcements System (News & Events)
+
+- **Store:** `src/lib/announcements-store.ts` — localStorage key `hormang_announcements`
+- **`Announcement` type:** id, type (`news`|`event`), title, content, image?, ctaText?, ctaLink?, target (`all`|`providers`|`customers`), isPinned, expiresAt?, status (`draft`|`published`), createdAt, updatedAt
+- **CRUD functions:** `getAllAnnouncements`, `saveAnnouncement` (upsert), `deleteAnnouncement`, `toggleAnnouncementPublished`, `toggleAnnouncementPinned`
+- **Read functions:** `getPublishedAnnouncements(audience)` — filters by status=published + non-expired + target audience, sorts pinned-first then newest-first, capped at 20
+- **Seen tracking:** `markAnnouncementSeen(userId, id)` + `getSeenAnnouncementIds(userId)` — key `hormang_announcement_seen_<userId>`
+
+**Admin CMS (`/admin` → "E'lonlar" section):**
+- Table view: type badge, title+preview, status toggle button (draft↔published), audience, pin/expiry/CTA badges, action icons (preview, pin, edit, delete)
+- Create/Edit drawer (right slide-out): type, title, content textarea, target audience, image URL (+ live preview), CTA text+link, status dropdown, expiry date, pin checkbox
+- Preview modal: full announcement card with image, CTA button, type + pin badges
+- Stats bar: total / published / pinned counts
+- All actions logged to audit log under category "admin"
+
+**Provider Home feed (`/provider-home`):**
+- Replaces the "Tez orada" placeholder `EventsSection`
+- `EventsSection()` now calls `getPublishedAnnouncements("providers")` — hidden when empty
+- Cards show: cover image (if set), type badge, pin badge, "Yangi" badge for unseen, title, 2-line content preview, CTA pill
+- Unseen count badge next to section heading
+- Tapping a card marks it seen + opens `AnnouncementModal` (full content + CTA navigation)
+
 ### Main Admin Dashboard — `/admin`
 - **Credentials:** username `hormangVIP`, password `ourhormang123`
 - Session stored in `sessionStorage` (re-login on refresh)
-- Sections: Overview (metrics + Recharts), So'rovlar (requests), Takliflar (offers), Foydalanuvchilar (users), Monetizatsiya (pricing tiers), Audit log
+- Sections: Overview (metrics + Recharts), So'rovlar (requests), Takliflar (offers), Foydalanuvchilar (users), Monetizatsiya (pricing tiers), E'lonlar (CMS), Audit log
 - Reads live data from: `hormang_requests`, `hormang_offers`, `hormang_provider_offers`, `hormang_provider_chats`
 - All admin actions written to `hormang_admin_log` localStorage key
 - Pricing tiers persisted in `hormang_pricing_tiers`
