@@ -49,6 +49,7 @@ import {
   type Announcement,
 } from "@/lib/announcements-store";
 import ReactMarkdown from "react-markdown";
+import { FeedbackAdminSection } from "./feedback-panel";
 
 /* ─── Credentials ───────────────────────────────────────────────── */
 const ADMIN_USER = "hormangVIP";
@@ -105,7 +106,7 @@ const CATEGORIES = [
 ];
 
 /* ─── Types ─────────────────────────────────────────────────────── */
-type Section = "overview" | "marketplace" | "requests" | "offers" | "users" | "monetization" | "audit" | "categories" | "announcements";
+type Section = "overview" | "marketplace" | "requests" | "offers" | "users" | "monetization" | "audit" | "categories" | "announcements" | "feedback";
 
 type AuditLogCategory   = "admin" | "marketplace" | "financial" | "referral" | "risk";
 type AuditLogActorRole  = "admin" | "provider" | "customer" | "system";
@@ -450,6 +451,7 @@ const NAV_ITEMS: { id: Section; label: string; icon: React.FC<{ className?: stri
   { id: "announcements",  label: "E'lonlar",           icon: Bell            },
   { id: "audit",          label: "Audit log",          icon: FileText        },
   { id: "categories",     label: "Toifalar",           icon: Settings        },
+  { id: "feedback",       label: "Fikrlar",            icon: MessageSquare   },
 ];
 
 function Sidebar({ active, onChange, collapsed, onToggle, onLogout }: {
@@ -5284,6 +5286,7 @@ export default function AdminDashboard() {
               {section === "announcements"  && <AnnouncementsSection  {...sectionProps} />}
               {section === "audit"          && <AuditLogSection       {...sectionProps} />}
               {section === "categories"     && <CategoriesSection />}
+              {section === "feedback"       && <FeedbackAdminSection {...sectionProps} />}
             </motion.div>
           </AnimatePresence>
         </div>

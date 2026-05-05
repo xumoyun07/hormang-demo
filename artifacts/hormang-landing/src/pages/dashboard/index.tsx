@@ -8,7 +8,7 @@ import {
   Search, ClipboardList, Heart, Settings, UserPen, LogOut, ChevronRight,
   Inbox, TrendingUp, Star, CheckCircle2, MapPin,
   ShoppingBag, Briefcase, Loader2, ArrowRight, X,
-  Phone, ShieldCheck, Plus, MessageCircle, LayoutGrid,
+  Phone, ShieldCheck, Plus, MessageCircle, LayoutGrid, MessagesSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
@@ -30,9 +30,83 @@ import {
 import { getAverageRatingForUser, getReviewsForUser, getCompletedCount } from "@/lib/completion-store";
 import { TangaChip } from "@/pages/plans";
 import { StarRating } from "@/components/star-rating";
+import { getFeedbacksByUser, type Feedback, type FeedbackStatus } from "@/lib/feedback-store";
 
 const VIOLET_SOLID = "hsl(262,80%,54%)";
 const VIOLET_GRAD  = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
+
+/* ── Feedback history mini-panel ─────────────────────────────────── */
+const FB_TYPE_LABEL: Record<string, { emoji: string; label: string }> = {
+  problem:    { emoji: "🆘", label: "Muammo"  },
+  complaint:  { emoji: "⚠️", label: "Shikoyat" },
+  suggestion: { emoji: "💡", label: "Taklif"  },
+};
+
+const FB_STATUS: Record<FeedbackStatus, { label: string; color: string; bg: string }> = {
+  new:       { label: "Yangi",       color: "text-gray-500",  bg: "bg-gray-100"  },
+  in_review: { label: "Ko'rilmoqda", color: "text-blue-600",  bg: "bg-blue-50"   },
+  resolved:  { label: "Hal qilindi", color: "text-green-600", bg: "bg-green-50"  },
+  rejected:  { label: "Rad etildi",  color: "text-red-600",   bg: "bg-red-50"    },
+};
+
+function FeedbackHistorySection({
+  userId, onNavigate,
+}: { userId: string; onNavigate: (p: string) => void }) {
+  const items = getFeedbacksByUser(userId).slice(0, 3);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className="bg-white rounded-2xl border border-gray-100 card-shadow overflow-hidden"
+    >
+      <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-50">
+        <h3 className="text-sm font-bold text-gray-800">Mening murojaatlarim</h3>
+        <button
+          onClick={() => onNavigate("/feedback")}
+          className="text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5"
+        >
+          Yangi <ChevronRight className="w-3 h-3" />
+        </button>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="px-4 py-5 text-center">
+          <MessagesSquare className="w-7 h-7 text-gray-200 mx-auto mb-1.5" />
+          <p className="text-xs text-gray-400">Hali murojaatlar yo'q</p>
+          <button
+            onClick={() => onNavigate("/feedback")}
+            className="mt-2 text-xs font-bold text-blue-600 hover:text-blue-700"
+          >
+            Birinchi murojaat yuborish →
+          </button>
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-50">
+          {items.map((fb) => {
+            const tm = FB_TYPE_LABEL[fb.type] ?? { emoji: "📋", label: fb.type };
+            const sm = FB_STATUS[fb.status];
+            return (
+              <div key={fb.id} className="flex items-center gap-3 px-4 py-3">
+                <span className="text-lg flex-shrink-0">{tm.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-gray-800 truncate">{fb.title}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {new Date(fb.createdAt).toLocaleDateString("uz-UZ")}
+                  </p>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${sm.bg} ${sm.color}`}>
+                  {sm.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </motion.div>
+  );
+}
 
 
 function BecomeProviderCard({ onBecome }: { onBecome: () => void }) {
@@ -234,6 +308,12 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
       desc: "Bildirishnomalar, til va boshqalar",
       action: () => onNavigate("/settings"),
     },
+    {
+      icon: MessagesSquare,
+      title: "Takliflar va shikoyatlar",
+      desc: "Muammo, shikoyat yoki taklif yuboring",
+      action: () => onNavigate("/feedback"),
+    },
   ];
 
   return (
@@ -339,6 +419,10 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
       ))}
 
       {!hasProviderRole && <BecomeProviderCard onBecome={onBecome} />}
+
+      {user?.id && (
+        <FeedbackHistorySection userId={user.id} onNavigate={onNavigate} />
+      )}
     </div>
   );
 }
@@ -450,6 +534,12 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
       title: "Sozlamalar",
       desc: "Bildirishnomalar, til va boshqalar",
       action: () => onNavigate("/settings"),
+    },
+    {
+      icon: MessagesSquare,
+      title: "Takliflar va shikoyatlar",
+      desc: "Muammo, shikoyat yoki taklif yuboring",
+      action: () => onNavigate("/feedback"),
     },
   ];
 
@@ -681,6 +771,10 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
           ) : null}
         </motion.button>
       ))}
+
+      {user?.id && (
+        <FeedbackHistorySection userId={user.id} onNavigate={onNavigate} />
+      )}
     </div>
   );
 }
