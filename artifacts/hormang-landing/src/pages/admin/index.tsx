@@ -4101,7 +4101,7 @@ function MonoBalances({ providers, reload }: { providers: ProviderSummary[]; rel
           <p className="text-xl font-extrabold text-gray-900">{providers.length} ta</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm text-center">
-          <p className="text-[10px] text-gray-400 font-semibold">Muomala Tanga</p>
+          <p className="text-[10px] text-gray-400 font-semibold">Muomaladagi Tanga</p>
           <p className="text-xl font-extrabold text-amber-600">{providers.reduce((s, p) => s + p.balance, 0)} 🪙</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm text-center">
