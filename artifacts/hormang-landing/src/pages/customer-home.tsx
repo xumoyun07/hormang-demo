@@ -16,6 +16,7 @@ import {
 import {
   getRequestsByCustomer, getOffersByCustomer, getChatsByCustomer,
 } from "@/lib/requests-store";
+import { RollingCategories } from "@/components/ui/RollingCategories";
 
 const BLUE      = "hsl(221,78%,50%)";
 const BLUE_GRAD = "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)";
@@ -36,6 +37,15 @@ const POPULAR_CATS = [
   { emoji: "🚛", name: "Ko'chirish" },
   { emoji: "💇", name: "Go'zallik" },
   { emoji: "🚗", name: "Avto xizmat" },
+  { emoji: "📚", name: "Repetitorlar" },
+];
+
+const ROLLING_CATS = [
+  { emoji: "🧹", name: "Tozalash" },
+  { emoji: "🚗", name: "Avto xizmat" },
+  { emoji: "🔧", name: "Ta'mirlash" },
+  { emoji: "💇", name: "Go'zallik" },
+  { emoji: "🚛", name: "Ko'chirish" },
   { emoji: "📚", name: "Repetitorlar" },
 ];
 
@@ -101,7 +111,7 @@ export default function CustomerHomePage() {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setLocation("/profile/settings")}
+                onClick={() => setLocation("/dashboard")}
                 className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-blue-100 active:scale-95 transition-transform"
                 style={local.photoUrl ? {} : { background: BLUE_GRAD }}
               >
@@ -147,7 +157,25 @@ export default function CustomerHomePage() {
 
           {/* ── Secondary Actions ── */}
           <div className="flex gap-2.5">
-            {secondaryActions.map((a) => (
+            {/* Kategoriyalar — special card with RollingCategories on the right */}
+            <button
+              onClick={() => setLocation("/questionnaire")}
+              className="flex-1 bg-white border border-gray-100 card-shadow rounded-2xl p-3.5 text-left hover:border-blue-200 active:scale-[0.97] transition-all flex items-center justify-between gap-2"
+            >
+              <div className="min-w-0">
+                <LayoutGrid className="w-4 h-4 text-blue-600 mb-1.5" />
+                <p className="font-bold text-gray-900 text-xs leading-tight">Kategoriyalar</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">Barcha xizmatlar</p>
+              </div>
+              <RollingCategories
+                items={ROLLING_CATS}
+                interval={3000}
+                onClick={() => setLocation("/questionnaire")}
+              />
+            </button>
+
+            {/* Remaining secondary actions */}
+            {secondaryActions.filter(a => a.label !== "Kategoriyalar").map((a) => (
               <button
                 key={a.label}
                 onClick={() => setLocation(a.path)}

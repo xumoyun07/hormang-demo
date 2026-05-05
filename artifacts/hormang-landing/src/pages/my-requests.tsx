@@ -284,7 +284,7 @@ export default function MyRequestsPage() {
               {/* Quick link to dashboard Buyurtmalarim */}              
               <button              
                onClick={() => setLocation("/questionnaire")}
-                className="h-7 px-3 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5 text-white rounded-xl flex items-center justify-center"
+                className="h-7 px-8 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5 text-white rounded-xl flex items-center justify-center"
               >
                <Plus className="w-3.5 h-3.5" />
                 Yangi so'rov
