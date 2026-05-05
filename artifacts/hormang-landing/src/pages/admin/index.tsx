@@ -50,6 +50,7 @@ import {
 } from "@/lib/announcements-store";
 import ReactMarkdown from "react-markdown";
 import { FeedbackAdminSection } from "./feedback-panel";
+import { getAllFeedbacks, type Feedback as FeedbackEntry } from "@/lib/feedback-store";
 
 /* ─── Credentials ───────────────────────────────────────────────── */
 const ADMIN_USER = "hormangVIP";
@@ -2705,7 +2706,7 @@ type PerfFilter     = "all" | "top" | "low" | "nojobs";
 type RiskFilter     = "all" | "flagged" | "suspended";
 type ReferralFilter = "all" | "top" | "none";
 
-function UsersSection({ refreshKey }: { refreshKey: number }) {
+function UsersSection({ refreshKey, onGoToFeedback }: { refreshKey: number; onGoToFeedback?: (userId: string) => void }) {
   const [users, setUsers]                     = useState<AdminUser[]>([]);
   const [suspended, setSuspended]             = useState<Set<string>>(() =>
     new Set(readKey<string[]>("hormang_admin_suspended_users", []))
@@ -2905,6 +2906,16 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
       const inviterId = getInviterId(u.userId);
       if (inviterId) {
         u.referredBy = nameById.get(inviterId) ?? getReferralCode(inviterId);
+      }
+    }
+
+    /* ── Step 6: Feedback counts per user ── */
+    const allFeedbacks = getAllFeedbacks();
+    for (const u of result) {
+      const uFbs = allFeedbacks.filter(f => f.userId === u.userId);
+      if (uFbs.length > 0) {
+        (u as AdminUser & { feedbackCount?: number; feedbackComplaints?: number }).feedbackCount = uFbs.length;
+        (u as AdminUser & { feedbackComplaints?: number }).feedbackComplaints = uFbs.filter(f => f.type === "complaint").length;
       }
     }
 
@@ -3155,7 +3166,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
                 <tr className="border-b border-gray-100 bg-red-50/40">
                   {[
                     "Foydalanuvchi", "Rol", "Kontakt",
-                    "Samaradorlik", "Tanga 🪙", "Referral 🔗",
+                    "Samaradorlik", "Murojaatlar 💬", "Tanga 🪙", "Referral 🔗",
                     "Risk", "Teglar", "Holat", "Amallar",
                   ].map((h) => (
                     <th key={h} className="text-left text-[9px] font-bold text-red-400 uppercase tracking-widest px-3 py-3 whitespace-nowrap">
@@ -3238,6 +3249,28 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
                         ) : u.requestCount !== undefined ? (
                           <span className="text-[11px] font-semibold text-blue-600">{u.requestCount} so'rov</span>
                         ) : <span className="text-gray-300 text-[11px]">—</span>}
+                      </td>
+
+                      {/* Murojaatlar (Feedback) */}
+                      <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                        {(() => {
+                          const fc = (u as AdminUser & { feedbackCount?: number; feedbackComplaints?: number }).feedbackCount ?? 0;
+                          const cc = (u as AdminUser & { feedbackComplaints?: number }).feedbackComplaints ?? 0;
+                          if (fc === 0) return <span className="text-gray-200 text-[11px]">—</span>;
+                          return (
+                            <button
+                              onClick={() => onGoToFeedback?.(u.userId)}
+                              className="text-left group"
+                            >
+                              <p className="text-[11px] font-extrabold text-blue-600 group-hover:text-blue-800 transition-colors whitespace-nowrap">{fc} ta</p>
+                              {cc >= 3 ? (
+                                <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1 py-0.5 rounded whitespace-nowrap">⚠️ {cc} shikoyat</span>
+                              ) : cc > 0 ? (
+                                <p className="text-[9px] text-amber-600 font-semibold whitespace-nowrap">{cc} shikoyat</p>
+                              ) : null}
+                            </button>
+                          );
+                        })()}
                       </td>
 
                       {/* Tanga */}
@@ -5236,7 +5269,8 @@ export default function AdminDashboard() {
   const [authed,    setAuthed]    = useState(getSession());
   const [section,   setSection]   = useState<Section>("overview");
   const [collapsed, setCollapsed] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshKey, setRefreshKey]           = useState(0);
+  const [feedbackFilterUserId, setFeedbackFilterUserId] = useState<string | null>(null);
 
   /* Subscribe to main app store events + cross-tab storage events */
   useEffect(() => {
@@ -5281,12 +5315,12 @@ export default function AdminDashboard() {
               {section === "marketplace"    && <MarketplaceSection    {...sectionProps} />}
               {section === "requests"       && <RequestsSection       {...sectionProps} />}
               {section === "offers"         && <OffersSection         {...sectionProps} />}
-              {section === "users"          && <UsersSection          {...sectionProps} />}
+              {section === "users"          && <UsersSection          {...sectionProps} onGoToFeedback={(uid) => { setFeedbackFilterUserId(uid); setSection("feedback"); }} />}
               {section === "monetization"   && <MonetizationSection   {...sectionProps} />}
               {section === "announcements"  && <AnnouncementsSection  {...sectionProps} />}
               {section === "audit"          && <AuditLogSection       {...sectionProps} />}
               {section === "categories"     && <CategoriesSection />}
-              {section === "feedback"       && <FeedbackAdminSection {...sectionProps} />}
+              {section === "feedback"       && <FeedbackAdminSection {...sectionProps} filterUserId={feedbackFilterUserId} onNavigateToUser={(uid) => { setFeedbackFilterUserId(null); setSection("users"); }} />}
             </motion.div>
           </AnimatePresence>
         </div>

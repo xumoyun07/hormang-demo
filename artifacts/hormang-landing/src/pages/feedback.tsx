@@ -226,7 +226,7 @@ function FeedbackFormDrawer({
                 {/* Step 0: Type */}
                 {step === 0 && (
                   <motion.div key="s0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.18 }} className="space-y-3">
-                    <p className="text-sm font-bold text-gray-700 px-1">Nima yubormoqchisiz?</p>
+                    <p className="text-sm font-bold text-gray-700 px-1">Nima haqida murojaat qilmoqchisiz?</p>
                     {TYPE_OPTIONS.map(opt => {
                       const m = TYPE_META[opt.id];
                       return (
@@ -259,7 +259,7 @@ function FeedbackFormDrawer({
                     {type === "complaint" && (
                       <>
                         <div>
-                          <p className="text-sm font-bold text-gray-700 mb-2.5 px-1">Kim haqida shikoyat?</p>
+                          <p className="text-sm font-bold text-gray-700 mb-2.5 px-1">Shikoyat kim haqida?</p>
                           <div className="grid grid-cols-3 gap-2">
                             {COMPLAINT_TARGETS.map(t => (
                               <button key={t.id} onClick={() => setTargetType(t.id)}
@@ -288,7 +288,7 @@ function FeedbackFormDrawer({
                     )}
                     {type === "problem" && (
                       <div>
-                        <p className="text-sm font-bold text-gray-700 mb-2.5 px-1">Qayerda muammo?</p>
+                        <p className="text-sm font-bold text-gray-700 mb-2.5 px-1">Qayerda muammoga duch keldinggiz?</p>
                         <div className="grid grid-cols-2 gap-2">
                           {PROBLEM_AREAS.map(a => (
                             <button key={a.id} onClick={() => setProblemArea(a.id)}
@@ -474,7 +474,7 @@ function FeedbackDetailDrawer({ fb, onClose }: { fb: Feedback | null; onClose: (
 
               {/* Description */}
               <div className="bg-gray-50 rounded-2xl p-4">
-                <p className="text-xs font-bold text-gray-500 mb-2">Tavsif</p>
+                <p className="text-xs font-bold text-gray-500 mb-2">Izoh</p>
                 <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{fb.description}</p>
               </div>
 

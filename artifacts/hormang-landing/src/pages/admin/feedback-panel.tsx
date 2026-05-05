@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertCircle, TriangleAlert, Lightbulb, Clock, CheckCircle2,
   X, Check, ChevronDown, Filter, Paperclip, MessageSquare,
-  ArrowRight, Eye, ShieldAlert,
+  ArrowRight, Eye, ShieldAlert, ExternalLink,
 } from "lucide-react";
 import {
   getAllFeedbacks, updateFeedback,
@@ -18,6 +18,86 @@ function fmtDate(iso: string): string {
   return `${d.getDate()}-${UZ_MONTHS[d.getMonth()]}, ${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`;
 }
 
+/* ── User data ───────────────────────────────────────────────────── */
+interface AdminUserData {
+  id: string;
+  name: string;
+  initials: string;
+  role: "customer" | "provider";
+  phone?: string;
+}
+
+function loadAdminUsers(): AdminUserData[] {
+  try {
+    const raw = localStorage.getItem("hormang_auth_users");
+    if (!raw) return [];
+    const arr = JSON.parse(raw) as Array<{
+      id: string; firstName?: string; lastName?: string;
+      phone?: string | null; role?: string;
+    }>;
+    return arr.map(u => {
+      const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || "Foydalanuvchi";
+      const initials = ((u.firstName?.[0] ?? "") + (u.lastName?.[0] ?? "")).toUpperCase() || "?";
+      return {
+        id: u.id,
+        name,
+        initials,
+        role: u.role === "provider" ? "provider" : "customer",
+        phone: u.phone ?? undefined,
+      } satisfies AdminUserData;
+    });
+  } catch { return []; }
+}
+
+/* ── UserCell ────────────────────────────────────────────────────── */
+function UserCell({
+  user, fallbackRole, onNavigate,
+}: {
+  user?: AdminUserData;
+  fallbackRole?: string;
+  onNavigate?: () => void;
+}) {
+  const role = user?.role ?? (fallbackRole === "provider" ? "provider" : "customer");
+  const roleBg = role === "provider" ? "bg-violet-100 text-violet-700" : "bg-blue-100 text-blue-700";
+  const roleLabel = role === "provider" ? "Ijrochi" : "Mijoz";
+
+  if (!user) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-300 text-[11px] font-bold flex-shrink-0">
+          ?
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-gray-400">Noma'lum</p>
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${roleBg}`}>{roleLabel}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={onNavigate}
+      disabled={!onNavigate}
+      className={`flex items-center gap-2 text-left group ${onNavigate ? "hover:opacity-80 cursor-pointer" : "cursor-default"} transition-opacity`}
+    >
+      <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${roleBg}`}>
+        {user.initials}
+      </div>
+      <div className="min-w-0">
+        <p className={`text-xs font-semibold leading-tight truncate ${onNavigate ? "group-hover:text-blue-600 transition-colors text-gray-800" : "text-gray-800"}`}>
+          {user.name}
+        </p>
+        <div className="flex items-center gap-1 mt-0.5">
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${roleBg}`}>{roleLabel}</span>
+          {onNavigate && <ExternalLink className="w-2.5 h-2.5 text-gray-300 group-hover:text-blue-400 transition-colors" />}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+/* ── Meta tables ─────────────────────────────────────────────────── */
 const TYPE_META: Record<FeedbackType, { emoji: string; label: string; color: string; bg: string }> = {
   problem:    { emoji: "🆘", label: "Muammo",  color: "text-red-600",   bg: "bg-red-50"  },
   complaint:  { emoji: "⚠️", label: "Shikoyat", color: "text-amber-600", bg: "bg-amber-50" },
@@ -25,16 +105,16 @@ const TYPE_META: Record<FeedbackType, { emoji: string; label: string; color: str
 };
 
 const STATUS_META: Record<FeedbackStatus, { label: string; color: string; bg: string; dot: string }> = {
-  new:       { label: "Yangi",       color: "text-gray-600",   bg: "bg-gray-100",    dot: "bg-gray-400"   },
-  in_review: { label: "Ko'rilmoqda", color: "text-blue-600",   bg: "bg-blue-50",     dot: "bg-blue-500"   },
-  resolved:  { label: "Hal qilindi", color: "text-green-600",  bg: "bg-green-50",    dot: "bg-green-500"  },
-  rejected:  { label: "Rad etildi",  color: "text-red-600",    bg: "bg-red-50",      dot: "bg-red-500"    },
+  new:       { label: "Yangi",       color: "text-gray-600",  bg: "bg-gray-100",  dot: "bg-gray-400"  },
+  in_review: { label: "Ko'rilmoqda", color: "text-blue-600",  bg: "bg-blue-50",   dot: "bg-blue-500"  },
+  resolved:  { label: "Hal qilindi", color: "text-green-600", bg: "bg-green-50",  dot: "bg-green-500" },
+  rejected:  { label: "Rad etildi",  color: "text-red-600",   bg: "bg-red-50",    dot: "bg-red-500"   },
 };
 
 const PRIORITY_META: Record<FeedbackPriority, { label: string; color: string; bg: string }> = {
-  low:    { label: "Past",    color: "text-gray-600",   bg: "bg-gray-100"   },
-  medium: { label: "O'rta",   color: "text-amber-600",  bg: "bg-amber-50"   },
-  high:   { label: "Yuqori",  color: "text-red-600",    bg: "bg-red-50"     },
+  low:    { label: "Past",   color: "text-gray-600",  bg: "bg-gray-100"  },
+  medium: { label: "O'rta",  color: "text-amber-600", bg: "bg-amber-50"  },
+  high:   { label: "Yuqori", color: "text-red-600",   bg: "bg-red-50"    },
 };
 
 function StatusBadge({ status }: { status: FeedbackStatus }) {
@@ -56,10 +136,12 @@ function PriorityBadge({ priority }: { priority: FeedbackPriority }) {
 }
 
 /* ── Detail Drawer ───────────────────────────────────────────────── */
-function FeedbackDrawer({ fb, onClose, onUpdate }: {
+function FeedbackDrawer({ fb, user, onClose, onUpdate, onNavigateToUser }: {
   fb: Feedback;
+  user?: AdminUserData;
   onClose: () => void;
   onUpdate: () => void;
+  onNavigateToUser?: (userId: string) => void;
 }) {
   const [status, setStatus]     = useState<FeedbackStatus>(fb.status);
   const [priority, setPriority] = useState<FeedbackPriority>(fb.priority);
@@ -130,15 +212,16 @@ function FeedbackDrawer({ fb, onClose, onUpdate }: {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-          {/* User info */}
+          {/* ── User cell ── */}
           <div className="flex items-center gap-3 bg-gray-50 rounded-xl p-3">
-            <div className="w-9 h-9 rounded-xl bg-gray-200 flex items-center justify-center text-sm font-bold text-gray-500">
-              {fb.userId.slice(0, 2).toUpperCase()}
-            </div>
-            <div>
-              <p className="text-xs font-bold text-gray-800">{fb.userId}</p>
-              <p className="text-[11px] text-gray-400">{fb.userRole === "provider" ? "Ijrochi" : "Mijoz"}</p>
-            </div>
+            <UserCell
+              user={user}
+              fallbackRole={fb.userRole}
+              onNavigate={user && onNavigateToUser ? () => onNavigateToUser(fb.userId) : undefined}
+            />
+            {user?.phone && (
+              <p className="text-[11px] text-gray-400 ml-auto">{user.phone}</p>
+            )}
           </div>
 
           {/* Meta tags */}
@@ -165,9 +248,7 @@ function FeedbackDrawer({ fb, onClose, onUpdate }: {
           {/* Description */}
           <div>
             <p className="text-xs font-bold text-gray-500 mb-1.5">Tavsif</p>
-            <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3">
-              {fb.description}
-            </p>
+            <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3">{fb.description}</p>
           </div>
 
           {/* Attachments */}
@@ -191,7 +272,7 @@ function FeedbackDrawer({ fb, onClose, onUpdate }: {
             </div>
           )}
 
-          {/* Admin note */}
+          {/* Admin notes */}
           {fb.rejectionReason && (
             <div className="bg-red-50 border border-red-100 rounded-xl p-3">
               <p className="text-xs font-bold text-red-600 mb-1">Rad etish sababi</p>
@@ -295,16 +376,33 @@ function FeedbackDrawer({ fb, onClose, onUpdate }: {
 }
 
 /* ── Main panel ──────────────────────────────────────────────────── */
-export function FeedbackAdminSection({ refreshKey }: { refreshKey: number }) {
+export function FeedbackAdminSection({
+  refreshKey,
+  filterUserId,
+  onNavigateToUser,
+}: {
+  refreshKey: number;
+  filterUserId?: string | null;
+  onNavigateToUser?: (userId: string) => void;
+}) {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
-  const [filterType, setFilterType]     = useState<FeedbackType | "all">("all");
-  const [filterStatus, setFilterStatus] = useState<FeedbackStatus | "all">("all");
+  const [users, setUsers]         = useState<Map<string, AdminUserData>>(new Map());
+  const [filterType, setFilterType]         = useState<FeedbackType | "all">("all");
+  const [filterStatus, setFilterStatus]     = useState<FeedbackStatus | "all">("all");
   const [filterPriority, setFilterPriority] = useState<FeedbackPriority | "all">("all");
+  const [userFilter, setUserFilter] = useState<string>(filterUserId ?? "");
   const [search, setSearch]         = useState("");
   const [selected, setSelected]     = useState<Feedback | null>(null);
 
+  /* Sync userFilter when filterUserId prop changes */
+  useEffect(() => {
+    if (filterUserId) setUserFilter(filterUserId);
+  }, [filterUserId]);
+
   function load() {
     setFeedbacks(getAllFeedbacks());
+    const loaded = loadAdminUsers();
+    setUsers(new Map(loaded.map(u => [u.id, u])));
   }
 
   useEffect(() => {
@@ -319,12 +417,17 @@ export function FeedbackAdminSection({ refreshKey }: { refreshKey: number }) {
   }
 
   const filtered = feedbacks.filter(f => {
-    if (filterType   !== "all" && f.type     !== filterType)   return false;
-    if (filterStatus !== "all" && f.status   !== filterStatus) return false;
+    if (filterType     !== "all" && f.type     !== filterType)     return false;
+    if (filterStatus   !== "all" && f.status   !== filterStatus)   return false;
     if (filterPriority !== "all" && f.priority !== filterPriority) return false;
+    if (userFilter) {
+      if (f.userId !== userFilter) return false;
+    }
     if (search) {
       const q = search.toLowerCase();
-      if (!f.title.toLowerCase().includes(q) && !f.userId.toLowerCase().includes(q) && !f.description.toLowerCase().includes(q)) return false;
+      const u = users.get(f.userId);
+      const inUser = u ? u.name.toLowerCase().includes(q) || (u.phone?.includes(q) ?? false) : false;
+      if (!f.title.toLowerCase().includes(q) && !f.description.toLowerCase().includes(q) && !inUser) return false;
     }
     return true;
   });
@@ -336,6 +439,9 @@ export function FeedbackAdminSection({ refreshKey }: { refreshKey: number }) {
     rejected:  feedbacks.filter(f => f.status === "rejected").length,
   };
 
+  /* Active user filter banner */
+  const activeUserFilter = userFilter ? users.get(userFilter) : undefined;
+
   return (
     <div className="space-y-6">
       <div>
@@ -346,10 +452,10 @@ export function FeedbackAdminSection({ refreshKey }: { refreshKey: number }) {
       {/* Stat cards */}
       <div className="grid grid-cols-4 gap-3">
         {([
-          { label: "Yangi",       val: counts.new,       dot: "bg-gray-400",  bg: "bg-gray-50"   },
-          { label: "Ko'rilmoqda", val: counts.in_review, dot: "bg-blue-500",  bg: "bg-blue-50"   },
-          { label: "Hal qilindi", val: counts.resolved,  dot: "bg-green-500", bg: "bg-green-50"  },
-          { label: "Rad etildi",  val: counts.rejected,  dot: "bg-red-500",   bg: "bg-red-50"    },
+          { label: "Yangi",       val: counts.new,       dot: "bg-gray-400",  bg: "bg-gray-50"  },
+          { label: "Ko'rilmoqda", val: counts.in_review, dot: "bg-blue-500",  bg: "bg-blue-50"  },
+          { label: "Hal qilindi", val: counts.resolved,  dot: "bg-green-500", bg: "bg-green-50" },
+          { label: "Rad etildi",  val: counts.rejected,  dot: "bg-red-500",   bg: "bg-red-50"   },
         ] as const).map(s => (
           <div key={s.label} className={`${s.bg} rounded-2xl p-4 text-center`}>
             <p className="text-2xl font-extrabold text-gray-900 mb-1">{s.val}</p>
@@ -361,6 +467,24 @@ export function FeedbackAdminSection({ refreshKey }: { refreshKey: number }) {
         ))}
       </div>
 
+      {/* Active user filter banner */}
+      {activeUserFilter && (
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5">
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${activeUserFilter.role === "provider" ? "bg-violet-100 text-violet-700" : "bg-blue-100 text-blue-700"}`}>
+            {activeUserFilter.initials}
+          </div>
+          <p className="text-xs font-semibold text-blue-800 flex-1">
+            <span className="font-bold">{activeUserFilter.name}</span> — foydalanuvchi bo'yicha filtr
+          </p>
+          <button
+            onClick={() => setUserFilter("")}
+            className="text-[10px] font-bold text-blue-500 hover:text-blue-700 flex items-center gap-0.5 transition-colors"
+          >
+            Tozalash <X className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3 shadow-sm">
         <div className="flex items-center gap-2 mb-1">
@@ -370,10 +494,10 @@ export function FeedbackAdminSection({ refreshKey }: { refreshKey: number }) {
         <div className="flex flex-wrap gap-2">
           <input
             type="text"
-            placeholder="Qidirish..."
+            placeholder="Sarlavha, tavsif yoki ism bo'yicha qidirish..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="flex-1 min-w-[160px] px-3 py-2 rounded-xl border-2 border-gray-100 text-sm text-gray-700 placeholder:text-gray-400 focus:border-red-300 outline-none"
+            className="flex-1 min-w-[200px] px-3 py-2 rounded-xl border-2 border-gray-100 text-sm text-gray-700 placeholder:text-gray-400 focus:border-red-300 outline-none"
           />
           <select
             value={filterType}
@@ -429,7 +553,8 @@ export function FeedbackAdminSection({ refreshKey }: { refreshKey: number }) {
             </div>
 
             {filtered.map(fb => {
-              const tm = TYPE_META[fb.type];
+              const tm   = TYPE_META[fb.type];
+              const user = users.get(fb.userId);
               return (
                 <button
                   key={fb.id}
@@ -440,10 +565,16 @@ export function FeedbackAdminSection({ refreshKey }: { refreshKey: number }) {
                     <p className="text-sm font-bold text-gray-900 truncate">{fb.title}</p>
                     <p className="text-[11px] text-gray-400 truncate mt-0.5">{fmtDate(fb.createdAt)}</p>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-gray-700 truncate">{fb.userId.slice(0, 12)}</p>
-                    <p className="text-[11px] text-gray-400">{fb.userRole === "provider" ? "Ijrochi" : "Mijoz"}</p>
+
+                  {/* User cell — click stops propagation and navigates */}
+                  <div onClick={e => e.stopPropagation()} className="min-w-0">
+                    <UserCell
+                      user={user}
+                      fallbackRole={fb.userRole}
+                      onNavigate={onNavigateToUser ? () => onNavigateToUser(fb.userId) : undefined}
+                    />
                   </div>
+
                   <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg ${tm.bg} ${tm.color}`}>
                     {tm.emoji} {tm.label}
                   </span>
@@ -462,8 +593,10 @@ export function FeedbackAdminSection({ refreshKey }: { refreshKey: number }) {
         {selected && (
           <FeedbackDrawer
             fb={selected}
+            user={users.get(selected.userId)}
             onClose={() => setSelected(null)}
             onUpdate={handleUpdate}
+            onNavigateToUser={onNavigateToUser}
           />
         )}
       </AnimatePresence>
