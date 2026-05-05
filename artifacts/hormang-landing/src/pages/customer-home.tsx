@@ -128,7 +128,7 @@ export default function CustomerHomePage() {
             className="rounded-2xl px-5 pt-5 pb-5"
             style={{ background: BLUE_GRAD }}
           >
-            <p className="text-blue-100 text-sm font-medium mb-0.5">Salom, {firstName} 👋</p>
+            <p className="text-blue-100 text-sm font-medium mb-0.5">Assalomu Alaykum, {firstName} 👋</p>
             <h1 className="text-white text-xl font-extrabold leading-tight mb-1">
               Qanday xizmat kerak?
             </h1>
