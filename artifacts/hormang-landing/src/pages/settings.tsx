@@ -142,7 +142,7 @@ export default function SettingsPage() {
           <div className="flex-1">
             <h1 className="font-extrabold text-base text-gray-900 leading-tight">Sozlamalar</h1>
             <p className="text-[11px] text-gray-400">
-              {isProvider ? "Ijrochi" : "Xaridor"} paneli
+              {isProvider ? "Ijrochi" : "Mijoz"} paneli
             </p>
           </div>
         </div>
@@ -272,7 +272,7 @@ export default function SettingsPage() {
             <p className="text-center text-xs text-gray-400 mb-5">Versiya 1.0.0</p>
             <p className="text-sm text-gray-600 text-center leading-relaxed mb-5">
               Hormang — O'zbekistonda mahalliy xizmatlar bozoridagi platforma.
-              Xaridorlarni tekshirilgan ijrochilar bilan ulaydi.
+              Mijozlarni tekshirilgan ijrochilar bilan ulaydi.
             </p>
             <button
               onClick={() => setShowAbout(false)}

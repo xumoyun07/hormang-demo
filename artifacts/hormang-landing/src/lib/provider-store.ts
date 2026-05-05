@@ -171,7 +171,7 @@ function chatToProviderChat(c: Chat): ProviderChat {
   /* Try registry first (real-time name if customer has logged in on this device) */
   const req = getRequestById(c.requestId);
   const reg = req?.customerId ? getCustomerFromRegistry(req.customerId) : null;
-  const customerName = reg?.name || c.customerName || "Xaridor";
+  const customerName = reg?.name || c.customerName || "Mijoz";
   const customerInitials = reg?.initials || c.customerInitials || "X";
 
   return {
@@ -300,7 +300,7 @@ function adaptBuyerRequest(req: CustomerRequest, actionStatus?: ProviderActionSt
     location: req.region ?? locationFrom(req.answers),
     customerName: (() => {
       const reg = req.customerId ? getCustomerFromRegistry(req.customerId) : null;
-      return reg?.name || req.customerName || "Xaridor";
+      return reg?.name || req.customerName || "Mijoz";
     })(),
     customerId: req.customerId ?? "",
     createdAt: req.createdAt,
@@ -662,7 +662,7 @@ export function createChatFromOffer(
 
   /* Resolve real customer name from registry (covers old requests without stored name) */
   const regEntry = request.customerId ? getCustomerFromRegistry(request.customerId) : null;
-  const resolvedCustomerName = regEntry?.name || request.customerName || "Xaridor";
+  const resolvedCustomerName = regEntry?.name || request.customerName || "Mijoz";
   const custInitials = regEntry?.initials || (resolvedCustomerName
     .split(" ")
     .map((p) => p[0] ?? "")

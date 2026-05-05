@@ -482,7 +482,7 @@ function OfferDetailModal({
             key={`req-customer-${request.customerId}`}
             mode="customer"
             customerData={{
-              customerName: request.customerName ?? "Xaridor",
+              customerName: request.customerName ?? "Mijoz",
               customerId: request.customerId,
               region: request.region,
               district: request.district,

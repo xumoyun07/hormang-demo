@@ -806,7 +806,7 @@ export default function ProviderChatsPage() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Xaridor yoki xizmat..."
+              placeholder="Mijoz yoki xizmat..."
               className="w-full h-10 pl-9 pr-4 rounded-2xl bg-gray-50 border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
             />
           </div>

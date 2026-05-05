@@ -754,7 +754,7 @@ function OverviewSection({ refreshKey, setSection }: { refreshKey: number; setSe
           <div className="space-y-2">
             <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Jami</span><span className="font-extrabold text-gray-900 text-sm">{totalUsers}</span></div>
             <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Faol (7 kun)</span><span className="font-extrabold text-emerald-600 text-sm">{activeUsers7d}</span></div>
-            <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Ijrochi / Xaridor</span><span className="font-extrabold text-violet-600 text-sm">{totalProviders} / {totalCustomers}</span></div>
+            <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Ijrochi / Mijoz</span><span className="font-extrabold text-violet-600 text-sm">{totalProviders} / {totalCustomers}</span></div>
             <div className="flex items-center justify-between"><span className="text-xs text-gray-500">Kam balans (&lt;3 🪙)</span><span className={`font-extrabold text-sm ${lowBalanceProvs > 0 ? "text-rose-600" : "text-gray-700"}`}>{lowBalanceProvs}</span></div>
           </div>
         </div>
@@ -991,7 +991,7 @@ function RequestsSection({ refreshKey }: { refreshKey: number }) {
             </p>
             <p className="text-gray-300 text-sm mt-1">
               {requests.length === 0
-                ? "Xaridorlar so'rov yuborganda bu yerda ko'rinadi"
+                ? "Mijozlar so'rov yuborganda bu yerda ko'rinadi"
                 : "Filtrlash parametrlarini o'zgartiring"}
             </p>
           </div>
@@ -1392,7 +1392,7 @@ function AdvancedUserDetailModal({
                   <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-violet-50 text-violet-700 border border-violet-100">Ijrochi</span>
                 )}
                 {(u.role === "customer" || u.role === "both") && (
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100">Xaridor</span>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100">Mijoz</span>
                 )}
                 <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
                   u.status === "suspended"
@@ -2397,7 +2397,7 @@ function RequestCommandCenter({ row, onClose, onAcceptOffer, onRejectOffer, onRe
                 ) : (
                   <>
                     <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wide mb-3">
-                      {chat.masterName ?? "Ijrochi"} ↔ {r.customerName ?? "Xaridor"} · {chat.messages.length} xabar
+                      {chat.masterName ?? "Ijrochi"} ↔ {r.customerName ?? "Mijoz"} · {chat.messages.length} xabar
                     </p>
                     <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
                       {chat.messages.map((msg) => {
@@ -2411,7 +2411,7 @@ function RequestCommandCenter({ row, onClose, onAcceptOffer, onRejectOffer, onRe
                           <div key={msg.id} className={`flex ${isCustomer ? "justify-end" : "justify-start"}`}>
                             <div className={`max-w-[70%] rounded-2xl overflow-hidden text-sm ${isCustomer ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-800"}`}>
                               <div className="px-3 pt-2 pb-0.5">
-                                <p className="text-[10px] font-bold opacity-60">{isCustomer ? (r.customerName ?? "Xaridor") : (chat.masterName ?? "Ijrochi")}</p>
+                                <p className="text-[10px] font-bold opacity-60">{isCustomer ? (r.customerName ?? "Mijoz") : (chat.masterName ?? "Ijrochi")}</p>
                               </div>
                               {msg.attachment?.type === "image" && (
                                 <img src={msg.attachment.url} alt="" className="max-w-full" style={{ display: "block" }} />
@@ -2749,7 +2749,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
       const isProvider = au.role === "provider";
       userMap.set(au.id, {
         userId:    au.id,
-        name:      fullName || (isProvider ? "Ijrochi" : "Xaridor"),
+        name:      fullName || (isProvider ? "Ijrochi" : "Mijoz"),
         initials,
         color:     isProvider ? "#7C3AED" : "#2563EB",
         role:      isProvider ? "provider" : "customer",
@@ -2848,13 +2848,13 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
         existing.requestCount = custRequests.length;
         existing.location     = existing.location ?? location;
         existing.phone        = existing.phone ?? phoneRegistry[userId];
-        existing.name         = existing.name && existing.name !== "Ijrochi" && existing.name !== "Xaridor"
+        existing.name         = existing.name && existing.name !== "Ijrochi" && existing.name !== "Mijoz"
           ? existing.name
           : (entry.name ?? existing.name);
       } else {
         userMap.set(userId, {
           userId,
-          name:         entry.name ?? "Xaridor",
+          name:         entry.name ?? "Mijoz",
           initials:     entry.initials ?? "X",
           color:        "#2563EB",
           role:         "customer",
@@ -3035,7 +3035,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
         {[
           { label: "Jami",        value: enriched.length,  color: "text-gray-900",     icon: <Users className="w-4 h-4 text-gray-400" /> },
           { label: "Ijrochilar",  value: providerCount,    color: "text-violet-700",   icon: <Zap className="w-4 h-4 text-violet-400" /> },
-          { label: "Xaridorlar",  value: customerCount,    color: "text-blue-700",     icon: <Activity className="w-4 h-4 text-blue-400" /> },
+          { label: "Mijozlar",  value: customerCount,    color: "text-blue-700",     icon: <Activity className="w-4 h-4 text-blue-400" /> },
           { label: "Tasdiqlangan",value: verifiedCount,    color: "text-teal-700",     icon: <UserCheck className="w-4 h-4 text-teal-400" /> },
           { label: "Flaglangan",  value: flaggedCount,     color: "text-rose-700",     icon: <Flag className="w-4 h-4 text-rose-400" /> },
           { label: "Yangi (7k)",  value: newThisWeek,      color: "text-emerald-700",  icon: <Star className="w-4 h-4 text-emerald-400" /> },
@@ -3077,7 +3077,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
           <select value={filterRole} onChange={(e) => setFilterRole(e.target.value as RoleFilter)} className={inputCls}>
             <option value="all">Barcha rollar</option>
             <option value="provider">Ijrochilar</option>
-            <option value="customer">Xaridorlar</option>
+            <option value="customer">Mijozlar</option>
             <option value="both">Ikkalasi ham</option>
           </select>
           <select value={filterActivity} onChange={(e) => setFilterActivity(e.target.value as ActivityFilter)} className={inputCls}>
@@ -3197,7 +3197,7 @@ function UsersSection({ refreshKey }: { refreshKey: number }) {
                             <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-violet-50 text-violet-700 border-violet-100 w-fit">Ijrochi</span>
                           )}
                           {(u.role === "customer" || u.role === "both") && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-blue-50 text-blue-700 border-blue-100 w-fit">Xaridor</span>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border bg-blue-50 text-blue-700 border-blue-100 w-fit">Mijoz</span>
                           )}
                         </div>
                       </td>
@@ -4363,7 +4363,7 @@ function AuditLogSection({ refreshKey }: { refreshKey: number }) {
     { id: "risk",        label: "Risk",      emoji: "⚠️" },
   ];
 
-  const ACTOR_LABELS:  Record<string, string> = { admin: "Admin", provider: "Ijrochi", customer: "Xaridor", system: "Tizim" };
+  const ACTOR_LABELS:  Record<string, string> = { admin: "Admin", provider: "Ijrochi", customer: "Mijoz", system: "Tizim" };
   const TARGET_LABELS: Record<string, string> = { user: "Foydalanuvchi", request: "So'rov", offer: "Taklif", referral: "Referral", tanga: "Tanga", platform: "Platforma", pricing: "Narx" };
 
   return (
@@ -4442,7 +4442,7 @@ function AuditLogSection({ refreshKey }: { refreshKey: number }) {
           <option value="all">Barcha aktorlar</option>
           <option value="admin">Admin</option>
           <option value="provider">Ijrochi</option>
-          <option value="customer">Xaridor</option>
+          <option value="customer">Mijoz</option>
           <option value="system">Tizim</option>
         </select>
         <select value={filterTargetType} onChange={(e) => { setFilterTargetType(e.target.value as "all" | AuditLogTargetType); setPage(1); }}
@@ -4695,7 +4695,7 @@ function AnnouncementsSection({ refreshKey }: { refreshKey: number }) {
       : "bg-gray-100 text-gray-500 border-gray-200";
 
   const targetLabel = (t: Announcement["target"]) =>
-    t === "all" ? "Hammaga" : t === "providers" ? "Ijrochilar" : "Xaridorlar";
+    t === "all" ? "Hammaga" : t === "providers" ? "Ijrochilar" : "Mijozlar";
 
   return (
     <div className="space-y-5">
@@ -4868,7 +4868,7 @@ function AnnouncementsSection({ refreshKey }: { refreshKey: number }) {
                           <select value={f.target} onChange={(e) => set("target", e.target.value as Announcement["target"])} className={`${inputCls} w-full`}>
                             <option value="all">👥 Hammaga</option>
                             <option value="providers">🔧 Ijrochilar</option>
-                            <option value="customers">🛍 Xaridorlar</option>
+                            <option value="customers">🛍 Mijozlar</option>
                           </select>
                         </div>
                       </div>
@@ -5086,7 +5086,7 @@ function AnnouncementsSection({ refreshKey }: { refreshKey: number }) {
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Ma'lumotlar</p>
                     {[
                       { label: "Status", val: f.status === "published" ? "✅ Chop etilgan" : "📝 Qoralama" },
-                      { label: "Auditoriya", val: f.target === "all" ? "👥 Hammaga" : f.target === "providers" ? "🔧 Ijrochilar" : "🛍 Xaridorlar" },
+                      { label: "Auditoriya", val: f.target === "all" ? "👥 Hammaga" : f.target === "providers" ? "🔧 Ijrochilar" : "🛍 Mijozlar" },
                       { label: "Muddat", val: f.expiresAt ? new Date(f.expiresAt).toLocaleDateString("uz-UZ") : "—" },
                       { label: "Chop etish vaqti", val: f.publishAt ? new Date(f.publishAt).toLocaleString("uz-UZ") : "Darhol" },
                     ].map((row) => (

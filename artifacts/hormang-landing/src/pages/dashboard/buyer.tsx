@@ -76,7 +76,7 @@ export default function BuyerDashboard() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Xush kelibsiz, {user?.firstName}!</h1>
-                <p className="text-gray-500 text-sm">Xaridor paneli</p>
+                <p className="text-gray-500 text-sm">Mijoz paneli</p>
               </div>
             </div>
           </div>

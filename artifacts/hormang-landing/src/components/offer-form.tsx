@@ -601,7 +601,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
             key={`offer-customer-${request.customerId}-${request.region}-${request.district}`}
             mode="customer"
             customerData={{
-              customerName: request.customerName ?? "Xaridor",
+              customerName: request.customerName ?? "Mijoz",
               customerId: request.customerId,
               region: request.region,
               district: request.district,

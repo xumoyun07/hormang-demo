@@ -85,7 +85,7 @@ function runTests(
       },
       {
         label: "Faol rol",
-        value: activeRole === "provider" ? "Ijrochi" : "Xaridor",
+        value: activeRole === "provider" ? "Ijrochi" : "Mijoz",
         status: "info",
       },
       {

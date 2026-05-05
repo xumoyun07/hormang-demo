@@ -361,7 +361,7 @@ function CustomerPreviewSheet({
   data: CustomerProfileData;
   onClose: () => void;
 }) {
-  const name     = data.customerName?.trim() || "Xaridor";
+  const name     = data.customerName?.trim() || "Mijoz";
   const initials = data.customerInitials ?? deriveInitials(name);
   const color    = data.customerColor ?? BLUE;
   const location = data.district
@@ -454,7 +454,7 @@ function CustomerPreviewSheet({
                   className="text-xs font-black px-3 py-1 rounded-full text-white"
                   style={{ background: `linear-gradient(135deg, ${BLUE}, hsl(199,89%,56%))` }}
                 >
-                  Xaridor
+                  Mijoz
                 </span>
               </div>
             </div>

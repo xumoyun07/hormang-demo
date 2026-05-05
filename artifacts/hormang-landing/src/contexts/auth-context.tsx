@@ -263,7 +263,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user?.id) {
       if (role === "provider") markProviderAccess(user.id);
       localStorage.setItem(activeRoleKey(user.id), role);
-      console.log(`[Hormang] 🔄 Rol almashtirildi → ${role === "provider" ? "Ijrochi" : "Xaridor"} (user=${user.id.slice(0, 8)})`);
+      console.log(`[Hormang] 🔄 Rol almashtirildi → ${role === "provider" ? "Ijrochi" : "Mijoz"} (user=${user.id.slice(0, 8)})`);
     }
   }, [user]);
 

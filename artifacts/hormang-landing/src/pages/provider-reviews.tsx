@@ -40,7 +40,7 @@ function getReviewerMeta(review: Review) {
   const registry = getCustomerFromRegistry(review.reviewerId);
   const request = getRequestById(review.requestId);
   const local = getLocalProfile(review.reviewerId);
-  const name = review.reviewerName || registry?.name || request?.customerName || "Xaridor";
+  const name = review.reviewerName || registry?.name || request?.customerName || "Mijoz";
   return {
     name,
     initials: review.reviewerInitials || registry?.initials || initials(name),

@@ -271,7 +271,7 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
                 className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white flex-shrink-0"
                 style={{ background: "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)" }}
               >
-                Xaridor
+                Mijoz
               </span>
             </div>
 
@@ -785,7 +785,7 @@ export default function UnifiedDashboard() {
                         <span className="relative">
                           {role === "buyer" ? <ShoppingBag className="w-3.5 h-3.5" /> : <Briefcase className="w-3.5 h-3.5" />}
                         </span>
-                        <span className="relative">{role === "buyer" ? "Xaridor" : "Ijrochi"}</span>
+                        <span className="relative">{role === "buyer" ? "Mijoz" : "Ijrochi"}</span>
                       </button>
                     );
                   })}

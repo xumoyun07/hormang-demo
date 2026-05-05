@@ -642,7 +642,7 @@ export default function ProfileSettingsPage() {
           </button>
           <div className="flex-1">
             <h1 className="font-extrabold text-sm text-gray-900">Profil sozlamalari</h1>
-            <p className="text-xs text-gray-400">{isProvider ? "Ijrochi profili" : "Xaridor profili"}</p>
+            <p className="text-xs text-gray-400">{isProvider ? "Ijrochi profili" : "Mijoz profili"}</p>
           </div>
           <button
             onClick={() => isProvider ? setShowPreview(true) : setShowCustomerPreview(true)}
@@ -801,7 +801,7 @@ export default function ProfileSettingsPage() {
             </div>
             <div>
               <p className="font-bold text-sm text-gray-900">{fullName || "—"}</p>
-              <p className="text-xs text-gray-400 mb-2">{isProvider ? "Ijrochi" : "Xaridor"}</p>
+              <p className="text-xs text-gray-400 mb-2">{isProvider ? "Ijrochi" : "Mijoz"}</p>
               <button onClick={() => photoInputRef.current?.click()}
                 className="text-xs font-bold text-violet-600 hover:text-violet-700 transition-colors">
                 {photoUrl ? "Suratni o'zgartirish" : "+ Profil suratini yuklash"}

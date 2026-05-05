@@ -716,7 +716,7 @@ function BuyerBenefitsSection() {
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="text-center mb-12"
         >
-          <span className="pill-label mb-5 inline-flex">Xaridorlar uchun</span>
+          <span className="pill-label mb-5 inline-flex">Mijozlar uchun</span>
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">
             Nima uchun xaridorlar Hormangni sevadi
           </h2>
@@ -748,8 +748,8 @@ function BuyerBenefitsSection() {
 /* ─── Testimonials ──────────────────────────────────────────────── */
 function TestimonialsSection() {
   const testimonials = [
-    { quote: "10 daqiqa ichida ajoyib tozalovchi topdim — narx ham adolatli. Qo'ng'iroq qilishdan ancha oson!", author: "Dilnoza M.", location: "Toshkent", type: "Xaridor", initials: "DM", color: "#2563EB" },
-    { quote: "Kech kuni Hormang orqali santexnik topdim. Bir soat ichida kelishdi. Ajoyib xizmat!", author: "Rustam K.", location: "Samarqand", type: "Xaridor", initials: "RK", color: "#059669" },
+    { quote: "10 daqiqa ichida ajoyib tozalovchi topdim — narx ham adolatli. Qo'ng'iroq qilishdan ancha oson!", author: "Dilnoza M.", location: "Toshkent", type: "Mijoz", initials: "DM", color: "#2563EB" },
+    { quote: "Kech kuni Hormang orqali santexnik topdim. Bir soat ichida kelishdi. Ajoyib xizmat!", author: "Rustam K.", location: "Samarqand", type: "Mijoz", initials: "RK", color: "#059669" },
     { quote: "Hormangga qo'shilganimdan beri mijozlarim tez-tez ko'paydi. Reklama xarajatim kamaydi, daromadim oshdi.", author: "Alisher", location: "Usta santexnik", type: "Ijrochi", initials: "A", color: "#D97706" },
   ];
 
@@ -1018,7 +1018,7 @@ function CTASection() {
                 className="h-12 px-7 rounded-xl font-semibold text-sm bg-white text-blue-600 gap-2 inline-flex items-center justify-center shadow-sm hover:bg-blue-50 transition-colors"
               >
                 <Users className="w-4 h-4" />
-                Xaridor sifatida boshlash
+                Mijoz sifatida boshlash
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.03 }}

@@ -309,7 +309,7 @@ function ProviderSheet({ data, onClose }: { data: ProviderProfileData; onClose: 
    Customer variant
    ═══════════════════════════════════════════════════════════════════ */
 function CustomerSheet({ data, onClose }: { data: CustomerProfileData; onClose: () => void }) {
-  const name = data.customerName?.trim() || "Xaridor";
+  const name = data.customerName?.trim() || "Mijoz";
   const initials = data.customerInitials ?? deriveInitials(name);
   const color = data.customerColor ?? "hsl(221,78%,48%)";
   const location = data.district
@@ -366,7 +366,7 @@ function CustomerSheet({ data, onClose }: { data: CustomerProfileData; onClose: 
 
           <h3 className="font-extrabold text-white text-lg">{name}</h3>
           <div className="flex items-center justify-center gap-2 mt-1">
-            <span className="text-blue-100 text-xs font-semibold">Xaridor</span>
+            <span className="text-blue-100 text-xs font-semibold">Mijoz</span>
             {joined && (
               <>
                 <span className="text-blue-200 text-xs">·</span>

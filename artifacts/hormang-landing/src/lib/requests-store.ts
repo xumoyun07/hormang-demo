@@ -384,7 +384,7 @@ export function updateOfferStatus(offerId: string, status: "accepted" | "rejecte
     for (const sib of siblings) {
       sendSystemMessage(
         `${sib.requestId}_${sib.masterId}`,
-        "Xaridor boshqa ijrochi taklifini qabul qildi"
+        "Mijoz boshqa ijrochi taklifini qabul qildi"
       );
     }
   }
@@ -667,7 +667,7 @@ export function getOrCreateChat(
     avgResponseTime,
     categoryName,
     categoryEmoji: customerMeta?.emoji ?? "📋",
-    customerName: customerMeta?.name ?? "Xaridor",
+    customerName: customerMeta?.name ?? "Mijoz",
     customerInitials: customerMeta?.initials ?? "X",
     customerColor: customerMeta?.color ?? "#2563EB",
     providerUnread: 0,
