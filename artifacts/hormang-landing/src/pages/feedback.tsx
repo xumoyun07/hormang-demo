@@ -515,6 +515,14 @@ function FeedbackDetailDrawer({ fb, onClose }: { fb: Feedback | null; onClose: (
                 </div>
               )}
 
+              {/* Rejection reason */}
+              {fb.status === "rejected" && fb.rejectionReason && (
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-4">
+                  <p className="text-xs font-bold text-red-600 mb-1.5">Rad etish sababi</p>
+                  <p className="text-sm text-red-700 leading-relaxed">{fb.rejectionReason}</p>
+                </div>
+              )}
+
               {/* Admin note */}
               {fb.adminNote && (
                 <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
