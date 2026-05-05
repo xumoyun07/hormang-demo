@@ -33,6 +33,7 @@ import CustomerReviewsPage from "@/pages/customer-reviews";
 import PlansPage from "@/pages/plans";
 import TangaHistoryPage from "@/pages/provider/tanga-history";
 import TestPage from "@/pages/test";
+import CustomerHomePage from "@/pages/customer-home";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -91,6 +92,9 @@ function Router() {
       </Route>
       <Route path="/auth/migrate">
         {() => <PublicOnlyRoute component={MigratePage} />}
+      </Route>
+      <Route path="/customer-home">
+        {() => <ProtectedRoute component={CustomerHomePage} />}
       </Route>
       <Route path="/dashboard">
         {() => <ProtectedRoute component={UnifiedDashboard} />}

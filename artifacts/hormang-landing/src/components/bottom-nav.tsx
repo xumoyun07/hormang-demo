@@ -7,11 +7,11 @@ import { getTotalUnread, getUnseenRequests } from "@/lib/provider-store";
 import { useToast } from "@/hooks/use-toast";
 
 const BUYER_TABS = [
-  { label: "Bosh sahifa", icon: Home, href: "/dashboard" },
+  { label: "Bosh sahifa", icon: Home, href: "/customer-home" },
   { label: "Kategoriyalar", icon: LayoutGrid, href: "/questionnaire" },
   { label: "So'rovlarim", icon: ClipboardList, href: "/my-requests" },
   { label: "Suhbatlarim", icon: MessageCircle, href: "/chat-offers" },
-  { label: "Profil", icon: LayoutDashboard, href: "/profile/settings" },
+  { label: "Profil", icon: LayoutDashboard, href: "/dashboard" },
 ];
 
 const PROVIDER_TABS = [
@@ -47,8 +47,8 @@ export function BottomNav() {
     if (href === "/provider/chats") return location.startsWith("/provider/chats") || location.startsWith("/provider/chat/");
     if (href === "/provider/requests") return location.startsWith("/provider/requests");
     if (href === "/questionnaire") return location.startsWith("/questionnaire");
-    if (href === "/dashboard") return location === "/dashboard";
-    if (href === "/profile/settings") return location.startsWith("/profile/settings") || location.startsWith("/settings");
+    if (href === "/customer-home") return location === "/customer-home";
+    if (href === "/dashboard") return location.startsWith("/dashboard") || location.startsWith("/settings") || location.startsWith("/profile/settings");
     if (href === "/my-requests") return location.startsWith("/my-requests");
     return location.startsWith(href);
   }

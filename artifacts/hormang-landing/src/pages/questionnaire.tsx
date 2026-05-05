@@ -953,7 +953,7 @@ function CategorySelectScreen({ onSelect }: { onSelect: (id: string) => void }) 
   const [, setLocation] = useLocation();
   return (
     <div className="min-h-screen bg-gray-50">
-      <QuizHeader onBack={() => setLocation("/")} />
+      <QuizHeader onBack={() => setLocation("/dashboard")} />
       <div className="max-w-lg mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-extrabold text-gray-900 mb-1">Qaysi xizmat kerak?</h1>

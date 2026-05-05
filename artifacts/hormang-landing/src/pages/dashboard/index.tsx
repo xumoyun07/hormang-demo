@@ -188,19 +188,6 @@ function BecomeProviderModal({
   );
 }
 
-const BUYER_BLUE = "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)";
-
-const POPULAR_CATS = [
-  { emoji: "🧹", name: "Tozalash" },
-  { emoji: "🔧", name: "Ta'mirlash" },
-  { emoji: "👶", name: "Enagalik" },
-  { emoji: "🎉", name: "Tadbirlar" },
-  { emoji: "🚛", name: "Ko'chirish" },
-  { emoji: "💇", name: "Go'zallik" },
-  { emoji: "🚗", name: "Avto xizmat" },
-  { emoji: "📚", name: "Repetitorlar" },
-];
-
 function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => void; onBecome: () => void }) {
   const { user, providerProfile } = useAuth();
   const [local, setLocal] = useState<LocalProfile>({});
@@ -210,325 +197,148 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
     if (user?.id) setLocal(getLocalProfile(user.id));
   }, [user?.id, storeVersion]);
 
-  const allRequests = user?.id ? getRequestsByCustomer(user.id) : [];
-  const allOffers   = user?.id ? getOffersByCustomer(user.id)   : [];
-  const allChats    = user?.id ? getChatsByCustomer(user.id)    : [];
-
-  const activeRequests    = allRequests.filter(r => r.status !== "completed" && r.status !== "cancelled");
-  const completedRequests = allRequests.filter(r => r.status === "completed");
-  const pendingOffers     = allOffers.filter(o => o.status === "pending");
-
-  const recentOffers = [...allOffers]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5);
-
-  const recentChats = [...allChats]
-    .sort((a, b) => {
-      const aLast = a.messages[a.messages.length - 1]?.timestamp ?? a.createdAt;
-      const bLast = b.messages[b.messages.length - 1]?.timestamp ?? b.createdAt;
-      return new Date(bLast).getTime() - new Date(aLast).getTime();
-    })
-    .slice(0, 5);
-
-  const checks        = getCompletionChecks(user ?? null, providerProfile ?? null, local);
-  const completionPct = getCompletionPct(checks);
-  const firstName     = user?.firstName ?? "Foydalanuvchi";
-  const fullName      = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
-  const initials      = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase();
-  const locationStr   = local.district ? `${local.district}, ${local.region}` : local.region;
+  const fullName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
+  const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase();
+  const location = local.district ? `${local.district}, ${local.region}` : local.region;
   const hasProviderRole = hasProviderAccess(user ?? null, providerProfile ?? null, local);
 
-  const quickActions = [
-    { icon: Plus,          label: "Yangi so'rov",   desc: "Xizmat toping",     path: "/questionnaire", primary: true },
-    { icon: LayoutGrid,    label: "Kategoriyalar",  desc: "Barcha xizmatlar",  path: "/questionnaire" },
-    { icon: ClipboardList, label: "So'rovlarim",    desc: "Barcha so'rovlar",  path: "/my-requests" },
-    ...(!hasProviderRole ? [{ icon: Briefcase, label: "Ijrochi bo'lish", desc: "Daromad toping", path: "", primary: false, action: onBecome }] : []),
-  ].slice(0, 4);
+  const items = [
+    {
+      icon: Search,
+      title: "Xizmat qidirish",
+      desc: "Mahalliy mutaxassislarni toping",
+      action: () => onNavigate("/questionnaire"),
+      highlight: true,
+    },
+    {
+      icon: ClipboardList,
+      title: "So'rovlarim",
+      desc: "Barcha so'rovlar tarixi",
+      action: () => onNavigate("/request-history"),
+    },
+    {
+      icon: Heart,
+      title: "Saqlanganlar",
+      desc: "Sevimli ijrochilar",
+      badge: "Tez kunda",
+    },
+    {
+      icon: UserPen,
+      title: "Profil sozlamalari",
+      desc: "Ma'lumotlar, parol va hisobing",
+      action: () => onNavigate("/profile/settings"),
+    },
+    {
+      icon: Settings,
+      title: "Sozlamalar",
+      desc: "Bildirishnomalar, til va boshqalar",
+      action: () => onNavigate("/settings"),
+    },
+  ];
 
   return (
-    <div className="space-y-5">
-
-      {/* ── 1. Welcome banner ── */}
+    <div className="space-y-3">
+      {/* ── Customer Profile Header Card ── */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl p-5 text-white"
-        style={{ background: BUYER_BLUE }}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-2xl border border-gray-100 card-shadow p-4"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-blue-100 text-xs font-medium">Xush kelibsiz 👋</p>
-            <h1 className="font-extrabold text-xl mt-0.5 leading-tight">
-              Assalomu alaykum,<br />{firstName}!
-            </h1>
-            {locationStr && (
-              <p className="text-blue-100 text-xs mt-1.5 flex items-center gap-1">
-                <MapPin className="w-3 h-3 flex-shrink-0" /> {locationStr}
-              </p>
-            )}
-          </div>
-          <button
-            onClick={() => onNavigate("/profile/settings")}
-            className="w-[60px] h-[60px] rounded-2xl overflow-hidden flex-shrink-0 ring-2 ring-white/40 active:scale-95 transition-transform"
-          >
+        <div className="flex items-start gap-4">
+          <div className="relative flex-shrink-0">
             {local.photoUrl ? (
-              <img src={local.photoUrl} alt={fullName} className="w-full h-full object-cover" />
+              <img
+                src={local.photoUrl}
+                alt={fullName}
+                className="w-[72px] h-[72px] rounded-2xl object-cover ring-2 ring-blue-100"
+              />
             ) : (
-              <div className="w-full h-full bg-white/20 flex items-center justify-center text-lg font-black">
+              <div
+                className="w-[72px] h-[72px] rounded-2xl flex items-center justify-center text-white text-xl font-black ring-2 ring-blue-100"
+                style={{ background: "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)" }}
+              >
                 {initials || "?"}
               </div>
             )}
-          </button>
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+              <h2 className="text-base font-bold text-gray-900 truncate">
+                {fullName || "Mehmon"}
+              </h2>
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white flex-shrink-0"
+                style={{ background: "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)" }}
+              >
+                Xaridor
+              </span>
+            </div>
+
+            {location && (
+              <p className="flex items-center gap-1 text-xs text-gray-400 mb-2">
+                <MapPin className="w-3 h-3" />
+                {location}
+              </p>
+            )}
+
+            {user?.phone && (
+              <p className="flex items-center gap-1 text-xs text-gray-600">
+                <Phone className="w-3 h-3" />
+                {user.phone}
+              </p>
+            )}
+          </div>
         </div>
 
-        {completionPct < 100 && (
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs text-blue-100 font-medium">Profil to'ldirilishi</span>
-              <span className="text-xs font-extrabold text-white">{completionPct}%</span>
-            </div>
-            <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-white rounded-full transition-all duration-700"
-                style={{ width: `${completionPct}%` }}
-              />
-            </div>
-            <button
-              onClick={() => onNavigate("/profile/settings")}
-              className="mt-2 text-xs font-bold text-white/80 hover:text-white underline underline-offset-2 transition-colors"
-            >
-              Profilni to'ldirish →
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
+          {user?.phone ? (
+            <span className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-green-50 text-green-700 border border-green-100">
+              <Phone className="w-3 h-3" /> Telefon tasdiqlangan
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-amber-50 text-amber-700 border border-amber-100">
+              <Phone className="w-3 h-3" /> Telefon tasdiqlanmagan
+            </span>
+          )}
+        </div>
       </motion.div>
 
-      {/* ── 2. Quick Stats ── */}
-      <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
-        {[
-          { label: "Faol so'rovlar",   val: activeRequests.length,    color: "text-blue-600",   bg: "bg-blue-50",   Icon: ClipboardList },
-          { label: "Yangi takliflar",  val: pendingOffers.length,     color: "text-violet-600", bg: "bg-violet-50", Icon: Inbox },
-          { label: "Yakunlangan",      val: completedRequests.length, color: "text-green-600",  bg: "bg-green-50",  Icon: CheckCircle2 },
-        ].map((s) => (
-          <div key={s.label} className={`flex-shrink-0 w-[120px] ${s.bg} rounded-2xl p-3.5 flex flex-col items-center text-center`}>
-            <s.Icon className={`w-5 h-5 ${s.color} mb-1.5`} />
-            <p className={`text-2xl font-extrabold ${s.color} leading-none`}>{s.val}</p>
-            <p className="text-[10px] text-gray-500 font-semibold leading-tight mt-1">{s.label}</p>
+      {items.map(({ icon: Icon, title, desc, action, highlight, badge }, i) => (
+        <motion.button
+          key={title}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.06, duration: 0.35 }}
+          whileHover={action ? { scale: 1.01, y: -1 } : {}}
+          whileTap={action ? { scale: 0.99 } : {}}
+          onClick={action}
+          disabled={!action}
+          className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center gap-4 group ${
+            highlight
+              ? "text-white border-transparent"
+              : action
+              ? "bg-white border-gray-100 hover:border-blue-200 hover:shadow-md card-shadow"
+              : "bg-white border-gray-100 opacity-55 cursor-not-allowed card-shadow"
+          }`}
+          style={highlight ? { background: "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)" } : {}}
+        >
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform ${action ? "group-hover:scale-110" : ""} ${highlight ? "bg-white/20" : "bg-blue-50"}`}>
+            <Icon className={`w-5 h-5 ${highlight ? "text-white" : "text-blue-600"}`} />
           </div>
-        ))}
-      </div>
-
-      {/* ── 3. Active Requests ── */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-extrabold text-gray-900 text-sm">Faol so'rovlarim</h2>
-          <button onClick={() => onNavigate("/my-requests")} className="text-xs font-semibold text-blue-600 hover:underline">
-            Barchasi →
-          </button>
-        </div>
-
-        {activeRequests.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-8 flex flex-col items-center text-center">
-            <ClipboardList className="w-10 h-10 text-gray-200 mb-3" />
-            <p className="font-bold text-gray-400 text-sm mb-3">Hozircha faol so'rovlar yo'q</p>
-            <button
-              onClick={() => onNavigate("/questionnaire")}
-              className="px-5 py-2 rounded-xl text-sm font-bold text-white"
-              style={{ background: BUYER_BLUE }}
-            >
-              + Yangi so'rov yaratish
-            </button>
+          <div className="flex-1 min-w-0">
+            <h3 className={`font-bold text-sm ${highlight ? "text-white" : "text-gray-900"}`}>{title}</h3>
+            <p className={`text-xs truncate ${highlight ? "text-blue-100" : "text-gray-500"}`}>{desc}</p>
           </div>
-        ) : (
-          <div className="space-y-2">
-            {activeRequests.slice(0, 5).map((req, i) => (
-              <motion.button
-                key={req.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                onClick={() => onNavigate("/my-requests")}
-                className="w-full bg-white rounded-2xl border border-gray-100 card-shadow p-4 text-left hover:border-blue-200 active:scale-[0.99] transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0 text-xl">
-                    {req.emoji}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-gray-900 text-sm truncate">{req.categoryName}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {new Date(req.createdAt).toLocaleDateString("uz-UZ", { day: "numeric", month: "short", year: "numeric" })}
-                      {req.region ? ` · ${req.region}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      req.status === "open"     ? "bg-blue-50 text-blue-700" :
-                      req.status === "accepted" ? "bg-green-50 text-green-700" :
-                                                  "bg-gray-100 text-gray-500"
-                    }`}>
-                      {req.status === "open" ? "Ochiq" : req.status === "accepted" ? "Qabul qilindi" : req.status}
-                    </span>
-                    {req.offerCount > 0 && (
-                      <span className="text-[10px] font-semibold text-violet-600">{req.offerCount} taklif</span>
-                    )}
-                  </div>
-                </div>
-              </motion.button>
-            ))}
-          </div>
-        )}
-      </section>
+          {badge ? (
+            <span className="text-[10px] font-bold bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">{badge}</span>
+          ) : action ? (
+            <ChevronRight className={`w-4 h-4 flex-shrink-0 ${highlight ? "text-blue-200" : "text-gray-400 group-hover:text-blue-500"}`} />
+          ) : null}
+        </motion.button>
+      ))}
 
-      {/* ── 4. New Offers ── */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-extrabold text-gray-900 text-sm">Yangi takliflar</h2>
-          <button onClick={() => onNavigate("/chat-offers")} className="text-xs font-semibold text-blue-600 hover:underline">
-            Barchasi →
-          </button>
-        </div>
-
-        {recentOffers.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-6 flex flex-col items-center text-center">
-            <Inbox className="w-8 h-8 text-gray-200 mb-2" />
-            <p className="text-sm font-semibold text-gray-400">Hozircha takliflar yo'q</p>
-          </div>
-        ) : (
-          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
-            {recentOffers.map((offer) => {
-              const req = allRequests.find(r => r.id === offer.requestId);
-              return (
-                <button
-                  key={offer.id}
-                  onClick={() => onNavigate("/chat-offers")}
-                  className="flex-shrink-0 w-44 bg-white rounded-2xl border border-gray-100 card-shadow p-4 text-left hover:border-blue-200 active:scale-[0.98] transition-all"
-                >
-                  <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center text-white text-sm font-black mb-3"
-                    style={{ background: offer.masterColor || BUYER_BLUE }}
-                  >
-                    {offer.masterInitials}
-                  </div>
-                  <p className="font-bold text-gray-900 text-sm leading-snug truncate">{offer.masterName}</p>
-                  <p className="text-xs text-gray-400 truncate mt-0.5">{req?.categoryName}</p>
-                  <p className="text-sm font-extrabold text-blue-600 mt-2">
-                    {offer.price.toLocaleString()} so'm
-                  </p>
-                  <span className={`mt-1.5 inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                    offer.status === "pending"  ? "bg-amber-50 text-amber-700" :
-                    offer.status === "accepted" ? "bg-green-50 text-green-700" :
-                                                  "bg-gray-100 text-gray-500"
-                  }`}>
-                    {offer.status === "pending" ? "Kutilmoqda" : offer.status === "accepted" ? "Qabul qilindi" : offer.status}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* ── 5. Recent Chats ── */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-extrabold text-gray-900 text-sm">Oxirgi suhbatlar</h2>
-          <button onClick={() => onNavigate("/chat-offers")} className="text-xs font-semibold text-blue-600 hover:underline">
-            Barchasi →
-          </button>
-        </div>
-
-        {recentChats.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-6 flex flex-col items-center text-center">
-            <MessageCircle className="w-8 h-8 text-gray-200 mb-2" />
-            <p className="text-sm font-semibold text-gray-400">Suhbatlar hali mavjud emas</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {recentChats.map((chat) => {
-              const lastMsg = chat.messages[chat.messages.length - 1];
-              const hasNewMsg = lastMsg?.sender === "master";
-              return (
-                <button
-                  key={chat.id}
-                  onClick={() => onNavigate(`/chat/${chat.id}`)}
-                  className="w-full bg-white rounded-2xl border border-gray-100 card-shadow p-4 text-left hover:border-blue-200 active:scale-[0.99] transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-11 h-11 rounded-2xl flex items-center justify-center text-white text-sm font-black flex-shrink-0"
-                      style={{ background: chat.masterColor || BUYER_BLUE }}
-                    >
-                      {chat.masterInitials}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-bold text-gray-900 text-sm truncate">{chat.masterName}</p>
-                        {lastMsg && (
-                          <span className="text-[10px] text-gray-400 flex-shrink-0">
-                            {new Date(lastMsg.timestamp).toLocaleDateString("uz-UZ", { day: "numeric", month: "short" })}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-400 truncate mt-0.5">
-                        {lastMsg
-                          ? lastMsg.attachment ? "📎 Fayl" : lastMsg.text
-                          : chat.categoryName}
-                      </p>
-                    </div>
-                    {hasNewMsg && (
-                      <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* ── 6. Quick Actions ── */}
-      <section>
-        <h2 className="font-extrabold text-gray-900 text-sm mb-3">Tezkor harakatlar</h2>
-        <div className="grid grid-cols-2 gap-2.5">
-          {quickActions.map((a) => (
-            <button
-              key={a.label}
-              onClick={() => "action" in a && a.action ? a.action() : onNavigate(a.path)}
-              className={`p-4 rounded-2xl text-left transition-all active:scale-[0.97] ${
-                a.primary
-                  ? "text-white"
-                  : "bg-white border border-gray-100 card-shadow hover:border-blue-200"
-              }`}
-              style={a.primary ? { background: BUYER_BLUE } : {}}
-            >
-              <a.icon className={`w-5 h-5 mb-2 ${a.primary ? "text-white" : "text-blue-600"}`} />
-              <p className={`font-bold text-sm ${a.primary ? "text-white" : "text-gray-900"}`}>{a.label}</p>
-              <p className={`text-xs mt-0.5 ${a.primary ? "text-blue-100" : "text-gray-400"}`}>{a.desc}</p>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* ── 7. Recommended Categories ── */}
-      <section>
-        <h2 className="font-extrabold text-gray-900 text-sm mb-3">Mashhur xizmatlar</h2>
-        <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
-          {POPULAR_CATS.map((cat) => (
-            <button
-              key={cat.name}
-              onClick={() => onNavigate("/questionnaire")}
-              className="flex-shrink-0 bg-white rounded-2xl border border-gray-100 card-shadow px-4 py-3 text-center hover:border-blue-200 active:scale-[0.97] transition-all"
-            >
-              <div className="text-2xl mb-1">{cat.emoji}</div>
-              <p className="text-[10px] font-bold text-gray-700 whitespace-nowrap">{cat.name}</p>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Become provider CTA ── */}
       {!hasProviderRole && <BecomeProviderCard onBecome={onBecome} />}
-
     </div>
   );
 }
