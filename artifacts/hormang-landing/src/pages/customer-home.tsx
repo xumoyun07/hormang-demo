@@ -3,6 +3,7 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { BottomNav } from "@/components/bottom-nav";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
+import logoImg from "/hormang-logo.png";
 import {
   ClipboardList, Inbox, CheckCircle2,
   Plus, MessageCircle, LayoutGrid, Briefcase, LogOut,
@@ -90,53 +91,59 @@ export default function CustomerHomePage() {
     <>
       <div className="min-h-screen bg-gray-50">
 
-        {/* ── ACTION HEADER ── */}
-        <div className="px-4 pt-10 pb-7" style={{ background: BLUE_GRAD }}>
-          {/* Top row: avatar + logout */}
-          <div className="max-w-lg mx-auto flex items-center justify-between mb-6">
-            <button
-              onClick={() => setLocation("/profile/settings")}
-              className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white/30 active:scale-95 transition-transform flex-shrink-0"
-              style={local.photoUrl ? {} : { background: "rgba(255,255,255,0.2)" }}
-            >
-              {local.photoUrl ? (
-                <img src={local.photoUrl} alt={fullName} className="w-full h-full object-cover" />
-              ) : (
-                <span className="w-full h-full flex items-center justify-center text-white text-xs font-bold">
-                  {initials || "?"}
-                </span>
-              )}
-            </button>
-            <button onClick={handleLogout} className="text-white/60 hover:text-white transition-colors">
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
+        {/* ── STICKY WHITE HEADER ── */}
+        <header className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-10 card-shadow">
+          <div className="max-w-lg mx-auto flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
+              <span className="font-bold text-gray-900 text-sm">Hormang</span>
+            </div>
 
-          {/* Greeting + helper text */}
-          <div className="max-w-lg mx-auto mb-5">
-            <p className="text-blue-100 text-sm font-medium mb-1">Salom, {firstName} 👋</p>
-            <h1 className="text-white text-[22px] font-extrabold leading-tight mb-1">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setLocation("/profile/settings")}
+                className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-blue-100 active:scale-95 transition-transform"
+                style={local.photoUrl ? {} : { background: BLUE_GRAD }}
+              >
+                {local.photoUrl ? (
+                  <img src={local.photoUrl} alt={fullName} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="w-full h-full flex items-center justify-center text-white text-xs font-bold">
+                    {initials || "?"}
+                  </span>
+                )}
+              </button>
+              <button onClick={handleLogout} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-lg mx-auto px-4 py-4 pb-28 space-y-4">
+
+          {/* ── GREETING + PRIMARY CTA CARD ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl px-5 pt-5 pb-5"
+            style={{ background: BLUE_GRAD }}
+          >
+            <p className="text-blue-100 text-sm font-medium mb-0.5">Salom, {firstName} 👋</p>
+            <h1 className="text-white text-xl font-extrabold leading-tight mb-1">
               Qanday xizmat kerak?
             </h1>
-            <p className="text-blue-200 text-xs">
+            <p className="text-blue-200 text-xs mb-4">
               Xizmat topish uchun yangi so'rov yarating
             </p>
-          </div>
-
-          {/* Primary CTA */}
-          <div className="max-w-lg mx-auto">
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={() => setLocation("/questionnaire")}
-              className="w-full bg-white text-blue-700 font-extrabold text-base py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg active:bg-blue-50 transition-colors"
+              className="w-full bg-white text-blue-700 font-extrabold text-sm py-3 rounded-xl flex items-center justify-center gap-2 shadow-md active:bg-blue-50 transition-colors"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
               Yangi so'rov yaratish
             </motion.button>
-          </div>
-        </div>
-
-        <main className="max-w-lg mx-auto px-4 py-4 pb-28 space-y-4">
+          </motion.div>
 
           {/* ── Secondary Actions ── */}
           <div className="flex gap-2.5">
