@@ -105,7 +105,7 @@ React + Vite frontend for the Hormang marketplace. Served on port 5173 via the "
 - `/auth/register` — Multi-step phone+OTP registration (name → phone → OTP → [provider profile])
 - `/auth/login` — Phone-only 2-step login (phone → OTP code)
 - `/auth/migrate` — Legacy migration page: email+password → add phone → OTP verify
-- `/dashboard` — Unified dashboard (also at `/dashboard/buyer`, `/dashboard/provider`)
+- `/dashboard` — **Customer Dashboard** (personalized home for buyers): welcome banner with profile photo + completion bar, quick stats (active requests / pending offers / completed), active requests list, new offers horizontal scroll, recent chats, quick actions grid, recommended categories. Providers see a separate provider profile + menu view in the same route via role toggle.
 - `/profile/settings` — Account (name), Contact info (optional email), provider profile sections
 - `/providers/:id` — Public provider profile page
 - `/provider-reviews` — Provider review inbox with customer review cards, photo previews, and customer profile preview modal
