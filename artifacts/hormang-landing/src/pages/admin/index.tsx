@@ -2706,7 +2706,12 @@ type PerfFilter     = "all" | "top" | "low" | "nojobs";
 type RiskFilter     = "all" | "flagged" | "suspended";
 type ReferralFilter = "all" | "top" | "none";
 
-function UsersSection({ refreshKey, onGoToFeedback }: { refreshKey: number; onGoToFeedback?: (userId: string) => void }) {
+function UsersSection({ refreshKey, onGoToFeedback, openUserId, onOpenUserIdConsumed }: {
+  refreshKey: number;
+  onGoToFeedback?: (userId: string) => void;
+  openUserId?: string | null;
+  onOpenUserIdConsumed?: () => void;
+}) {
   const [users, setUsers]                     = useState<AdminUser[]>([]);
   const [suspended, setSuspended]             = useState<Set<string>>(() =>
     new Set(readKey<string[]>("hormang_admin_suspended_users", []))
@@ -2721,6 +2726,16 @@ function UsersSection({ refreshKey, onGoToFeedback }: { refreshKey: number; onGo
   const [selectedUser, setSelectedUser]       = useState<AdminUser | null>(null);
   const [txUserId, setTxUserId]               = useState<string | null>(null);
   const [txUserName, setTxUserName]           = useState<string>("");
+
+  /* Auto-open detail modal when navigated here from another section */
+  useEffect(() => {
+    if (!openUserId) return;
+    const target = users.find(u => u.userId === openUserId);
+    if (target) {
+      setSelectedUser(target);
+      onOpenUserIdConsumed?.();
+    }
+  }, [openUserId, users]);
 
   const load = useCallback(() => {
     const allOffers   = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
@@ -5271,6 +5286,7 @@ export default function AdminDashboard() {
   const [collapsed, setCollapsed] = useState(false);
   const [refreshKey, setRefreshKey]           = useState(0);
   const [feedbackFilterUserId, setFeedbackFilterUserId] = useState<string | null>(null);
+  const [openUserIdInUsers,   setOpenUserIdInUsers]     = useState<string | null>(null);
 
   /* Subscribe to main app store events + cross-tab storage events */
   useEffect(() => {
@@ -5315,12 +5331,12 @@ export default function AdminDashboard() {
               {section === "marketplace"    && <MarketplaceSection    {...sectionProps} />}
               {section === "requests"       && <RequestsSection       {...sectionProps} />}
               {section === "offers"         && <OffersSection         {...sectionProps} />}
-              {section === "users"          && <UsersSection          {...sectionProps} onGoToFeedback={(uid) => { setFeedbackFilterUserId(uid); setSection("feedback"); }} />}
+              {section === "users"          && <UsersSection          {...sectionProps} onGoToFeedback={(uid) => { setFeedbackFilterUserId(uid); setSection("feedback"); }} openUserId={openUserIdInUsers} onOpenUserIdConsumed={() => setOpenUserIdInUsers(null)} />}
               {section === "monetization"   && <MonetizationSection   {...sectionProps} />}
               {section === "announcements"  && <AnnouncementsSection  {...sectionProps} />}
               {section === "audit"          && <AuditLogSection       {...sectionProps} />}
               {section === "categories"     && <CategoriesSection />}
-              {section === "feedback"       && <FeedbackAdminSection {...sectionProps} filterUserId={feedbackFilterUserId} onNavigateToUser={(uid) => { setFeedbackFilterUserId(null); setSection("users"); }} />}
+              {section === "feedback"       && <FeedbackAdminSection {...sectionProps} filterUserId={feedbackFilterUserId} onNavigateToUser={(uid) => { setFeedbackFilterUserId(null); setOpenUserIdInUsers(uid); setSection("users"); }} />}
             </motion.div>
           </AnimatePresence>
         </div>

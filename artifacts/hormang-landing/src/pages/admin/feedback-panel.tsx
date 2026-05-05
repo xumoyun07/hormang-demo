@@ -76,9 +76,11 @@ function UserCell({
   }
 
   return (
-    <button
+    <div
+      role={onNavigate ? "button" : undefined}
+      tabIndex={onNavigate ? 0 : undefined}
       onClick={onNavigate}
-      disabled={!onNavigate}
+      onKeyDown={onNavigate ? (e) => { if (e.key === "Enter" || e.key === " ") onNavigate(); } : undefined}
       className={`flex items-center gap-2 text-left group ${onNavigate ? "hover:opacity-80 cursor-pointer" : "cursor-default"} transition-opacity`}
     >
       <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${roleBg}`}>
@@ -93,7 +95,7 @@ function UserCell({
           {onNavigate && <ExternalLink className="w-2.5 h-2.5 text-gray-300 group-hover:text-blue-400 transition-colors" />}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
