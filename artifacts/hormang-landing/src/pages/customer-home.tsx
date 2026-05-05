@@ -21,6 +21,14 @@ import {
 
 const BLUE_GRAD = "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)";
 
+const UZ_MONTHS = ["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
+function fmtDate(iso: string, withYear = false): string {
+  const d = new Date(iso);
+  const day = d.getDate();
+  const mon = UZ_MONTHS[d.getMonth()];
+  return withYear ? `${day}-${mon}, ${d.getFullYear()}` : `${day}-${mon}`;
+}
+
 const POPULAR_CATS = [
   { emoji: "🧹", name: "Tozalash" },
   { emoji: "🔧", name: "Ta'mirlash" },
@@ -227,7 +235,7 @@ export default function CustomerHomePage() {
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-gray-900 text-sm truncate">{req.categoryName}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {new Date(req.createdAt).toLocaleDateString("uz-UZ", { day: "numeric", month: "short", year: "numeric" })}
+                          {fmtDate(req.createdAt, true)}
                           {req.region ? ` · ${req.region}` : ""}
                         </p>
                       </div>
@@ -336,7 +344,7 @@ export default function CustomerHomePage() {
                             <p className="font-bold text-gray-900 text-sm truncate">{chat.masterName}</p>
                             {lastMsg && (
                               <span className="text-[10px] text-gray-400 flex-shrink-0">
-                                {new Date(lastMsg.timestamp).toLocaleDateString("uz-UZ", { day: "numeric", month: "short" })}
+                                {fmtDate(lastMsg.timestamp)}
                               </span>
                             )}
                           </div>
