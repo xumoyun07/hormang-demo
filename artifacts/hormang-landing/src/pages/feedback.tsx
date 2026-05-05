@@ -4,15 +4,28 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/auth-context";
 import { BottomNav } from "@/components/bottom-nav";
 import {
-  saveFeedback,
-  type FeedbackType,
+  saveFeedback, getFeedbacksByUser,
+  type FeedbackType, type FeedbackStatus,
 } from "@/lib/feedback-store";
 import { getRequestsByCustomer } from "@/lib/requests-store";
 import { useToast } from "@/hooks/use-toast";
 import {
   ChevronLeft, AlertCircle, TriangleAlert, Lightbulb,
-  Check, Upload, X, CheckCircle2, Loader2, Paperclip,
+  Check, Upload, X, CheckCircle2, Loader2, Paperclip, MessagesSquare,
 } from "lucide-react";
+
+const HIST_TYPE: Record<string, { emoji: string; label: string }> = {
+  problem:    { emoji: "🆘", label: "Muammo"  },
+  complaint:  { emoji: "⚠️", label: "Shikoyat" },
+  suggestion: { emoji: "💡", label: "Taklif"  },
+};
+
+const HIST_STATUS: Record<FeedbackStatus, { label: string; color: string; bg: string }> = {
+  new:       { label: "Yangi",       color: "text-gray-500",  bg: "bg-gray-100" },
+  in_review: { label: "Ko'rilmoqda", color: "text-blue-600",  bg: "bg-blue-50"  },
+  resolved:  { label: "Hal qilindi", color: "text-green-600", bg: "bg-green-50" },
+  rejected:  { label: "Rad etildi",  color: "text-red-600",   bg: "bg-red-50"   },
+};
 
 const TYPE_OPTIONS: {
   id: FeedbackType;
@@ -119,8 +132,9 @@ export default function FeedbackPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone]           = useState(false);
 
-  const fileRef = useRef<HTMLInputElement>(null);
+  const fileRef  = useRef<HTMLInputElement>(null);
   const myRequests = user?.id ? getRequestsByCustomer(user.id) : [];
+  const myHistory  = user?.id ? getFeedbacksByUser(user.id) : [];
 
   function canAdvanceStep0() { return !!type; }
   function canAdvanceStep1() {
@@ -515,6 +529,44 @@ export default function FeedbackPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* ── History ── */}
+      {myHistory.length > 0 && (
+        <div className="px-4 pb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <MessagesSquare className="w-4 h-4 text-gray-400" />
+            <h3 className="text-sm font-bold text-gray-700">Mening murojaatlarim</h3>
+            <span className="text-[10px] font-bold bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">
+              {myHistory.length}
+            </span>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+            {myHistory.map((fb, i) => {
+              const tm = HIST_TYPE[fb.type] ?? { emoji: "📋", label: fb.type };
+              const sm = HIST_STATUS[fb.status];
+              return (
+                <div
+                  key={fb.id}
+                  className={`flex items-center gap-3 px-4 py-3 ${
+                    i < myHistory.length - 1 ? "border-b border-gray-50" : ""
+                  }`}
+                >
+                  <span className="text-lg flex-shrink-0">{tm.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-gray-800 truncate">{fb.title}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {new Date(fb.createdAt).toLocaleDateString("uz-UZ")}
+                    </p>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${sm.bg} ${sm.color}`}>
+                    {sm.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Bottom CTA */}
       <div className="fixed bottom-20 left-0 right-0 px-4 pb-2">
