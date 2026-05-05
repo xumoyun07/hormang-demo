@@ -21,6 +21,7 @@ export interface Announcement {
   isPinned?: boolean;
   expiresAt?: string;
   status: "draft" | "published";
+  publishAt?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -84,6 +85,7 @@ export function saveAnnouncement(
     isPinned: data.isPinned ?? false,
     expiresAt: data.expiresAt,
     status: data.status,
+    publishAt: data.publishAt,
     createdAt: now,
   };
   writeJSON(ANNOUNCEMENTS_KEY, [created, ...all]);
@@ -134,7 +136,8 @@ export function getPublishedAnnouncements(
       (a) =>
         a.status === "published" &&
         (a.target === "all" || a.target === audience) &&
-        (!a.expiresAt || new Date(a.expiresAt) > now),
+        (!a.expiresAt || new Date(a.expiresAt) > now) &&
+        (!a.publishAt || new Date(a.publishAt) <= now),
     )
     .sort((a, b) => {
       if ((a.isPinned ? 1 : 0) !== (b.isPinned ? 1 : 0))

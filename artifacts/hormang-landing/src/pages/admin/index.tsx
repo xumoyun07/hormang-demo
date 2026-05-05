@@ -48,6 +48,7 @@ import {
   toggleAnnouncementPublished, toggleAnnouncementPinned,
   type Announcement,
 } from "@/lib/announcements-store";
+import ReactMarkdown from "react-markdown";
 
 /* ─── Credentials ───────────────────────────────────────────────── */
 const ADMIN_USER = "hormangVIP";
@@ -4584,34 +4585,64 @@ function AuditLogSection({ refreshKey }: { refreshKey: number }) {
 type AnnForm = Omit<Announcement, "id" | "createdAt" | "updatedAt">;
 const EMPTY_FORM: AnnForm = {
   type: "news", title: "", content: "", image: "", ctaText: "", ctaLink: "",
-  target: "all", isPinned: false, expiresAt: "", status: "draft",
+  target: "all", isPinned: false, expiresAt: "", status: "draft", publishAt: "",
 };
 
 function AnnouncementsSection({ refreshKey }: { refreshKey: number }) {
-  const [items, setItems]         = useState<Announcement[]>([]);
-  const [editing, setEditing]     = useState<Announcement | null>(null);
-  const [showForm, setShowForm]   = useState(false);
-  const [form, setForm]           = useState<AnnForm>(EMPTY_FORM);
-  const [preview, setPreview]     = useState<Announcement | null>(null);
-  const [saving, setSaving]       = useState(false);
+  const [items, setItems]               = useState<Announcement[]>([]);
+  const [editing, setEditing]           = useState<Announcement | null>(null);
+  const [showForm, setShowForm]         = useState(false);
+  const [form, setForm]                 = useState<AnnForm>(EMPTY_FORM);
+  const [preview, setPreview]           = useState<Announcement | null>(null);
+  const [saving, setSaving]             = useState(false);
+  const [contentTab, setContentTab]     = useState<"write" | "preview">("write");
+  const [errors, setErrors]             = useState<Record<string, string>>({});
 
   function load() { setItems(getAllAnnouncements()); }
   useEffect(() => { load(); }, [refreshKey]);
 
-  function openCreate() { setEditing(null); setForm(EMPTY_FORM); setShowForm(true); }
+  function openCreate() { setEditing(null); setForm(EMPTY_FORM); setErrors({}); setContentTab("write"); setShowForm(true); }
   function openEdit(a: Announcement) {
     setEditing(a);
     setForm({
       type: a.type, title: a.title, content: a.content, image: a.image ?? "",
       ctaText: a.ctaText ?? "", ctaLink: a.ctaLink ?? "", target: a.target,
       isPinned: a.isPinned ?? false, expiresAt: a.expiresAt ?? "", status: a.status,
+      publishAt: a.publishAt ?? "",
     });
+    setErrors({});
+    setContentTab("write");
     setShowForm(true);
   }
-  function closeForm() { setShowForm(false); setEditing(null); }
+  function closeForm() { setShowForm(false); setEditing(null); setErrors({}); }
+
+  function validate(): boolean {
+    const e: Record<string, string> = {};
+    if (!form.title.trim()) e.title = "Sarlavha majburiy";
+    if (form.title.length > 120) e.title = "Sarlavha 120 belgidan oshmasin";
+    if (!form.content.trim()) e.content = "Kontent majburiy";
+    if (form.ctaText?.trim() && !form.ctaLink?.trim()) e.ctaLink = "CTA havolasi ham talab qilinadi";
+    if (form.ctaLink?.trim() && !form.ctaText?.trim()) e.ctaText = "CTA matni ham talab qilinadi";
+    if (form.ctaLink?.trim() && !form.ctaLink.startsWith("/") && !form.ctaLink.startsWith("http")) {
+      e.ctaLink = "Havola / yoki https:// bilan boshlanishi kerak";
+    }
+    if (form.type === "event" && !form.expiresAt) {
+      e.expiresAt = "Tadbirlar uchun muddat tavsiya etiladi";
+    }
+    setErrors(e);
+    return !Object.keys(e).some((k) => k !== "expiresAt");
+  }
+
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => set("image", reader.result as string);
+    reader.readAsDataURL(file);
+  }
 
   function handleSave() {
-    if (!form.title.trim() || !form.content.trim()) return;
+    if (!validate()) return;
     setSaving(true);
     const payload = {
       ...form,
@@ -4620,6 +4651,7 @@ function AnnouncementsSection({ refreshKey }: { refreshKey: number }) {
       ctaText: form.ctaText?.trim() || undefined,
       ctaLink: form.ctaLink?.trim() || undefined,
       expiresAt: form.expiresAt?.trim() || undefined,
+      publishAt: form.publishAt?.trim() || undefined,
     };
     const saved = saveAnnouncement(payload as Parameters<typeof saveAnnouncement>[0]);
     logAction({
@@ -4781,118 +4813,308 @@ function AnnouncementsSection({ refreshKey }: { refreshKey: number }) {
             />
             <motion.div
               initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
-              transition={{ type: "spring", stiffness: 320, damping: 30 }}
-              className="fixed right-0 top-0 h-full z-[61] w-full max-w-lg bg-white shadow-2xl flex flex-col"
+              transition={{ type: "spring", stiffness: 300, damping: 32 }}
+              className="fixed right-0 top-0 h-full z-[61] w-full max-w-5xl bg-gray-50 shadow-2xl flex flex-col"
             >
-              {/* Drawer header */}
-              <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 flex-shrink-0">
-                <Bell className="w-5 h-5 text-red-600" />
-                <h2 className="font-extrabold text-gray-900 flex-1">{editing ? "E'lonni tahrirlash" : "Yangi e'lon"}</h2>
-                <button onClick={closeForm} className="p-1.5 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200"><X className="w-4 h-4" /></button>
+              {/* ── Drawer header ── */}
+              <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-200 bg-white flex-shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center">
+                  <Bell className="w-4 h-4 text-red-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-extrabold text-gray-900 text-sm">{editing ? "E'lonni tahrirlash" : "Yangi e'lon yaratish"}</h2>
+                  <p className="text-[10px] text-gray-400">Barcha o'zgarishlar avtomatik saqlanmaydi</p>
+                </div>
+                <button onClick={closeForm} className="p-1.5 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              {/* Drawer body */}
-              <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              {/* ── Two-column body ── */}
+              <div className="flex flex-1 overflow-hidden">
 
-                {/* Basic info */}
-                <section className="space-y-3">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Asosiy ma'lumot</p>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Sarlavha *</label>
-                    <input value={f.title} onChange={(e) => set("title", e.target.value)}
-                      className={`${inputCls} w-full`} placeholder="E'lon sarlavhasi..." />
+                {/* LEFT: form */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6 border-r border-gray-200">
+
+                  {/* 📌 Asosiy ma'lumot */}
+                  <section>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">📌 Asosiy ma'lumot</p>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-semibold text-gray-600">Sarlavha *</label>
+                          <span className={`text-[10px] font-mono ${f.title.length > 100 ? "text-orange-500" : "text-gray-400"}`}>
+                            {f.title.length}/120
+                          </span>
+                        </div>
+                        <input
+                          value={f.title}
+                          onChange={(e) => set("title", e.target.value.slice(0, 120))}
+                          className={`${inputCls} w-full ${errors.title ? "border-red-400 bg-red-50" : ""}`}
+                          placeholder="E'lon sarlavhasi..."
+                        />
+                        {errors.title && <p className="text-[10px] text-red-500 mt-0.5">⚠ {errors.title}</p>}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 mb-1 block">Tur</label>
+                          <select value={f.type} onChange={(e) => set("type", e.target.value)} className={`${inputCls} w-full`}>
+                            <option value="news">📰 Yangilik</option>
+                            <option value="event">🎯 Tadbir</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 mb-1 block">Auditoriya</label>
+                          <select value={f.target} onChange={(e) => set("target", e.target.value as Announcement["target"])} className={`${inputCls} w-full`}>
+                            <option value="all">👥 Hammaga</option>
+                            <option value="providers">🔧 Ijrochilar</option>
+                            <option value="customers">🛍 Xaridorlar</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <div className="border-t border-gray-200" />
+
+                  {/* 🖼 Media */}
+                  <section>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">🖼 Muqova rasmi</p>
+                    {f.image ? (
+                      <div className="relative">
+                        <img
+                          src={f.image} alt="cover"
+                          className="w-full h-40 object-cover rounded-xl border border-gray-200"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                        <button
+                          onClick={() => set("image", "")}
+                          className="absolute top-2 right-2 px-2.5 py-1 rounded-lg bg-white/90 backdrop-blur text-xs font-bold text-red-600 border border-red-200 shadow hover:bg-red-50 transition-colors"
+                        >
+                          🗑 O'chirish
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-red-300 hover:bg-red-50/30 transition-colors group">
+                        <div className="text-center">
+                          <div className="text-2xl mb-1">📷</div>
+                          <p className="text-xs font-semibold text-gray-500 group-hover:text-red-600">Rasm yuklash</p>
+                          <p className="text-[10px] text-gray-400 mt-0.5">JPG, PNG, WebP · Maks 5 MB</p>
+                        </div>
+                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                      </label>
+                    )}
+                  </section>
+
+                  <div className="border-t border-gray-200" />
+
+                  {/* 📝 Kontent */}
+                  <section>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">📝 Kontent *</p>
+                      <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                        <button
+                          onClick={() => setContentTab("write")}
+                          className={`px-3 py-1 text-[10px] font-bold transition-colors ${contentTab === "write" ? "bg-gray-800 text-white" : "text-gray-500 hover:bg-gray-100"}`}
+                        >
+                          ✏️ Yozish
+                        </button>
+                        <button
+                          onClick={() => setContentTab("preview")}
+                          className={`px-3 py-1 text-[10px] font-bold transition-colors ${contentTab === "preview" ? "bg-gray-800 text-white" : "text-gray-500 hover:bg-gray-100"}`}
+                        >
+                          👁 Ko'rish
+                        </button>
+                      </div>
+                    </div>
+                    {contentTab === "write" ? (
+                      <textarea
+                        value={f.content}
+                        onChange={(e) => set("content", e.target.value)}
+                        rows={8}
+                        className={`${inputCls} w-full resize-y min-h-[160px] font-mono text-sm ${errors.content ? "border-red-400 bg-red-50" : ""}`}
+                        placeholder={"E'lon matni...\n\n**Qalin** matn, *kursiv*, - ro'yxat\n\nMarkdown qo'llab-quvvatlanadi."}
+                      />
+                    ) : (
+                      <div className="min-h-[160px] p-4 bg-white rounded-xl border border-gray-200 text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none overflow-auto">
+                        {f.content ? (
+                          <ReactMarkdown>{f.content}</ReactMarkdown>
+                        ) : (
+                          <p className="text-gray-400 italic">Hali kontent yo'q…</p>
+                        )}
+                      </div>
+                    )}
+                    {errors.content && <p className="text-[10px] text-red-500 mt-0.5">⚠ {errors.content}</p>}
+                  </section>
+
+                  <div className="border-t border-gray-200" />
+
+                  {/* 🎯 CTA */}
+                  <section>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">🎯 CTA tugma (ixtiyoriy)</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">Tugma matni</label>
+                        <input
+                          value={f.ctaText ?? ""}
+                          onChange={(e) => set("ctaText", e.target.value)}
+                          className={`${inputCls} w-full ${errors.ctaText ? "border-red-400" : ""}`}
+                          placeholder="Tanga sotib olish"
+                        />
+                        {errors.ctaText && <p className="text-[10px] text-red-500 mt-0.5">⚠ {errors.ctaText}</p>}
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">Havola</label>
+                        <input
+                          value={f.ctaLink ?? ""}
+                          onChange={(e) => set("ctaLink", e.target.value)}
+                          className={`${inputCls} w-full ${errors.ctaLink ? "border-red-400" : ""}`}
+                          placeholder="/plans yoki https://..."
+                        />
+                        {errors.ctaLink && <p className="text-[10px] text-red-500 mt-0.5">⚠ {errors.ctaLink}</p>}
+                      </div>
+                    </div>
+                  </section>
+
+                  <div className="border-t border-gray-200" />
+
+                  {/* ⚙️ Ko'rinish */}
+                  <section>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">⚙️ Ko'rinish va rejalashtirish</p>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 mb-1 block">Status</label>
+                          <select value={f.status} onChange={(e) => set("status", e.target.value as Announcement["status"])} className={`${inputCls} w-full`}>
+                            <option value="draft">📝 Qoralama</option>
+                            <option value="published">✅ Chop etilgan</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-gray-600 mb-1 block">
+                            Muddat {f.type === "event" && <span className="text-orange-500">(tavsiya)</span>}
+                          </label>
+                          <input
+                            type="date"
+                            value={f.expiresAt ?? ""}
+                            onChange={(e) => set("expiresAt", e.target.value)}
+                            className={`${inputCls} w-full ${errors.expiresAt ? "border-orange-400" : ""}`}
+                          />
+                          {errors.expiresAt && <p className="text-[10px] text-orange-500 mt-0.5">⚠ {errors.expiresAt}</p>}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">
+                          🕐 Rejalashtirish (ixtiyoriy)
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={f.publishAt ?? ""}
+                          onChange={(e) => set("publishAt", e.target.value)}
+                          className={`${inputCls} w-full`}
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1">Belgilangan vaqtda avtomatik chop etiladi</p>
+                      </div>
+                      <label className="flex items-center gap-2.5 cursor-pointer select-none p-3 rounded-xl bg-amber-50 border border-amber-200">
+                        <input
+                          type="checkbox"
+                          checked={f.isPinned ?? false}
+                          onChange={(e) => set("isPinned", e.target.checked)}
+                          className="w-4 h-4 rounded accent-amber-500"
+                        />
+                        <div>
+                          <p className="text-sm font-bold text-amber-800">📌 Tepada qo'yish</p>
+                          <p className="text-[10px] text-amber-600">Barcha e'lonlar ustida ko'rinadi</p>
+                        </div>
+                      </label>
+                    </div>
+                  </section>
+                </div>
+
+                {/* RIGHT: live preview */}
+                <div className="w-80 flex-shrink-0 overflow-y-auto p-5 bg-gray-100">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">👁 Jonli ko'rinish</p>
+
+                  {/* Provider-home-style card preview */}
+                  <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                    {f.image ? (
+                      <img
+                        src={f.image} alt="preview"
+                        className="w-full h-28 object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : (
+                      <div className="w-full h-20 bg-gradient-to-r from-gray-100 to-gray-200 flex items-center justify-center">
+                        <span className="text-2xl opacity-30">🖼</span>
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold border ${
+                          f.type === "event" ? "bg-orange-50 text-orange-700 border-orange-200" : "bg-blue-50 text-blue-700 border-blue-200"
+                        }`}>
+                          {f.type === "event" ? "🎯 Tadbir" : "📰 Yangilik"}
+                        </span>
+                        {f.isPinned && <span className="text-xs">📌</span>}
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-red-600 border border-red-200">Yangi</span>
+                      </div>
+                      <p className="font-bold text-gray-900 text-sm leading-snug mb-1">
+                        {f.title || <span className="text-gray-400 italic">Sarlavha…</span>}
+                      </p>
+                      <div className="text-xs text-gray-500 leading-snug line-clamp-3 prose prose-xs max-w-none">
+                        {f.content ? (
+                          <ReactMarkdown>{f.content.slice(0, 200) + (f.content.length > 200 ? "…" : "")}</ReactMarkdown>
+                        ) : (
+                          <span className="italic text-gray-400">Kontent…</span>
+                        )}
+                      </div>
+                      {f.ctaText && (
+                        <div className="mt-3">
+                          <span
+                            className="inline-block px-3 py-1.5 rounded-xl text-xs font-bold text-white"
+                            style={{ background: "linear-gradient(135deg,#7C3AED,#6D28D9)" }}
+                          >
+                            {f.ctaText}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Tur</label>
-                      <select value={f.type} onChange={(e) => set("type", e.target.value)}
-                        className={`${inputCls} w-full`}>
-                        <option value="news">Yangilik</option>
-                        <option value="event">Tadbir</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Auditoriya</label>
-                      <select value={f.target} onChange={(e) => set("target", e.target.value as Announcement["target"])}
-                        className={`${inputCls} w-full`}>
-                        <option value="all">Hammaga</option>
-                        <option value="providers">Ijrochilar</option>
-                        <option value="customers">Xaridorlar</option>
-                      </select>
-                    </div>
+
+                  {/* Status preview */}
+                  <div className="mt-4 p-3 rounded-xl bg-white border border-gray-200 space-y-1.5">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Ma'lumotlar</p>
+                    {[
+                      { label: "Status", val: f.status === "published" ? "✅ Chop etilgan" : "📝 Qoralama" },
+                      { label: "Auditoriya", val: f.target === "all" ? "👥 Hammaga" : f.target === "providers" ? "🔧 Ijrochilar" : "🛍 Xaridorlar" },
+                      { label: "Muddat", val: f.expiresAt ? new Date(f.expiresAt).toLocaleDateString("uz-UZ") : "—" },
+                      { label: "Chop etish vaqti", val: f.publishAt ? new Date(f.publishAt).toLocaleString("uz-UZ") : "Darhol" },
+                    ].map((row) => (
+                      <div key={row.label} className="flex justify-between items-center">
+                        <span className="text-[10px] text-gray-400">{row.label}</span>
+                        <span className="text-[10px] font-semibold text-gray-700">{row.val}</span>
+                      </div>
+                    ))}
                   </div>
-                </section>
-
-                {/* Content */}
-                <section className="space-y-3">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Kontent *</p>
-                  <textarea value={f.content} onChange={(e) => set("content", e.target.value)}
-                    rows={6} className={`${inputCls} w-full resize-y min-h-[120px]`}
-                    placeholder="E'lon matni... Markdown qo'llab-quvvatlanadi." />
-                </section>
-
-                {/* Media */}
-                <section className="space-y-3">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Muqova rasmi (ixtiyoriy)</p>
-                  <input value={f.image ?? ""} onChange={(e) => set("image", e.target.value)}
-                    className={`${inputCls} w-full`} placeholder="https://... yoki base64" />
-                  {f.image && (
-                    <img src={f.image} alt="preview" className="w-full h-36 object-cover rounded-xl border border-gray-100" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                  )}
-                </section>
-
-                {/* CTA */}
-                <section className="space-y-3">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">CTA tugma (ixtiyoriy)</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Tugma matni</label>
-                      <input value={f.ctaText ?? ""} onChange={(e) => set("ctaText", e.target.value)}
-                        className={`${inputCls} w-full`} placeholder="Misol: Tanga sotib olish" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Havola</label>
-                      <input value={f.ctaLink ?? ""} onChange={(e) => set("ctaLink", e.target.value)}
-                        className={`${inputCls} w-full`} placeholder="/plans" />
-                    </div>
-                  </div>
-                </section>
-
-                {/* Visibility */}
-                <section className="space-y-3">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ko'rinish</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Status</label>
-                      <select value={f.status} onChange={(e) => set("status", e.target.value as Announcement["status"])}
-                        className={`${inputCls} w-full`}>
-                        <option value="draft">Qoralama</option>
-                        <option value="published">Chop etilgan</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1 block">Muddati (ixtiyoriy)</label>
-                      <input type="date" value={f.expiresAt ?? ""} onChange={(e) => set("expiresAt", e.target.value)}
-                        className={`${inputCls} w-full`} />
-                    </div>
-                  </div>
-                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                    <input type="checkbox" checked={f.isPinned ?? false} onChange={(e) => set("isPinned", e.target.checked)}
-                      className="w-4 h-4 rounded accent-amber-500" />
-                    <span className="text-sm font-semibold text-gray-700">📌 Tepada qo'yish (pin)</span>
-                  </label>
-                </section>
+                </div>
               </div>
 
-              {/* Drawer footer */}
-              <div className="flex gap-2 px-5 py-4 border-t border-gray-100 flex-shrink-0">
-                <button onClick={closeForm} className="flex-1 py-2.5 rounded-xl font-bold text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+              {/* ── Drawer footer ── */}
+              <div className="flex gap-2 px-6 py-4 border-t border-gray-200 bg-white flex-shrink-0">
+                <button onClick={closeForm} className="px-5 py-2.5 rounded-xl font-bold text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
                   Bekor qilish
                 </button>
-                <button onClick={handleSave} disabled={!f.title.trim() || !f.content.trim() || saving}
-                  className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white transition-all active:scale-95 disabled:opacity-50"
-                  style={{ background: "linear-gradient(135deg,#DC2626,#B91C1C)" }}>
-                  {saving ? "Saqlanmoqda…" : editing ? "Saqlash" : "Yaratish"}
+                <div className="flex-1" />
+                {Object.keys(errors).length > 0 && (
+                  <p className="text-xs text-red-500 self-center">{Object.keys(errors).filter(k => k !== "expiresAt").length} xato bor</p>
+                )}
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-6 py-2.5 rounded-xl font-bold text-sm text-white transition-all active:scale-95 disabled:opacity-50"
+                  style={{ background: "linear-gradient(135deg,#DC2626,#B91C1C)" }}
+                >
+                  {saving ? "Saqlanmoqda…" : editing ? "💾 Saqlash" : "✅ Yaratish"}
                 </button>
               </div>
             </motion.div>
