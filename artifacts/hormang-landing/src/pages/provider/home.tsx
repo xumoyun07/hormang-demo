@@ -414,7 +414,7 @@ function RequestSlideCard({
             style={{ background: VIOLET }}
           >
             <Send className="w-4 h-4" />
-            Javob berish
+            Taklif yuborish
           </button>
         </div>
       </div>
@@ -565,7 +565,7 @@ function RequestsModal({
                             style={{ background: VIOLET }}
                           >
                             <Send className="w-3.5 h-3.5" />
-                            Javob berish
+                            Taklif yuborish
                           </button>
                         </div>
                       )}

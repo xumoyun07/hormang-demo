@@ -25,6 +25,8 @@ import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 import { isUserSuspended, SUSPENDED_MESSAGE } from "@/lib/safety-store";
 import { useToast } from "@/hooks/use-toast";
 
+type Tab = "offers" | "chats";
+
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" });
 }
@@ -307,7 +309,7 @@ export default function ChatPage() {
     if (last?.day === day) last.messages.push(msg);
     else grouped.push({ day, messages: [msg] });
   }
-
+  const [tab, setTab] = useState<Tab>("offers");
   const canComplete =
     offer &&
     chat &&
@@ -322,7 +324,7 @@ export default function ChatPage() {
       <div className="bg-white border-b border-gray-100 shrink-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => setLocation("/my-requests")}
+            onClick={() => window.history.back()}
             className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 flex-shrink-0 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />

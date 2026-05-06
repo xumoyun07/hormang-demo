@@ -224,7 +224,7 @@ function FullscreenSlider({
               style={{ background: VIOLET }}
             >
               <Send className="w-4 h-4" />
-              Javob berish
+              Taklif yuborish
             </button>
             <button
               disabled={index >= requests.length - 1}
@@ -733,7 +733,7 @@ export default function ProviderRequestsPage() {
                         style={{ background: VIOLET }}
                       >
                         <Send className="w-3.5 h-3.5" />
-                        Javob berish
+                        Taklif yuborish
                       </button>
                     </div>
                   </div>
