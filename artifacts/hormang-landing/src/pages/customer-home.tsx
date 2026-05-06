@@ -193,7 +193,7 @@ export default function CustomerHomePage() {
             {[
               { label: "Faol so'rovlar",  val: activeRequests.length,    color: "text-blue-600",   bg: "bg-blue-50",   Icon: ClipboardList, href: "/my-requests",      ref: null },
               { label: "Yangi takliflar", val: pendingOffers.length,     color: "text-violet-600", bg: "bg-violet-50", Icon: Inbox,          href: "/chat-offers",      ref: null },
-              { label: "Yakunlangan",     val: completedRequests.length, color: "text-green-600",  bg: "bg-green-50",  Icon: CheckCircle2,   href: "/request-history",  ref: "/" },
+              { label: "Yakunlangan",     val: completedRequests.length, color: "text-green-600",  bg: "bg-green-50",  Icon: CheckCircle2,   href: "/request-history",  ref: "/customer-home" },
             ].map((s) => (
               <button key={s.label} onClick={() => { if (s.ref) sessionStorage.setItem("request_history_referrer", s.ref); setLocation(s.href); }} className={`flex-1 ${s.bg} rounded-2xl p-3 flex flex-col items-center text-center active:scale-95 transition-transform`}>
                 <s.Icon className={`w-4 h-4 ${s.color} mb-1`} />
