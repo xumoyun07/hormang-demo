@@ -25,7 +25,7 @@ export default function BuyerDashboard() {
       icon: ClipboardList,
       title: "Buyurtmalarim",
       desc: "Barcha buyurtmalar va holati",
-      action: () => setLocation("/request-history"),
+      action: () => { sessionStorage.setItem("request_history_referrer", "/dashboard"); setLocation("/request-history"); },
     },
     {
       icon: Heart,

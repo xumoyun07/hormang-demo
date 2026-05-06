@@ -270,7 +270,7 @@ export default function MyRequestsPage() {
           
         {requests.some((r) => r.status === "completed") && (
               <h3> <button
-                onClick={() => setLocation("/request-history")}
+                onClick={() => { sessionStorage.setItem("request_history_referrer", "/my-requests"); setLocation("/request-history"); }}
                 className="mt-4 text-xs font-bold text-blue-500 hover:underline hover:text-blue-600"
               >
                 Yakunlangan buyurtmalarni ko'rish
@@ -290,7 +290,7 @@ export default function MyRequestsPage() {
                 Yangi so'rov
               </button>
               <button
-                 onClick={() => setLocation("/request-history")}
+                 onClick={() => { sessionStorage.setItem("request_history_referrer", "/my-requests"); setLocation("/request-history"); }}
                 className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-blue-600 transition-colors"
               >
                 <History className="w-3.5 h-3.5" />

@@ -111,7 +111,7 @@ export default function CustomerReviewsPage() {
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-100">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           <button
-            onClick={() => navigate("/request-history")}
+            onClick={() => { sessionStorage.setItem("request_history_referrer", "/customer-reviews"); navigate("/request-history"); }}
             className="w-10 h-10 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600"
           >
             <ArrowLeft className="w-5 h-5" />

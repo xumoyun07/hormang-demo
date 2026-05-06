@@ -213,7 +213,7 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
       icon: ClipboardList,
       title: "So'rovlarim",
       desc: "Barcha so'rovlar tarixi",
-      action: () => onNavigate("/request-history"),
+      action: () => { sessionStorage.setItem("request_history_referrer", "/dashboard"); onNavigate("/request-history"); },
     },
     {
       icon: Heart,

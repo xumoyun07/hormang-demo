@@ -191,11 +191,11 @@ export default function CustomerHomePage() {
           {/* ── Quick Stats ── */}
           <div className="flex gap-2.5">
             {[
-              { label: "Faol so'rovlar",  val: activeRequests.length,    color: "text-blue-600",   bg: "bg-blue-50",   Icon: ClipboardList, href: "/my-requests" },
-              { label: "Yangi takliflar", val: pendingOffers.length,     color: "text-violet-600", bg: "bg-violet-50", Icon: Inbox,          href: "/chat-offers" },
-              { label: "Yakunlangan",     val: completedRequests.length, color: "text-green-600",  bg: "bg-green-50",  Icon: CheckCircle2,   href: "/request-history" },
+              { label: "Faol so'rovlar",  val: activeRequests.length,    color: "text-blue-600",   bg: "bg-blue-50",   Icon: ClipboardList, href: "/my-requests",      ref: null },
+              { label: "Yangi takliflar", val: pendingOffers.length,     color: "text-violet-600", bg: "bg-violet-50", Icon: Inbox,          href: "/chat-offers",      ref: null },
+              { label: "Yakunlangan",     val: completedRequests.length, color: "text-green-600",  bg: "bg-green-50",  Icon: CheckCircle2,   href: "/request-history",  ref: "/" },
             ].map((s) => (
-              <button key={s.label} onClick={() => setLocation(s.href)} className={`flex-1 ${s.bg} rounded-2xl p-3 flex flex-col items-center text-center active:scale-95 transition-transform`}>
+              <button key={s.label} onClick={() => { if (s.ref) sessionStorage.setItem("request_history_referrer", s.ref); setLocation(s.href); }} className={`flex-1 ${s.bg} rounded-2xl p-3 flex flex-col items-center text-center active:scale-95 transition-transform`}>
                 <s.Icon className={`w-4 h-4 ${s.color} mb-1`} />
                 <p className={`text-xl font-extrabold ${s.color} leading-none`}>{s.val}</p>
                 <p className="text-[9px] text-gray-500 font-semibold leading-tight mt-1">{s.label}</p>
