@@ -330,7 +330,14 @@ export default function ChatOffersPage() {
   const params = new URLSearchParams(rawSearch);
   const filterRequestId = params.get("requestId") ?? undefined;
 
-  const [tab, setTab] = useState<Tab>("offers");
+  const [tab, setTab] = useState<Tab>(
+    () => (sessionStorage.getItem("chat_offers_tab") as Tab) ?? "offers"
+  );
+
+  function switchTab(t: Tab) {
+    sessionStorage.setItem("chat_offers_tab", t);
+    setTab(t);
+  }
 
   const customerId = user?.id ?? "";
   const allOffers = getOffersByCustomer(customerId);
@@ -384,7 +391,7 @@ export default function ChatOffersPage() {
         {/* Tab switcher */}
         <div className="max-w-lg mx-auto px-4 pb-3 flex gap-2">
           <button
-            onClick={() => setTab("offers")}
+            onClick={() => switchTab("offers")}
             className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
               tab === "offers"
                 ? "bg-blue-600 text-white shadow-sm"
@@ -402,7 +409,7 @@ export default function ChatOffersPage() {
             )}
           </button>
           <button
-            onClick={() => setTab("chats")}
+            onClick={() => switchTab("chats")}
             className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
               tab === "chats"
                 ? "bg-blue-600 text-white shadow-sm"
