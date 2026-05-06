@@ -78,9 +78,11 @@ function formatAnswerValue(
     }).join(", ");
   }
   if (typeof value === "object" && value !== null) {
-    const loc = value as { region?: string; district?: string };
-    if (loc.region) return loc.district ? `${loc.district}, ${loc.region}` : loc.region;
-    return "—";
+    const loc = value as Record<string, unknown>;
+    const parts = [loc.district, loc.region].filter((p): p is string => typeof p === "string" && p.length > 0);
+    if (parts.length > 0) return parts.join(", ");
+    const strs = Object.values(loc).filter((v): v is string => typeof v === "string" && v.length > 0);
+    return strs.join(", ") || "—";
   }
   return String(value);
 }

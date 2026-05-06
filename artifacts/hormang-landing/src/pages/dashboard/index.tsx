@@ -49,13 +49,13 @@ function BecomeProviderCard({ onBecome }: { onBecome: () => void }) {
         </div>
         <div>
           <h3 className="font-extrabold text-base leading-tight">Ijrochi bo'lishni istaysizmi?</h3>
-          <p className="text-white/75 text-xs mt-0.5">Profil to'ldiring va mijozlar toping</p>
+          <p className="text-white/75 text-xs mt-0.5">Profil yarating va mijozlarga xizmat ko'rsatib daromad oling</p>
         </div>
       </div>
       <div className="flex flex-col gap-2 text-xs text-white/80 mb-4">
-        <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-white/60 flex-shrink-0" /> Xizmatlaringizni e'lon qiling</div>
-        <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-white/60 flex-shrink-0" /> Yangi buyurtmalar oling</div>
-        <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-white/60 flex-shrink-0" /> O'z jadvalingizda ishlang</div>
+        <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-white/60 flex-shrink-0" /> Xizmatlaringizga mos kategoriya tanlang</div>
+        <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-white/60 flex-shrink-0" /> Mijozlarga taklif jo'nating</div>
+        <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-white/60 flex-shrink-0" /> Mijozlar bilan bog'lanib daromad oling</div>
       </div>
       <button
         onClick={onBecome}
