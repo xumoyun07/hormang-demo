@@ -476,7 +476,7 @@ function CustomerPreviewSheet({
               <MetricCell
                 icon={Briefcase}
                 value={`${custCompletedCount} ta`}
-                label="Bajarilgan"
+                label="Yakunlangan so'rov"
                 color={BLUE}
               />
               <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
