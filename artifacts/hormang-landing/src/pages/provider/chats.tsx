@@ -24,7 +24,7 @@ import {
   type ProviderChat, type ProviderChatMessage,
 } from "@/lib/provider-store";
 import {
-  getOfferForChat, markOfferCompleted, getRequestById, sendSystemMessage,
+  getOfferForChat, confirmCompletion, getRequestById, sendSystemMessage,
   type Offer,
 } from "@/lib/requests-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
@@ -339,7 +339,12 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
     offer &&
     chat &&
     (offer.status === "accepted" || offer.status === "in_progress") &&
-    !hasReviewedRequest(chat.requestId, masterId);
+    !offer.providerConfirmedCompleted;
+
+  const providerWaiting =
+    offer?.providerConfirmedCompleted &&
+    !offer?.customerConfirmedCompleted &&
+    offer?.status !== "completed";
   const canSchedule =
     offer && (offer.status === "accepted" || offer.status === "in_progress") && !isCompleted;
   const isAlreadyPlanned =
@@ -377,8 +382,8 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 
   function handleComplete() {
     if (!offer || !chat) return;
-    markOfferCompleted(offer.id);
-    if (!hasReviewedRequest(chat.requestId, masterId)) {
+    const result = confirmCompletion(offer.id, "provider");
+    if (result === "completed" && !hasReviewedRequest(chat.requestId, masterId)) {
       setShowReview(true);
     }
   }
@@ -494,6 +499,11 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
               <CheckCircle2 className="w-3.5 h-3.5" />
               Tugatildi
             </button>
+          ) : providerWaiting ? (
+            <div className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
+              <Clock className="w-3 h-3" />
+              Mijoz kutilmoqda
+            </div>
           ) : offer ? (
             <div className="flex-shrink-0">
               <OfferStatusBadge status={offer.status} />

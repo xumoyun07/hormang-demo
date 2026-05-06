@@ -18,7 +18,7 @@ import { getLocalProfile } from "@/lib/local-profile";
 import { useAuth } from "@/contexts/auth-context";
 import { formatDate } from "@/lib/date-utils";
 import {
-  getChatById, sendMessage, getOfferForChat, markOfferCompleted,
+  getChatById, sendMessage, getOfferForChat, confirmCompletion,
   type Chat, type ChatMessage, type Offer,
 } from "@/lib/requests-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
@@ -269,8 +269,8 @@ export default function ChatPage() {
       toast({ title: SUSPENDED_MESSAGE, variant: "destructive" });
       return;
     }
-    const wasNew = markOfferCompleted(offer.id);
-    if (wasNew || !hasReviewedRequest(chat.requestId, user?.id ?? "")) {
+    const result = confirmCompletion(offer.id, "customer");
+    if (result === "completed" && !hasReviewedRequest(chat.requestId, user?.id ?? "")) {
       setShowReview(true);
     }
   }
@@ -311,7 +311,12 @@ export default function ChatPage() {
     offer &&
     chat &&
     (offer.status === "accepted" || offer.status === "in_progress") &&
-    !hasReviewedRequest(chat.requestId, user?.id ?? "");
+    !offer.customerConfirmedCompleted;
+
+  const customerWaiting =
+    offer?.customerConfirmedCompleted &&
+    !offer?.providerConfirmedCompleted &&
+    offer?.status !== "completed";
 
   const alreadyCompleted = offer?.status === "completed";
 
@@ -354,9 +359,17 @@ export default function ChatPage() {
           </button>
 
           {/* Live offer status badge in header */}
-          {offer && !canComplete && !alreadyCompleted && (
+          {offer && !canComplete && !alreadyCompleted && !customerWaiting && (
             <div className="flex-shrink-0">
               <OfferStatusBadge status={offer.status} />
+            </div>
+          )}
+
+          {/* Waiting for provider confirmation */}
+          {customerWaiting && (
+            <div className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
+              <Clock className="w-3 h-3" />
+              Ijrochi kutilmoqda
             </div>
           )}
 

@@ -25,7 +25,7 @@ import {
   getRequestOfferCount, getRequestsWithZeroOffers,
   type ProviderRequest, type UpcomingService,
 } from "@/lib/provider-store";
-import { markOfferCompleted, getOfferById } from "@/lib/requests-store";
+import { confirmCompletion, getOfferById } from "@/lib/requests-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 import { ReviewModal, type ReviewSubmitData } from "@/components/review-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
@@ -181,11 +181,13 @@ function UpcomingServices() {
 
   function handleDone(s: UpcomingService) {
     if (s.offerId) {
-      const wasNew = markOfferCompleted(s.offerId);
-      const alreadyReviewed = s.requestId ? hasReviewedRequest(s.requestId, masterId) : false;
-      if (wasNew || !alreadyReviewed) {
-        setReviewService(s);
-        return;
+      const result = confirmCompletion(s.offerId, "provider");
+      if (result === "completed") {
+        const alreadyReviewed = s.requestId ? hasReviewedRequest(s.requestId, masterId) : false;
+        if (!alreadyReviewed) {
+          setReviewService(s);
+          return;
+        }
       }
     }
     markServiceDone(s.id, masterId);

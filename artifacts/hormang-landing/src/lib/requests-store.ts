@@ -53,6 +53,9 @@ export interface Offer {
   tangaSpent?: number;
   /** true once admin has issued a batch 50% refund that included this offer. */
   refunded?: boolean;
+  /** Two-party completion flags — both must be true before status → "completed" */
+  providerConfirmedCompleted?: boolean;
+  customerConfirmedCompleted?: boolean;
 }
 
 export interface ChatAttachment {
@@ -284,8 +287,8 @@ export function markOfferInProgress(offerId: string): void {
 }
 
 /**
- * Mark offer as completed. Increments completed counts for both sides.
- * Returns true if newly completed, false if already was completed.
+ * Force-complete an offer (admin / direct use). Sets both confirmation flags and
+ * immediately finalises. Returns true if newly completed, false if already was.
  */
 export function markOfferCompleted(offerId: string): boolean {
   const allOffers = getOffers();
@@ -293,7 +296,14 @@ export function markOfferCompleted(offerId: string): boolean {
   if (!target) return false;
   if (target.status === "completed") return false;
 
-  writeJSON(OFFERS_KEY, allOffers.map((o) => o.id === offerId ? { ...o, status: "completed" as const } : o));
+  writeJSON(
+    OFFERS_KEY,
+    allOffers.map((o) =>
+      o.id === offerId
+        ? { ...o, status: "completed" as const, providerConfirmedCompleted: true, customerConfirmedCompleted: true }
+        : o
+    )
+  );
 
   const request = getRequestById(target.requestId);
   if (request) {
@@ -304,6 +314,64 @@ export function markOfferCompleted(offerId: string): boolean {
 
   sendSystemMessage(`${target.requestId}_${target.masterId}`, "✅ Xizmat yakunlandi! Hamkorlik uchun rahmat.");
   return true;
+}
+
+/**
+ * Dual-party completion: both provider AND customer must confirm before the
+ * offer is officially marked "completed" and counters are incremented.
+ *
+ * - Sets the caller's confirmation flag on the offer.
+ * - If both flags are now set → finalises (status → "completed", increments
+ *   completed counts for both parties, sends a success system message).
+ * - If only one party has confirmed → saves the flag and sends a waiting
+ *   system message. Returns "waiting".
+ *
+ * Returns "completed" when fully finalised, "waiting" otherwise.
+ */
+export function confirmCompletion(
+  offerId: string,
+  role: "provider" | "customer"
+): "completed" | "waiting" {
+  const allOffers = getOffers();
+  const target = allOffers.find((o) => o.id === offerId);
+  if (!target) return "waiting";
+  if (target.status === "completed") return "completed";
+
+  const updated: Offer = {
+    ...target,
+    providerConfirmedCompleted: role === "provider" ? true : target.providerConfirmedCompleted,
+    customerConfirmedCompleted: role === "customer" ? true : target.customerConfirmedCompleted,
+  };
+
+  if (updated.providerConfirmedCompleted && updated.customerConfirmedCompleted) {
+    writeJSON(
+      OFFERS_KEY,
+      allOffers.map((o) =>
+        o.id === offerId ? { ...updated, status: "completed" as const } : o
+      )
+    );
+    const request = getRequestById(target.requestId);
+    if (request) {
+      updateRequestStatus(target.requestId, "completed");
+      if (request.customerId) incrementCompletedCount(request.customerId, "customer");
+    }
+    incrementCompletedCount(target.masterId, "provider");
+    sendSystemMessage(
+      `${target.requestId}_${target.masterId}`,
+      "✅ Xizmat yakunlandi! Ikkala tomon ham tasdiqladi. Hamkorlik uchun rahmat."
+    );
+    emitStoreChange();
+    return "completed";
+  }
+
+  writeJSON(OFFERS_KEY, allOffers.map((o) => (o.id === offerId ? updated : o)));
+  const waitingMsg =
+    role === "provider"
+      ? "⏳ Ijrochi xizmat yakunlanganligini tasdiqladi. Mijoz tasdig'i kutilmoqda."
+      : "⏳ Mijoz xizmat yakunlanganligini tasdiqladi. Ijrochi tasdig'i kutilmoqda.";
+  sendSystemMessage(`${target.requestId}_${target.masterId}`, waitingMsg);
+  emitStoreChange();
+  return "waiting";
 }
 
 /**
