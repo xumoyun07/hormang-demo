@@ -25,8 +25,6 @@ import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 import { isUserSuspended, SUSPENDED_MESSAGE } from "@/lib/safety-store";
 import { useToast } from "@/hooks/use-toast";
 
-type Tab = "offers" | "chats";
-
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" });
 }
@@ -309,7 +307,6 @@ export default function ChatPage() {
     if (last?.day === day) last.messages.push(msg);
     else grouped.push({ day, messages: [msg] });
   }
-  const [tab, setTab] = useState<Tab>("offers");
   const canComplete =
     offer &&
     chat &&
