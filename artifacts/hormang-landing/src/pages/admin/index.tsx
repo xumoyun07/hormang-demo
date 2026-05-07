@@ -42,7 +42,7 @@ import {
 } from "@/lib/tanga-history-store";
 import { getTangaBalance, addTangaBalance, spendTangaBalance } from "@/lib/tanga-store";
 import { getReferralCode, getReferralStats, getInviterId, processReferralReward, TANGA_PER_REFERRAL } from "@/lib/referral-store";
-import { getOffers, getPhoneRegistry, type Offer as BuyerOfferFull, updateOfferStatus, deleteRequestCascade, deleteUserDataCascade, getLast10RejectedEligibility, adminRefundProvider } from "@/lib/requests-store";
+import { getOffers, getPhoneRegistry, getOffersByRequestId, markOfferCompleted, type Offer as BuyerOfferFull, updateOfferStatus, deleteRequestCascade, deleteUserDataCascade, getLast10RejectedEligibility, adminRefundProvider } from "@/lib/requests-store";
 import {
   getAllAnnouncements, saveAnnouncement, deleteAnnouncement,
   toggleAnnouncementPublished, toggleAnnouncementPinned,
@@ -930,6 +930,22 @@ function RequestsSection({ refreshKey }: { refreshKey: number }) {
   useEffect(() => { load(); }, [load, refreshKey]);
 
   function updateStatus(id: string, status: string) {
+    if (status === "completed") {
+      // Route through markOfferCompleted so offer status is updated,
+      // counters are incremented for both provider and customer, and
+      // a system message is sent. Falls back to direct request update
+      // if no accepted/in_progress offer exists for this request.
+      const requestOffers = getOffersByRequestId(id);
+      const activeOffer = requestOffers.find(
+        (o) => o.status === "accepted" || o.status === "in_progress"
+      );
+      if (activeOffer) {
+        markOfferCompleted(activeOffer.id);
+        setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "completed" } : r));
+        logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "UPDATE_REQUEST_STATUS", category: "marketplace", targetId: id, targetType: "request", description: `Status o'zgartirildi: completed`, metadata: { newStatus: "completed" } });
+        return;
+      }
+    }
     const updated = requests.map((r) => r.id === id ? { ...r, status } : r);
     writeKey(K.REQUESTS, updated);
     setRequests(updated);

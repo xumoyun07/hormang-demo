@@ -10,6 +10,7 @@ import { getProviderPublicProfile, type SafeUser, type ProviderProfile } from "@
 import { useAuth } from "@/contexts/auth-context";
 import { onStoreChange } from "@/lib/store-events";
 import { getLocalProfile, type LocalProfile, type PortfolioItem } from "@/lib/local-profile";
+import { getCompletedCount } from "@/lib/completion-store";
 
 const VIOLET_GRADIENT = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 
@@ -199,10 +200,10 @@ export default function ProviderProfilePage() {
                       </span>
                     )}
                   </div>
-                  <StarRating rating={profile?.rating} count={profile?.completedJobs} />
-                  {profile?.completedJobs ? (
+                  <StarRating rating={profile?.rating} count={provider ? getCompletedCount(provider.id, "provider") : undefined} />
+                  {provider && getCompletedCount(provider.id, "provider") > 0 ? (
                     <p className="text-xs text-white/60 mt-0.5">
-                      {profile.completedJobs} ta bajarilgan ish
+                      {getCompletedCount(provider.id, "provider")} ta bajarilgan ish
                     </p>
                   ) : null}
                 </div>

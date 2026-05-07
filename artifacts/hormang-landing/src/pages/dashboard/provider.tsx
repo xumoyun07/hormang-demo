@@ -14,6 +14,7 @@ import {
   getLocalProfile, getCompletionChecks, getCompletionPct,
   type LocalProfile,
 } from "@/lib/local-profile";
+import { getAverageRatingForUser, getReviewsForUser, getCompletedCount } from "@/lib/completion-store";
 
 /* ─── Theme ──────────────────────────────────────────────────────── */
 const VIOLET      = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -70,10 +71,9 @@ export default function ProviderDashboard() {
   const pct     = getCompletionPct(checks);
   const missing = checks.filter((c) => !c.done);
 
-  /* ── Mock stats — ready for real data ── */
-  const avgRating        = 0;
-  const reviewCount      = 0;
-  const completedCount   = 0;
+  const avgRating      = user?.id ? getAverageRatingForUser(user.id, "provider") : 0;
+  const reviewCount    = user?.id ? getReviewsForUser(user.id, "provider").length : 0;
+  const completedCount = user?.id ? getCompletedCount(user.id, "provider") : 0;
 
   async function handleLogout() {
     await logout();
