@@ -14,7 +14,7 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, MessageCircle, ChevronRight, X, ChevronDown,
-  Circle, Send, CheckCircle2, Clock, Loader2, Flag, CalendarPlus, CalendarCheck2, ImageIcon,
+  Circle, Send, CheckCircle2, Clock, Loader2, Flag, CalendarPlus, CalendarCheck2, ImageIcon, Star,
 } from "lucide-react";
 import { compressImage } from "@/lib/image-utils";
 import { BottomNav } from "@/components/bottom-nav";
@@ -320,6 +320,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   const [showCustomerProfile, setShowCustomerProfile] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [reviewDismissed, setReviewDismissed] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const attachInputRef = useRef<HTMLInputElement>(null);
@@ -357,12 +358,16 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
     bottomRef.current?.scrollIntoView({ behavior: "instant" });
   }, [chat?.messages.length]);
 
-  /* Auto-prompt review when the OTHER side marks the offer completed */
+  const alreadyCompleted = offer?.status === "completed";
+
+  /* Auto-prompt review on every chat open (and when offer becomes completed).
+   * reviewDismissed prevents re-prompting within the same session; it resets
+   * on the next mount so the provider is prompted again next time they open. */
   useEffect(() => {
-    if (offer?.status === "completed" && masterId && chat && !hasReviewedRequest(chat.requestId, masterId)) {
+    if (alreadyCompleted && masterId && chat && !hasReviewedRequest(chat.requestId, masterId) && !reviewDismissed) {
       setShowReview(true);
     }
-  }, [offer?.status]);
+  }, [alreadyCompleted]);
 
   function send() {
     if ((!text.trim() && !attachPreview) || isRejected) return;
@@ -429,6 +434,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
       serviceCategory: chat.categoryName,
     });
     setShowReview(false);
+    setReviewDismissed(true);
   }
 
   if (!chat) return null;
@@ -489,7 +495,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             </div>
           </button>
 
-          {/* Live offer status badge or Complete button */}
+          {/* Live offer status badge or Complete / Review button */}
           {canComplete ? (
             <button
               onClick={() => setShowCompleteConfirm(true)}
@@ -503,6 +509,19 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             <div className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
               <Clock className="w-3 h-3" />
               Mijoz kutilmoqda
+            </div>
+          ) : alreadyCompleted ? (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {chat && masterId && !hasReviewedRequest(chat.requestId, masterId) && (
+                <button
+                  onClick={() => { setReviewDismissed(false); setShowReview(true); }}
+                  className="w-9 h-9 rounded-xl bg-amber-400 hover:bg-amber-500 flex items-center justify-center transition-colors active:scale-95 shadow-sm"
+                  title="Baholash"
+                >
+                  <Star className="w-4 h-4 fill-white text-white" />
+                </button>
+              )}
+              <OfferStatusBadge status="completed" />
             </div>
           ) : offer ? (
             <div className="flex-shrink-0">
@@ -668,7 +687,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             subjectColor={chat.customerColor}
             prompt="Mijozni baholang"
             onSubmit={handleReviewSubmit}
-            onSkip={() => setShowReview(false)}
+            onSkip={() => { setShowReview(false); setReviewDismissed(true); }}
           />
         )}
       </AnimatePresence>

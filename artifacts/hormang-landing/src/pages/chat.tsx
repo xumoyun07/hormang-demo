@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock, Loader2, Flag, ImageIcon } from "lucide-react";
+import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock, Loader2, Flag, ImageIcon, Star } from "lucide-react";
 import { compressImage } from "@/lib/image-utils";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { ReviewModal, type ReviewSubmitData } from "@/components/review-modal";
@@ -390,9 +390,10 @@ export default function ChatPage() {
               {chat && user && !hasReviewedRequest(chat.requestId, user.id) && (
                 <button
                   onClick={() => { setReviewDismissed(false); setShowReview(true); }}
-                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold transition-colors active:scale-95"
+                  className="w-9 h-9 rounded-xl bg-amber-400 hover:bg-amber-500 flex items-center justify-center transition-colors active:scale-95 shadow-sm"
+                  title="Baholash"
                 >
-                  Baholash
+                  <Star className="w-4 h-4 fill-white text-white" />
                 </button>
               )}
               <OfferStatusBadge status="completed" />
