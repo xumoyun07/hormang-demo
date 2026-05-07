@@ -11,7 +11,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, MapPin, ShieldCheck, Star,
-  Briefcase, Award, ChevronRight,
+  Briefcase, Award, ChevronRight, Flag,
 } from "lucide-react";
 import { getLocalProfile, getServiceAreaLabels } from "@/lib/local-profile";
 import { getAverageRatingForUser, getReviewsForUser, getCompletedCount } from "@/lib/completion-store";
@@ -19,6 +19,8 @@ import { StarRating } from "@/components/star-rating";
 import { ProviderReviewsSheet } from "@/components/provider-reviews-sheet";
 import { CustomerReviewsSheet } from "@/components/customer-reviews-sheet";
 import { ImageGrid } from "@/components/image-grid";
+import { ReportModal } from "@/components/report-modal";
+import { useAuth } from "@/contexts/auth-context";
 import type {
   ProviderProfileData,
   CustomerProfileData,
@@ -104,6 +106,7 @@ function ProviderPreviewSheet({
   data: ProviderProfileData;
   onClose: () => void;
 }) {
+  const { user } = useAuth();
   const local = getLocalProfile(data.masterId);
   const albums = local.albums ?? [];
   const allPhotos = albums.flatMap((a) => a.photos.map((p) => p.url));
@@ -116,6 +119,9 @@ function ProviderPreviewSheet({
   const completedCount = getCompletedCount(data.masterId, "provider");
 
   const [showReviews, setShowReviews] = useState(false);
+  const [showReport, setShowReport]   = useState(false);
+
+  const canReport = user && user.id !== data.masterId;
 
   return (
     <>
@@ -147,15 +153,24 @@ function ProviderPreviewSheet({
             <div className="w-10 h-1 rounded-full bg-gray-200" />
           </div>
 
-          {/* ── Close button ── */}
-          <div className="flex justify-end px-4 flex-shrink-0">
+          {/* ── Close + Report buttons ── */}
+          <div className="flex items-center justify-between px-4 flex-shrink-0">
+            {canReport ? (
+              <button
+                onClick={() => setShowReport(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-500 hover:bg-amber-50 hover:text-amber-600 transition-colors text-xs font-semibold"
+              >
+                <Flag className="w-3.5 h-3.5" />
+                Shikoyat
+              </button>
+            ) : <div />}
             <button
               onClick={onClose}
               className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
-          </div> 
+          </div>
             {/* Hero: avatar + name + badge */}
             
             <div className="flex flex-col items-center text-center mb-4">
@@ -347,6 +362,19 @@ function ProviderPreviewSheet({
           />
         )}
       </AnimatePresence>
+
+      {/* ── Report modal ── */}
+      <AnimatePresence>
+        {showReport && user && (
+          <ReportModal
+            key="provider-report-modal"
+            reporterUserId={user.id}
+            reportedUserId={data.masterId}
+            reportedName={data.masterName}
+            onClose={() => setShowReport(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }
@@ -361,6 +389,7 @@ function CustomerPreviewSheet({
   data: CustomerProfileData;
   onClose: () => void;
 }) {
+  const { user } = useAuth();
   const name     = data.customerName?.trim() || "Mijoz";
   const initials = data.customerInitials ?? deriveInitials(name);
   const color    = data.customerColor ?? BLUE;
@@ -374,6 +403,9 @@ function CustomerPreviewSheet({
   const custReviewCount = data.customerId ? getReviewsForUser(data.customerId, "customer").length : 0;
   const custCompletedCount = data.customerId ? getCompletedCount(data.customerId, "customer") : 0;
   const [showReviews, setShowReviews] = useState(false);
+  const [showReport,  setShowReport]  = useState(false);
+
+  const canReport = user && data.customerId && user.id !== data.customerId;
 
   return (
     <>
@@ -405,8 +437,17 @@ function CustomerPreviewSheet({
             <div className="w-10 h-1 rounded-full bg-gray-200" />
           </div>
 
-          {/* Close */}
-          <div className="flex justify-end px-4 pb-1 flex-shrink-0">
+          {/* Close + Report */}
+          <div className="flex items-center justify-between px-4 pb-1 flex-shrink-0">
+            {canReport ? (
+              <button
+                onClick={() => setShowReport(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-500 hover:bg-amber-50 hover:text-amber-600 transition-colors text-xs font-semibold"
+              >
+                <Flag className="w-3.5 h-3.5" />
+                Shikoyat
+              </button>
+            ) : <div />}
             <button
               onClick={onClose}
               className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
@@ -526,6 +567,19 @@ function CustomerPreviewSheet({
             customerId={data.customerId}
             customerName={name}
             onClose={() => setShowReviews(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Report modal ── */}
+      <AnimatePresence>
+        {showReport && user && data.customerId && (
+          <ReportModal
+            key="customer-report-modal"
+            reporterUserId={user.id}
+            reportedUserId={data.customerId}
+            reportedName={name}
+            onClose={() => setShowReport(false)}
           />
         )}
       </AnimatePresence>
