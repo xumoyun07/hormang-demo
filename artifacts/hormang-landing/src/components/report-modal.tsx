@@ -167,7 +167,7 @@ export function ReportModal({
 
             {/* ── Reason selection ── */}
             <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2.5">
                 Shikoyat sababi <span className="text-rose-500">*</span>
               </p>
               <div className="space-y-2">
@@ -198,9 +198,9 @@ export function ReportModal({
 
             {/* ── Description ── */}
             <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2.5">
                 Qo'shimcha izoh{" "}
-                <span className="text-gray-300 font-normal normal-case">(ixtiyoriy)</span>
+                <span className="text-gray-400 font-normal normal-case">(ixtiyoriy)</span>
               </p>
               <textarea
                 value={description}
@@ -220,9 +220,9 @@ export function ReportModal({
 
             {/* ── Evidence images ── */}
             <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2.5">
                 Dalil rasmlari{" "}
-                <span className="text-gray-300 font-normal normal-case">(ixtiyoriy, max 3 ta)</span>
+                <span className="text-gray-400 font-normal normal-case">(ixtiyoriy, max 3 ta)</span>
               </p>
               <div className="flex items-start gap-2.5 flex-wrap">
                 {images.map((src, i) => (
@@ -278,8 +278,8 @@ export function ReportModal({
                 </p>
                 <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">
                   {alreadyBlocked
-                    ? "Siz bu foydalanuvchini allaqachon blon qilgansiz"
-                    : "U siz uchun ko'rinmas bo'ladi"}
+                    ? "Siz bu foydalanuvchini bloklagansiz"
+                    : "Foydalanuvchi xabar, taklif va so'rovlari ko'rinmaydi"}
                 </p>
               </div>
               <div
