@@ -358,7 +358,7 @@ export function confirmCompletion(
     incrementCompletedCount(target.masterId, "provider");
     sendSystemMessage(
       `${target.requestId}_${target.masterId}`,
-      "✅ Xizmat yakunlandi! Ikkala tomon ham tasdiqladi. Hamkorlik uchun rahmat."
+      "✅ Xizmat yakunlandi! Hamkorlik uchun rahmat."
     );
     emitStoreChange();
     return "completed";
