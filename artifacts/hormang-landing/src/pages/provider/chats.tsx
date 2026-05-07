@@ -728,7 +728,16 @@ function ChatRow({ chat, index, onClick }: { chat: ProviderChat; index: number; 
           </span>
         </div>
         <p className="text-xs text-gray-500 font-medium mb-1">{chat.categoryEmoji} {chat.categoryName}</p>
-        {offer && <OfferStatusBadge status={offer.status} />}
+        {offer && (
+          offer.providerConfirmedCompleted && !offer.customerConfirmedCompleted && offer.status !== "completed"
+            ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                <Clock className="w-3 h-3" />
+                Mijoz kutilmoqda
+              </span>
+            )
+            : <OfferStatusBadge status={offer.status} />
+        )}
         {lastMsg && (
           <p className="text-[11px] text-gray-400 truncate mt-0.5">
             {lastMsg.sender === "provider" ? "Siz: " : ""}{lastMsg.text}
