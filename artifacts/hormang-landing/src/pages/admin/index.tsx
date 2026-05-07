@@ -5406,7 +5406,7 @@ function ReportsSection({ refreshKey }: { refreshKey: number }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-red-50/40">
-                  {["Shikoyat qilingan", "Shikoyat qiluvchi", "Sabab", "Sana", "Holat", "Amallar"].map((h) => (
+                  {["Shikoyat olgan foydalanuvchi", "Shikoyat qiluvchi", "Sabab", "Sana", "Holat", "Batafsil"].map((h) => (
                     <th key={h} className="text-left text-[9px] font-bold text-red-400 uppercase tracking-widest px-4 py-3 whitespace-nowrap">
                       {h}
                     </th>
@@ -5456,10 +5456,23 @@ function ReportsSection({ refreshKey }: { refreshKey: number }) {
                         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => setExpanded(isOpen ? null : r.id)}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                            title="Batafsil"
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+                              isOpen
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                            }`}
                           >
-                            {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            {isOpen ? (
+                              <>
+                                <ChevronUp className="w-3.5 h-3.5" />
+                                Yopish
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="w-3.5 h-3.5" />
+                                Ko'rish
+                              </>
+                            )}
                           </button>
                         </td>
                       </tr>
