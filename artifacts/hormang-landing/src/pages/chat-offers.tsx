@@ -257,11 +257,18 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
   const offer = getOfferForChat(chat.requestId, chat.masterId);
   const st = offer?.status ?? "pending";
 
+  const customerWaiting = offer?.customerConfirmedCompleted && !offer?.providerConfirmedCompleted && st !== "completed";
+  const needsCustomerConfirm = offer?.providerConfirmedCompleted && !offer?.customerConfirmedCompleted && st !== "completed";
+
   const badge =
     st === "completed"
       ? { label: "Yakunlandi", cls: "text-blue-600 bg-blue-50 border-blue-200", icon: <CheckCircle2 className="w-3 h-3" /> }
+      : customerWaiting
+      ? { label: "Ijrochi kutilmoqda", cls: "text-amber-600 bg-amber-50 border-amber-200", icon: <Clock className="w-3 h-3" /> }
+      : needsCustomerConfirm
+      ? { label: "Tasdiqlang", cls: "text-violet-600 bg-violet-50 border-violet-200", icon: <CheckCircle2 className="w-3 h-3" /> }
       : st === "in_progress"
-      ? { label: "Re", cls: "text-blue-600 bg-blue-50 border-blue-200", icon: <Clock className="w-3 h-3" /> }
+      ? { label: "Rejalashtirildi", cls: "text-blue-600 bg-blue-50 border-blue-200", icon: <Clock className="w-3 h-3" /> }
       : st === "accepted"
       ? { label: "Qabul qilindi", cls: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: <CheckCircle2 className="w-3 h-3" /> }
       : st === "rejected"
