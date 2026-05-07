@@ -41,6 +41,7 @@ export default defineConfig({
     },
     dedupe: ["react", "react-dom"],
   },
+  cacheDir: path.resolve(import.meta.dirname, `node_modules/.vite-${port}`),
   root: path.resolve(import.meta.dirname),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
