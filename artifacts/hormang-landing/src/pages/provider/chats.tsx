@@ -515,10 +515,10 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
               {chat && masterId && !hasReviewedRequest(chat.requestId, masterId) && (
                 <button
                   onClick={() => { setReviewDismissed(false); setShowReview(true); }}
-                  className="w-9 h-9 rounded-xl bg-amber-400 hover:bg-amber-500 flex items-center justify-center transition-colors active:scale-95 shadow-sm"
+                  className="w-7 h-7 rounded-xl bg-white-400 hover:bg-gray-200 flex items-center justify-center transition-colors active:scale-95 shadow-sm"
                   title="Baholash"
                 >
-                  <Star className="w-4 h-4 fill-white text-white" />
+                  <Star className="w-5 h-5 text-amber-500" />
                 </button>
               )}
               <OfferStatusBadge status="completed" />

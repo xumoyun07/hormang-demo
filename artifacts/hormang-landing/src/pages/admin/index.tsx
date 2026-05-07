@@ -15,7 +15,7 @@
  * Real-time sync: listens to "hormang:store-change" (same bus as main app)
  * plus window "storage" for cross-tab updates.
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { QuestionsEmbedded } from "./questions";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -51,6 +51,10 @@ import {
 import ReactMarkdown from "react-markdown";
 import { FeedbackAdminSection } from "./feedback-panel";
 import { getAllFeedbacks, type Feedback as FeedbackEntry } from "@/lib/feedback-store";
+import {
+  getAllReports, getReportCountForUser, updateReportStatus,
+  type UserReport, type ReportStatus as RptStatus,
+} from "@/lib/report-store";
 
 /* ─── Credentials ───────────────────────────────────────────────── */
 const ADMIN_USER = "hormangVIP";
@@ -107,7 +111,7 @@ const CATEGORIES = [
 ];
 
 /* ─── Types ─────────────────────────────────────────────────────── */
-type Section = "overview" | "marketplace" | "requests" | "offers" | "users" | "monetization" | "audit" | "categories" | "announcements" | "feedback";
+type Section = "overview" | "marketplace" | "requests" | "offers" | "users" | "monetization" | "audit" | "categories" | "announcements" | "feedback" | "reports";
 
 type AuditLogCategory   = "admin" | "marketplace" | "financial" | "referral" | "risk";
 type AuditLogActorRole  = "admin" | "provider" | "customer" | "system";
@@ -450,6 +454,7 @@ const NAV_ITEMS: { id: Section; label: string; icon: React.FC<{ className?: stri
   { id: "users",          label: "Foydalanuvchilar",   icon: Users           },
   { id: "monetization",   label: "Monetizatsiya",      icon: CreditCard      },
   { id: "announcements",  label: "E'lonlar",           icon: Bell            },
+  { id: "reports",        label: "Shikoyatlar",        icon: Flag            },
   { id: "audit",          label: "Audit log",          icon: FileText        },
   { id: "categories",     label: "Toifalar",           icon: Settings        },
   { id: "feedback",       label: "Fikrlar",            icon: MessageSquare   },
@@ -1264,6 +1269,7 @@ interface AdminUser {
   referralEarned?:  number;
   /* ── Admin-managed metadata ── */
   flagCount?:       number;
+  reportCount?:     number;
   tags?:            string[];
   adminNotes?:      AdminNote[];
   tangaBalance?:    number;
@@ -3009,10 +3015,11 @@ function UsersSection({ refreshKey, onGoToFeedback, openUserId, onOpenUserIdCons
   const verified = getUserVerified();
   const enriched = users.map((u) => ({
     ...u,
-    flagCount:  flags[u.userId]    ?? 0,
-    tags:       tags[u.userId]     ?? [],
-    adminNotes: notes[u.userId]    ?? [],
-    verified:   verified[u.userId] !== undefined ? verified[u.userId] : (u.verified ?? false),
+    flagCount:   flags[u.userId]    ?? 0,
+    tags:        tags[u.userId]     ?? [],
+    adminNotes:  notes[u.userId]    ?? [],
+    verified:    verified[u.userId] !== undefined ? verified[u.userId] : (u.verified ?? false),
+    reportCount: getReportCountForUser(u.userId),
   }));
 
   /* ── Filtering ── */
@@ -3336,16 +3343,21 @@ function UsersSection({ refreshKey, onGoToFeedback, openUserId, onOpenUserIdCons
                       <td className="px-3 py-3">
                         <div className="flex flex-col gap-0.5">
                           {(u.flagCount ?? 0) > 0 && (
-                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-rose-600">
+                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-rose-600 whitespace-nowrap">
                               <Flag className="w-2.5 h-2.5" /> Flaglangan
                             </span>
                           )}
+                          {(u.reportCount ?? 0) > 0 && (
+                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-600 whitespace-nowrap">
+                              <TriangleAlert className="w-2.5 h-2.5" /> {u.reportCount} shikoyat
+                            </span>
+                          )}
                           {(u.adminNotes ?? []).length > 0 && (
-                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-blue-500">
+                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-blue-500 whitespace-nowrap">
                               <StickyNote className="w-2.5 h-2.5" /> {(u.adminNotes ?? []).length} izoh
                             </span>
                           )}
-                          {(u.flagCount ?? 0) === 0 && (u.adminNotes ?? []).length === 0 && (
+                          {(u.flagCount ?? 0) === 0 && (u.reportCount ?? 0) === 0 && (u.adminNotes ?? []).length === 0 && (
                             <span className="text-gray-200 text-[11px]">—</span>
                           )}
                         </div>
@@ -5253,6 +5265,299 @@ function CategoriesSection() {
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   REPORTS SECTION
+   ════════════════════════════════════════════════════════════════════ */
+const REASON_LABELS: Record<string, string> = {
+  spam:                  "Spam",
+  fake_profile:          "Soxta profil",
+  abuse:                 "Qo'pol muomala",
+  fraud:                 "Firibgarlik",
+  inappropriate_content: "Nomaqul kontent",
+  outside_contact:       "Xizmatdan tashqari aloqa",
+  other:                 "Boshqa",
+};
+const RPT_STATUS_MAP: Record<string, { label: string; cls: string }> = {
+  new:        { label: "Yangi",               cls: "bg-rose-50 text-rose-700 border-rose-200" },
+  in_review:  { label: "Ko'rib chiqilmoqda",  cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  resolved:   { label: "Hal qilindi",         cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  dismissed:  { label: "Rad etildi",          cls: "bg-gray-100 text-gray-500 border-gray-200" },
+};
+
+function resolveUser(userId: string): { name: string; initials: string; role: "provider" | "customer" | "both" } {
+  try {
+    const authUsers = readKey<Array<{
+      id: string; firstName?: string; lastName?: string; role?: string;
+    }>>("hormang_auth_users", []);
+    const au = authUsers.find((u) => u.id === userId);
+    if (au) {
+      const name = `${au.firstName ?? ""} ${au.lastName ?? ""}`.trim() || "Foydalanuvchi";
+      const initials = ((au.firstName?.[0] ?? "") + (au.lastName?.[0] ?? "")).toUpperCase() || name[0]?.toUpperCase() || "U";
+      const role = au.role === "provider" ? "provider" : "customer";
+      return { name, initials, role };
+    }
+  } catch { /* ignore */ }
+  return { name: userId.slice(0, 8) + "…", initials: "?", role: "customer" };
+}
+
+function UserPill({ userId }: { userId: string }) {
+  const { name, initials, role } = resolveUser(userId);
+  const bg = role === "provider" ? "bg-violet-100 text-violet-700" : "bg-blue-100 text-blue-700";
+  const badge = role === "provider" ? "bg-violet-50 text-violet-700 border-violet-100" : "bg-blue-50 text-blue-700 border-blue-100";
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-extrabold flex-shrink-0 ${bg}`}>
+        {initials}
+      </div>
+      <div>
+        <p className="text-[11px] font-semibold text-gray-800 leading-tight whitespace-nowrap">{name}</p>
+        <span className={`text-[8px] font-bold px-1 py-0.5 rounded border ${badge}`}>
+          {role === "provider" ? "Ijrochi" : "Mijoz"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ReportsSection({ refreshKey }: { refreshKey: number }) {
+  void refreshKey;
+  const [reports,     setReports]     = useState<UserReport[]>([]);
+  const [filterStatus, setFilterStatus] = useState<RptStatus | "all">("all");
+  const [expanded,    setExpanded]    = useState<string | null>(null);
+  const [noteInputs,  setNoteInputs]  = useState<Record<string, string>>({});
+
+  function load() { setReports(getAllReports()); }
+  useEffect(() => { load(); }, []);
+
+  function changeStatus(id: string, status: RptStatus) {
+    updateReportStatus(id, status, noteInputs[id]);
+    load();
+  }
+
+  function saveNote(id: string) {
+    const r = reports.find((r) => r.id === id);
+    if (!r) return;
+    updateReportStatus(id, r.status, noteInputs[id]);
+    load();
+  }
+
+  const filtered = filterStatus === "all"
+    ? reports
+    : reports.filter((r) => r.status === filterStatus);
+
+  const newCount       = reports.filter((r) => r.status === "new").length;
+  const inReviewCount  = reports.filter((r) => r.status === "in_review").length;
+  const resolvedCount  = reports.filter((r) => r.status === "resolved").length;
+  const dismissedCount = reports.filter((r) => r.status === "dismissed").length;
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-lg font-extrabold text-gray-900">Foydalanuvchi Shikoyatlari</h2>
+          <p className="text-sm text-gray-500 mt-0.5">Barcha shikoyatlarni ko'rib chiqing va boshqaring</p>
+        </div>
+        <button onClick={load}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-600 text-sm font-semibold hover:bg-red-100 transition-colors border border-red-100 flex-shrink-0">
+          <RefreshCw className="w-3.5 h-3.5" /> Yangilash
+        </button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Jami",               value: reports.length, color: "text-gray-900",    cls: "bg-gray-50 text-gray-400" },
+          { label: "Yangi",              value: newCount,       color: "text-rose-700",    cls: "bg-rose-50 text-rose-400" },
+          { label: "Ko'rib chiqilmoqda", value: inReviewCount,  color: "text-amber-700",   cls: "bg-amber-50 text-amber-400" },
+          { label: "Hal qilindi",        value: resolvedCount + dismissedCount, color: "text-emerald-700", cls: "bg-emerald-50 text-emerald-400" },
+        ].map((m) => (
+          <div key={m.label} className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">{m.label}</p>
+            <p className={`text-2xl font-extrabold ${m.color}`}>{m.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter */}
+      <div className="flex flex-wrap gap-2 items-center">
+        {(["all", "new", "in_review", "resolved", "dismissed"] as const).map((s) => (
+          <button key={s} onClick={() => setFilterStatus(s)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
+              filterStatus === s
+                ? "bg-red-600 text-white border-red-600"
+                : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+            }`}>
+            {s === "all" ? `Barchasi (${reports.length})` : `${RPT_STATUS_MAP[s]?.label} (${reports.filter(r => r.status === s).length})`}
+          </button>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {filtered.length === 0 ? (
+          <div className="py-16 text-center">
+            <Flag className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+            <p className="text-gray-400 font-semibold">
+              {reports.length === 0 ? "Hali shikoyatlar yo'q" : "Mos shikoyatlar topilmadi"}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-red-50/40">
+                  {["Shikoyat qilingan", "Shikoyat qiluvchi", "Sabab", "Sana", "Holat", "Amallar"].map((h) => (
+                    <th key={h} className="text-left text-[9px] font-bold text-red-400 uppercase tracking-widest px-4 py-3 whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filtered.map((r) => {
+                  const isOpen = expanded === r.id;
+                  const statusInfo = RPT_STATUS_MAP[r.status] ?? RPT_STATUS_MAP.new;
+                  return (
+                    <Fragment key={r.id}>
+                      <tr
+                        className="hover:bg-red-50/20 transition-colors cursor-pointer"
+                        onClick={() => setExpanded(isOpen ? null : r.id)}>
+
+                        {/* Reported */}
+                        <td className="px-4 py-3 min-w-[160px]">
+                          <UserPill userId={r.reportedUserId} />
+                        </td>
+
+                        {/* Reporter */}
+                        <td className="px-4 py-3 min-w-[160px]">
+                          <UserPill userId={r.reporterUserId} />
+                        </td>
+
+                        {/* Reason */}
+                        <td className="px-4 py-3">
+                          <span className="text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded-lg whitespace-nowrap">
+                            {REASON_LABELS[r.reason] ?? r.reason}
+                          </span>
+                        </td>
+
+                        {/* Date */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <p className="text-[11px] text-gray-500">{fmtDate(r.createdAt)}</p>
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap ${statusInfo.cls}`}>
+                            {statusInfo.label}
+                          </span>
+                        </td>
+
+                        {/* Expand */}
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => setExpanded(isOpen ? null : r.id)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                            title="Batafsil"
+                          >
+                            {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </button>
+                        </td>
+                      </tr>
+
+                      {/* Expanded detail row */}
+                      {isOpen && (
+                        <tr className="bg-amber-50/40">
+                          <td colSpan={6} className="px-4 py-4">
+                            <div className="space-y-3">
+                              {/* Description */}
+                              {r.description && (
+                                <div>
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Izoh</p>
+                                  <p className="text-sm text-gray-700 bg-white rounded-xl px-3 py-2 border border-gray-100">
+                                    {r.description}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Attachments */}
+                              {(r.attachments ?? []).length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Dalil rasmlari</p>
+                                  <div className="flex gap-2 flex-wrap">
+                                    {r.attachments!.map((src, i) => (
+                                      <a key={i} href={src} target="_blank" rel="noreferrer">
+                                        <img src={src} alt="" className="w-20 h-20 object-cover rounded-xl border border-gray-200 hover:opacity-80 transition-opacity" />
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Admin note */}
+                              {r.adminNote && (
+                                <div className="bg-blue-50 rounded-xl px-3 py-2 border border-blue-100">
+                                  <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wide mb-0.5">Admin izohi</p>
+                                  <p className="text-sm text-blue-800">{r.adminNote}</p>
+                                </div>
+                              )}
+
+                              {/* Action row */}
+                              <div className="flex flex-wrap items-start gap-2">
+                                {/* Status buttons */}
+                                <div className="flex flex-wrap gap-1.5">
+                                  {(["in_review", "resolved", "dismissed"] as RptStatus[]).map((s) => (
+                                    <button key={s}
+                                      onClick={() => changeStatus(r.id, s)}
+                                      disabled={r.status === s}
+                                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                        r.status === s
+                                          ? RPT_STATUS_MAP[s].cls
+                                          : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                                      }`}>
+                                      {RPT_STATUS_MAP[s].label}
+                                    </button>
+                                  ))}
+                                  {r.status !== "new" && (
+                                    <button onClick={() => changeStatus(r.id, "new")}
+                                      className="px-3 py-1.5 rounded-xl text-xs font-bold border bg-white text-gray-500 border-gray-200 hover:border-gray-300 transition-colors">
+                                      Yangi qilib belgilash
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Admin note input */}
+                                <div className="flex items-center gap-1.5 flex-1 min-w-[220px]">
+                                  <input
+                                    value={noteInputs[r.id] ?? r.adminNote ?? ""}
+                                    onChange={(e) => setNoteInputs((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                                    placeholder="Admin izohi yozing..."
+                                    className={`${inputCls} flex-1 text-xs`}
+                                  />
+                                  <button
+                                    onClick={() => saveNote(r.id)}
+                                    className="px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors flex-shrink-0"
+                                  >
+                                    Saqlash
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════
    TOP BAR
    ════════════════════════════════════════════════════════════════════ */
 function TopBar({ section, unseenAlerts, onRefresh }: {
@@ -5352,6 +5657,7 @@ export default function AdminDashboard() {
               {section === "announcements"  && <AnnouncementsSection  {...sectionProps} />}
               {section === "audit"          && <AuditLogSection       {...sectionProps} />}
               {section === "categories"     && <CategoriesSection />}
+              {section === "reports"         && <ReportsSection        {...sectionProps} />}
               {section === "feedback"       && <FeedbackAdminSection {...sectionProps} filterUserId={feedbackFilterUserId} onNavigateToUser={(uid) => { setFeedbackFilterUserId(null); setOpenUserIdInUsers(uid); setSection("users"); }} />}
             </motion.div>
           </AnimatePresence>
