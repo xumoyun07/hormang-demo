@@ -24,6 +24,7 @@ import {
   updateProviderRequestStatus, getOfferByRequestId, getRequestOfferCount,
   type ProviderRequest, type ProviderOffer,
 } from "@/lib/provider-store";
+import { canSubmitOffer, offerBlockLabel, MAX_ACTIVE_OFFERS, MAX_LIFETIME_OFFERS } from "@/lib/requests-store";
 import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questionnaire-store";
 import logoImg from "/hormang-logo.png";
 import { TangaChip } from "@/pages/plans";
@@ -98,6 +99,9 @@ function FullscreenSlider({
   const { user: sliderUser } = useAuth();
 
   const urg = current ? urgencyLabel(current.urgency) : null;
+  const sliderCheck = current ? canSubmitOffer(current.id, sliderUser?.id ?? "") : { ok: true, reason: undefined as ReturnType<typeof canSubmitOffer>["reason"] };
+  const sliderBlocked = !sliderCheck.ok;
+  const sliderBlockedText = sliderBlocked ? offerBlockLabel(sliderCheck.reason) : "";
 
   useEffect(() => { if (current) markSeen(current.id, sliderUser?.id); }, [current?.id, sliderUser?.id]);
 
@@ -219,12 +223,14 @@ function FullscreenSlider({
               O'chirish
             </button>
             <button
-              onClick={() => onOpenOffer(current)}
-              className="flex-1 h-11 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
-              style={{ background: VIOLET }}
+              onClick={() => !sliderBlocked && onOpenOffer(current)}
+              disabled={sliderBlocked}
+              className="flex-1 h-11 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-1.5 active:scale-95 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+              style={{ background: sliderBlocked ? "#9CA3AF" : VIOLET }}
+              title={sliderBlocked ? sliderBlockedText : undefined}
             >
               <Send className="w-4 h-4" />
-              Taklif yuborish
+              {sliderBlocked ? sliderBlockedText : "Taklif yuborish"}
             </button>
             <button
               disabled={index >= requests.length - 1}
@@ -678,6 +684,9 @@ export default function ProviderRequestsPage() {
             {filtered.map((r, i) => {
               const urg = urgencyLabel(r.urgency);
               const isUnseen = unseen.some((u) => u.id === r.id);
+              const submitCheck = canSubmitOffer(r.id, providerId);
+              const blocked = !submitCheck.ok;
+              const blockedText = blocked ? offerBlockLabel(submitCheck.reason) : "";
               return (
                 <motion.div
                   key={r.id}
@@ -708,15 +717,16 @@ export default function ProviderRequestsPage() {
                       <span className="flex items-center gap-0.5 text-[11px] text-gray-400">
                         <MapPin className="w-3 h-3" />{r.location}
                       </span>
-                      {(() => {
-                        const cnt = getRequestOfferCount(r.id);
-                        return (
-                          <span className={`text-[11px] font-bold ${cnt === 0 ? "text-red-500" : "text-emerald-600"}`}>
-                            Takliflar: {cnt} ta
-                          </span>
-                        );
-                      })()}
+                      <span className={`text-[11px] font-bold ${submitCheck.active === 0 ? "text-red-500" : "text-emerald-600"}`}>
+                        {submitCheck.active}/{MAX_ACTIVE_OFFERS} faol · {submitCheck.total}/{MAX_LIFETIME_OFFERS} jami
+                      </span>
                     </div>
+                    {blocked && (
+                      <div className="mb-2 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                        <span className="text-sm flex-shrink-0">🔒</span>
+                        <p className="text-[11px] font-bold text-gray-700 truncate">{blockedText}</p>
+                      </div>
+                    )}
                     <div className="flex gap-2">
                       <button
                         onClick={() => {
@@ -728,12 +738,13 @@ export default function ProviderRequestsPage() {
                         O'chirish
                       </button>
                       <button
-                        onClick={() => openOfferForm(r)}
-                        className="flex-1 h-9 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-sm"
-                        style={{ background: VIOLET }}
+                        onClick={() => !blocked && openOfferForm(r)}
+                        disabled={blocked}
+                        className="flex-1 h-9 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
+                        style={{ background: blocked ? "#9CA3AF" : VIOLET }}
                       >
                         <Send className="w-3.5 h-3.5" />
-                        Taklif yuborish
+                        {blocked ? "Yopilgan" : "Taklif yuborish"}
                       </button>
                     </div>
                   </div>

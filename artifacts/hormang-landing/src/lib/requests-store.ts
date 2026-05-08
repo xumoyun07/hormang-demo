@@ -26,12 +26,27 @@ export interface CustomerRequest {
   answers: Record<string, unknown>;
   /** Dedicated multi-photo upload (up to 10 images, stored as base64) */
   requestPhotos?: string[];
-  status: "open" | "accepted" | "completed" | "cancelled";
+  status: "open" | "accepted" | "matched" | "completed" | "cancelled";
   createdAt: string;
   offerCount: number;
   region?: string;
   district?: string;
+  /** Set when a customer accepts an offer — locks request to new offers. */
+  acceptedOfferId?: string;
+  /** Hard switch: once true, no new offers may be created on this request. */
+  closedForOffers?: boolean;
 }
+
+export type OfferStatus =
+  | "pending"
+  | "negotiating"
+  | "accepted"
+  | "rejected"
+  | "cancelled"
+  | "expired"
+  | "in_progress"
+  | "completed"
+  | "closed_by_match";
 
 export interface Offer {
   id: string;
@@ -48,7 +63,7 @@ export interface Offer {
   fileUrls?: string[];
   avgResponseTime: number; // minutes
   createdAt: string;
-  status: "pending" | "accepted" | "rejected" | "in_progress" | "completed";
+  status: OfferStatus;
   /** Tanga deducted from the provider when this offer was submitted. */
   tangaSpent?: number;
   /** true once admin has issued a batch 50% refund that included this offer. */
@@ -57,6 +72,11 @@ export interface Offer {
   providerConfirmedCompleted?: boolean;
   customerConfirmedCompleted?: boolean;
 }
+
+/* ─── Offer Limit Constants ──────────────────────────────────────── */
+export const MAX_ACTIVE_OFFERS = 5;
+export const MAX_LIFETIME_OFFERS = 10;
+const ACTIVE_STATUSES: OfferStatus[] = ["pending", "negotiating", "accepted"];
 
 export interface ChatAttachment {
   type: "image" | "file";
@@ -277,6 +297,65 @@ export function getOfferById(offerId: string): Offer | undefined {
   return getOffers().find((o) => o.id === offerId);
 }
 
+/* ─── Offer Limiting System ──────────────────────────────────────── */
+
+/**
+ * Counts active and lifetime offers for a request.
+ *  - active = pending | negotiating | accepted
+ *  - total  = every offer ever created on this request
+ */
+export function getRequestCounts(requestId: string): { active: number; total: number } {
+  const all = getOffersByRequestId(requestId);
+  const active = all.filter((o) => ACTIVE_STATUSES.includes(o.status)).length;
+  return { active, total: all.length };
+}
+
+export type CanSubmitOfferReason =
+  | "no_request"
+  | "request_closed"
+  | "matched"
+  | "active_limit"
+  | "lifetime_limit"
+  | "already_offered";
+
+/**
+ * Single source of truth for "may this provider submit an offer on this request?".
+ * Called BEFORE Tanga deduction so balance is never spent on a blocked submission.
+ */
+export function canSubmitOffer(
+  requestId: string,
+  providerId: string,
+): { ok: boolean; reason?: CanSubmitOfferReason; active: number; total: number } {
+  const req = getRequestById(requestId);
+  const { active, total } = getRequestCounts(requestId);
+  if (!req) return { ok: false, reason: "no_request", active, total };
+  if (req.closedForOffers || req.acceptedOfferId || req.status === "matched")
+    return { ok: false, reason: "matched", active, total };
+  if (req.status !== "open") return { ok: false, reason: "request_closed", active, total };
+  if (total >= MAX_LIFETIME_OFFERS) return { ok: false, reason: "lifetime_limit", active, total };
+  if (active >= MAX_ACTIVE_OFFERS) return { ok: false, reason: "active_limit", active, total };
+  if (providerId) {
+    const dup = getOffersByRequestId(requestId).some(
+      (o) => o.masterId === providerId && ACTIVE_STATUSES.includes(o.status),
+    );
+    if (dup) return { ok: false, reason: "already_offered", active, total };
+  }
+  return { ok: true, active, total };
+}
+
+/** Human-readable Uzbek label for a `canSubmitOffer` failure reason. */
+export function offerBlockLabel(reason: CanSubmitOfferReason | undefined): string {
+  switch (reason) {
+    case "matched":          return "Mijoz boshqa ijrochi taklifini qabul qilgan";
+    case "active_limit":     return "5 ta faol taklif mavjud";
+    case "lifetime_limit":   return "Takliflar limiti tugagan";
+    case "request_closed":   return "So'rov yopilgan";
+    case "already_offered":  return "Siz allaqachon taklif yuborgansiz";
+    case "no_request":       return "So'rov topilmadi";
+    default:                 return "Taklif yuborib bo'lmaydi";
+  }
+}
+
 /** Set offer status to in_progress (when provider schedules the work) */
 export function markOfferInProgress(offerId: string): void {
   const allOffers = getOffers();
@@ -418,11 +497,35 @@ export function updateOfferStatus(offerId: string, status: "accepted" | "rejecte
   const target = allOffers.find((o) => o.id === offerId);
   if (!target) return;
 
-  // Mark the target offer with the new status
-  let updated = allOffers.map((o) => o.id === offerId ? { ...o, status } : o);
+  // Mark the target offer with the new status. When accepted, also flip every
+  // sibling active offer on the same request to "closed_by_match" so providers
+  // see a clear, distinct status rather than a rejection.
+  let updated: Offer[] = allOffers.map((o) => {
+    if (o.id === offerId) return { ...o, status };
+    if (
+      status === "accepted" &&
+      o.requestId === target.requestId &&
+      ACTIVE_STATUSES.includes(o.status)
+    ) {
+      return { ...o, status: "closed_by_match" as const };
+    }
+    return o;
+  });
 
   writeJSON(OFFERS_KEY, updated);
   console.log(`[Hormang] ✅ Offer ${status === "accepted" ? "qabul qilindi" : "rad etildi"}`, { offerId, status });
+
+  // When the customer accepts, lock the request: status → matched, mark
+  // acceptedOfferId, and set closedForOffers so no new offers can be created.
+  if (status === "accepted") {
+    const reqs = readJSON<CustomerRequest[]>(REQUESTS_KEY, []);
+    const lockedReqs = reqs.map((r) =>
+      r.id === target.requestId
+        ? { ...r, status: "matched" as const, acceptedOfferId: offerId, closedForOffers: true }
+        : r
+    );
+    writeJSON(REQUESTS_KEY, lockedReqs);
+  }
 
   // Inject a timeline system message into the offer's own chat
   if (target) {
@@ -435,7 +538,7 @@ export function updateOfferStatus(offerId: string, status: "accepted" | "rejecte
   }
 
   // When an offer is accepted, also notify sibling providers via system message
-  if (status === "accepted" && target) {
+  if (status === "accepted") {
     const siblings = allOffers.filter(
       (o) => o.requestId === target.requestId && o.id !== offerId
     );

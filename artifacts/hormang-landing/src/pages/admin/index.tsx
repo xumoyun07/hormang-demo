@@ -1997,7 +1997,7 @@ function MarketplaceTable({ rows, onOpen, onDelete }: {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-red-50/40">
-              {["Xizmat / Toifa", "Mijoz", "Joylashuv", "Takliflar", "Holat", "Tanlangan ijrochi", "Vaqt", "Amallar"].map((h) => (
+              {["Xizmat / Toifa", "Mijoz", "Joylashuv", "Faol", "Jami", "Holat", "Tanlangan ijrochi", "Vaqt", "Amallar"].map((h) => (
                 <th key={h} className="text-left text-[10px] font-bold text-red-400 uppercase tracking-widest px-4 py-3 whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -2026,14 +2026,34 @@ function MarketplaceTable({ rows, onOpen, onDelete }: {
                   </div>
                 </td>
                 <td className="px-4 py-3">
+                  {(() => {
+                    const active = offers.filter((o) => ["pending", "negotiating", "accepted"].includes(o.status)).length;
+                    const cls = active >= 5 ? "text-rose-600" : active > 0 ? "text-red-600" : "text-gray-300";
+                    return <span className={`font-extrabold text-sm ${cls}`}>{active}/5</span>;
+                  })()}
+                </td>
+                <td className="px-4 py-3">
+                  {(() => {
+                    const total = offers.length;
+                    const cls = total >= 10 ? "text-rose-600" : total > 0 ? "text-red-600" : "text-gray-300";
+                    return (
+                      <div className="flex items-center gap-1">
+                        <span className={`font-extrabold text-sm ${cls}`}>{total}/10</span>
+                        {col === "problem" && total === 0 && (
+                          <TriangleAlert className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
+                        )}
+                      </div>
+                    );
+                  })()}
+                </td>
+                <td className="px-4 py-3">
                   <div className="flex items-center gap-1">
-                    <span className={`font-extrabold text-sm ${offers.length > 0 ? "text-red-600" : "text-gray-300"}`}>{offers.length}</span>
-                    {col === "problem" && offers.length === 0 && (
-                      <TriangleAlert className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" />
+                    <StatusBadge status={r.status} />
+                    {(r.status === "matched" || (r as { acceptedOfferId?: string }).acceptedOfferId) && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-700">🔒 Matched</span>
                     )}
                   </div>
                 </td>
-                <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
                 <td className="px-4 py-3">
                   {acceptedOffer ? (
                     <div className="flex items-center gap-1.5">
