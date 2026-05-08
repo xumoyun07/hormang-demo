@@ -261,11 +261,19 @@ export default function CustomerHomePage() {
                       </div>
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          req.status === "open"     ? "bg-blue-50 text-blue-700" :
-                          req.status === "accepted" ? "bg-green-50 text-green-700" :
-                                                      "bg-gray-100 text-gray-500"
+                          req.status === "open"      ? "bg-blue-50 text-blue-700"   :
+                          req.status === "matched"   ? "bg-teal-50 text-teal-700"   :
+                          req.status === "accepted"  ? "bg-green-50 text-green-700" :
+                          req.status === "completed" ? "bg-green-50 text-green-700" :
+                          req.status === "cancelled" ? "bg-red-50 text-red-500"     :
+                                                       "bg-gray-100 text-gray-500"
                         }`}>
-                          {req.status === "open" ? "Faol" : req.status === "accepted" ? "Qabul qilindi" : req.status}
+                          {req.status === "open"      ? "Faol"             :
+                           req.status === "matched"   ? "Ijrochi tanlandi" :
+                           req.status === "accepted"  ? "Qabul qilindi"    :
+                           req.status === "completed" ? "Yakunlangan"      :
+                           req.status === "cancelled" ? "Bekor qilindi"    :
+                                                        req.status}
                         </span>
                         {req.offerCount > 0 && (
                           <span className="text-[10px] font-semibold text-violet-600">{req.offerCount} taklif</span>
