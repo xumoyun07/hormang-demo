@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation, useSearch } from "wouter";
 import {
@@ -13,7 +13,10 @@ import {
 } from "@/lib/questionnaire-store";
 import {
   saveNewRequest,
+  getRequestCooldown,
+  formatCooldownRemaining,
 } from "@/lib/requests-store";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { getLocalProfile } from "@/lib/local-profile";
 import { compressImage } from "@/lib/image-utils";
@@ -1332,6 +1335,8 @@ function RecommendationsScreen({
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function QuestionnairePage() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const rawSearch = useSearch();
   const params = new URLSearchParams(rawSearch);
   const presetCat = params.get("cat") ?? undefined;
@@ -1340,6 +1345,15 @@ export default function QuestionnairePage() {
   const [categoryId, setCategoryId] = useState<string>(presetCat ?? "");
   const [answers, setAnswers] = useState<Answers>({});
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
+
+  /* Live cooldown ticker (updates every second) */
+  const [cooldown, setCooldown] = useState(() => getRequestCooldown(user?.id ?? ""));
+  useEffect(() => {
+    const tick = () => setCooldown(getRequestCooldown(user?.id ?? ""));
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [user?.id]);
 
   function handleSelectCategory(id: string) {
     setCategoryId(id);
@@ -1354,9 +1368,59 @@ export default function QuestionnairePage() {
   function handleSeeProviders(photos: string[]) {
     const cat = getCategoryById(categoryId);
     const customerName = user ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || undefined : undefined;
-    const req = saveNewRequest(categoryId, cat?.name ?? categoryId, answers, undefined, user?.id, customerName, photos.length ? photos : undefined);
-    setCurrentRequestId(req.id);
-    setStage("recommendations");
+    try {
+      const req = saveNewRequest(categoryId, cat?.name ?? categoryId, answers, undefined, user?.id, customerName, photos.length ? photos : undefined);
+      setCurrentRequestId(req.id);
+      setStage("recommendations");
+    } catch (e) {
+      const err = e as Error & { code?: string };
+      toast({
+        title: "Yangi so'rov yaratib bo'lmaydi",
+        description: err.message ?? "Iltimos, biroz kutib turing.",
+        variant: "destructive",
+      });
+    }
+  }
+
+  /* Hard block: customer is in cooldown — show clean blocking screen.
+   * Scoped to pre-creation stages only so the post-submit recommendations
+   * page (which renders for the just-created request) is never hidden. */
+  const isPreCreationStage = stage === "select-category" || stage === "questions" || stage === "summary";
+  if (cooldown.blocked && isPreCreationStage) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center px-5 py-10">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-sm bg-white rounded-3xl shadow-xl border border-blue-100 p-6 text-center"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4 text-3xl">
+            ⏳
+          </div>
+          <h1 className="text-lg font-extrabold text-gray-900 mb-1.5">
+            Yangi so'rovlar oralig'ida kutish vaqti mavjud
+          </h1>
+          <p className="text-xs text-gray-500 mb-5 leading-relaxed">
+            {cooldown.extended
+              ? "Siz oxirgi 24 soatda 3+ ta so'rov yaratgansiz. Sifatli xizmat uchun biroz kutib turing."
+              : "Spamga qarshi himoya — har bir so'rov orasida qisqa intervaal mavjud."}
+          </p>
+          <div className="rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3 mb-5">
+            <p className="text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-1">Keyingi so'rov</p>
+            <p className="text-2xl font-extrabold text-blue-700 tabular-nums">
+              {formatCooldownRemaining(cooldown.remainingMs)}
+            </p>
+            <p className="text-[10px] text-blue-400 mt-1">qoldi</p>
+          </div>
+          <Button
+            onClick={() => setLocation("/my-requests")}
+            className="w-full font-bold bg-blue-600 hover:bg-blue-700"
+          >
+            So'rovlarimni ko'rish
+          </Button>
+        </motion.div>
+      </div>
+    );
   }
 
   return (

@@ -78,6 +78,18 @@ export const MAX_ACTIVE_OFFERS = 5;
 export const MAX_LIFETIME_OFFERS = 10;
 const ACTIVE_STATUSES: OfferStatus[] = ["pending", "negotiating", "accepted"];
 
+/* ─── Request Cooldown Constants ────────────────────────────────────
+ * Anti-spam: customer must wait between request creations.
+ *  - Default cooldown: 5 minutes
+ *  - If 3+ requests in last 24h → extended cooldown of 30 minutes
+ *  - Admin flag suggested at 5+ requests in 24h
+ * Cancelled requests do NOT count (don't punish failed attempts). */
+export const REQUEST_COOLDOWN_MS          = 5 * 60 * 1000;
+export const REQUEST_EXTENDED_COOLDOWN_MS = 30 * 60 * 1000;
+export const REQUEST_EXTENDED_THRESHOLD   = 3;
+export const REQUEST_DAILY_FLAG_THRESHOLD = 5;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 export interface ChatAttachment {
   type: "image" | "file";
   url: string;      // base64 data URL or object URL
@@ -225,6 +237,19 @@ export function saveNewRequest(
     if (loc.region) { region = loc.region; district = loc.district; }
   }
 
+  // Anti-spam cooldown — must validate BEFORE persisting the request
+  if (customerId) {
+    const cd = getRequestCooldown(customerId);
+    if (cd.blocked) {
+      const err = new Error(
+        `So'rovlar oralig'ida kutish vaqti mavjud: ${formatCooldownRemaining(cd.remainingMs)} qoldi`,
+      );
+      (err as Error & { code?: string; cooldown?: CooldownState }).code = "REQUEST_COOLDOWN";
+      (err as Error & { code?: string; cooldown?: CooldownState }).cooldown = cd;
+      throw err;
+    }
+  }
+
   const req: CustomerRequest = {
     id: uid(),
     customerId: customerId || undefined,
@@ -341,6 +366,86 @@ export function canSubmitOffer(
     if (dup) return { ok: false, reason: "already_offered", active, total };
   }
   return { ok: true, active, total };
+}
+
+/* ─── Request Cooldown System ────────────────────────────────────── */
+
+/** All non-cancelled requests this customer has submitted. */
+function getQualifyingRequests(customerId: string): CustomerRequest[] {
+  if (!customerId) return [];
+  return getRequests().filter(
+    (r) => r.customerId === customerId && r.status !== "cancelled",
+  );
+}
+
+/** Count of qualifying requests created in the last `windowMs` (default 24h). */
+export function getRecentRequestCount(customerId: string, windowMs: number = ONE_DAY_MS): number {
+  const now = Date.now();
+  return getQualifyingRequests(customerId).filter(
+    (r) => now - new Date(r.createdAt).getTime() < windowMs,
+  ).length;
+}
+
+export type CooldownState = {
+  /** True if the customer is currently inside a cooldown window. */
+  blocked: boolean;
+  /** Milliseconds remaining until they may create a new request. */
+  remainingMs: number;
+  /** Epoch ms when the cooldown ends (null if not blocked). */
+  until: number | null;
+  /** Active cooldown duration: 5min default, 30min if 3+ in 24h. */
+  durationMs: number;
+  /** Number of qualifying requests in the last 24h. */
+  recentCount: number;
+  /** True if extended (30 min) cooldown is the active duration. */
+  extended: boolean;
+};
+
+/**
+ * Single source of truth for "is this customer currently rate-limited?".
+ * Pure read — does not mutate. Call freely from UI tickers.
+ */
+export function getRequestCooldown(customerId: string): CooldownState {
+  const baseDuration = REQUEST_COOLDOWN_MS;
+  if (!customerId) {
+    return { blocked: false, remainingMs: 0, until: null, durationMs: baseDuration, recentCount: 0, extended: false };
+  }
+  const qualifying = getQualifyingRequests(customerId);
+  const now = Date.now();
+  const recentCount = qualifying.filter((r) => now - new Date(r.createdAt).getTime() < ONE_DAY_MS).length;
+  const extended = recentCount >= REQUEST_EXTENDED_THRESHOLD;
+  const durationMs = extended ? REQUEST_EXTENDED_COOLDOWN_MS : REQUEST_COOLDOWN_MS;
+
+  // Latest qualifying request determines the cooldown anchor
+  const latest = qualifying
+    .slice()
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+  if (!latest) {
+    return { blocked: false, remainingMs: 0, until: null, durationMs, recentCount, extended };
+  }
+
+  const elapsed = now - new Date(latest.createdAt).getTime();
+  if (elapsed >= durationMs) {
+    return { blocked: false, remainingMs: 0, until: null, durationMs, recentCount, extended };
+  }
+  const remainingMs = durationMs - elapsed;
+  return {
+    blocked: true,
+    remainingMs,
+    until: new Date(latest.createdAt).getTime() + durationMs,
+    durationMs,
+    recentCount,
+    extended,
+  };
+}
+
+/** "X daqiqa YY soniya" — Uzbek live-countdown label. */
+export function formatCooldownRemaining(remainingMs: number): string {
+  const totalSec = Math.max(0, Math.ceil(remainingMs / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m} daqiqa ${s.toString().padStart(2, "0")} soniya`;
 }
 
 /** Human-readable Uzbek label for a `canSubmitOffer` failure reason. */
