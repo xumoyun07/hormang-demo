@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import {
   getRequestsByCustomer, getOffersByRequestId, getOrCreateChat,
-  updateRequestStatus,
+  updateRequestStatus, getRequestCounts, MAX_ACTIVE_OFFERS, MAX_LIFETIME_OFFERS,
   type CustomerRequest,
 } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
@@ -56,6 +56,8 @@ function RequestCard({
   const [, setLocation] = useLocation();
   const [previewOpen, setPreviewOpen] = useState(false);
   const offers = getOffersByRequestId(req.id);
+  const counts = getRequestCounts(req.id);
+  const isMatched = req.status === "matched" || !!req.acceptedOfferId;
   const urgency = req.answers["urgency"] as string | undefined;
   const budget = req.answers["budget"] as number | undefined;
   const openToOffers = req.answers["budget_open"] as boolean | undefined;
@@ -75,9 +77,11 @@ function RequestCard({
 
   /* Status chip config per mode */
   const statusChip =
-    mode === "active"
-      ? { label: "Faol", cls: "bg-emerald-50 text-emerald-600" }
-      : { label: "Bekor qilindi", cls: "bg-gray-100 text-gray-500" };
+    isMatched
+      ? { label: "Ijrochi tanlangan", cls: "bg-blue-50 text-blue-600" }
+      : mode === "active"
+        ? { label: "Faol", cls: "bg-emerald-50 text-emerald-600" }
+        : { label: "Bekor qilindi", cls: "bg-gray-100 text-gray-500" };
 
   return (
     <motion.div
@@ -133,6 +137,14 @@ function RequestCard({
         <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${statusChip.cls}`}>
           {statusChip.label}
         </span>
+        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-600">
+          {counts.active}/{MAX_ACTIVE_OFFERS} faol · {counts.total}/{MAX_LIFETIME_OFFERS} jami
+        </span>
+        {isMatched && (
+          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 inline-flex items-center gap-1">
+            🔒 Yopilgan
+          </span>
+        )}
       </div>
 
       {/* Actions */}

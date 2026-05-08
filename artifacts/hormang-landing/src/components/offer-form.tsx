@@ -23,7 +23,7 @@ import {
   getAvgResponseMinutes,
   type ProviderRequest,
 } from "@/lib/provider-store";
-import { getRequests, getOffers } from "@/lib/requests-store";
+import { getRequests, getOffers, canSubmitOffer, offerBlockLabel } from "@/lib/requests-store";
 import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questionnaire-store";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
@@ -116,6 +116,11 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
   const balance = user ? getTangaBalance(user.id) : 0;
   const hasEnoughTanga = balance >= offerCost;
 
+  /* Offer-limit / acceptance-lock validation (must succeed BEFORE Tanga deduction) */
+  const submissionCheck = canSubmitOffer(request.id, user?.id ?? "");
+  const blockedReason = submissionCheck.ok ? undefined : submissionCheck.reason;
+  const blockedLabel = submissionCheck.ok ? "" : offerBlockLabel(submissionCheck.reason);
+
   /* Form state */
   const [priceRaw, setPriceRaw] = useState("");
   const [message, setMessage] = useState("");
@@ -169,6 +174,16 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
   }
 
   function handleSubmit() {
+    /* ── 1. Validate request state + offer limits BEFORE any Tanga is touched ── */
+    const recheck = canSubmitOffer(request.id, user?.id ?? "");
+    if (!recheck.ok) {
+      toast({
+        title: "Taklif yuborib bo'lmaydi",
+        description: offerBlockLabel(recheck.reason),
+        variant: "destructive",
+      });
+      return;
+    }
     if (!hasEnoughTanga) return;
     if (!validate()) return;
     if (user && isUserSuspended(user.id)) {
@@ -301,6 +316,19 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
 
           {/* Scrollable body */}
           <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+            {/* ── Offer Limit / Lock Banner ── */}
+            {blockedReason && (
+              <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3">
+                <span className="text-xl flex-shrink-0">🔒</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-extrabold text-gray-800">{blockedLabel}</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    Faol takliflar: <strong>{submissionCheck.active}/{5}</strong> · Jami: <strong>{submissionCheck.total}/{10}</strong>
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* ── Tanga Cost Banner ── */}
             {hasEnoughTanga ? (
@@ -576,9 +604,9 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={submitting || !hasEnoughTanga}
+                disabled={submitting || !hasEnoughTanga || !!blockedReason}
                 className="flex-[2] h-12 rounded-2xl text-white font-extrabold text-sm flex items-center justify-center gap-2 active:scale-[.98] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ background: hasEnoughTanga ? "linear-gradient(135deg, #059669 0%, #10B981 100%)" : "#9CA3AF" }}
+                style={{ background: blockedReason ? "#9CA3AF" : hasEnoughTanga ? "linear-gradient(135deg, #059669 0%, #10B981 100%)" : "#9CA3AF" }}
               >
                 {submitting ? (
                   <motion.div
@@ -589,7 +617,11 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                 ) : (
                   <Send className="w-4 h-4" />
                 )}
-                {hasEnoughTanga ? `Taklifni yuborish (−${offerCost} 🪙)` : "Tanga yetarli emas"}
+                {blockedReason
+                  ? blockedLabel
+                  : hasEnoughTanga
+                    ? `Taklifni yuborish (−${offerCost} 🪙)`
+                    : "Tanga yetarli emas"}
               </button>
             </div>
           </div>
