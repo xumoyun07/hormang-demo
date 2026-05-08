@@ -265,7 +265,7 @@ export default function CustomerHomePage() {
                           req.status === "accepted" ? "bg-green-50 text-green-700" :
                                                       "bg-gray-100 text-gray-500"
                         }`}>
-                          {req.status === "open" ? "Ochiq" : req.status === "accepted" ? "Qabul qilindi" : req.status}
+                          {req.status === "open" ? "Faol" : req.status === "accepted" ? "Qabul qilindi" : req.status}
                         </span>
                         {req.offerCount > 0 && (
                           <span className="text-[10px] font-semibold text-violet-600">{req.offerCount} taklif</span>
@@ -314,12 +314,12 @@ export default function CustomerHomePage() {
                         {offer.price.toLocaleString()} so'm
                       </p>
                       <span className={`mt-1 inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                        offer.status === "pending"        ? "bg-amber-50 text-amber-700" :
-                        offer.status === "accepted"       ? "bg-blue-50 text-blue-700" :
-                        offer.status === "completed"      ? "bg-green-50 text-green-700" :
-                        offer.status === "rejected"       ? "bg-red-50 text-red-600" :
-                        offer.status === "closed_by_match"? "bg-gray-100 text-gray-500" :
-                                                            "bg-gray-100 text-gray-500"
+                        offer.status === "pending"         ? "bg-amber-50 text-amber-700" :
+                        offer.status === "accepted"        ? "bg-blue-50 text-blue-700" :
+                        offer.status === "completed"       ? "bg-green-50 text-green-700" :
+                        offer.status === "rejected"        ? "bg-red-50 text-red-600" :
+                        offer.status === "closed_by_match" ? "bg-gray-100 text-gray-500" :
+                                                             "bg-gray-100 text-gray-500"
                       }`}>
                         {offer.status === "pending"         ? "Kutilmoqda"    :
                          offer.status === "accepted"        ? "Qabul qilindi" :

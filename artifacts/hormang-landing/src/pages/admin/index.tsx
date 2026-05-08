@@ -319,7 +319,7 @@ function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     open:      "bg-red-50 text-red-700 border-red-100",
     accepted:  "bg-emerald-50 text-emerald-700 border-emerald-100",
-    completed: "bg-green-50 text-green-700 border-green-100",
+    completed: "bg-green-50 text-green-700 border-green-100 ",
     cancelled: "bg-rose-100 text-rose-700 border-rose-200",
     pending:   "bg-amber-50 text-amber-700 border-amber-100",
     rejected:  "bg-rose-100 text-rose-700 border-rose-200",
@@ -327,7 +327,7 @@ function StatusBadge({ status }: { status: string }) {
     ignored:   "bg-gray-100 text-gray-500 border-gray-200",
   };
   const labels: Record<string, string> = {
-    open: "Ochiq", accepted: "Qabul", completed: "Tugallangan",
+    open: "Ochiq", accepted: "Qabul", completed: "Yakunlangan",
     cancelled: "Bekor", pending: "Kutmoqda", rejected: "Rad etildi",
     responded: "Javob berildi", ignored: "O'tkazildi",
   };
