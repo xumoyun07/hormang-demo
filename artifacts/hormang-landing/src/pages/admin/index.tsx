@@ -42,7 +42,7 @@ import {
 } from "@/lib/tanga-history-store";
 import { getTangaBalance, addTangaBalance, spendTangaBalance } from "@/lib/tanga-store";
 import { getReferralCode, getReferralStats, getInviterId, processReferralReward, TANGA_PER_REFERRAL } from "@/lib/referral-store";
-import { getOffers, getPhoneRegistry, getOffersByRequestId, markOfferCompleted, type Offer as BuyerOfferFull, updateOfferStatus, deleteRequestCascade, deleteUserDataCascade, getLast10RejectedEligibility, adminRefundProvider } from "@/lib/requests-store";
+import { getOffers, getPhoneRegistry, getOffersByRequestId, markOfferCompleted, type Offer as BuyerOfferFull, updateOfferStatus, deleteRequestCascade, deleteUserDataCascade, getLast10RejectedEligibility, adminRefundProvider, getRecentRequestCount, REQUEST_DAILY_FLAG_THRESHOLD } from "@/lib/requests-store";
 import {
   getAllAnnouncements, saveAnnouncement, deleteAnnouncement,
   toggleAnnouncementPublished, toggleAnnouncementPinned,
@@ -1411,6 +1411,18 @@ function AdvancedUserDetailModal({
                     <Flag className="w-2.5 h-2.5" /> Flaglangan
                   </span>
                 )}
+                {(() => {
+                  const last24h = getRecentRequestCount(u.userId);
+                  if (last24h < REQUEST_DAILY_FLAG_THRESHOLD) return null;
+                  return (
+                    <span
+                      className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-0.5"
+                      title="Shubhali faollik — oxirgi 24 soatda 5+ ta so'rov"
+                    >
+                      ⚠️ {last24h} ta so'rov bugun
+                    </span>
+                  );
+                })()}
               </div>
               <div className="flex items-center gap-1.5 flex-wrap mt-1">
                 {(u.role === "provider" || u.role === "both") && (

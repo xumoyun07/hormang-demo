@@ -15,6 +15,7 @@ import {
 } from "@/lib/local-profile";
 import {
   getRequestsByCustomer, getOffersByCustomer, getChatsByCustomer,
+  getRequestCooldown, formatCooldownRemaining,
 } from "@/lib/requests-store";
 import { getCompletedCount } from "@/lib/completion-store";
 import { RollingCategories } from "@/components/ui/RollingCategories";
@@ -54,6 +55,13 @@ export default function CustomerHomePage() {
   const { user, providerProfile, logout } = useAuth();
   const [, setLocation] = useLocation();
   const [local, setLocal] = useState<LocalProfile>({});
+  const [cooldown, setCooldown] = useState(() => getRequestCooldown(user?.id ?? ""));
+  useEffect(() => {
+    const tick = () => setCooldown(getRequestCooldown(user?.id ?? ""));
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [user?.id]);
   const storeVersion = useStoreRefresh();
 
   useEffect(() => {
@@ -147,13 +155,25 @@ export default function CustomerHomePage() {
               Xizmat topish uchun yangi so'rov yarating
             </p>
             <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setLocation("/questionnaire")}
-              className="w-full bg-white text-blue-700 font-extrabold text-sm py-3 rounded-xl flex items-center justify-center gap-2 shadow-md active:bg-blue-50 transition-colors"
+              whileTap={{ scale: cooldown.blocked ? 1 : 0.97 }}
+              disabled={cooldown.blocked}
+              onClick={() => !cooldown.blocked && setLocation("/questionnaire")}
+              className="w-full bg-white text-blue-700 font-extrabold text-sm py-3 rounded-xl flex items-center justify-center gap-2 shadow-md active:bg-blue-50 transition-colors disabled:bg-white/70 disabled:text-blue-400 disabled:cursor-not-allowed"
             >
               <Plus className="w-4 h-4" />
-              Yangi so'rov yaratish
+              {cooldown.blocked
+                ? "Yangi so'rovlar oralig'ida kutish vaqti mavjud"
+                : "Yangi so'rov yaratish"}
             </motion.button>
+
+            {cooldown.blocked && (
+              <div className="mt-2.5 rounded-xl bg-blue-900/40 border border-blue-300/30 px-3 py-2 flex items-center gap-2">
+                <span className="text-base">⏳</span>
+                <p className="text-[11px] font-bold text-white tabular-nums">
+                  Keyingi so'rov: {formatCooldownRemaining(cooldown.remainingMs)} qoldi
+                </p>
+              </div>
+            )}
           </motion.div>
 
           {/* ── Secondary Actions ── */}
