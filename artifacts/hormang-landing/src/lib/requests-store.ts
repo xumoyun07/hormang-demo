@@ -421,16 +421,6 @@ export function updateOfferStatus(offerId: string, status: "accepted" | "rejecte
   // Mark the target offer with the new status
   let updated = allOffers.map((o) => o.id === offerId ? { ...o, status } : o);
 
-  // When an offer is accepted, also reject ALL sibling offers on the same request.
-  // No automatic Tanga refunds — admin controls refunds via the 10-offer batch system.
-  if (status === "accepted") {
-    updated = updated.map((o) =>
-      o.requestId === target.requestId && o.id !== offerId && o.status === "pending"
-        ? { ...o, status: "rejected" as const }
-        : o
-    );
-  }
-
   writeJSON(OFFERS_KEY, updated);
   console.log(`[Hormang] ✅ Offer ${status === "accepted" ? "qabul qilindi" : "rad etildi"}`, { offerId, status });
 
