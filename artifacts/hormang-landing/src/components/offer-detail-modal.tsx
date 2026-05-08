@@ -506,7 +506,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
               {/* If another offer on this request was already accepted, show a notice */}
               {anyAccepted && (
                 <p className="text-center text-xs text-gray-400 font-semibold bg-gray-50 rounded-xl py-2 px-3">
-                  Bu so'rovga boshqa taklif allaqachon qabul qilingan
+                  Bu so'rovga boshqa taklif qabul qilingan
                 </p>
               )}
 

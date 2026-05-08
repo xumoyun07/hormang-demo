@@ -138,7 +138,7 @@ function RequestCard({
           {statusChip.label}
         </span>
         <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-600">
-          {counts.active}/{MAX_ACTIVE_OFFERS} faol · {counts.total}/{MAX_LIFETIME_OFFERS} jami
+          {counts.active}/{MAX_ACTIVE_OFFERS} faol taklif
         </span>
         {isMatched && (
           <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 inline-flex items-center gap-1">
