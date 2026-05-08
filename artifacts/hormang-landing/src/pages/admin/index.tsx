@@ -15,7 +15,7 @@
  * Real-time sync: listens to "hormang:store-change" (same bus as main app)
  * plus window "storage" for cross-tab updates.
  */
-import { useState, useEffect, useCallback, Fragment } from "react";
+import { useState, useEffect, useCallback, Fragment, useMemo } from "react";
 import { QuestionsEmbedded } from "./questions";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -145,7 +145,12 @@ interface BuyerOffer {
 interface PricingTier {
   id: string; name: string; credits: number; price: number;
   salePrice?: number; saleLimit?: number; salePurchaseCount?: number;
-  bonusTokens?: number; validUntil?: string;
+  perUserLimit?: number;
+  bonusTokens?: number;
+  startsAt?: string; validUntil?: string;
+  status?: "draft" | "active" | "scheduled" | "expired" | "archived";
+  visibilityTarget?: "all" | "new" | "active" | "referral";
+  featured?: boolean; hotOffer?: boolean; bonusPlan?: boolean; badge?: string;
   desc: string; color: string; active: boolean;
 }
 interface LocalProfile {
@@ -3884,6 +3889,7 @@ function MonoOverview({ txs, providers, tiers }: { txs: TangaTx[]; providers: Pr
         </div>
       )}
 
+      {/* Active plans + campaigns */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-gray-900 text-sm">Faol rejalar</h3>
@@ -3893,179 +3899,468 @@ function MonoOverview({ txs, providers, tiers }: { txs: TangaTx[]; providers: Pr
           <p className="text-xs text-gray-400 text-center py-4">Rejalar yo'q — "Rejalar" tabiga o'ting</p>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {tiers.filter((t) => t.active).map((t) => (
-              <span key={t.id} className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${t.color}`}>
-                {t.name} · {t.credits} 🪙 · {fmtMoney(t.price)}
-              </span>
-            ))}
+            {tiers.filter((t) => t.active).map((t) => {
+              const hasCampaign = t.salePrice !== undefined;
+              const soldOut = t.saleLimit !== undefined && (t.salePurchaseCount ?? 0) >= t.saleLimit;
+              return (
+                <span key={t.id} className={`px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${t.color}`}>
+                  {t.featured && "⭐"}{t.hotOffer && "🔥"}{t.bonusPlan && "🎁"}
+                  {t.name} · {t.credits} 🪙
+                  {hasCampaign && !soldOut && <span className="text-[9px] font-bold bg-orange-100 text-orange-600 px-1 rounded">Aksiya</span>}
+                  {soldOut && <span className="text-[9px] font-bold bg-red-100 text-red-500 px-1 rounded">Tugadi</span>}
+                </span>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Top-selling plans */}
+      {purchases.length > 0 && (() => {
+        const countMap: Record<string, number> = {};
+        purchases.forEach((p) => { countMap[p.categoryName] = (countMap[p.categoryName] ?? 0) + 1; });
+        const top = Object.entries(countMap).sort(([, a], [, b]) => b - a).slice(0, 3);
+        return (
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+            <h3 className="font-bold text-gray-900 text-sm mb-3">🏆 Ko'p sotilgan rejalar</h3>
+            <div className="space-y-2">
+              {top.map(([name, count], i) => (
+                <div key={name} className="flex items-center gap-3">
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0 ${i === 0 ? "bg-amber-100 text-amber-700" : i === 1 ? "bg-gray-100 text-gray-600" : "bg-orange-50 text-orange-600"}`}>{i + 1}</span>
+                  <span className="flex-1 text-xs font-semibold text-gray-700 truncate">{name}</span>
+                  <span className="text-xs font-bold text-gray-900">{count} ta</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
 
 /* ─── Plans Tab ──────────────────────────────────────────────────── */
-function MonoPlans({ tiers, setTiers, reload }: { tiers: PricingTier[]; setTiers: React.Dispatch<React.SetStateAction<PricingTier[]>>; reload: () => void }) {
-  const [editId, setEditId]                   = useState<string | null>(null);
-  const [editName, setEditName]               = useState("");
-  const [editDesc, setEditDesc]               = useState("");
-  const [editPrice, setEditPrice]             = useState(0);
-  const [editCredits, setEditCredits]         = useState(0);
-  const [editSalePrice, setEditSalePrice]     = useState<number | "">("");
-  const [editSaleLimit, setEditSaleLimit]     = useState<number | "">("");
-  const [editBonusTokens, setEditBonusTokens] = useState<number | "">("");
-  const [editValidUntil, setEditValidUntil]   = useState("");
-  const [showAddForm, setShowAddForm]         = useState(false);
-  const [newTier, setNewTier] = useState({ name: "", credits: 0, price: 0, salePrice: "", saleLimit: "", bonusTokens: "", validUntil: "", desc: "" });
+type PlanDraft = {
+  name: string; credits: number | ""; price: number | ""; salePrice: number | "";
+  saleLimit: number | ""; perUserLimit: number | ""; bonusTokens: number | "";
+  startsAt: string; validUntil: string;
+  status: "draft" | "active" | "scheduled" | "expired" | "archived";
+  visibilityTarget: "all" | "new" | "active" | "referral";
+  featured: boolean; hotOffer: boolean; bonusPlan: boolean;
+  badge: string; desc: string;
+};
+const BLANK_DRAFT: PlanDraft = {
+  name: "", credits: "", price: "", salePrice: "", saleLimit: "", perUserLimit: "",
+  bonusTokens: "", startsAt: "", validUntil: "", status: "active",
+  visibilityTarget: "all", featured: false, hotOffer: false, bonusPlan: false,
+  badge: "", desc: "",
+};
 
+function planStatusMeta(t: PricingTier): { label: string; cls: string } {
+  if (!t.active) return { label: "O'chirilgan", cls: "bg-gray-100 text-gray-500" };
+  const s = t.status ?? "active";
+  const now = new Date();
+  if (t.validUntil && new Date(t.validUntil) <= now) return { label: "Muddati tugagan", cls: "bg-red-50 text-red-500" };
+  if (t.startsAt && new Date(t.startsAt) > now)      return { label: "Rejalashtirilgan", cls: "bg-blue-50 text-blue-600" };
+  if (s === "draft")    return { label: "Qoralama", cls: "bg-gray-100 text-gray-500" };
+  if (s === "archived") return { label: "Arxivlangan", cls: "bg-gray-100 text-gray-400" };
+  return { label: "Faol", cls: "bg-emerald-50 text-emerald-700" };
+}
+
+function MonoPlans({ tiers, setTiers, reload }: { tiers: PricingTier[]; setTiers: React.Dispatch<React.SetStateAction<PricingTier[]>>; reload: () => void }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showForm, setShowForm]   = useState(false);
+  const [draft, setDraft]         = useState<PlanDraft>(BLANK_DRAFT);
+  const [errors, setErrors]       = useState<string[]>([]);
   void reload;
+
+  const allTxs = useMemo(() => readKey<TangaTx[]>("hormang_tanga_history", []), []);
+  const planStats = useMemo(() => {
+    const map: Record<string, { count: number; revenue: number }> = {};
+    for (const tx of allTxs) {
+      if (tx.type !== "purchase") continue;
+      const key = tx.categoryName;
+      if (!map[key]) map[key] = { count: 0, revenue: 0 };
+      map[key].count++;
+      map[key].revenue += typeof tx.priceSom === "number" ? tx.priceSom : 0;
+    }
+    return map;
+  }, [allTxs]);
+
+  const totalRevenue   = Object.values(planStats).reduce((s, v) => s + v.revenue, 0);
+  const totalPurchases = Object.values(planStats).reduce((s, v) => s + v.count, 0);
+  const activeCampaigns = tiers.filter((t) => {
+    if (!t.active || t.salePrice === undefined) return false;
+    const now = new Date();
+    if (t.validUntil && new Date(t.validUntil) <= now) return false;
+    if (t.saleLimit !== undefined && (t.salePurchaseCount ?? 0) >= t.saleLimit) return false;
+    return true;
+  }).length;
 
   function saveTiers(updated: PricingTier[]) { setTiers(updated); writeKey(K.PRICING_TIERS, updated); emitStoreChange(); }
 
+  function startCreate() { setEditingId(null); setDraft(BLANK_DRAFT); setErrors([]); setShowForm(true); }
   function startEdit(t: PricingTier) {
-    setEditId(t.id); setEditName(t.name); setEditDesc(t.desc); setEditPrice(t.price); setEditCredits(t.credits);
-    setEditSalePrice(t.salePrice ?? ""); setEditSaleLimit(t.saleLimit ?? ""); setEditBonusTokens(t.bonusTokens ?? ""); setEditValidUntil(t.validUntil ?? "");
+    setEditingId(t.id);
+    setDraft({
+      name: t.name, credits: t.credits, price: t.price,
+      salePrice: t.salePrice ?? "", saleLimit: t.saleLimit ?? "",
+      perUserLimit: t.perUserLimit ?? "", bonusTokens: t.bonusTokens ?? "",
+      startsAt: t.startsAt ?? "", validUntil: t.validUntil ?? "",
+      status: t.status ?? "active", visibilityTarget: t.visibilityTarget ?? "all",
+      featured: t.featured ?? false, hotOffer: t.hotOffer ?? false, bonusPlan: t.bonusPlan ?? false,
+      badge: t.badge ?? "", desc: t.desc,
+    });
+    setErrors([]); setShowForm(true);
   }
-  function saveEdit(id: string) {
-    saveTiers(tiers.map((t) => t.id !== id ? t : { ...t, name: editName.trim() || t.name, desc: editDesc, price: editPrice, credits: editCredits, salePrice: editSalePrice !== "" ? Number(editSalePrice) : undefined, saleLimit: editSaleLimit !== "" ? Number(editSaleLimit) : undefined, bonusTokens: editBonusTokens !== "" ? Number(editBonusTokens) : undefined, validUntil: editValidUntil || undefined }));
-    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "UPDATE_PRICING", category: "financial", targetId: id, targetType: "pricing", description: `Narx: ${editPrice} so'm, ${editCredits} Tanga` });
-    setEditId(null);
-  }
-  function toggleTier(id: string) {
-    saveTiers(tiers.map((t) => t.id === id ? { ...t, active: !t.active } : t));
-    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "TOGGLE_PRICING_TIER", category: "financial", targetId: id, targetType: "pricing", description: "Narx rejimi o'zgartirildi" });
-  }
-  function deleteTier(id: string) {
-    saveTiers(tiers.filter((t) => t.id !== id));
-    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "DELETE_PRICING_TIER", category: "financial", targetId: id, targetType: "pricing", description: "Narx rejimi o'chirildi" });
-  }
-  function addTier() {
-    if (!newTier.name.trim() || newTier.credits <= 0) return;
-    const tier: PricingTier = { id: uid(), name: newTier.name, credits: newTier.credits, price: newTier.price, salePrice: newTier.salePrice !== "" ? Number(newTier.salePrice) : undefined, saleLimit: newTier.saleLimit !== "" ? Number(newTier.saleLimit) : undefined, bonusTokens: newTier.bonusTokens !== "" ? Number(newTier.bonusTokens) : undefined, validUntil: newTier.validUntil || undefined, desc: newTier.desc, color: "bg-amber-50 text-amber-700", active: true };
-    saveTiers([...tiers, tier]);
-    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "ADD_PRICING_TIER", category: "financial", targetId: tier.id, targetType: "pricing", description: `Yangi reja: ${tier.name}` });
-    setNewTier({ name: "", credits: 0, price: 0, salePrice: "", saleLimit: "", bonusTokens: "", validUntil: "", desc: "" });
-    setShowAddForm(false);
+  function closeForm() { setShowForm(false); setEditingId(null); setErrors([]); }
+
+  function validate(): string[] {
+    const errs: string[] = [];
+    if (!draft.name.trim()) errs.push("Reja nomini kiriting.");
+    if (!draft.credits || Number(draft.credits) <= 0) errs.push("Tanga soni 0 dan katta bo'lishi kerak.");
+    if (!draft.price || Number(draft.price) < 0) errs.push("Narx manfiy bo'lishi mumkin emas.");
+    if (draft.salePrice !== "" && Number(draft.salePrice) >= Number(draft.price)) errs.push("Aksiya narxi asl narxdan kichik bo'lishi kerak.");
+    if (draft.salePrice !== "" && Number(draft.salePrice) < 0) errs.push("Aksiya narxi manfiy bo'lishi mumkin emas.");
+    if (draft.saleLimit !== "" && Number(draft.saleLimit) <= 0) errs.push("Umumiy aksiya limiti 0 dan katta bo'lishi kerak.");
+    if (draft.perUserLimit !== "" && Number(draft.perUserLimit) <= 0) errs.push("Bir foydalanuvchi limiti 0 dan katta bo'lishi kerak.");
+    return errs;
   }
 
-  /* Revenue from PLAN SALES: sum so'm price of every "purchase" Tanga transaction.
-     Falls back to current tier price for legacy purchases without priceSom. */
-  const allTxs = readKey<TangaTx[]>(K.TANGA_HISTORY, []);
-  const tierPriceByName = new Map<string, number>();
-  tiers.forEach((t) => {
-    const eff = t.salePrice !== undefined && t.salePrice < t.price ? t.salePrice : t.price;
-    tierPriceByName.set(t.name, eff);
-  });
-  const totalRevenue = allTxs
-    .filter((t) => t.type === "purchase")
-    .reduce((s, t) => s + (typeof t.priceSom === "number" ? t.priceSom : (tierPriceByName.get(t.categoryName) ?? 0)), 0);
-  const totalPurchases = allTxs.filter((t) => t.type === "purchase").length;
+  function save() {
+    const errs = validate();
+    if (errs.length) { setErrors(errs); return; }
+    const tier: PricingTier = {
+      id: editingId ?? uid(),
+      name: draft.name.trim(),
+      credits: Number(draft.credits),
+      price: Number(draft.price),
+      salePrice: draft.salePrice !== "" ? Number(draft.salePrice) : undefined,
+      saleLimit: draft.saleLimit !== "" ? Number(draft.saleLimit) : undefined,
+      salePurchaseCount: editingId ? (tiers.find((t) => t.id === editingId)?.salePurchaseCount ?? 0) : 0,
+      perUserLimit: draft.perUserLimit !== "" ? Number(draft.perUserLimit) : undefined,
+      bonusTokens: draft.bonusTokens !== "" ? Number(draft.bonusTokens) : undefined,
+      startsAt: draft.startsAt || undefined,
+      validUntil: draft.validUntil || undefined,
+      status: draft.status,
+      visibilityTarget: draft.visibilityTarget,
+      featured: draft.featured || undefined,
+      hotOffer: draft.hotOffer || undefined,
+      bonusPlan: draft.bonusPlan || undefined,
+      badge: draft.badge.trim() || undefined,
+      desc: draft.desc,
+      color: "bg-amber-50 text-amber-700",
+      active: draft.status === "active",
+    };
+    const updated = editingId
+      ? tiers.map((t) => t.id === editingId ? tier : t)
+      : [...tiers, tier];
+    saveTiers(updated);
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: editingId ? "UPDATE_PRICING" : "ADD_PRICING_TIER", category: "financial", targetId: tier.id, targetType: "pricing", description: `${editingId ? "Yangilandi" : "Yangi reja"}: ${tier.name}` });
+    closeForm();
+  }
+
+  function deleteTier(id: string) {
+    saveTiers(tiers.filter((t) => t.id !== id));
+    logAction({ actorId: ADMIN_USER, actorRole: "admin", action: "DELETE_PRICING_TIER", category: "financial", targetId: id, targetType: "pricing", description: "Reja o'chirildi" });
+  }
+  function toggleTier(id: string) {
+    saveTiers(tiers.map((t) => t.id === id ? { ...t, active: !t.active, status: !t.active ? "active" : "draft" } : t));
+  }
+
+  /* ── Live preview calculations ─────────────────────────────────── */
+  const liveCredits  = Number(draft.credits) || 0;
+  const liveBonus    = Number(draft.bonusTokens) || 0;
+  const livePrice    = Number(draft.price) || 0;
+  const liveSale     = draft.salePrice !== "" ? Number(draft.salePrice) : null;
+  const liveSaving   = liveSale !== null && livePrice > 0 && liveSale < livePrice
+    ? Math.round((1 - liveSale / livePrice) * 100) : 0;
+
+  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+      <span className="flex-1 border-t border-gray-100" />{children}<span className="flex-1 border-t border-gray-100" />
+    </p>
+  );
+  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">{label}</label>{children}</div>
+  );
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-          <p className="text-xs text-gray-400 font-semibold mb-1">Jami daromad</p>
-          <p className="text-xl font-extrabold text-emerald-700">{fmtMoney(totalRevenue)}</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-          <p className="text-xs text-gray-400 font-semibold mb-1">Sotuvlar soni</p>
-          <p className="text-xl font-extrabold text-gray-900">{totalPurchases} ta</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-          <p className="text-xs text-gray-400 font-semibold mb-1">Faol rejalar</p>
-          <p className="text-xl font-extrabold text-gray-900">{tiers.filter((t) => t.active).length} ta</p>
-        </div>
+      {/* ── Stats bar ────────────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Jami daromad",    value: fmtMoney(totalRevenue),  color: "text-emerald-700" },
+          { label: "Sotuvlar soni",   value: `${totalPurchases} ta`,  color: "text-gray-900"    },
+          { label: "Faol aksiyalar",  value: `${activeCampaigns} ta`, color: "text-amber-600"   },
+        ].map((s) => (
+          <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+            <p className="text-[10px] text-gray-400 font-semibold mb-1">{s.label}</p>
+            <p className={`text-xl font-extrabold ${s.color}`}>{s.value}</p>
+          </div>
+        ))}
       </div>
 
+      {/* ── Plan cards ───────────────────────────────────────────── */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-gray-900 text-sm">Narx rejalari</h3>
-          <button onClick={() => setShowAddForm(!showAddForm)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors">
+          <h3 className="font-bold text-gray-900 text-sm">Tanga rejalari</h3>
+          <button onClick={startCreate} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors">
             <Plus className="w-3.5 h-3.5" /> Yangi reja
           </button>
         </div>
 
-        {showAddForm && (
-          <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-4">
-            <h4 className="font-bold text-amber-700 text-sm mb-3">Yangi Tanga rejasi qo'shish</h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Nomi</label><input value={newTier.name} onChange={(e) => setNewTier({ ...newTier, name: e.target.value })} placeholder="Pro" className={`${inputCls} w-full mt-1`} /></div>
-              <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Tanga soni</label><input type="number" value={newTier.credits || ""} onChange={(e) => setNewTier({ ...newTier, credits: Number(e.target.value) })} placeholder="50" className={`${inputCls} w-full mt-1`} /></div>
-              <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Narx (so'm)</label><input type="number" value={newTier.price || ""} onChange={(e) => setNewTier({ ...newTier, price: Number(e.target.value) })} placeholder="49000" className={`${inputCls} w-full mt-1`} /></div>
-              <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Chegirma narx</label><input type="number" value={newTier.salePrice} onChange={(e) => setNewTier({ ...newTier, salePrice: e.target.value })} placeholder="39000 (ixtiyoriy)" className={`${inputCls} w-full mt-1`} /></div>
-              <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Chegirma limiti</label><input type="number" value={newTier.saleLimit} onChange={(e) => setNewTier({ ...newTier, saleLimit: e.target.value })} placeholder="10 (ixtiyoriy)" className={`${inputCls} w-full mt-1`} /></div>
-              <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Bonus Tanga</label><input type="number" value={newTier.bonusTokens} onChange={(e) => setNewTier({ ...newTier, bonusTokens: e.target.value })} placeholder="10 (ixtiyoriy)" className={`${inputCls} w-full mt-1`} /></div>
-              <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Muddati</label><input type="datetime-local" value={newTier.validUntil} onChange={(e) => setNewTier({ ...newTier, validUntil: e.target.value })} className={`${inputCls} w-full mt-1`} /></div>
-              <div className="col-span-2"><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Tavsif</label><input value={newTier.desc} onChange={(e) => setNewTier({ ...newTier, desc: e.target.value })} placeholder="Ijrochilar uchun" className={`${inputCls} w-full mt-1`} /></div>
-            </div>
-            <div className="flex gap-2 mt-3">
-              <button onClick={addTier} className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700">Qo'shish</button>
-              <button onClick={() => setShowAddForm(false)} className="px-4 py-2 rounded-xl bg-white border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-50">Bekor</button>
-            </div>
-          </div>
-        )}
-
         {tiers.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-red-200 p-8 text-center">
             <CreditCard className="w-8 h-8 text-red-200 mx-auto mb-2" />
-            <p className="text-sm text-gray-400">Hali narx rejalari yo'q</p>
-            <p className="text-xs text-gray-300 mt-1">Yuqoridagi "Yangi reja" tugmasini bosing</p>
+            <p className="text-sm text-gray-400">Hali rejalar yo'q</p>
+            <p className="text-xs text-gray-300 mt-1">"Yangi reja" tugmasini bosing</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {tiers.map((t) => (
-              <div key={t.id} className={`bg-white rounded-2xl border p-4 shadow-sm transition-opacity ${t.active ? "border-red-100" : "border-gray-100 opacity-60"}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${t.color}`}>{t.name}</span>
-                  <div className="flex gap-1.5">
-                    <button onClick={() => toggleTier(t.id)} className={`text-xs font-semibold ${t.active ? "text-red-400 hover:text-red-600" : "text-emerald-500 hover:text-emerald-700"}`}>{t.active ? "O'ch" : "Yoq"}</button>
-                    <button onClick={() => deleteTier(t.id)} className="text-xs font-semibold text-gray-300 hover:text-red-500">✕</button>
+            {tiers.map((t) => {
+              const { label: statusLabel, cls: statusCls } = planStatusMeta(t);
+              const stats = planStats[t.name] ?? { count: 0, revenue: 0 };
+              const campaignUsed = t.salePurchaseCount ?? 0;
+              const campaignTotal = t.saleLimit;
+              return (
+                <div key={t.id} className={`bg-white rounded-2xl border p-4 shadow-sm transition-all ${t.active && (t.status ?? "active") === "active" ? "border-amber-100" : "border-gray-100 opacity-60"}`}>
+                  {/* Card header */}
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                        <span className="font-extrabold text-gray-900 text-sm">{t.name}</span>
+                        {t.badge && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">{t.badge}</span>}
+                        {t.featured && <span className="text-[9px]">⭐</span>}
+                        {t.hotOffer && <span className="text-[9px]">🔥</span>}
+                        {t.bonusPlan && <span className="text-[9px]">🎁</span>}
+                      </div>
+                      <span className={`inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full ${statusCls}`}>{statusLabel}</span>
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button onClick={() => toggleTier(t.id)} className={`text-xs font-semibold px-2 py-1 rounded-lg transition-colors ${t.active ? "text-orange-500 hover:bg-orange-50" : "text-emerald-600 hover:bg-emerald-50"}`}>
+                        {t.active ? "O'ch" : "Yoq"}
+                      </button>
+                      <button onClick={() => { if (confirm(`"${t.name}" ni o'chirish?`)) deleteTier(t.id); }} className="text-xs text-gray-300 hover:text-red-500 px-1.5 py-1 rounded-lg hover:bg-red-50 transition-colors">✕</button>
+                    </div>
                   </div>
+
+                  {/* Tanga + price */}
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="text-2xl font-black text-gray-900">{t.credits}</span>
+                    <span className="text-xs font-semibold text-gray-400">Tanga</span>
+                    {(t.bonusTokens ?? 0) > 0 && <span className="text-xs font-bold text-emerald-600">+{t.bonusTokens} bonus</span>}
+                  </div>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="text-sm font-bold text-gray-700">{t.price === 0 ? "Bepul" : fmtMoney(t.salePrice !== undefined ? t.salePrice : t.price)}</span>
+                    {t.salePrice !== undefined && t.price > t.salePrice && <span className="text-xs text-gray-400 line-through">{fmtMoney(t.price)}</span>}
+                    {t.salePrice !== undefined && t.price > t.salePrice && <span className="text-[10px] font-bold text-orange-600">{Math.round((1 - t.salePrice / t.price) * 100)}% tejash</span>}
+                  </div>
+
+                  {/* Campaign stock */}
+                  {campaignTotal !== undefined && (
+                    <div className="mb-2">
+                      <div className="flex justify-between text-[10px] text-gray-400 mb-1">
+                        <span>Aksiya ({campaignUsed}/{campaignTotal})</span>
+                        {(t.perUserLimit ?? 0) > 0 && <span>1 kishi: maks {t.perUserLimit}</span>}
+                      </div>
+                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-amber-400 rounded-full transition-all" style={{ width: `${Math.min(100, (campaignUsed / campaignTotal) * 100)}%` }} />
+                      </div>
+                      {campaignUsed >= campaignTotal && <p className="text-[9px] font-bold text-red-500 mt-0.5">Aksiya tugadi</p>}
+                    </div>
+                  )}
+                  {campaignTotal === undefined && (t.perUserLimit ?? 0) > 0 && (
+                    <p className="text-[10px] text-gray-400 mb-2">1 kishi: maks {t.perUserLimit} ta</p>
+                  )}
+
+                  {/* Mini analytics */}
+                  <div className="flex gap-3 py-2 border-t border-gray-50 mb-3">
+                    <div className="text-center flex-1">
+                      <p className="text-base font-extrabold text-gray-900">{stats.count}</p>
+                      <p className="text-[9px] text-gray-400">sotilgan</p>
+                    </div>
+                    <div className="w-px bg-gray-100" />
+                    <div className="text-center flex-1">
+                      <p className="text-xs font-extrabold text-emerald-700">{stats.revenue > 0 ? fmtMoney(stats.revenue) : "—"}</p>
+                      <p className="text-[9px] text-gray-400">daromad</p>
+                    </div>
+                  </div>
+
+                  <button onClick={() => startEdit(t)} className="w-full py-1.5 rounded-xl bg-amber-50 border border-amber-100 text-xs font-bold text-amber-700 hover:bg-amber-100 transition-colors">
+                    Tahrirlash
+                  </button>
                 </div>
-                {editId === t.id ? (
-                  <div className="space-y-2">
-                    <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Nomi" className={`${inputCls} w-full font-semibold`} />
-                    <input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Tavsif" className={`${inputCls} w-full`} />
-                    <input type="number" value={editCredits} onChange={(e) => setEditCredits(Number(e.target.value))} placeholder="Tanga soni" className={`${inputCls} w-full`} />
-                    <input type="number" value={editPrice} onChange={(e) => setEditPrice(Number(e.target.value))} placeholder="Narx (so'm)" className={`${inputCls} w-full`} />
-                    <input type="number" value={editSalePrice} onChange={(e) => setEditSalePrice(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Chegirma narx (ixtiyoriy)" className={`${inputCls} w-full`} />
-                    <input type="number" value={editSaleLimit} onChange={(e) => setEditSaleLimit(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Chegirma limiti (ixtiyoriy)" className={`${inputCls} w-full`} />
-                    <input type="number" value={editBonusTokens} onChange={(e) => setEditBonusTokens(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Bonus Tanga (ixtiyoriy)" className={`${inputCls} w-full`} />
-                    <input type="datetime-local" value={editValidUntil} onChange={(e) => setEditValidUntil(e.target.value)} className={`${inputCls} w-full`} />
-                    <div className="flex gap-1.5">
-                      <button onClick={() => saveEdit(t.id)} className="flex-1 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700">Saqlash</button>
-                      <button onClick={() => setEditId(null)} className="flex-1 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold hover:bg-gray-200">Bekor</button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-2xl font-extrabold text-gray-900 mb-0.5">
-                      {t.credits}<span className="text-sm font-semibold text-gray-400 ml-1">Tanga</span>
-                      {(t.bonusTokens ?? 0) > 0 && <span className="text-xs font-bold text-emerald-600 ml-1.5">+{t.bonusTokens} bonus</span>}
-                    </p>
-                    <div className="flex items-baseline gap-2 mb-1">
-                      <p className="text-sm font-bold text-gray-600">{t.price === 0 ? "Bepul" : fmtMoney(t.salePrice ?? t.price)}</p>
-                      {t.salePrice !== undefined && t.price > t.salePrice && <p className="text-xs text-gray-400 line-through">{fmtMoney(t.price)}</p>}
-                    </div>
-                    {t.salePrice !== undefined && t.saleLimit !== undefined && (
-                      <p className="text-[10px] font-bold text-orange-600 mb-1">
-                        Chegirma: {t.salePurchaseCount ?? 0}/{t.saleLimit} ta{(t.salePurchaseCount ?? 0) >= t.saleLimit ? " (tugadi)" : ""}
-                      </p>
-                    )}
-                    {t.validUntil && <p className="text-[10px] text-amber-600 font-semibold mb-1">Muddat: {new Date(t.validUntil).toLocaleDateString("uz-UZ")}</p>}
-                    <p className="text-xs text-gray-400 mb-3">{t.desc || "—"}</p>
-                    <button onClick={() => startEdit(t)} className="w-full py-1.5 rounded-xl bg-amber-50 border border-amber-100 text-xs font-bold text-amber-700 hover:bg-amber-100 transition-colors">
-                      Tahrirlash
-                    </button>
-                  </>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* ── Creator / Editor panel ────────────────────────────────── */}
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="bg-white rounded-2xl border border-amber-100 shadow-lg overflow-hidden"
+          >
+            {/* Form header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-amber-50 to-white">
+              <div>
+                <h4 className="font-extrabold text-gray-900 text-sm">{editingId ? "Rejani tahrirlash" : "Yangi Tanga rejasi"}</h4>
+                <p className="text-[11px] text-gray-400 mt-0.5">Barcha maydonlarni to'ldiring</p>
+              </div>
+              <button onClick={closeForm} className="p-2 rounded-xl bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"><X className="w-4 h-4" /></button>
+            </div>
+
+            <div className="p-5 space-y-6">
+              {/* Validation errors */}
+              {errors.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                  {errors.map((e) => <p key={e} className="text-xs font-semibold text-red-600">• {e}</p>)}
+                </div>
+              )}
+
+              {/* ── Section A: Basic Info ───────────────────────── */}
+              <div>
+                <SectionLabel>A — Asosiy ma'lumotlar</SectionLabel>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Reja nomi">
+                    <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Masalan: Pro, Starter…" className={`${inputCls} w-full`} />
+                  </Field>
+                  <Field label="Tanga soni">
+                    <input type="number" min={1} value={draft.credits} onChange={(e) => setDraft({ ...draft, credits: e.target.value === "" ? "" : Number(e.target.value) })} placeholder="50" className={`${inputCls} w-full`} />
+                  </Field>
+                  <div className="col-span-2">
+                    <Field label="Tavsif">
+                      <input value={draft.desc} onChange={(e) => setDraft({ ...draft, desc: e.target.value })} placeholder="Ijrochilar uchun asosiy reja" className={`${inputCls} w-full`} />
+                    </Field>
+                  </div>
+                  <Field label="Nishon (ixtiyoriy)">
+                    <input value={draft.badge} onChange={(e) => setDraft({ ...draft, badge: e.target.value })} placeholder="Eng mashhur" className={`${inputCls} w-full`} />
+                  </Field>
+                </div>
+              </div>
+
+              {/* ── Section B: Pricing ──────────────────────────── */}
+              <div>
+                <SectionLabel>B — Narxlash</SectionLabel>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <Field label="Asl narx (so'm)">
+                    <input type="number" min={0} value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value === "" ? "" : Number(e.target.value) })} placeholder="49 000" className={`${inputCls} w-full`} />
+                  </Field>
+                  <Field label="Aksiya narxi (so'm)">
+                    <input type="number" min={0} value={draft.salePrice} onChange={(e) => setDraft({ ...draft, salePrice: e.target.value === "" ? "" : Number(e.target.value) })} placeholder="39 000 (ixtiyoriy)" className={`${inputCls} w-full`} />
+                  </Field>
+                  <Field label="Bonus Tanga">
+                    <input type="number" min={0} value={draft.bonusTokens} onChange={(e) => setDraft({ ...draft, bonusTokens: e.target.value === "" ? "" : Number(e.target.value) })} placeholder="10 (ixtiyoriy)" className={`${inputCls} w-full`} />
+                  </Field>
+                </div>
+                {/* Live preview */}
+                {(liveCredits > 0 || livePrice > 0) && (
+                  <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-black text-amber-700">{liveCredits}</span>
+                      {liveBonus > 0 && <><span className="text-xs text-gray-400">+</span><span className="text-sm font-bold text-emerald-600">{liveBonus} bonus</span></>}
+                      <span className="text-xs text-gray-500">= jami</span>
+                      <span className="text-sm font-black text-gray-900">{liveCredits + liveBonus} Tanga</span>
+                    </div>
+                    <div className="h-4 w-px bg-amber-200" />
+                    <div className="flex items-center gap-1.5">
+                      {liveSale !== null && livePrice > liveSale ? (
+                        <>
+                          <span className="text-sm font-bold text-orange-600">{liveSale.toLocaleString()} so'm</span>
+                          <span className="text-xs text-gray-400 line-through">{livePrice.toLocaleString()}</span>
+                          {liveSaving > 0 && <span className="text-[10px] font-black text-white bg-orange-500 px-1.5 py-0.5 rounded-full">{liveSaving}% tejash</span>}
+                        </>
+                      ) : (
+                        <span className="text-sm font-bold text-gray-700">{livePrice > 0 ? livePrice.toLocaleString() + " so'm" : "Bepul"}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Section C: Campaign Rules ────────────────────── */}
+              <div>
+                <SectionLabel>C — Aksiya qoidalari</SectionLabel>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Holati">
+                    <select value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value as PlanDraft["status"] })} className={`${inputCls} w-full`}>
+                      <option value="active">✅ Faol</option>
+                      <option value="draft">📝 Qoralama</option>
+                      <option value="scheduled">📅 Rejalashtirilgan</option>
+                      <option value="archived">📦 Arxivlangan</option>
+                    </select>
+                  </Field>
+                  <Field label="Umumiy aksiya limiti">
+                    <input type="number" min={1} value={draft.saleLimit} onChange={(e) => setDraft({ ...draft, saleLimit: e.target.value === "" ? "" : Number(e.target.value) })} placeholder="100 (ixtiyoriy)" className={`${inputCls} w-full`} />
+                  </Field>
+                  <Field label="Bir foydalanuvchi limiti">
+                    <input type="number" min={1} value={draft.perUserLimit} onChange={(e) => setDraft({ ...draft, perUserLimit: e.target.value === "" ? "" : Number(e.target.value) })} placeholder="1 (ixtiyoriy)" className={`${inputCls} w-full`} />
+                  </Field>
+                  <div />
+                  <Field label="Boshlanish vaqti">
+                    <input type="datetime-local" value={draft.startsAt} onChange={(e) => setDraft({ ...draft, startsAt: e.target.value })} className={`${inputCls} w-full`} />
+                  </Field>
+                  <Field label="Tugash vaqti">
+                    <input type="datetime-local" value={draft.validUntil} onChange={(e) => setDraft({ ...draft, validUntil: e.target.value })} className={`${inputCls} w-full`} />
+                  </Field>
+                </div>
+              </div>
+
+              {/* ── Section D: Visibility ────────────────────────── */}
+              <div>
+                <SectionLabel>D — Ko'rish sozlamalari</SectionLabel>
+                <Field label="Kimlarga ko'rinadi?">
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    {([
+                      ["all", "👥 Barcha ijrochilar"],
+                      ["new", "🆕 Yangi ijrochilar"],
+                      ["active", "⚡ Faol ijrochilar"],
+                      ["referral", "🔗 Referral foydalanuvchilar"],
+                    ] as [PlanDraft["visibilityTarget"], string][]).map(([val, lbl]) => (
+                      <button key={val} type="button" onClick={() => setDraft({ ...draft, visibilityTarget: val })}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold border transition-colors text-left ${draft.visibilityTarget === val ? "bg-amber-50 border-amber-300 text-amber-700" : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"}`}>
+                        {lbl}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              </div>
+
+              {/* ── Section E: Highlighting ──────────────────────── */}
+              <div>
+                <SectionLabel>E — Ta'kidlash</SectionLabel>
+                <div className="flex gap-3 flex-wrap">
+                  {([
+                    ["featured", "⭐ Tavsiya etilgan"],
+                    ["hotOffer", "🔥 Hot offer"],
+                    ["bonusPlan", "🎁 Bonusli reja"],
+                  ] as [keyof Pick<PlanDraft, "featured" | "hotOffer" | "bonusPlan">, string][]).map(([key, lbl]) => (
+                    <button key={key} type="button" onClick={() => setDraft({ ...draft, [key]: !draft[key] })}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${draft[key] ? "bg-violet-50 border-violet-300 text-violet-700" : "bg-white border-gray-200 text-gray-400 hover:border-gray-300"}`}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Sticky save footer */}
+            <div className="flex items-center gap-3 px-5 py-4 border-t border-gray-100 bg-gray-50/60">
+              <button onClick={save} className="flex-1 py-2.5 rounded-xl bg-amber-600 text-white text-sm font-bold hover:bg-amber-700 active:scale-[.98] transition-all shadow-sm">
+                {editingId ? "Saqlash" : "Reja qo'shish"}
+              </button>
+              <button onClick={closeForm} className="px-5 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors">
+                Bekor
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -4196,9 +4491,21 @@ function MonoTransactions({ txs, reload }: { txs: TangaTx[]; reload: () => void 
                           {signed >= 0 ? "+" : "−"}{Math.abs(signed)} 🪙
                         </span>
                       </td>
-                      <td className="px-3 py-3 max-w-[140px]">
+                      <td className="px-3 py-3 max-w-[160px]">
                         <p className="text-[11px] text-gray-600 truncate">{tx.categoryName}</p>
-                        {tx.offerId && <p className="text-[10px] text-gray-400 font-mono truncate">{tx.offerId.slice(0, 10)}</p>}
+                        {tx.source && (
+                          <span className={`inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-0.5 ${
+                            tx.source === "discount_campaign" ? "bg-orange-50 text-orange-600" :
+                            tx.source === "referral_bonus"   ? "bg-blue-50 text-blue-600"   :
+                            tx.source === "admin_grant"      ? "bg-violet-50 text-violet-600" :
+                                                               "bg-gray-100 text-gray-500"
+                          }`}>
+                            {tx.source === "discount_campaign" ? "🔥 Aksiya" :
+                             tx.source === "referral_bonus"    ? "🔗 Referral" :
+                             tx.source === "admin_grant"       ? "👤 Admin" :
+                                                                 "Oddiy xarid"}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-3 text-[11px] text-gray-500 whitespace-nowrap">
                         {new Date(tx.createdAt).toLocaleDateString("uz-UZ")}{" "}
