@@ -1403,10 +1403,10 @@ export default function QuestionnairePage() {
           <p className="text-xs text-gray-500 mb-5 leading-relaxed">
             {cooldown.extended
               ? "Siz oxirgi 24 soatda 3+ ta so'rov yaratgansiz. Sifatli xizmat uchun biroz kutib turing."
-              : "Spamga qarshi himoya — har bir so'rov orasida qisqa intervaal mavjud."}
+              : "So'rovlar spamiga qarshi himoya — har bir so'rov orasida qisqa interval mavjud."}
           </p>
           <div className="rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3 mb-5">
-            <p className="text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-1">Keyingi so'rov</p>
+            <p className="text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-1">Keyingi so'rovgacha</p>
             <p className="text-2xl font-extrabold text-blue-700 tabular-nums">
               {formatCooldownRemaining(cooldown.remainingMs)}
             </p>

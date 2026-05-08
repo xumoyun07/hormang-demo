@@ -170,7 +170,7 @@ export default function CustomerHomePage() {
               <div className="mt-2.5 rounded-xl bg-blue-900/40 border border-blue-300/30 px-3 py-2 flex items-center gap-2">
                 <span className="text-base">⏳</span>
                 <p className="text-[11px] font-bold text-white tabular-nums">
-                  Keyingi so'rov: {formatCooldownRemaining(cooldown.remainingMs)} qoldi
+                  Keyingi so'rovgacha: {formatCooldownRemaining(cooldown.remainingMs)} qoldi
                 </p>
               </div>
             )}
@@ -314,11 +314,19 @@ export default function CustomerHomePage() {
                         {offer.price.toLocaleString()} so'm
                       </p>
                       <span className={`mt-1 inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                        offer.status === "pending"  ? "bg-amber-50 text-amber-700" :
-                        offer.status === "accepted" ? "bg-green-50 text-green-700" :
-                                                      "bg-gray-100 text-gray-500"
+                        offer.status === "pending"        ? "bg-amber-50 text-amber-700" :
+                        offer.status === "accepted"       ? "bg-blue-50 text-blue-700" :
+                        offer.status === "completed"      ? "bg-green-50 text-green-700" :
+                        offer.status === "rejected"       ? "bg-red-50 text-red-600" :
+                        offer.status === "closed_by_match"? "bg-gray-100 text-gray-500" :
+                                                            "bg-gray-100 text-gray-500"
                       }`}>
-                        {offer.status === "pending" ? "Kutilmoqda" : offer.status === "accepted" ? "Qabul qilindi" : offer.status}
+                        {offer.status === "pending"         ? "Kutilmoqda"    :
+                         offer.status === "accepted"        ? "Qabul qilindi" :
+                         offer.status === "completed"       ? "Yakunlangan"   :
+                         offer.status === "rejected"        ? "Rad etilgan"   :
+                         offer.status === "closed_by_match" ? "Yopilgan"      :
+                                                              offer.status}
                       </span>
                     </button>
                   );
