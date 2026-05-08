@@ -10,6 +10,7 @@ import logoImg from "/hormang-logo.png";
 import {
   getTangaBalance, getActiveTiers, type PricingTier,
   isSaleActive, getSaleRemaining, purchaseTier,
+  getUserPlanPurchaseCount,
 } from "@/lib/tanga-store";
 import { recordTangaTransaction } from "@/lib/tanga-history-store";
 import { ReferralCard } from "@/components/referral-card";
@@ -83,19 +84,27 @@ function useCountdown(validUntil?: string): string | null {
 
 /* ─── Plan Card ──────────────────────────────────────────────────── */
 function PlanCard({
-  tier, buying, bought, onBuy,
+  tier, buying, bought, onBuy, userId,
 }: {
   tier: PricingTier;
   buying: boolean;
   bought: boolean;
   onBuy: () => void;
+  userId: string;
 }) {
-  const countdown = useCountdown(tier.validUntil);
-  const isExpired = tier.validUntil ? new Date(tier.validUntil) <= new Date() : false;
+  const countdown  = useCountdown(tier.validUntil);
+  const isExpired  = tier.validUntil ? new Date(tier.validUntil) <= new Date() : false;
   const saleActive = isSaleActive(tier);
   const effectivePrice = saleActive ? tier.salePrice! : tier.price;
-  const remaining = getSaleRemaining(tier);
+  const remaining  = getSaleRemaining(tier);
   const totalTokens = tier.credits + (tier.bonusTokens ?? 0);
+
+  const perUserLimit = tier.perUserLimit ?? 0;
+  const userCount    = perUserLimit > 0 && userId ? getUserPlanPurchaseCount(userId, tier.id) : 0;
+  const userLimitHit = perUserLimit > 0 && userCount >= perUserLimit;
+  const userRemaining = perUserLimit > 0 ? perUserLimit - userCount : null;
+
+  const disabled = isExpired || userLimitHit;
 
   if (bought) {
     return (
@@ -119,9 +128,19 @@ function PlanCard({
   }
 
   return (
-    <div className={`bg-white rounded-2xl border overflow-hidden shadow-sm transition-opacity ${isExpired ? "opacity-60" : "border-amber-100"}`}>
+    <div className={`bg-white rounded-2xl border overflow-hidden shadow-sm transition-opacity ${disabled ? "opacity-60" : "border-amber-100"}`}>
       <div className="h-1.5 w-full" style={{ background: GOLD_GRAD }} />
       <div className="p-4">
+        {/* Highlighting badges */}
+        {(tier.featured || tier.hotOffer || tier.bonusPlan || tier.badge) && (
+          <div className="flex flex-wrap gap-1.5 mb-2.5">
+            {tier.badge && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">{tier.badge}</span>}
+            {tier.featured && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">⭐ Tavsiya etilgan</span>}
+            {tier.hotOffer && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600">🔥 Hot offer</span>}
+            {tier.bonusPlan && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">🎁 Bonusli</span>}
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-start justify-between gap-2 mb-3">
           <div>
@@ -154,32 +173,48 @@ function PlanCard({
             {effectivePrice === 0 ? "Bepul" : `${effectivePrice.toLocaleString()} so'm`}
           </span>
           {saleActive && tier.salePrice !== undefined && tier.price > tier.salePrice && (
-            <span className="text-xs text-gray-400 line-through">{tier.price.toLocaleString()} so'm</span>
+            <>
+              <span className="text-xs text-gray-400 line-through">{tier.price.toLocaleString()} so'm</span>
+              <span className="text-[10px] font-black text-white bg-orange-500 px-1.5 py-0.5 rounded-full">
+                {Math.round((1 - tier.salePrice / tier.price) * 100)}% tejash
+              </span>
+            </>
           )}
           {!saleActive && tier.salePrice !== undefined && (
-            <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">Chegirma tugadi</span>
+            <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">Aksiya tugadi</span>
           )}
         </div>
 
-        {/* Sale remaining slots */}
+        {/* Campaign remaining slots */}
         {saleActive && remaining !== null && (
-          <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-orange-50 rounded-xl border border-orange-100">
+          <div className="flex items-center gap-1.5 mb-2 px-2.5 py-1.5 bg-orange-50 rounded-xl border border-orange-100">
             <span className="text-[10px] font-black text-orange-600">🔥</span>
-            <span className="text-[11px] font-bold text-orange-700">
-              Chegirma: {remaining} ta joy qoldi
-            </span>
+            <span className="text-[11px] font-bold text-orange-700">{remaining} ta joy qoldi</span>
+          </div>
+        )}
+
+        {/* Per-user limit info */}
+        {perUserLimit > 0 && !userLimitHit && userRemaining !== null && (
+          <div className="flex items-center gap-1.5 mb-2 px-2.5 py-1.5 bg-blue-50 rounded-xl border border-blue-100">
+            <span className="text-[10px] font-black text-blue-600">👤</span>
+            <span className="text-[11px] font-bold text-blue-700">Siz uchun: {userRemaining} ta imkoniyat</span>
+          </div>
+        )}
+        {userLimitHit && (
+          <div className="mb-2 px-2.5 py-1.5 bg-gray-50 rounded-xl border border-gray-100 text-[11px] font-bold text-gray-500 text-center">
+            Sizning limitingiz tugadi
           </div>
         )}
 
         {/* Countdown */}
         {countdown && !isExpired && (
-          <div className="flex items-center gap-1.5 mb-3 px-2.5 py-1.5 bg-amber-50 rounded-xl border border-amber-100">
+          <div className="flex items-center gap-1.5 mb-2 px-2.5 py-1.5 bg-amber-50 rounded-xl border border-amber-100">
             <Timer className="w-3 h-3 text-amber-500 flex-shrink-0" />
-            <span className="text-[11px] font-bold text-amber-700">Qoldi: {countdown}</span>
+            <span className="text-[11px] font-bold text-amber-700">⏳ {countdown}</span>
           </div>
         )}
         {isExpired && tier.validUntil && (
-          <div className="mb-3 px-2.5 py-1.5 bg-gray-50 rounded-xl border border-gray-100 text-[11px] font-bold text-gray-400 text-center">
+          <div className="mb-2 px-2.5 py-1.5 bg-gray-50 rounded-xl border border-gray-100 text-[11px] font-bold text-gray-400 text-center">
             Muddati tugagan
           </div>
         )}
@@ -187,11 +222,11 @@ function PlanCard({
         {/* Buy button */}
         <button
           onClick={onBuy}
-          disabled={isExpired}
-          className="w-full h-10 rounded-xl font-bold text-sm text-white transition-all active:scale-[.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
-          style={{ background: isExpired ? "#d1d5db" : GOLD_DARK }}
+          disabled={disabled}
+          className="w-full h-10 rounded-xl font-bold text-sm text-white transition-all active:scale-[.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm mt-1"
+          style={{ background: disabled ? "#d1d5db" : GOLD_DARK }}
         >
-          Sotib olish
+          {userLimitHit ? "Limit tugdi" : "Sotib olish"}
         </button>
       </div>
     </div>
@@ -226,9 +261,11 @@ export default function PlansPage() {
       setBuying(null);
       if (!result.ok) {
         const msg =
-          result.error === "sale_sold_out" ? "Chegirma joylari tugadi."
-          : result.error === "expired" ? "Reja muddati tugagan."
-          : result.error === "tier_inactive" ? "Reja faol emas."
+          result.error === "sale_sold_out"          ? "Aksiya joylari tugadi."
+          : result.error === "per_user_limit_exceeded" ? "Siz ushbu reja uchun limitga yetdingiz."
+          : result.error === "not_started"           ? "Aksiya hali boshlanmagan."
+          : result.error === "expired"               ? "Reja muddati tugagan."
+          : result.error === "tier_inactive"         ? "Reja faol emas."
           : "Reja topilmadi.";
         toast({ title: "Sotib olib bo'lmadi", description: msg, variant: "destructive" });
         return;
@@ -244,6 +281,7 @@ export default function PlansPage() {
         amount: total,
         priceSom: result.pricePaid,
         type: "purchase",
+        source: result.source,
       });
       setBought(tier.id);
       toast({
@@ -327,6 +365,7 @@ export default function PlansPage() {
                     buying={buying === tier.id}
                     bought={bought === tier.id}
                     onBuy={() => handleBuy(tier)}
+                    userId={userId}
                   />
                 </motion.div>
               ))}

@@ -22,6 +22,8 @@ export interface TangaTransaction {
   direction?: "in" | "out";
   /** For "purchase" txs: the so'm price actually paid (after any sale discount). Used by admin revenue analytics. */
   priceSom?: number;
+  /** Purchase source for analytics. */
+  source?: "normal_purchase" | "discount_campaign" | "referral_bonus" | "admin_grant";
   createdAt: string;
 }
 
