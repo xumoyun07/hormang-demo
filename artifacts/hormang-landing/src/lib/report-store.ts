@@ -103,7 +103,7 @@ export function canSubmitReport(
   if (duplicate) {
     return {
       ok: false,
-      reason: "Bu foydalanuvchini allaqachon shikoyat qilgansiz (24 soat kutib turing)",
+      reason: "Bu foydalanuvchi haqida shikoyat qilingan",
     };
   }
   return { ok: true };

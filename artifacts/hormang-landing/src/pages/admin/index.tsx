@@ -3682,6 +3682,7 @@ function MonetizationSection({ refreshKey }: { refreshKey: number }) {
 
 /* ─── Overview Tab ───────────────────────────────────────────────── */
 function MonoOverview({ txs, providers, tiers }: { txs: TangaTx[]; providers: ProviderSummary[]; tiers: PricingTier[] }) {
+  const [flowPeriod, setFlowPeriod] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly");
   const allOffers = readKey<BuyerOffer[]>(K.OFFERS_BUYER, []);
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
@@ -3717,14 +3718,45 @@ function MonoOverview({ txs, providers, tiers }: { txs: TangaTx[]; providers: Pr
   const spendTxs        = txs.filter((t) => t.type === "spend" || (!t.type && t.amount > 0));
   const avgCostPerOffer = spendTxs.length > 0 ? Math.round(spendTxs.reduce((s, t) => s + t.amount, 0) / spendTxs.length) : 0;
 
-  const flowMap: Record<string, { sarflandi: number; sotildi: number }> = {};
+  /* ── ISO week helper ─────────────────────────────────────────── */
+  function isoWeekKey(dateStr: string): string {
+    const d = new Date(dateStr);
+    const dow = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dow);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const wk = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+    return `${d.getUTCFullYear()}-W${String(wk).padStart(2, "0")}`;
+  }
+
+  /* ── Build flow map grouped by selected period ────────────────── */
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+  const twelveWeeksAgo = new Date(now.getTime() - 84 * 86400000);
+
+  const flowMap: Record<string, { sarflandi: number; sotildi: number; referral: number }> = {};
   for (const tx of txs) {
-    const m = tx.createdAt.slice(0, 7);
-    if (!flowMap[m]) flowMap[m] = { sarflandi: 0, sotildi: 0 };
-    if (tx.type === "spend" || (!tx.type && tx.amount > 0)) flowMap[m].sarflandi += tx.amount;
-    if (tx.type === "purchase") flowMap[m].sotildi += tx.amount;
+    const d = new Date(tx.createdAt);
+    if (flowPeriod === "daily"   && d < thirtyDaysAgo)  continue;
+    if (flowPeriod === "weekly"  && d < twelveWeeksAgo) continue;
+
+    let key: string;
+    if      (flowPeriod === "daily")   key = tx.createdAt.slice(0, 10);
+    else if (flowPeriod === "weekly")  key = isoWeekKey(tx.createdAt);
+    else if (flowPeriod === "yearly")  key = tx.createdAt.slice(0, 4);
+    else                               key = tx.createdAt.slice(0, 7);
+
+    if (!flowMap[key]) flowMap[key] = { sarflandi: 0, sotildi: 0, referral: 0 };
+    if (tx.type === "spend" || (!tx.type && tx.amount > 0)) flowMap[key].sarflandi += tx.amount;
+    if (tx.type === "purchase")  flowMap[key].sotildi  += tx.amount;
+    if (tx.type === "referral")  flowMap[key].referral += tx.amount;
   }
   const flowData = Object.entries(flowMap).sort(([a], [b]) => a.localeCompare(b)).map(([name, v]) => ({ name, ...v }));
+
+  const flowPeriodLabels: Record<typeof flowPeriod, string> = {
+    daily: "Kunlik (oxirgi 30 kun)",
+    weekly: "Haftalik (oxirgi 12 hafta)",
+    monthly: "Oylik",
+    yearly: "Yillik",
+  };
 
   return (
     <div className="space-y-5">
@@ -3777,19 +3809,46 @@ function MonoOverview({ txs, providers, tiers }: { txs: TangaTx[]; providers: Pr
         </div>
       </div>
 
-      {flowData.length > 0 && (
+      {(flowData.length > 0 || txs.length > 0) && (
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-          <h3 className="font-bold text-gray-900 text-sm mb-4">Oylik Tanga oqimi</h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={flowData}>
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #FEE2E2", fontSize: 11 }} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Area type="monotone" dataKey="sotildi"   name="Sotildi"   stroke="#10B981" fill="#D1FAE5" strokeWidth={2} />
-              <Area type="monotone" dataKey="sarflandi" name="Sarflandi" stroke="#DC2626" fill="#FEE2E2" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-bold text-gray-900 text-sm">Tanga oqimi</h3>
+              <p className="text-[10px] text-gray-400 mt-0.5">{flowPeriodLabels[flowPeriod]}</p>
+            </div>
+            <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+              {(["daily", "weekly", "monthly", "yearly"] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setFlowPeriod(p)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${
+                    flowPeriod === p
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  {{ daily: "Kun", weekly: "Hafta", monthly: "Oy", yearly: "Yil" }[p]}
+                </button>
+              ))}
+            </div>
+          </div>
+          {flowData.length === 0 ? (
+            <div className="flex items-center justify-center h-[180px] text-gray-300 text-sm font-semibold">
+              Ushbu davr uchun ma'lumot yo'q
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={flowData}>
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} width={32} />
+                <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #E5E7EB", fontSize: 11 }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Area type="monotone" dataKey="sotildi"   name="Sotildi"   stroke="#10B981" fill="#D1FAE5" strokeWidth={2} />
+                <Area type="monotone" dataKey="sarflandi" name="Sarflandi" stroke="#DC2626" fill="#FEE2E2" strokeWidth={2} />
+                <Area type="monotone" dataKey="referral"  name="Referral"  stroke="#3B82F6" fill="#DBEAFE" strokeWidth={2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
       )}
 
