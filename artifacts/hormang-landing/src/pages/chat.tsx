@@ -97,20 +97,6 @@ function StatusBanner({ status }: { status: Offer["status"] }) {
       </motion.div>
     );
   }
-  if (status === "rejected") {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="flex items-center justify-center gap-2 my-4"
-      >
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-2.5 text-red-600 text-xs font-semibold shadow-sm">
-          <X className="w-4 h-4 flex-shrink-0" />
-          Taklif rad etildi. Suhbat yopildi.
-        </div>
-      </motion.div>
-    );
-  }
   return null;
 }
 

@@ -24,7 +24,7 @@ import logoImg from "/hormang-logo.png";
 import { formatDate } from "@/lib/date-utils";
 
 /* ─── Offer Card ─────────────────────────────────────────────────── */
-function OfferCard({ offer, index }: { offer: Offer; index: number }) {
+function OfferCard({ offer, index, anyAccepted }: { offer: Offer; index: number; anyAccepted: boolean }) {
   const [showDetail, setShowDetail] = useState(false);
   const { toast } = useToast();
 
@@ -32,6 +32,9 @@ function OfferCard({ offer, index }: { offer: Offer; index: number }) {
   const isAccepted = offer.status === "accepted";
   const isRejected = offer.status === "rejected";
   const providerLocal = getLocalProfile(offer.masterId);
+
+  // Can accept only if no other offer on this request is already accepted
+  const canAccept = !isAccepted && !isRejected && !anyAccepted;
 
   function accept(e: React.MouseEvent) {
     e.stopPropagation();
@@ -53,6 +56,7 @@ function OfferCard({ offer, index }: { offer: Offer; index: number }) {
         className={`bg-white rounded-2xl border overflow-hidden transition-all duration-200 cursor-pointer ${
           isAccepted ? "border-emerald-200 ring-1 ring-emerald-100"
           : isRejected ? "border-gray-100 opacity-60"
+          : anyAccepted ? "border-gray-100 opacity-60"
           : "border-gray-100 hover:border-blue-100 hover:shadow-md"
         }`}
       >
@@ -138,7 +142,15 @@ function OfferCard({ offer, index }: { offer: Offer; index: number }) {
               >
                 Batafsil
               </Button>
-              {!isAccepted ? (
+              {isAccepted ? (
+                <Button
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); setShowDetail(true); }}
+                  className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5"
+                >
+                  Batafsil
+                </Button>
+              ) : canAccept ? (
                 <>
                   <Button
                     size="sm"
@@ -155,15 +167,7 @@ function OfferCard({ offer, index }: { offer: Offer; index: number }) {
                     <X className="w-4 h-4" />
                   </button>
                 </>
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={(e) => { e.stopPropagation(); setShowDetail(true); }}
-                  className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5"
-                >
-                  Batafsil
-                </Button>
-              )}
+              ) : null}
             </div>
           )}
 
@@ -272,9 +276,12 @@ export default function OffersPage() {
         ) : (
           <div className="space-y-3">
             <AnimatePresence>
-              {offers.map((offer, i) => (
-                <OfferCard key={offer.id} offer={offer} index={i} />
-              ))}
+              {offers.map((offer, i) => {
+                const anyAccepted = offers.some(
+                  (o) => o.requestId === offer.requestId && o.id !== offer.id && o.status === "accepted"
+                );
+                return <OfferCard key={offer.id} offer={offer} index={i} anyAccepted={anyAccepted} />;
+              })}
             </AnimatePresence>
           </div>
         )}
