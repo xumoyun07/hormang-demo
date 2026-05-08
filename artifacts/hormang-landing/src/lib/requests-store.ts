@@ -46,7 +46,7 @@ export type OfferStatus =
   | "expired"
   | "in_progress"
   | "completed"
-  | "closed_by_match";
+  | "Yopilgan";
 
 export interface Offer {
   id: string;
@@ -612,7 +612,7 @@ export function updateOfferStatus(offerId: string, status: "accepted" | "rejecte
       o.requestId === target.requestId &&
       ACTIVE_STATUSES.includes(o.status)
     ) {
-      return { ...o, status: "closed_by_match" as const };
+      return { ...o, status: "Yopilgan" as const };
     }
     return o;
   });
