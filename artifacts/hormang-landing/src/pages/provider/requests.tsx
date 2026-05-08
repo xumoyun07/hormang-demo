@@ -718,7 +718,7 @@ export default function ProviderRequestsPage() {
                         <MapPin className="w-3 h-3" />{r.location}
                       </span>
                       <span className={`text-[11px] font-bold ${submitCheck.active === 0 ? "text-red-500" : "text-emerald-600"}`}>
-                        {submitCheck.active}/{MAX_ACTIVE_OFFERS} faol · {submitCheck.total}/{MAX_LIFETIME_OFFERS} jami
+                        {submitCheck.active}/{MAX_ACTIVE_OFFERS} faol taklif
                       </span>
                     </div>
                     {blocked && (

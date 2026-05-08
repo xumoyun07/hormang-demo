@@ -324,7 +324,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-extrabold text-gray-800">{blockedLabel}</p>
                   <p className="text-[11px] text-gray-500 mt-0.5">
-                    Faol takliflar: <strong>{submissionCheck.active}/{5}</strong> · Jami: <strong>{submissionCheck.total}/{10}</strong>
+                    Faol takliflar: <strong>{submissionCheck.active}/{5}</strong>
                   </p>
                 </div>
               </div>
