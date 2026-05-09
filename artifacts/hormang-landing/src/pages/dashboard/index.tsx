@@ -10,6 +10,9 @@ import {
   ShoppingBag, Briefcase, Loader2, ArrowRight, X,
   Phone, ShieldCheck, Plus, MessageCircle, LayoutGrid, MessagesSquare,
 } from "lucide-react";
+import { BadgePill, BadgeConditionsSheet } from "@/components/provider-badges";
+import { getBadges, evaluateAutoBadges } from "@/lib/badge-store";
+import { onStoreChange } from "@/lib/store-events";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { saveProviderProfile } from "@/lib/auth-client";
@@ -381,10 +384,17 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
   const storeVersion = useStoreRefresh();
   const completionDismissKey = user?.id ? `profile_completion_dismissed_${user.id}` : "";
   const [completionDismissed, setCompletionDismissed] = useState(false);
+  const [showBadgeSheet, setShowBadgeSheet] = useState(false);
 
   useEffect(() => {
     if (user?.id) setLocal(getLocalProfile(user.id));
   }, [user?.id, storeVersion]);
+
+  useEffect(() => {
+    if (!user || user.role !== "provider") return;
+    evaluateAutoBadges(user);
+    return onStoreChange(() => evaluateAutoBadges(user));
+  }, [user]);
 
   useEffect(() => {
     if (!completionDismissKey) {
@@ -553,21 +563,35 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
           </div>
         )}
 
-        {/* Verification badges */}
-        <div className="flex items-center gap-2 mt-3 flex-wrap">
-          {user?.phone ? (
-            <span className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-green-50 text-green-700 border border-green-100">
-              <Phone className="w-3 h-3" /> Telefon tasdiqlangan
-            </span>
+        {/* Badge strip */}
+        {(() => {
+          const badges = user?.id ? getBadges(user.id).filter((b) => b.visible) : [];
+          return badges.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setShowBadgeSheet(true)}
+              className="flex items-center gap-1.5 flex-wrap mt-3 w-full text-left"
+            >
+              {badges.slice(0, 3).map((b) => (
+                <BadgePill key={b.type} type={b.type} size="sm" />
+              ))}
+              {badges.length > 3 && (
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">
+                  +{badges.length - 3}
+                </span>
+              )}
+            </button>
           ) : (
-            <span className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-amber-50 text-amber-700 border border-amber-100">
-              <Phone className="w-3 h-3" /> Telefon tasdiqlanmagan
-            </span>
-          )}
-          <span className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-gray-50 text-gray-400 border border-gray-100">
-            <ShieldCheck className="w-3 h-3" /> ID tekshiruvi — tez kunda
-          </span>
-        </div>
+            <button
+              type="button"
+              onClick={() => setShowBadgeSheet(true)}
+              className="flex items-center gap-1 mt-3 text-[11px] font-semibold text-gray-400 hover:text-violet-600 transition-colors"
+            >
+              Hali nishonlar yo'q · <span className="text-violet-500">Shartlar →</span>
+            </button>
+          );
+        })()}
+        <BadgeConditionsSheet open={showBadgeSheet} onClose={() => setShowBadgeSheet(false)} />
       </motion.div>
 
       {/* ── Completion card ── */}
