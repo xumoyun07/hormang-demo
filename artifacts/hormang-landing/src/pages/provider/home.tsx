@@ -32,6 +32,7 @@ import { ConfirmModal } from "@/components/confirm-modal";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { getLocalProfile, getCompletionChecks, getCompletionPct } from "@/lib/local-profile";
 import { tryGrantProfileReward, getProfileRewardStatus } from "@/lib/profile-reward-store";
+import { ProviderBadges } from "@/components/provider-badges";
 import { formatDate as formatUzDate } from "@/lib/date-utils";
 import { ReferralCard } from "@/components/referral-card";
 import logoImg from "/hormang-logo.png";
@@ -117,7 +118,7 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
           <h2 className="text-xl font-extrabold text-gray-900 mb-1.5">Tabriklaymiz!</h2>
           <p className="text-sm text-gray-500 mb-5 leading-relaxed">
             Profilingiz <span className="font-bold text-violet-600">100%</span> to'ldirildi.
-            <br />Siz Hormang'ning to'liq a'zosisiz!
+            <br />Siz HORMANGning ishonchli ijrochilar qatoridasiz!
           </p>
 
           {/* Reward badge */}
@@ -284,6 +285,32 @@ function ProfileCompletion() {
         </div>
       </motion.div>
     </>
+  );
+}
+
+/* ─── Provider Badges Section ────────────────────────────────────── */
+function ProviderBadgesSection() {
+  useStoreRefresh();
+  const { user } = useAuth();
+  if (!user) return null;
+  return (
+    <div className="mb-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-violet-600" />
+          <h2 className="font-bold text-sm text-gray-900">Sizning nishonlaringiz</h2>
+        </div>
+      </div>
+      <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-4">
+        <ProviderBadges
+          userId={user.id}
+          user={user}
+          size="md"
+          showEmpty
+          emptyVariant="full"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -1149,6 +1176,7 @@ export default function ProviderHomePage() {
         </motion.div>
 
         <ProfileCompletion />
+        <ProviderBadgesSection />
         <UpcomingServices />
         <EventsSection />
         <AvailableRequests />
