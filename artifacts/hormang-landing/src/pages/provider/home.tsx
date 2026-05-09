@@ -32,7 +32,8 @@ import { ConfirmModal } from "@/components/confirm-modal";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { getLocalProfile, getCompletionChecks, getCompletionPct } from "@/lib/local-profile";
 import { tryGrantProfileReward, getProfileRewardStatus } from "@/lib/profile-reward-store";
-import { ProviderBadges } from "@/components/provider-badges";
+import { BadgeConditionsSheet, BadgePill } from "@/components/provider-badges";
+import { getBadges } from "@/lib/badge-store";
 import { formatDate as formatUzDate } from "@/lib/date-utils";
 import { ReferralCard } from "@/components/referral-card";
 import logoImg from "/hormang-logo.png";
@@ -177,6 +178,7 @@ function ProfileCompletion() {
   const [dismissed, setDismissed] = useState(false);
   const [justRewarded, setJustRewarded] = useState(false);
   const [rewardGranted, setRewardGranted] = useState(false);
+  const [showBadgeHint, setShowBadgeHint] = useState(false);
 
   const local = user ? getLocalProfile(user.id) : {};
   const checks = getCompletionChecks(user ?? null, providerProfile, local);
@@ -283,34 +285,37 @@ function ProfileCompletion() {
           </div>
           {pct < 100 && <ChevronRight className="w-5 h-5 text-violet-400 flex-shrink-0" />}
         </div>
-      </motion.div>
-    </>
-  );
-}
 
-/* ─── Provider Badges Section ────────────────────────────────────── */
-function ProviderBadgesSection() {
-  useStoreRefresh();
-  const { user } = useAuth();
-  if (!user) return null;
-  return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-violet-600" />
-          <h2 className="font-bold text-sm text-gray-900">Sizning nishonlaringiz</h2>
-        </div>
-      </div>
-      <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-4">
-        <ProviderBadges
-          userId={user.id}
-          user={user}
-          size="md"
-          showEmpty
-          emptyVariant="full"
-        />
-      </div>
-    </div>
+        {/* ── Badge strip — click to see conditions ── */}
+        {user && (() => {
+          const badges = getBadges(user.id);
+          return (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setShowBadgeHint(true); }}
+              className="mt-3 pt-3 border-t border-gray-100 w-full flex items-center gap-2 group text-left"
+            >
+              {badges.length > 0 ? (
+                <div className="flex flex-wrap gap-1 flex-1">
+                  {badges.map((b) => (
+                    <BadgePill key={b.type} type={b.type} size="sm" />
+                  ))}
+                </div>
+              ) : (
+                <span className="text-[11px] text-gray-400 font-medium flex-1">
+                  Hali nishonlar yo'q
+                </span>
+              )}
+              <span className="text-[10px] text-violet-400 group-hover:text-violet-600 transition-colors font-semibold flex-shrink-0 whitespace-nowrap">
+                Shartlar →
+              </span>
+            </button>
+          );
+        })()}
+      </motion.div>
+
+      <BadgeConditionsSheet open={showBadgeHint} onClose={() => setShowBadgeHint(false)} />
+    </>
   );
 }
 
@@ -1176,7 +1181,6 @@ export default function ProviderHomePage() {
         </motion.div>
 
         <ProfileCompletion />
-        <ProviderBadgesSection />
         <UpcomingServices />
         <EventsSection />
         <AvailableRequests />
