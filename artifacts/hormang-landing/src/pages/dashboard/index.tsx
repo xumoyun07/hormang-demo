@@ -9,6 +9,7 @@ import {
   Inbox, TrendingUp, Star, CheckCircle2, MapPin,
   ShoppingBag, Briefcase, Loader2, ArrowRight, X,
   Phone, ShieldCheck, Plus, MessageCircle, LayoutGrid, MessagesSquare,
+  IdCard,
 } from "lucide-react";
 import { BadgePill, BadgeConditionsSheet } from "@/components/provider-badges";
 import { getBadges, evaluateAutoBadges } from "@/lib/badge-store";
@@ -543,8 +544,45 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
                 <span className="text-xs font-semibold text-gray-600">{completedCount} bajarildi</span>
               </button>
             </div>
+
+            {/* Badges + ID chip row */}
+            {(() => {
+              const badges = user?.id ? getBadges(user.id).filter((b) => b.visible) : [];
+              return (
+                <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                  {badges.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowBadgeSheet(true)}
+                      className="flex items-center gap-1.5 flex-wrap"
+                    >
+                      {badges.slice(0, 2).map((b) => (
+                        <BadgePill key={b.type} type={b.type} size="sm" />
+                      ))}
+                      {badges.length > 2 && (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">
+                          +{badges.length - 2}
+                        </span>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowBadgeSheet(true)}
+                      className="text-[11px] font-semibold text-violet-500 hover:text-violet-700 transition-colors"
+                    >
+                      Nishonlar →
+                    </button>
+                  )}
+                  <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 border border-gray-100">
+                    <IdCard className="w-3 h-3" /> ID — tez kunda
+                  </span>
+                </div>
+              );
+            })()}
           </div>
         </div>
+        <BadgeConditionsSheet open={showBadgeSheet} onClose={() => setShowBadgeSheet(false)} />
 
         {/* Category chips */}
         {selectedCategories.length > 0 && (
@@ -563,35 +601,6 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
           </div>
         )}
 
-        {/* Badge strip */}
-        {(() => {
-          const badges = user?.id ? getBadges(user.id).filter((b) => b.visible) : [];
-          return badges.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setShowBadgeSheet(true)}
-              className="flex items-center gap-1.5 flex-wrap mt-3 w-full text-left"
-            >
-              {badges.slice(0, 3).map((b) => (
-                <BadgePill key={b.type} type={b.type} size="sm" />
-              ))}
-              {badges.length > 3 && (
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">
-                  +{badges.length - 3}
-                </span>
-              )}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowBadgeSheet(true)}
-              className="flex items-center gap-1 mt-3 text-[11px] font-semibold text-gray-400 hover:text-violet-600 transition-colors"
-            >
-              Hali nishonlar yo'q · <span className="text-violet-500">Shartlar →</span>
-            </button>
-          );
-        })()}
-        <BadgeConditionsSheet open={showBadgeSheet} onClose={() => setShowBadgeSheet(false)} />
       </motion.div>
 
       {/* ── Completion card ── */}
