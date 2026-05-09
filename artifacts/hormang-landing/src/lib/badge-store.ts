@@ -165,8 +165,8 @@ export const BADGE_META: Record<BadgeType, BadgeMeta> = {
   under_review: {
     type: "under_review",
     label: "Kuzatuvda",
-    description: "Modaratsiya nazoratida",
-    hint: "Admin tomonidan tekshiruv ostida",
+    description: "Ushbu foydalanuvchi platforma administratorlari tomonidan kuzatuv ostida turibdi. Bu vaqtinchalik tekshiruv yoki murojaatlar bilan bog'liq bo'lishi mumkin.",
+    hint: "Admin tomonidan vaqtinchalik tekshiruv ostida",
     source: "admin",
     scope: "both",
     pillBg:     "bg-rose-50/60",

@@ -265,15 +265,10 @@ function ProviderPreviewSheet({
                 title="Nishon shartlarini ko'rish"
               >
                 {pBadges.length > 0 ? (
-                  <div className="flex flex-wrap gap-1 justify-center">
-                    {pBadges.slice(0, 2).map((b) => (
+                  <div className="flex flex-wrap gap-1 justify-center overflow-y-auto max-h-[80px] no-scrollbar">
+                    {pBadges.map((b) => (
                       <BadgePill key={b.type} type={b.type} size="sm" />
                     ))}
-                    {pBadges.length > 2 && (
-                      <span className="text-[10px] font-bold text-violet-500 self-center">
-                        +{pBadges.length - 2}
-                      </span>
-                    )}
                   </div>
                 ) : (
                   <Award className="w-3.5 h-3.5 text-gray-300" />

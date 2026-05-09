@@ -12,7 +12,7 @@ import {
   IdCard,
 } from "lucide-react";
 import { BadgePill, BadgeConditionsSheet } from "@/components/provider-badges";
-import { getBadges, evaluateAutoBadges } from "@/lib/badge-store";
+import { getBadges, evaluateAutoBadges, type BadgeType } from "@/lib/badge-store";
 import { onStoreChange } from "@/lib/store-events";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
@@ -547,35 +547,34 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
 
             {/* Badges + ID chip row */}
             {(() => {
-              const badges = user?.id ? getBadges(user.id).filter((b) => b.visible) : [];
+              const PRIORITY: BadgeType[] = ["under_review", "recommended_by_hormang"];
+              const all      = user?.id ? getBadges(user.id).filter((b) => b.visible) : [];
+              const priority = all.filter((b) => PRIORITY.includes(b.type));
+              const rest     = all.filter((b) => !PRIORITY.includes(b.type));
+              const ordered  = [...priority, ...rest];
               return (
-                <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                  {badges.length > 0 ? (
+                <div className="flex items-center gap-1.5 mt-2 overflow-x-auto no-scrollbar">
+                  {ordered.length > 0 ? (
                     <button
                       type="button"
                       onClick={() => setShowBadgeSheet(true)}
-                      className="flex items-center gap-1.5 flex-wrap"
+                      className="flex items-center gap-1.5 flex-nowrap"
                     >
-                      {badges.slice(0, 2).map((b) => (
+                      {ordered.map((b) => (
                         <BadgePill key={b.type} type={b.type} size="sm" />
                       ))}
-                      {badges.length > 2 && (
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">
-                          +{badges.length - 2}
-                        </span>
-                      )}
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={() => setShowBadgeSheet(true)}
-                      className="text-[11px] font-semibold text-violet-500 hover:text-violet-700 transition-colors"
+                      className="text-[11px] font-semibold text-violet-500 hover:text-violet-700 transition-colors flex-shrink-0"
                     >
                       Nishonlar →
                     </button>
                   )}
-                  <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 border border-gray-100">
-                    <IdCard className="w-3 h-3" /> ID — tez kunda
+                  <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 border border-gray-100 flex-shrink-0 whitespace-nowrap">
+                    <IdCard className="w-3 h-3 flex-shrink-0" /> ID tekshiruvi — tez kunda
                   </span>
                 </div>
               );
