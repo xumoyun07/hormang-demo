@@ -182,8 +182,7 @@ export function BadgeConditionsSheet({
   open: boolean;
   onClose: () => void;
 }) {
-  // Show all provider-relevant badges (skip under_review — it's a warning, not earnable)
-  const items = ALL_BADGE_TYPES.filter((t) => t !== "under_review");
+  const items = ALL_BADGE_TYPES;
 
   return (
     <AnimatePresence>
@@ -241,9 +240,7 @@ export function BadgeConditionsSheet({
                         {meta.label}
                       </span>
                       <p className="text-[11px] text-gray-500 leading-relaxed">
-                        {meta.source === "admin"
-                          ? meta.hint
-                          : meta.hint}
+                        {type === "under_review" ? meta.description : meta.hint}
                       </p>
                     </div>
                   );
