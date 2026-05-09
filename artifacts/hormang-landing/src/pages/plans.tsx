@@ -140,7 +140,7 @@ function PlanCard({
           <div className="flex flex-wrap gap-1.5 mb-2.5">
             {tier.badge && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">{tier.badge}</span>}
             {tier.featured && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">⭐ Tavsiya etilgan</span>}
-            {tier.hotOffer && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600">🔥 Hot offer</span>}
+            {tier.hotOffer && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600">🔥 Qaynoq taklif</span>}
             {tier.bonusPlan && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">🎁 Bonusli</span>}
           </div>
         )}
