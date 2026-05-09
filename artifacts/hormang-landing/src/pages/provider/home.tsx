@@ -33,7 +33,8 @@ import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { getLocalProfile, getCompletionChecks, getCompletionPct } from "@/lib/local-profile";
 import { tryGrantProfileReward, getProfileRewardStatus } from "@/lib/profile-reward-store";
 import { BadgeConditionsSheet, BadgePill } from "@/components/provider-badges";
-import { getBadges } from "@/lib/badge-store";
+import { getBadges, evaluateAutoBadges } from "@/lib/badge-store";
+import { onStoreChange } from "@/lib/store-events";
 import { formatDate as formatUzDate } from "@/lib/date-utils";
 import { ReferralCard } from "@/components/referral-card";
 import logoImg from "/hormang-logo.png";
@@ -210,6 +211,21 @@ function ProfileCompletion() {
       setRewardGranted(getProfileRewardStatus(user.id).granted);
     }
   }, [user?.id, pct]);
+
+  /* Re-evaluate auto-badges whenever any store data changes.
+   * This covers ALL badge types:
+   *   • verified / strong_portfolio — local profile edits emit storeChange
+   *   • top_provider / trusted_provider — review/completion store changes
+   *   • premium_provider — tanga-history store changes
+   *   • experienced_provider — completion store changes
+   * Runs once immediately so badges are current on mount, then on every
+   * downstream store event so removal/grant happens in real time.
+   */
+  useEffect(() => {
+    if (!user || user.role !== "provider") return;
+    evaluateAutoBadges(user);
+    return onStoreChange(() => evaluateAutoBadges(user));
+  }, [user]);
 
   if (pct === 100 && dismissed) return null;
 
