@@ -20,7 +20,7 @@ import { ProviderReviewsSheet } from "@/components/provider-reviews-sheet";
 import { CustomerReviewsSheet } from "@/components/customer-reviews-sheet";
 import { ImageGrid } from "@/components/image-grid";
 import { ReportModal } from "@/components/report-modal";
-import { ProviderBadges } from "@/components/provider-badges";
+import { BadgePill, BadgeConditionsSheet } from "@/components/provider-badges";
 import { getBadges } from "@/lib/badge-store";
 import { useAuth } from "@/contexts/auth-context";
 import type {
@@ -122,6 +122,8 @@ function ProviderPreviewSheet({
 
   const [showReviews, setShowReviews] = useState(false);
   const [showReport, setShowReport]   = useState(false);
+  const [showBadgeHint, setShowBadgeHint] = useState(false);
+  const pBadges = getBadges(data.masterId);
 
   const canReport = user && user.id !== data.masterId;
 
@@ -256,29 +258,34 @@ function ProviderPreviewSheet({
                 color="hsl(160,60%,40%)"
               />
               <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
-              <div className="flex-1 flex flex-col items-center gap-1 px-2 min-w-0">
-                <Award className="w-3.5 h-3.5 mb-0.5" style={{ color: VIOLET }} />
-                <span className="text-sm font-black text-gray-900 leading-none">
-                  {getBadges(data.masterId, user && user.id === data.masterId ? user : null).length}
-                </span>
+              <button
+                type="button"
+                onClick={() => setShowBadgeHint(true)}
+                className="flex-1 flex flex-col items-center gap-1 px-2 min-w-0 rounded-xl hover:bg-violet-50/60 transition-colors py-1 -my-1 group"
+                title="Nishon shartlarini ko'rish"
+              >
+                {pBadges.length > 0 ? (
+                  <div className="flex flex-wrap gap-1 justify-center">
+                    {pBadges.slice(0, 2).map((b) => (
+                      <BadgePill key={b.type} type={b.type} size="sm" />
+                    ))}
+                    {pBadges.length > 2 && (
+                      <span className="text-[10px] font-bold text-violet-500 self-center">
+                        +{pBadges.length - 2}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <Award className="w-3.5 h-3.5 text-gray-300" />
+                )}
                 <span className="text-[10px] text-gray-400 font-medium leading-tight">Nishonlar</span>
-              </div>
+                <span className="text-[9px] text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity leading-none">
+                  shartlar ↗
+                </span>
+              </button>
             </div>
 
-            {/* ── Provider badges row ── */}
-            <div className="mb-5">
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                <Award className="w-3 h-3" style={{ color: VIOLET }} />
-                Nishonlar
-              </p>
-              <ProviderBadges
-                userId={data.masterId}
-                user={user && user.id === data.masterId ? user : null}
-                size="md"
-                showEmpty
-                emptyVariant="compact"
-              />
-            </div>
+            <BadgeConditionsSheet open={showBadgeHint} onClose={() => setShowBadgeHint(false)} />
 
             {/* ── Service areas / Location ── */}
             {serviceAreas.length > 0 && (
@@ -547,12 +554,16 @@ function CustomerPreviewSheet({
               />
             </div>
 
-            {/* ── Customer "under review" warning badge (admin-only, both roles) ── */}
-            {data.customerId && (
-              <div className="mb-4">
-                <ProviderBadges userId={data.customerId} size="md" />
-              </div>
-            )}
+            {/* ── Customer "under review" badge (admin-only warning, shown if present) ── */}
+            {data.customerId && (() => {
+              const custBadges = getBadges(data.customerId);
+              if (custBadges.length === 0) return null;
+              return (
+                <div className="mb-4 flex flex-wrap gap-1.5">
+                  {custBadges.map((b) => <BadgePill key={b.type} type={b.type} size="md" />)}
+                </div>
+              );
+            })()}
 
             {/* ── Location ── */}
             {location && (

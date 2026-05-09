@@ -11,11 +11,12 @@
  * subtle borders, small icons, elegant typography.
  */
 import { useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  ShieldCheck, Star, Shield, Award, Crown, Images, BadgeCheck, Eye,
+  ShieldCheck, Star, Shield, Award, Crown, Images, BadgeCheck, Eye, X,
 } from "lucide-react";
 import {
-  BADGE_META, ADMIN_BADGE_TYPES, getBadges, evaluateAutoBadges, explainAutoBadges,
+  BADGE_META, ADMIN_BADGE_TYPES, ALL_BADGE_TYPES, getBadges, evaluateAutoBadges, explainAutoBadges,
   adminGrantBadge, adminRemoveBadge,
   type Badge as BadgeRecord, type BadgeType,
 } from "@/lib/badge-store";
@@ -169,6 +170,90 @@ export function ProviderBadges({
       className={className}
       emptyState={showEmpty ? <BadgeEmptyState user={user ?? null} variant={emptyVariant} /> : undefined}
     />
+  );
+}
+
+/* ─── Conditions hint bottom sheet ─────────────────────────────────── */
+
+export function BadgeConditionsSheet({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  // Show all provider-relevant badges (skip under_review — it's a warning, not earnable)
+  const items = ALL_BADGE_TYPES.filter((t) => t !== "under_review");
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", stiffness: 400, damping: 38 }}
+            className="fixed inset-x-0 bottom-0 z-[71] flex justify-center pointer-events-none"
+          >
+            <div
+              className="bg-white w-full max-w-lg rounded-t-[24px] pointer-events-auto"
+              style={{ maxHeight: "80dvh", display: "flex", flexDirection: "column" }}
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+                <div className="w-10 h-1 rounded-full bg-gray-200" />
+              </div>
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-3 flex-shrink-0">
+                <div>
+                  <h3 className="font-black text-base text-gray-900">Nishonlar</h3>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Nishon olish shartlari</p>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              {/* List */}
+              <div className="overflow-y-auto px-5 pb-8 flex-1">
+                {items.map((type) => {
+                  const meta = BADGE_META[type];
+                  const Icon = ICONS[meta.icon];
+                  return (
+                    <div
+                      key={type}
+                      className="flex items-center gap-3 py-3 border-b border-gray-50 last:border-0"
+                    >
+                      <span
+                        className={`inline-flex items-center rounded-full font-bold border whitespace-nowrap px-2.5 py-1 text-[11px] gap-1.5 flex-shrink-0 ${meta.pillBg} ${meta.pillText} ${meta.pillBorder}`}
+                      >
+                        <Icon className="w-3 h-3" strokeWidth={2.5} />
+                        {meta.label}
+                      </span>
+                      <p className="text-[11px] text-gray-500 leading-relaxed">
+                        {meta.source === "admin"
+                          ? meta.hint
+                          : meta.hint}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
 
