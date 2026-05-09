@@ -31,6 +31,7 @@ import { ReviewModal, type ReviewSubmitData } from "@/components/review-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { getLocalProfile, getCompletionChecks, getCompletionPct } from "@/lib/local-profile";
+import { tryGrantProfileReward, getProfileRewardStatus } from "@/lib/profile-reward-store";
 import { formatDate as formatUzDate } from "@/lib/date-utils";
 import { ReferralCard } from "@/components/referral-card";
 import logoImg from "/hormang-logo.png";
@@ -61,6 +62,86 @@ function urgencyLabel(u: ProviderRequest["urgency"]): { label: string; color: st
 }
 
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
+
+/* ─── Reward celebration confetti dots ───────────────────────────── */
+const CONFETTI_DOTS = [
+  { x: "8%",  y: "20%", s: 7,  c: "#FCD34D" },
+  { x: "18%", y: "65%", s: 5,  c: "#A78BFA" },
+  { x: "30%", y: "12%", s: 6,  c: "#34D399" },
+  { x: "45%", y: "70%", s: 4,  c: "#FB7185" },
+  { x: "58%", y: "18%", s: 5,  c: "#60A5FA" },
+  { x: "68%", y: "55%", s: 7,  c: "#FCD34D" },
+  { x: "78%", y: "10%", s: 4,  c: "#A78BFA" },
+  { x: "88%", y: "62%", s: 6,  c: "#34D399" },
+  { x: "92%", y: "30%", s: 5,  c: "#FB7185" },
+  { x: "22%", y: "40%", s: 4,  c: "#60A5FA" },
+  { x: "72%", y: "80%", s: 5,  c: "#FCD34D" },
+  { x: "50%", y: "45%", s: 3,  c: "#A78BFA" },
+];
+
+/* ─── Celebration Modal ──────────────────────────────────────────── */
+function CelebrationModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(6px)" }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.82, opacity: 0, y: 24 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 12 }}
+        transition={{ type: "spring", stiffness: 300, damping: 22 }}
+        className="relative bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-xs"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Gradient header */}
+        <div
+          className="relative h-32 flex items-center justify-center overflow-hidden"
+          style={{ background: VIOLET }}
+        >
+          {CONFETTI_DOTS.map((d, i) => (
+            <motion.div
+              key={i}
+              className="absolute rounded-full"
+              style={{ width: d.s, height: d.s, background: d.c, left: d.x, top: d.y }}
+              animate={{ y: [0, -16, 0], opacity: [0.9, 0.5, 0.9], rotate: [0, 180, 360] }}
+              transition={{ duration: 1.6 + i * 0.12, repeat: Infinity, ease: "easeInOut", delay: i * 0.07 }}
+            />
+          ))}
+          <span className="text-5xl relative z-10 drop-shadow-lg select-none">🎉</span>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 pt-5 pb-6 text-center">
+          <h2 className="text-xl font-extrabold text-gray-900 mb-1.5">Tabriklaymiz!</h2>
+          <p className="text-sm text-gray-500 mb-5 leading-relaxed">
+            Profilingiz <span className="font-bold text-violet-600">100%</span> to'ldirildi.
+            <br />Siz Hormang'ning to'liq a'zosisiz!
+          </p>
+
+          {/* Reward badge */}
+          <div className="flex items-center justify-center gap-2.5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5 mb-5">
+            <span className="text-2xl font-extrabold text-amber-600 leading-none">+5</span>
+            <span className="text-xl leading-none">🪙</span>
+            <div className="text-left">
+              <p className="text-sm font-extrabold text-amber-700">Tanga bonus berildi!</p>
+              <p className="text-[11px] text-amber-500">Balansingizga qo'shildi</p>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-full py-3.5 rounded-2xl font-bold text-white text-sm transition-all active:scale-[.98] shadow-md shadow-violet-200"
+            style={{ background: VIOLET }}
+          >
+            Rahmat 🎊
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 /* ─── Circular Progress ──────────────────────────────────────────── */
 function CircularProgress({ pct }: { pct: number }) {
@@ -93,6 +174,8 @@ function ProfileCompletion() {
   const [, setLocation] = useLocation();
   const dismissKey = user?.id ? `profile_completion_dismissed_${user.id}` : "";
   const [dismissed, setDismissed] = useState(false);
+  const [justRewarded, setJustRewarded] = useState(false);
+  const [rewardGranted, setRewardGranted] = useState(false);
 
   const local = user ? getLocalProfile(user.id) : {};
   const checks = getCompletionChecks(user ?? null, providerProfile, local);
@@ -107,60 +190,100 @@ function ProfileCompletion() {
     setDismissed(localStorage.getItem(dismissKey) === "1");
   }, [dismissKey]);
 
+  /* Sync reward status from store on every refresh */
+  useEffect(() => {
+    if (!user?.id) return;
+    setRewardGranted(getProfileRewardStatus(user.id).granted);
+  }, [user?.id]);
+
+  /* Try to grant one-time reward when profile hits 100% */
+  useEffect(() => {
+    if (!user?.id || pct !== 100) return;
+    const wasJustGranted = tryGrantProfileReward(user.id);
+    if (wasJustGranted) {
+      setRewardGranted(true);
+      setJustRewarded(true);
+    } else {
+      setRewardGranted(getProfileRewardStatus(user.id).granted);
+    }
+  }, [user?.id, pct]);
+
   if (pct === 100 && dismissed) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      onClick={() => pct < 100 && setLocation("/profile/settings")}
-      className={`relative bg-white rounded-2xl border border-violet-100 card-shadow p-4 mb-4 active:scale-[.99] transition-all ${pct < 100 ? "cursor-pointer" : ""}`}
-    >
-      {pct === 100 && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (dismissKey) localStorage.setItem(dismissKey, "1");
-            setDismissed(true);
-          }}
-          className="absolute right-3 top-3 w-7 h-7 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-          aria-label="Profil tugallangan kartasini yopish"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
-      )}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-shrink-0">
-          <CircularProgress pct={pct} />
-          <span className="absolute inset-0 flex items-center justify-center text-sm font-extrabold text-violet-700">
-            {pct}%
-          </span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-gray-900 text-sm mb-0.5">
-            {pct === 100 ? "Profil to'liq! 🎉" : "Profilingizni to'ldiring"}
-          </p>
-          <p className="text-xs text-gray-500 mb-2">{checks.length - missing.length}/{checks.length} qadamlar bajarildi</p>
-          {pct === 100 ? (
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 bg-violet-50 rounded-xl px-3 py-2">
-              <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
-              Profil to'liq to'ldirilgan
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {missing.slice(0, 3).map((m) => (
-                <div key={m.key} className="flex items-center gap-1.5 text-xs text-violet-600">
-                  <AlertCircle className="w-3 h-3 flex-shrink-0" />
-                  {m.label}
+    <>
+      <AnimatePresence>
+        {justRewarded && (
+          <CelebrationModal onClose={() => setJustRewarded(false)} />
+        )}
+      </AnimatePresence>
+
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        onClick={() => pct < 100 && setLocation("/profile/settings")}
+        className={`relative bg-white rounded-2xl border border-violet-100 card-shadow p-4 mb-4 active:scale-[.99] transition-all ${pct < 100 ? "cursor-pointer" : ""}`}
+      >
+        {pct === 100 && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (dismissKey) localStorage.setItem(dismissKey, "1");
+              setDismissed(true);
+            }}
+            className="absolute right-3 top-3 w-7 h-7 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            aria-label="Profil tugallangan kartasini yopish"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+        <div className="flex items-center gap-4">
+          <div className="relative flex-shrink-0">
+            <CircularProgress pct={pct} />
+            <span className="absolute inset-0 flex items-center justify-center text-sm font-extrabold text-violet-700">
+              {pct}%
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-gray-900 text-sm mb-0.5">
+              {pct === 100 ? "Profil to'liq! 🎉" : "Profilingizni to'ldiring"}
+            </p>
+            <p className="text-xs text-gray-500 mb-2">{checks.length - missing.length}/{checks.length} qadamlar bajarildi</p>
+            {pct === 100 ? (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 bg-violet-50 rounded-xl px-3 py-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+                  Profil to'liq to'ldirilgan
                 </div>
-              ))}
-            </div>
-          )}
+                {rewardGranted ? (
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-1.5">
+                    <span className="text-sm">🎖</span>
+                    5 Tanga bonusi olindi ✅
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {missing.slice(0, 2).map((m) => (
+                  <div key={m.key} className="flex items-center gap-1.5 text-xs text-violet-600">
+                    <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                    {m.label}
+                  </div>
+                ))}
+                {!rewardGranted && (
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 mt-1">
+                    <span className="text-sm">🪙</span>
+                    100% to'ldiring va +5 Tanga bonus oling
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          {pct < 100 && <ChevronRight className="w-5 h-5 text-violet-400 flex-shrink-0" />}
         </div>
-        {pct < 100 && <ChevronRight className="w-5 h-5 text-violet-400 flex-shrink-0" />}
-      </div>
-    </motion.div>
+      </motion.div>
+    </>
   );
 }
 
