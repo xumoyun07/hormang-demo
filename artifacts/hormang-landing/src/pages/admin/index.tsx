@@ -4376,6 +4376,28 @@ function MonoTransactions({ txs, reload }: { txs: TangaTx[]; reload: () => void 
   const [filterDate, setFilterDate]   = useState<"all" | "today" | "week" | "month">("all");
   const [viewOfferId, setViewOfferId] = useState<string | null>(null);
   const allOffers = getOffers() as BuyerOfferFull[];
+
+  /* ── User lookup: id → { name, phone } ────────────────────────── */
+  const userLookup = useMemo(() => {
+    const map = new Map<string, { name: string; phone: string | null }>();
+    try {
+      const au = JSON.parse(localStorage.getItem("hormang_auth_users") ?? "[]") as {
+        id: string; firstName?: string; lastName?: string; phone?: string | null; role?: string;
+      }[];
+      for (const u of au) {
+        if (!u.id) continue;
+        const name = `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim()
+          || (u.role === "provider" ? "Ijrochi" : "Mijoz");
+        map.set(u.id, { name, phone: u.phone ?? null });
+      }
+    } catch {}
+    for (const offer of allOffers) {
+      if (offer.masterId && !map.has(offer.masterId) && offer.masterName) {
+        map.set(offer.masterId, { name: offer.masterName, phone: null });
+      }
+    }
+    return map;
+  }, [allOffers]);
   const now      = new Date();
   const todayStr = now.toISOString().slice(0, 10);
   const weekAgo  = new Date(now.getTime() - 7 * 86400000);
@@ -4484,7 +4506,18 @@ function MonoTransactions({ txs, reload }: { txs: TangaTx[]; reload: () => void 
                   const offer         = allOffers.find((o) => o.id === tx.offerId);
                   return (
                     <tr key={tx.id} className="hover:bg-gray-50/60 transition-colors">
-                      <td className="px-3 py-3 font-mono text-[10px] text-gray-500">{tx.userId.slice(0, 12)}</td>
+                      <td className="px-3 py-3 max-w-[150px]">
+                        {(() => {
+                          const u = userLookup.get(tx.userId);
+                          return (
+                            <>
+                              <p className="text-xs font-bold text-gray-800 truncate">{u?.name ?? "Noma'lum"}</p>
+                              {u?.phone && <p className="text-[10px] text-gray-500 font-medium">{u.phone}</p>}
+                              <p className="text-[9px] text-gray-300 font-mono mt-0.5">{tx.userId.slice(0, 12)}</p>
+                            </>
+                          );
+                        })()}
+                      </td>
                       <td className="px-3 py-3">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${cls}`}>
                           {tx.categoryEmoji || "📋"} {label}
