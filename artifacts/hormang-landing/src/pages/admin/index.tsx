@@ -1273,11 +1273,14 @@ interface AdminUser {
   referralCount?:   number;
   referralEarned?:  number;
   /* ── Admin-managed metadata ── */
-  flagCount?:       number;
-  reportCount?:     number;
-  tags?:            string[];
-  adminNotes?:      AdminNote[];
-  tangaBalance?:    number;
+  flagCount?:              number;
+  reportCount?:            number;
+  tags?:                   string[];
+  adminNotes?:             AdminNote[];
+  tangaBalance?:           number;
+  /* ── Profile completion reward ── */
+  profileRewardGranted?:   boolean;
+  profileRewardGrantedAt?: string;
 }
 
 /* ─── Advanced User Detail Modal ─────────────────────────────────── */
@@ -1517,18 +1520,37 @@ function AdvancedUserDetailModal({
 
                 {/* Provider stats */}
                 {(u.role === "provider" || u.role === "both") && (
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { label: "Qabul %", val: u.completionPct !== undefined ? `${u.completionPct}%` : "—", bg: "bg-emerald-50 border-emerald-100", tx: "text-emerald-700" },
-                      { label: "Qabul qilingan", val: `${u.acceptedCount ?? 0} ta`, bg: "bg-violet-50 border-violet-100", tx: "text-violet-700" },
-                      { label: "Sharhlar", val: `${u.reviewCount ?? 0} ta`, bg: "bg-amber-50 border-amber-100", tx: "text-amber-700" },
-                      { label: "Javob vaqti", val: u.avgResponseTime !== undefined ? `~${u.avgResponseTime}m` : "—", bg: "bg-blue-50 border-blue-100", tx: "text-blue-700" },
-                    ].map((s) => (
-                      <div key={s.label} className={`rounded-xl p-3 border text-center ${s.bg}`}>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{s.label}</p>
-                        <p className={`text-lg font-extrabold ${s.tx}`}>{s.val}</p>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { label: "Qabul %", val: u.completionPct !== undefined ? `${u.completionPct}%` : "—", bg: "bg-emerald-50 border-emerald-100", tx: "text-emerald-700" },
+                        { label: "Qabul qilingan", val: `${u.acceptedCount ?? 0} ta`, bg: "bg-violet-50 border-violet-100", tx: "text-violet-700" },
+                        { label: "Sharhlar", val: `${u.reviewCount ?? 0} ta`, bg: "bg-amber-50 border-amber-100", tx: "text-amber-700" },
+                        { label: "Javob vaqti", val: u.avgResponseTime !== undefined ? `~${u.avgResponseTime}m` : "—", bg: "bg-blue-50 border-blue-100", tx: "text-blue-700" },
+                      ].map((s) => (
+                        <div key={s.label} className={`rounded-xl p-3 border text-center ${s.bg}`}>
+                          <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{s.label}</p>
+                          <p className={`text-lg font-extrabold ${s.tx}`}>{s.val}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Profile completion reward badge */}
+                    <div className={`flex items-center justify-between rounded-xl px-3 py-2 border ${u.profileRewardGranted ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-100"}`}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🎖</span>
+                        <span className="text-[11px] font-bold text-gray-700">Profil bonusi (+5 🪙)</span>
                       </div>
-                    ))}
+                      {u.profileRewardGranted ? (
+                        <div className="flex flex-col items-end">
+                          <span className="text-[11px] font-extrabold text-emerald-700">✅ Berilgan</span>
+                          {u.profileRewardGrantedAt && (
+                            <span className="text-[9px] text-gray-400">{new Date(u.profileRewardGrantedAt).toLocaleDateString("uz-UZ", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-gray-400">⏳ Kutilmoqda</span>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -2993,6 +3015,18 @@ function UsersSection({ refreshKey, onGoToFeedback, openUserId, onOpenUserIdCons
       }
     }
 
+    /* ── Step 7: Profile completion reward status ── */
+    for (const u of result) {
+      try {
+        const raw = localStorage.getItem(`hormang_profile_reward_${u.userId}`);
+        if (raw) {
+          const r = JSON.parse(raw) as { granted?: boolean; grantedAt?: string };
+          u.profileRewardGranted  = r.granted === true;
+          u.profileRewardGrantedAt = r.grantedAt;
+        }
+      } catch { /* skip */ }
+    }
+
     setUsers(result.sort((a, b) => {
       // providers + both first, then customers; within groups alphabetical
       const roleOrder = { both: 0, provider: 1, customer: 2 };
@@ -3241,7 +3275,7 @@ function UsersSection({ refreshKey, onGoToFeedback, openUserId, onOpenUserIdCons
                 <tr className="border-b border-gray-100 bg-red-50/40">
                   {[
                     "Foydalanuvchi", "Rol", "Kontakt",
-                    "Samaradorlik", "Murojaatlar 💬", "Tanga 🪙", "Referral 🔗",
+                    "Samaradorlik", "Murojaatlar 💬", "Tanga 🪙", "Profil bonusi 🎖", "Referral 🔗",
                     "Risk", "Teglar", "Holat", "Amallar",
                   ].map((h) => (
                     <th key={h} className="text-left text-[9px] font-bold text-red-400 uppercase tracking-widest px-3 py-3 whitespace-nowrap">
@@ -3361,6 +3395,24 @@ function UsersSection({ refreshKey, onGoToFeedback, openUserId, onOpenUserIdCons
                             </button>
                           )}
                         </div>
+                      </td>
+
+                      {/* Profile Reward */}
+                      <td className="px-3 py-3">
+                        {u.profileRewardGranted ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 whitespace-nowrap">
+                              ✅ Berilgan
+                            </span>
+                            {u.profileRewardGrantedAt && (
+                              <span className="text-[9px] text-gray-400">
+                                {new Date(u.profileRewardGrantedAt).toLocaleDateString("uz-UZ", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] font-semibold text-gray-400 whitespace-nowrap">⏳ Kutilmoqda</span>
+                        )}
                       </td>
 
                       {/* Referral */}
