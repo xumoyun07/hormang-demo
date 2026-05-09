@@ -3956,6 +3956,19 @@ const BLANK_DRAFT: PlanDraft = {
   badge: "", desc: "",
 };
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+      <span className="flex-1 border-t border-gray-100" />{children}<span className="flex-1 border-t border-gray-100" />
+    </p>
+  );
+}
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">{label}</label>{children}</div>
+  );
+}
+
 function planStatusMeta(t: PricingTier): { label: string; cls: string } {
   if (!t.active) return { label: "O'chirilgan", cls: "bg-gray-100 text-gray-500" };
   const s = t.status ?? "active";
@@ -4075,15 +4088,6 @@ function MonoPlans({ tiers, setTiers, reload }: { tiers: PricingTier[]; setTiers
   const liveSale     = draft.salePrice !== "" ? Number(draft.salePrice) : null;
   const liveSaving   = liveSale !== null && livePrice > 0 && liveSale < livePrice
     ? Math.round((1 - liveSale / livePrice) * 100) : 0;
-
-  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-      <span className="flex-1 border-t border-gray-100" />{children}<span className="flex-1 border-t border-gray-100" />
-    </p>
-  );
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-1">{label}</label>{children}</div>
-  );
 
   return (
     <div className="space-y-5">
