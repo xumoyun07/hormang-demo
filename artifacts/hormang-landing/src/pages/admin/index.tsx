@@ -30,8 +30,11 @@ import {
   Bell, Menu, ChevronLeft, Plus, MapPin, Clock, Wallet,
   Store, LayoutGrid, TriangleAlert, ChevronDown, ChevronUp,
   Flag, Tag, Star, UserCheck, Zap, Activity, StickyNote, Download, Gift,
+  BadgeCheck,
 } from "lucide-react";
 import { onStoreChange, emitStoreChange } from "@/lib/store-events";
+import { ProviderBadges, AdminBadgeManager } from "@/components/provider-badges";
+import { getStoredBadges } from "@/lib/badge-store";
 import { formatDateTime, formatMonthYear, formatDate } from "@/lib/date-utils";
 import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questionnaire-store";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
@@ -1554,6 +1557,18 @@ function AdvancedUserDetailModal({
                   </div>
                 )}
 
+                {/* Provider/customer badges (read-only display in overview) */}
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    <BadgeCheck className="w-3 h-3" /> Nishonlar
+                  </p>
+                  {getStoredBadges(u.userId).length === 0 ? (
+                    <p className="text-[11px] text-gray-400 italic">Nishonlar yo'q</p>
+                  ) : (
+                    <ProviderBadges userId={u.userId} size="sm" />
+                  )}
+                </div>
+
                 {/* Service areas */}
                 {(u.serviceAreaV2 || (u.serviceAreas && u.serviceAreas.length > 0)) && (
                   <div>
@@ -1879,6 +1894,13 @@ function AdvancedUserDetailModal({
                     <Trash2 className="w-4 h-4" /> O'chirish
                   </button>
                 </div>
+
+                {/* Badge management (admin grant/remove) */}
+                <AdminBadgeManager
+                  targetUser={{ userId: u.userId, name: u.name, role: u.role }}
+                  adminId={ADMIN_USER}
+                  onChange={refreshMeta}
+                />
 
                 {/* Tags */}
                 <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">

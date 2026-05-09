@@ -20,6 +20,8 @@ import { ProviderReviewsSheet } from "@/components/provider-reviews-sheet";
 import { CustomerReviewsSheet } from "@/components/customer-reviews-sheet";
 import { ImageGrid } from "@/components/image-grid";
 import { ReportModal } from "@/components/report-modal";
+import { ProviderBadges } from "@/components/provider-badges";
+import { getBadges } from "@/lib/badge-store";
 import { useAuth } from "@/contexts/auth-context";
 import type {
   ProviderProfileData,
@@ -47,7 +49,7 @@ function MetricCell({
   color,
   onClick,
 }: {
-  icon?: React.FC<{ className?: string }>;
+  icon?: React.FC<{ className?: string; style?: React.CSSProperties }>;
   topNode?: React.ReactNode;
   value: React.ReactNode;
   label: string;
@@ -254,11 +256,27 @@ function ProviderPreviewSheet({
                 color="hsl(160,60%,40%)"
               />
               <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
-              <MetricCell
-                icon={ShieldCheck}
-                value="✓"
-                label="Tasdiqlangan"
-                color={VIOLET}
+              <div className="flex-1 flex flex-col items-center gap-1 px-2 min-w-0">
+                <Award className="w-3.5 h-3.5 mb-0.5" style={{ color: VIOLET }} />
+                <span className="text-sm font-black text-gray-900 leading-none">
+                  {getBadges(data.masterId, user && user.id === data.masterId ? user : null).length}
+                </span>
+                <span className="text-[10px] text-gray-400 font-medium leading-tight">Nishonlar</span>
+              </div>
+            </div>
+
+            {/* ── Provider badges row ── */}
+            <div className="mb-5">
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <Award className="w-3 h-3" style={{ color: VIOLET }} />
+                Nishonlar
+              </p>
+              <ProviderBadges
+                userId={data.masterId}
+                user={user && user.id === data.masterId ? user : null}
+                size="md"
+                showEmpty
+                emptyVariant="compact"
               />
             </div>
 
@@ -528,6 +546,13 @@ function CustomerPreviewSheet({
                 color="hsl(160,60%,40%)"
               />
             </div>
+
+            {/* ── Customer "under review" warning badge (admin-only, both roles) ── */}
+            {data.customerId && (
+              <div className="mb-4">
+                <ProviderBadges userId={data.customerId} size="md" />
+              </div>
+            )}
 
             {/* ── Location ── */}
             {location && (
