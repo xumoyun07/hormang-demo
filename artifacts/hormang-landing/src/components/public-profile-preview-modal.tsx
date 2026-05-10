@@ -286,10 +286,6 @@ function ProviderPreviewSheet({
                   ) : (
                     <Award className="w-3.5 h-3.5 text-gray-300" />
                   )}
-                  <span className="text-[10px] text-gray-400 font-medium leading-tight">Nishonlar</span>
-                  <span className="text-[9px] text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity leading-none">
-                    shartlar ↗
-                  </span>
                 </button>
               </div>
             </div>
