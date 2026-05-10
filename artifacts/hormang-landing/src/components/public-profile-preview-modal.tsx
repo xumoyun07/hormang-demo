@@ -258,26 +258,40 @@ function ProviderPreviewSheet({
                 color="hsl(160,60%,40%)"
               />
               <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
-              <button
-                type="button"
-                onClick={() => setShowBadgeHint(true)}
-                className="flex-1 flex flex-col items-center gap-1 px-2 min-w-0 rounded-xl hover:bg-violet-50/60 transition-colors py-1 -my-1 group"
-                title="Nishon shartlarini ko'rish"
-              >
-                {pBadges.length > 0 ? (
-                  <div className="flex flex-wrap gap-1 justify-center overflow-y-auto max-h-[80px] no-scrollbar">
-                    {pBadges.map((b) => (
-                      <BadgePill key={b.type} type={b.type} size="sm" />
-                    ))}
-                  </div>
-                ) : (
-                  <Award className="w-3.5 h-3.5 text-gray-300" />
-                )}
-                <span className="text-[10px] text-gray-400 font-medium leading-tight">Nishonlar</span>
-                <span className="text-[9px] text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity leading-none">
-                  shartlar ↗
-                </span>
-              </button>
+              <div className="flex-1 flex flex-col items-center gap-1 px-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setShowBadgeHint(true)}
+                  className="group flex flex-col items-center gap-1 rounded-xl hover:bg-violet-50/60 transition-colors py-1 w-full"
+                  title="Nishon shartlarini ko'rish"
+                >
+                  {pBadges.length > 0 ? (
+                    pBadges.length <= 2 ? (
+                      <div className="flex flex-wrap justify-center gap-1 max-w-[120px]">
+                        {pBadges.map((b) => (
+                          <BadgePill key={b.type} type={b.type} size="sm" />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="relative h-[52px] overflow-hidden">
+                        <div className="badge-scroll-track flex flex-col gap-1">
+                          {[...pBadges, ...pBadges].map((b, idx) => (
+                            <BadgePill key={`${b.type}-${idx}`} type={b.type} size="sm" />
+                          ))}
+                        </div>
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-3 bg-gradient-to-b from-white to-transparent" />
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3 bg-gradient-to-t from-white to-transparent" />
+                      </div>
+                    )
+                  ) : (
+                    <Award className="w-3.5 h-3.5 text-gray-300" />
+                  )}
+                  <span className="text-[10px] text-gray-400 font-medium leading-tight">Nishonlar</span>
+                  <span className="text-[9px] text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity leading-none">
+                    shartlar ↗
+                  </span>
+                </button>
+              </div>
             </div>
 
             <BadgeConditionsSheet open={showBadgeHint} onClose={() => setShowBadgeHint(false)} />
