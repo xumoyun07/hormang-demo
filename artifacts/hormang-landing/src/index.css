@@ -171,6 +171,18 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+  /* ── Badge auto-scroll (PPP modal metrics column) ── */
+  .badge-scroll-track {
+    animation: badgeScrollUp 20s linear infinite;
+  }
+  .badge-scroll-track:hover {
+    animation-play-state: paused;
+  }
+  @keyframes badgeScrollUp {
+    0%   { transform: translateY(0%); }
+    100% { transform: translateY(-50%); }
+  }
+
   /* ── Hero section ── */
   .hero-bg {
     background:
