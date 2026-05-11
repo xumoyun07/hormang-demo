@@ -3,6 +3,7 @@
  * Shows all offers sent + Tanga cost for each, with balance summary.
  */
 import { useState } from "react";
+import { TangaCoin } from "@/components/tanga-coin";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
@@ -78,12 +79,12 @@ function TxRow({
             })}
           </p>
           <p className="text-[10px] text-violet-500 mt-0.5">
-            Balans:&nbsp;{balanceAfter}&nbsp;🪙
+            Balans:&nbsp;{balanceAfter}&nbsp;<TangaCoin size="xs" />
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           <span className={`text-sm font-extrabold ${tone.amount}`}>
-            {tone.sign}{Math.abs(signed)}&nbsp;🪙
+            {tone.sign}{Math.abs(signed)}&nbsp;<TangaCoin size="xs" />
           </span>
           {offer && (
             <button
@@ -173,7 +174,7 @@ export default function TangaHistoryPage() {
             Joriy Tanga balansi
           </p>
           <p className="text-4xl font-extrabold leading-tight relative">
-            🪙 {balance}
+            <TangaCoin size="xl" /> {balance}
           </p>
           <p className="text-violet-200 text-xs mt-2 relative">
             {spendTxs.length} ta taklif · {totalSpent} Tanga sarflangan
@@ -187,20 +188,20 @@ export default function TangaHistoryPage() {
             <div className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm text-center">
               <p className="text-[10px] font-semibold text-gray-400 mb-1">Jami sarflandi</p>
               <p className="font-extrabold text-amber-600 text-xl">
-                {totalSpent}&nbsp;<span className="text-base">🪙</span>
+                {totalSpent}&nbsp;<TangaCoin size="sm" />
               </p>
             </div>
             <div className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm text-center">
               <p className="text-[10px] font-semibold text-gray-400 mb-1">O'rtacha xarajat</p>
               <p className="font-extrabold text-violet-600 text-xl">
-                {avgSpent}&nbsp;<span className="text-base">🪙</span>
+                {avgSpent}&nbsp;<TangaCoin size="sm" />
               </p>
             </div>
             {totalEarnedReferral > 0 && (
               <div className="bg-emerald-50 rounded-2xl border border-emerald-100 p-3.5 shadow-sm text-center">
                 <p className="text-[10px] font-semibold text-emerald-600 mb-1">Referral mukofot</p>
                 <p className="font-extrabold text-emerald-600 text-xl">
-                  +{totalEarnedReferral}&nbsp;<span className="text-base">🪙</span>
+                  +{totalEarnedReferral}&nbsp;<TangaCoin size="sm" />
                 </p>
               </div>
             )}
@@ -210,7 +211,7 @@ export default function TangaHistoryPage() {
         {/* ── Transaction list ── */}
         {transactions.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-12 text-center">
-            <p className="text-4xl mb-3">🪙</p>
+            <div className="flex justify-center mb-3"><TangaCoin size="xl" /></div>
             <p className="font-bold text-gray-500 text-sm mb-1">
               Hali tranzaksiyalar yo'q
             </p>

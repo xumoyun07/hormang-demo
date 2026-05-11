@@ -4,6 +4,7 @@
  * Tapping "Ijrochi profilini ko'rish" opens the unified PublicProfileModal.
  */
 import { useState } from "react";
+import { TangaCoin } from "@/components/tanga-coin";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, ChevronLeft, Clock, MapPin, Calendar,
@@ -426,8 +427,8 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                 <div className="bg-amber-50 border border-amber-100 rounded-2xl overflow-hidden">
                   {/* Top row: coin icon + amount */}
                   <div className="px-4 py-3 flex items-center gap-3 border-b border-amber-100">
-                    <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-lg flex-shrink-0">
-                      🪙
+                    <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                      <TangaCoin size="md" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wide">

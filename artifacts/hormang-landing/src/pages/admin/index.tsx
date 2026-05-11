@@ -32,6 +32,7 @@ import {
   Flag, Tag, Star, UserCheck, Zap, Activity, StickyNote, Download, Gift,
   BadgeCheck,
 } from "lucide-react";
+import { TangaCoin } from "@/components/tanga-coin";
 import { onStoreChange, emitStoreChange } from "@/lib/store-events";
 import { ProviderBadges, AdminBadgeManager } from "@/components/provider-badges";
 import { getStoredBadges } from "@/lib/badge-store";
@@ -1832,7 +1833,7 @@ function AdvancedUserDetailModal({
                 </div>
                 {tangaTxs.length === 0 ? (
                   <div className="text-center py-6">
-                    <p className="text-2xl mb-1">🪙</p>
+                    <div className="flex justify-center mb-1"><TangaCoin size="lg" /></div>
                     <p className="text-gray-400 text-sm font-semibold">Tranzaksiyalar yo'q</p>
                   </div>
                 ) : (
@@ -1848,7 +1849,7 @@ function AdvancedUserDetailModal({
                             <p className="text-[10px] text-gray-400">{new Date(tx.createdAt).toLocaleDateString("uz-UZ")}</p>
                           </div>
                           <span className={`font-extrabold text-sm flex-shrink-0 ${isIn ? "text-emerald-600" : "text-amber-600"}`}>
-                            {isIn ? "+" : "−"}{Math.abs(signed)} 🪙
+                            {isIn ? "+" : "−"}{Math.abs(signed)} <TangaCoin size="xs" />
                           </span>
                         </div>
                       );
@@ -3630,7 +3631,7 @@ function AdminUserTxModal({
           <div className="overflow-y-auto flex-1 px-5 py-4">
             {txs.length === 0 ? (
               <div className="text-center py-10">
-                <p className="text-2xl mb-2">🪙</p>
+                <div className="flex justify-center mb-2"><TangaCoin size="lg" /></div>
                 <p className="text-gray-400 font-semibold text-sm">Hali tranzaksiyalar yo'q</p>
               </div>
             ) : (
@@ -3650,7 +3651,7 @@ function AdminUserTxModal({
                         </p>
                       </div>
                       <span className={`font-extrabold text-sm flex-shrink-0 ${isIn ? "text-emerald-600" : "text-amber-600"}`}>
-                        {isIn ? "+" : "−"}{Math.abs(signed)} 🪙
+                        {isIn ? "+" : "−"}{Math.abs(signed)} <TangaCoin size="xs" />
                       </span>
                       {offer && (
                         <button
@@ -4560,7 +4561,7 @@ function MonoTransactions({ txs, reload }: { txs: TangaTx[]; reload: () => void 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {filtered.length === 0 ? (
           <div className="py-12 text-center">
-            <p className="text-2xl mb-2">🪙</p>
+            <div className="flex justify-center mb-2"><TangaCoin size="lg" /></div>
             <p className="text-gray-400 font-semibold text-sm">{txs.length === 0 ? "Hali tranzaksiyalar yo'q" : "Topilmadi"}</p>
           </div>
         ) : (

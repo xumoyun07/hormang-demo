@@ -4,6 +4,7 @@
  * Changes are only persisted when the "Saqlash" button is clicked.
  */
 import { useState, useRef } from "react";
+import { TangaCoin } from "@/components/tanga-coin";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Lock, Plus, Trash2, Edit3, ChevronUp, ChevronDown,
@@ -391,7 +392,7 @@ function OptionRow({
 
         {/* Tanga cost input */}
         <div className="flex items-center gap-1 flex-shrink-0 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
-          <span className="text-[10px] font-bold text-amber-600">🪙</span>
+          <TangaCoin size="xs" />
           <input
             type="number"
             min="0"
@@ -1154,7 +1155,7 @@ function CategoryPanel({
     <div>
       {/* Base cost field */}
       <div className="mb-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
-        <span className="text-xl flex-shrink-0">🪙</span>
+        <TangaCoin size="lg" />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-black text-amber-800 uppercase tracking-wide">Bu kategoriya uchun asosiy narx</p>
           <p className="text-[11px] text-amber-600 mt-0.5">Har qanday taklif yuborishda qo'shiladigan Tanga miqdori</p>
