@@ -621,7 +621,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                 {blockedReason
                   ? blockedLabel
                   : hasEnoughTanga
-                    ? `Taklifni yuborish (−${offerCost} 🪙)`
+                    ? <span className="flex items-center gap-1">Taklifni yuborish (−{offerCost}&nbsp;<TangaCoin size="xs" />)</span>
                     : "Tanga yetarli emas"}
               </button>
             </div>
