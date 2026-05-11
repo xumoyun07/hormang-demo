@@ -22,23 +22,20 @@ const GOLD_DARK = "linear-gradient(135deg, #f59e0b 0%, #92400e 100%)";
 /* ─── Coin Icon ──────────────────────────────────────────────────── */
 export function CoinIcon({ size = 20, className = "" }: { size?: number; className?: string }) {
   return (
-    <div
+    <img
+      src="/tanga-coin.jpg"
+      alt="Tanga"
+      draggable={false}
       className={className}
       style={{
-        width: size, height: size,
-        background: GOLD_GRAD,
+        width: size,
+        height: size,
         borderRadius: "50%",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        color: "white",
-        fontWeight: 900,
-        fontSize: Math.round(size * 0.44),
+        objectFit: "cover",
         flexShrink: 0,
         boxShadow: "0 2px 6px rgba(217,119,6,0.35)",
-        letterSpacing: "-0.5px",
       }}
-    >
-      T
-    </div>
+    />
   );
 }
 
@@ -326,9 +323,13 @@ export default function PlansPage() {
           />
           <p className="text-sm font-semibold text-amber-100 mb-3">Joriy balans</p>
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center text-3xl font-black shadow-inner">
-              T
-            </div>
+            <img
+              src="/tanga-coin.jpg"
+              alt="Tanga"
+              draggable={false}
+              className="w-14 h-14 rounded-2xl object-cover flex-shrink-0"
+              style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.25)" }}
+            />
             <div>
               <p className="text-5xl font-black text-white leading-none">{balance}</p>
               <p className="text-amber-200 text-xs font-semibold mt-1">Tanga</p>
