@@ -321,7 +321,7 @@ export default function PlansPage() {
             className="absolute inset-0 opacity-20 pointer-events-none"
             style={{ backgroundImage: "radial-gradient(circle at 80% 10%, white 0%, transparent 55%)" }}
           />
-          <p className="text-sm font-semibold text-amber-100 mb-3">Joriy balans</p>
+          <p className="text-sm font-semibold text-amber-100 mb-3">Hamyon</p>
           <div className="flex items-center gap-4">
             <img
               src="/tanga-coin.jpg"

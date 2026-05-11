@@ -172,7 +172,7 @@ export default function TangaHistoryPage() {
             }}
           />
           <p className="text-[11px] font-bold uppercase tracking-widest text-violet-200 mb-1 relative">
-            Joriy Tanga balansi
+            Tanga balansi
           </p>
           <p className="text-4xl font-extrabold leading-tight relative">
             <TangaCoin size="xl" /> {balance}
