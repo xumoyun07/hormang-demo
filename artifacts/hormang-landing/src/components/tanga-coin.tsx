@@ -4,6 +4,7 @@ const SIZE_MAP = {
   md: "w-6 h-6",
   lg: "w-9 h-9",
   xl: "w-14 h-14",
+  xxl: "w-25 h-25",
 } as const;
 
 type TangaCoinSize = keyof typeof SIZE_MAP;
