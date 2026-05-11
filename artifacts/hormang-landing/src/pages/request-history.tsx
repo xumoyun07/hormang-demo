@@ -16,14 +16,22 @@ import {
 } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
 import { formatDate } from "@/lib/date-utils";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
+import type { Dict } from "@/lib/i18n/locales/uz";
 
-const URGENCY_SHORT: Record<string, { label: string; cls: string }> = {
-  today_tomorrow: { label: "Bugun / ertaga", cls: "bg-red-50 text-red-600 border-red-200" },
-  "3_7_days": { label: "3–7 kun", cls: "bg-orange-50 text-orange-600 border-orange-200" },
-  "1_2_weeks": { label: "1–2 hafta", cls: "bg-yellow-50 text-yellow-700 border-yellow-200" },
-  "1_month": { label: "1 oy", cls: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-  flexible: { label: "Shoshilinch emas", cls: "bg-gray-50 text-gray-600 border-gray-200" },
+const URGENCY_CLS: Record<string, string> = {
+  today_tomorrow: "bg-red-50 text-red-600 border-red-200",
+  "3_7_days": "bg-orange-50 text-orange-600 border-orange-200",
+  "1_2_weeks": "bg-yellow-50 text-yellow-700 border-yellow-200",
+  "1_month": "bg-emerald-50 text-emerald-600 border-emerald-200",
+  flexible: "bg-gray-50 text-gray-600 border-gray-200",
 };
+
+function urgencyLabel(key: string, t: Dict): string | null {
+  const map = t.requestHistory.urgency as Record<string, string>;
+  return map[key] ?? null;
+}
 
 function BriefcaseIcon({ className }: { className?: string }) {
   return (
@@ -36,6 +44,7 @@ function BriefcaseIcon({ className }: { className?: string }) {
 }
 
 function CompletedRequestCard({ req, index }: { req: CustomerRequest; index: number }) {
+  const { t } = useI18n();
   const [, setLocation] = useLocation();
   const [previewOpen, setPreviewOpen] = useState(false);
   const offers = getOffersByRequestId(req.id);
@@ -45,7 +54,8 @@ function CompletedRequestCard({ req, index }: { req: CustomerRequest; index: num
   const urgency = req.answers["urgency"] as string | undefined;
   const budget = req.answers["budget"] as number | undefined;
   const openToOffers = req.answers["budget_open"] as boolean | undefined;
-  const urgencyInfo = urgency ? URGENCY_SHORT[urgency] : null;
+  const urgencyLbl = urgency ? urgencyLabel(urgency, t) : null;
+  const urgencyCls = urgency ? URGENCY_CLS[urgency] : null;
 
   function openChat() {
     if (!completedOffer) return;
@@ -81,13 +91,13 @@ function CompletedRequestCard({ req, index }: { req: CustomerRequest; index: num
             <p className="font-bold text-sm text-gray-900 leading-snug">{req.categoryName}</p>
             <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
               <CheckCircle2 className="w-3 h-3" />
-              Yakunlangan
+              {t.requestHistory.card.completed}
             </span>
           </div>
           <p className="text-xs text-gray-400 mt-0.5">{formatDate(req.createdAt)}</p>
           {completedOffer && (
             <p className="text-xs text-gray-500 mt-1 truncate">
-              Ijrochi: <span className="font-semibold text-gray-700">{completedOffer.masterName}</span>
+              {t.requestHistory.card.executorPrefix}: <span className="font-semibold text-gray-700">{completedOffer.masterName}</span>
             </p>
           )}
         </div>
@@ -100,16 +110,16 @@ function CompletedRequestCard({ req, index }: { req: CustomerRequest; index: num
       </button>
 
       <div className="px-4 pb-3 flex flex-wrap gap-2">
-        {urgencyInfo && (
-          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${urgencyInfo.cls}`}>
+        {urgencyLbl && urgencyCls && (
+          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${urgencyCls}`}>
             <Clock className="w-3 h-3 inline mr-1" />
-            {urgencyInfo.label}
+            {urgencyLbl}
           </span>
         )}
         {(openToOffers || (budget && budget > 0)) && (
           <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border border-gray-200 bg-gray-50 text-gray-600">
             <Wallet className="w-3 h-3 inline mr-1" />
-            {openToOffers ? "Taklifga ochiq" : `${Number(budget).toLocaleString()} so'm`}
+            {openToOffers ? t.requestHistory.card.openToOffers : `${Number(budget).toLocaleString()} ${t.requestHistory.card.sumSuffix}`}
           </span>
         )}
       </div>
@@ -121,14 +131,14 @@ function CompletedRequestCard({ req, index }: { req: CustomerRequest; index: num
           className="flex-1 h-9 text-xs font-bold border-gray-200 gap-1.5"
           onClick={() => setLocation(`/chat-offers?requestId=${req.id}`)}
         >
-          Takliflar ko'rish
+          {t.requestHistory.card.openOffers}
           <ChevronRight className="w-3.5 h-3.5 ml-auto" />
         </Button>
         <button
           onClick={openChat}
           disabled={!completedOffer}
           className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Chat ochish"
+          title={t.requestHistory.card.openChat}
         >
           <MessageCircle className="w-4 h-4" />
         </button>
@@ -144,6 +154,7 @@ function CompletedRequestCard({ req, index }: { req: CustomerRequest; index: num
 }
 
 export default function RequestHistoryPage() {
+  const { t } = useI18n();
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const requests = user ? getRequestsByCustomer(user.id) : [];
@@ -167,15 +178,15 @@ export default function RequestHistoryPage() {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="font-extrabold text-sm text-gray-900">Buyurtmalarim</h1>
-            <p className="text-xs text-gray-400">{completed.length} ta yakunlangan xizmat</p>
+            <h1 className="font-extrabold text-sm text-gray-900">{t.requestHistory.title}</h1>
+            <p className="text-xs text-gray-400">{tFormat(t.requestHistory.subtitleTpl, { n: completed.length })}</p>
           </div>
           {completed.length > 0 && (
             <button
               onClick={() => setLocation("/customer-reviews")}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold hover:bg-blue-100 transition-colors flex-shrink-0"
             >
-              Ijrochi fikrlari
+              {t.requestHistory.viewProviderReviews}
               {reviewCount > 0 && (
                 <span className="bg-blue-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none">
                   {reviewCount}
@@ -196,15 +207,15 @@ export default function RequestHistoryPage() {
             <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
               <ClipboardList className="w-8 h-8 text-blue-400" />
             </div>
-            <h2 className="font-extrabold text-gray-800 text-lg mb-2">Hali yakunlangan buyurtmalar yo'q</h2>
+            <h2 className="font-extrabold text-gray-800 text-lg mb-2">{t.requestHistory.empty.title}</h2>
             <p className="text-gray-500 text-sm mb-6 max-w-xs mx-auto">
-              Xizmat yakunlangandan keyin buyurtma tarixi shu yerda ko'rinadi.
+              {t.requestHistory.empty.desc}
             </p>
             <Button
               onClick={() => setLocation("/my-requests")}
               className="bg-blue-600 hover:bg-blue-700 font-bold"
             >
-              Faol so'rovlarga o'tish
+              {t.requestHistory.empty.cta}
             </Button>
           </motion.div>
         ) : (

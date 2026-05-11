@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
+import { useI18n } from "@/contexts/i18n-context";
 
 interface ConfirmModalProps {
   title: string;
@@ -10,6 +11,7 @@ interface ConfirmModalProps {
 }
 
 export function ConfirmModal({ title, message, confirmText, onConfirm, onClose }: ConfirmModalProps) {
+  const { t } = useI18n();
   return (
     <>
       <motion.div
@@ -49,7 +51,7 @@ export function ConfirmModal({ title, message, confirmText, onConfirm, onClose }
               onClick={onClose}
               className="flex-1 h-12 rounded-2xl border-2 border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors"
             >
-              Bekor qilish
+              {t.confirmModal.cancel}
             </button>
             <button
               onClick={() => { onConfirm(); onClose(); }}

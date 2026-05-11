@@ -33,40 +33,40 @@ import { calculateOfferCost } from "@/lib/offer-cost";
 import { recordTangaTransaction } from "@/lib/tanga-history-store";
 import { isUserSuspended, SUSPENDED_MESSAGE } from "@/lib/safety-store";
 import { useLocation } from "wouter";
-
-const COMPLETION_OPTIONS = [
-  "1 kun", "2–3 kun", "1 hafta", "2 hafta", "1 oy", "Boshqa (kelishiladi)",
-];
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
+import type { Dict } from "@/lib/i18n/locales/uz";
 
 function formatPrice(raw: string): string {
   const digits = raw.replace(/\D/g, "");
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }
 
-function urgencyLabel(u: ProviderRequest["urgency"]): { label: string; color: string } {
-  if (u === "urgent") return { label: "Shoshilinch", color: "text-red-600 bg-red-50 border border-red-100" };
-  if (u === "normal") return { label: "Oddiy", color: "text-blue-600 bg-blue-50 border border-blue-100" };
-  return { label: "Moslashuvchan", color: "text-gray-500 bg-gray-100 border border-gray-200" };
+function urgencyLabel(u: ProviderRequest["urgency"], t: Dict): { label: string; color: string } {
+  if (u === "urgent") return { label: t.offerForm.urgency.urgent, color: "text-red-600 bg-red-50 border border-red-100" };
+  if (u === "normal") return { label: t.offerForm.urgency.normal, color: "text-blue-600 bg-blue-50 border border-blue-100" };
+  return { label: t.offerForm.urgency.flexible, color: "text-gray-500 bg-gray-100 border border-gray-200" };
 }
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: Dict): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 60) return `${mins} daqiqa oldin`;
+  if (mins < 60) return tFormat(t.offerForm.timeAgo.minutes, { n: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} soat oldin`;
-  return `${Math.floor(hrs / 24)} kun oldin`;
+  if (hrs < 24) return tFormat(t.offerForm.timeAgo.hours, { n: hrs });
+  return tFormat(t.offerForm.timeAgo.days, { n: Math.floor(hrs / 24) });
 }
 
 function formatAnswerValue(
   value: unknown,
+  t: Dict,
   options?: { label: string; value: string; type?: string }[],
   otherText?: string,
 ): string {
-  if (value === null || value === undefined || value === "") return "—";
+  if (value === null || value === undefined || value === "") return t.offerForm.answer.dash;
   if (typeof value === "string" && value.startsWith("data:")) return "__IMAGE__";
-  if (typeof value === "boolean") return value ? "Ha" : "Yo'q";
-  if (typeof value === "number") return value.toLocaleString("uz-Latn-UZ") + (String(value).length > 3 ? " so'm" : "");
+  if (typeof value === "boolean") return value ? t.offerForm.answer.yes : t.offerForm.answer.no;
+  if (typeof value === "number") return value.toLocaleString("uz-Latn-UZ") + (String(value).length > 3 ? ` ${t.offerForm.answer.sumSuffix}` : "");
   const otherOpt = options?.find((o) => o.type === "other");
   if (typeof value === "string") {
     if (otherOpt && value === otherOpt.value && otherText) return otherText;
@@ -83,18 +83,12 @@ function formatAnswerValue(
     const parts = [loc.district, loc.region].filter((p): p is string => typeof p === "string" && p.length > 0);
     if (parts.length > 0) return parts.join(", ");
     const strs = Object.values(loc).filter((v): v is string => typeof v === "string" && v.length > 0);
-    return strs.join(", ") || "—";
+    return strs.join(", ") || t.offerForm.answer.dash;
   }
   return String(value);
 }
 
 const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district"]);
-
-function urgencyBadge(u: ProviderRequest["urgency"]): { label: string; cls: string } {
-  if (u === "urgent") return { label: "Shoshilinch", cls: "bg-red-50 text-red-600 border border-red-100" };
-  if (u === "normal") return { label: "Oddiy", cls: "bg-blue-50 text-blue-600 border border-blue-100" };
-  return { label: "Moslashuvchan", cls: "bg-gray-100 text-gray-500 border border-gray-200" };
-}
 
 /* ─── Main Form ──────────────────────────────────────────────────── */
 interface Props {
@@ -108,6 +102,8 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { t } = useI18n();
+  const COMPLETION_OPTIONS = t.offerForm.completionOptions;
 
   /* Tanga cost calculation */
   const offerCost = calculateOfferCost({
@@ -139,7 +135,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const urg = urgencyLabel(request.urgency);
+  const urg = urgencyLabel(request.urgency, t);
 
   /* Build Q&A pairs from questionnaire + answers (skip image answers)
      collectActiveQuestions includes conditional branch questions whose
@@ -152,7 +148,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
       const raw = request.answers?.[q.id];
       if (raw === null || raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0)) return null;
       const otherText = request.answers?.[q.id + "_other"] as string | undefined;
-      const formatted = formatAnswerValue(raw, q.options, otherText);
+      const formatted = formatAnswerValue(raw, t, q.options, otherText);
       if (formatted === "__IMAGE__") return null;
       return { label: q.label, value: formatted };
     })
@@ -166,10 +162,10 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
   function validate(): boolean {
     const e: Record<string, string> = {};
     const numPrice = parseInt(priceRaw.replace(/\D/g, ""), 10);
-    if (!priceRaw || isNaN(numPrice) || numPrice <= 0) e.price = "Taklif narxini kiriting";
-    if (!message.trim() || message.trim().length < 10) e.message = "Kamida 10 ta belgi yozing";
-    if (!completionTime) e.completionTime = "Muddatni tanlang";
-    if (!termsChecked) e.terms = "Shartlarga roziligingizni belgilang";
+    if (!priceRaw || isNaN(numPrice) || numPrice <= 0) e.price = t.offerForm.errors.price;
+    if (!message.trim() || message.trim().length < 10) e.message = t.offerForm.errors.message;
+    if (!completionTime) e.completionTime = t.offerForm.errors.completion;
+    if (!termsChecked) e.terms = t.offerForm.errors.terms;
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -179,7 +175,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
     const recheck = canSubmitOffer(request.id, user?.id ?? "");
     if (!recheck.ok) {
       toast({
-        title: "Taklif yuborib bo'lmaydi",
+        title: t.offerForm.toasts.cantSendTitle,
         description: offerBlockLabel(recheck.reason),
         variant: "destructive",
       });
@@ -194,11 +190,11 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
     setSubmitting(true);
 
     const numPrice = parseInt(priceRaw.replace(/\D/g, ""), 10);
-    const priceLabel = formatPrice(String(numPrice)) + " so'm";
+    const priceLabel = formatPrice(String(numPrice)) + ` ${t.offerForm.sumSuffix}`;
 
     const firstName = user?.firstName ?? "";
     const lastName = user?.lastName ?? "";
-    const fullName = `${firstName} ${lastName}`.trim() || "Ijrochi";
+    const fullName = `${firstName} ${lastName}`.trim() || t.offerForm.providerFallback;
     const initials = `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase() || "IJ";
     const palette = ["#7C3AED", "#2563EB", "#059669", "#D97706", "#DC2626", "#0891B2"];
     const color = palette[(user?.id?.charCodeAt(0) ?? 0) % palette.length];
@@ -211,8 +207,8 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
       } catch (_) {
         setSubmitting(false);
         toast({
-          title: "Yetarli Tanga yo'q",
-          description: `Balans yetarli emas. ${offerCost} Tanga kerak.`,
+          title: t.offerForm.toasts.insufficientTitle,
+          description: tFormat(t.offerForm.toasts.insufficientDescTpl, { n: offerCost }),
           variant: "destructive",
         });
         return;
@@ -242,11 +238,11 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
       const code = err instanceof Error ? err.message : "";
       const description =
         code === "REQUEST_CLOSED" || code === "REQUEST_ALREADY_ACCEPTED"
-          ? "Bu so'rov yopilgan yoki boshqa taklif qabul qilingan."
+          ? t.offerForm.toasts.requestClosed
           : code === "DUPLICATE_OFFER"
-            ? "Siz bu so'rovga allaqachon taklif yuborgansiz."
-            : "Rasm hajmi katta. Kamroq yoki kichikroq rasmlar yuklang.";
-      toast({ title: "Xatolik", description, variant: "destructive" });
+            ? t.offerForm.toasts.duplicate
+            : t.offerForm.toasts.photoSize;
+      toast({ title: t.offerForm.toasts.errorTitle, description, variant: "destructive" });
       return;
     }
 
@@ -274,7 +270,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
 
     setTimeout(() => {
       setSubmitting(false);
-      toast({ title: `Taklif yuborildi! −${offerCost} Tanga sarflandi.` });
+      toast({ title: tFormat(t.offerForm.toasts.sentTpl, { n: offerCost }) });
       onSubmitted();
     }, 500);
   }
@@ -304,8 +300,8 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div className="flex-1">
-              <h2 className="font-extrabold text-base text-gray-900">Taklif berish</h2>
-              <p className="text-xs text-gray-400">Mijozga taklif yuboring</p>
+              <h2 className="font-extrabold text-base text-gray-900">{t.offerForm.headerTitle}</h2>
+              <p className="text-xs text-gray-400">{t.offerForm.headerSubtitle}</p>
             </div>
             <button
               onClick={onClose}
@@ -325,7 +321,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-extrabold text-gray-800">{blockedLabel}</p>
                   <p className="text-[11px] text-gray-500 mt-0.5">
-                    Faol takliflar: <strong>{submissionCheck.active}/{5}</strong>
+                    {tFormat(t.offerForm.activeOffersTpl, { n: submissionCheck.active, max: 5 })}
                   </p>
                 </div>
               </div>
@@ -337,10 +333,10 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                 <TangaCoin size="lg" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-extrabold text-amber-900">
-                    Bu so'rovga taklif yuborish uchun <span className="text-amber-700">{offerCost} Tanga</span> sarflanadi
+                    {t.offerForm.tangaBannerOk1} <span className="text-amber-700">{tFormat(t.offerForm.tangaBannerOk2Tpl, { n: offerCost })}</span>
                   </p>
                   <p className="text-[11px] text-amber-600 mt-0.5">
-                    Joriy balans: <strong>{balance} Tanga</strong> → taklif yuborilgandan keyin: <strong>{balance - offerCost} Tanga</strong>
+                    {tFormat(t.offerForm.tangaBannerOk3Tpl, { balance, after: balance - offerCost })}
                   </p>
                 </div>
               </div>
@@ -349,17 +345,17 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                 <TangaCoin size="lg" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-extrabold text-red-800">
-                    Bu taklif uchun <strong>{offerCost} Tanga</strong> kerak
+                    {tFormat(t.offerForm.tangaBannerLowTpl, { n: offerCost })}
                   </p>
                   <p className="text-[11px] text-red-500 mt-0.5">
-                    Sizning balans: <strong>{balance} Tanga</strong>. Yetarli Tanga yo'q.
+                    {tFormat(t.offerForm.tangaBannerLowDescTpl, { balance })}
                   </p>
                 </div>
                 <button
                   onClick={() => { onClose(); setLocation("/plans"); }}
                   className="flex-shrink-0 text-[11px] font-extrabold text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-xl transition-colors"
                 >
-                  Sotib oling
+                  {t.offerForm.buyTanga}
                 </button>
               </div>
             )}
@@ -374,7 +370,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-extrabold text-sm text-gray-900">{request.categoryName}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{request.customerName} · {timeAgo(request.createdAt)}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{request.customerName} · {timeAgo(request.createdAt, t)}</p>
                   </div>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${urg.color}`}>
                     {urg.label}
@@ -397,7 +393,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                   )}
                   <div className="flex items-center gap-1.5 text-xs text-gray-500">
                     <Clock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                    <span>{timeAgo(request.createdAt)}</span>
+                    <span>{timeAgo(request.createdAt, t)}</span>
                   </div>
                 </div>
               </div>
@@ -405,7 +401,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
               {/* Q&A section */}
               {qaPairs.length > 0 && (
                 <div className="px-4 py-3 space-y-2.5">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Savol · Javob</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.offerForm.qaTitle}</p>
                   {qaPairs.map((pair, i) => (
                     <div key={i} className="flex gap-2 text-xs">
                       <div className="flex-shrink-0 w-1 rounded-full bg-violet-200 self-stretch" />
@@ -423,7 +419,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                 <div className="px-4 py-3 border-t border-gray-100">
                   <ImageGrid
                     urls={customerPhotoUrls}
-                    label="Mijoz rasmlari"
+                    label={t.offerForm.customerPhotos}
                     columns={3}
                   />
                 </div>
@@ -436,7 +432,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                   className="flex items-center gap-2 text-xs font-bold text-violet-600 hover:text-violet-700 transition-colors"
                 >
                   <User className="w-3.5 h-3.5" />
-                  Mijoz profilini ko'rish
+                  {t.offerForm.viewCustomerProfile}
                 </button>
               </div>
             </div>
@@ -444,7 +440,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
             {/* ── Price ── */}
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                Taklif narxi (so'm) <span className="text-red-500">*</span>
+                {t.offerForm.priceLabel} <span className="text-red-500">*</span>
               </label>
               <div className={`flex items-center bg-white border-2 rounded-2xl px-4 h-12 transition-colors ${
                 errors.price ? "border-red-300" : priceRaw ? "border-violet-400" : "border-gray-200 focus-within:border-violet-400"
@@ -457,10 +453,10 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                     setPriceRaw(e.target.value.replace(/\D/g, ""));
                     if (errors.price) setErrors((prev) => ({ ...prev, price: "" }));
                   }}
-                  placeholder="150 000"
+                  placeholder={t.offerForm.pricePlaceholder}
                   className="flex-1 bg-transparent text-sm font-bold text-gray-900 placeholder:text-gray-300 focus:outline-none"
                 />
-                <span className="text-xs font-bold text-gray-400 ml-2">so'm</span>
+                <span className="text-xs font-bold text-gray-400 ml-2">{t.offerForm.sumSuffix}</span>
               </div>
               {errors.price && (
                 <p className="flex items-center gap-1 text-xs text-red-500 mt-1">
@@ -472,7 +468,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
             {/* ── Message ── */}
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                Xabar / Taklif matni <span className="text-red-500">*</span>
+                {t.offerForm.messageLabel} <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={message}
@@ -480,7 +476,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                   setMessage(e.target.value);
                   if (errors.message) setErrors((prev) => ({ ...prev, message: "" }));
                 }}
-                placeholder="Salom! Sizning so'rovingizni ko'rdim. Men bu ishni bajarishga tayyorman..."
+                placeholder={t.offerForm.messagePlaceholder}
                 rows={4}
                 className={`w-full bg-white border-2 rounded-2xl px-4 py-3 text-sm text-gray-800 placeholder:text-gray-300 focus:outline-none resize-none transition-colors ${
                   errors.message ? "border-red-300" : message ? "border-violet-400" : "border-gray-200 focus:border-violet-400"
@@ -492,14 +488,14 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                     <AlertCircle className="w-3.5 h-3.5" />{errors.message}
                   </p>
                 ) : <span />}
-                <span className="text-[10px] text-gray-400 ml-auto">{message.length} belgi</span>
+                <span className="text-[10px] text-gray-400 ml-auto">{tFormat(t.offerForm.charsTpl, { n: message.length })}</span>
               </div>
             </div>
 
             {/* ── Completion time ── */}
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                Taxminiy bajarish muddati <span className="text-red-500">*</span>
+                {t.offerForm.completionLabel} <span className="text-red-500">*</span>
               </label>
               <div className={`relative border-2 rounded-2xl bg-white transition-colors ${
                 errors.completionTime ? "border-red-300" : completionTime ? "border-violet-400" : "border-gray-200"
@@ -512,7 +508,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                   }}
                   className="w-full h-12 px-4 pr-10 text-sm font-medium text-gray-800 bg-transparent focus:outline-none appearance-none"
                 >
-                  <option value="">Muddatni tanlang...</option>
+                  <option value="">{t.offerForm.completionPlaceholder}</option>
                   {COMPLETION_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
@@ -529,7 +525,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
             {/* ── Start date ── */}
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                Ishni boshlash sanasi
+                {t.offerForm.startDateLabel}
               </label>
               <div className="flex items-center gap-2 bg-white border-2 border-gray-200 rounded-2xl px-4 h-12 focus-within:border-violet-400 transition-colors">
                 <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -546,7 +542,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
             {/* ── Offer photo upload ── */}
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-2">
-                Namuna rasmlar <span className="font-normal text-gray-400">(ixtiyoriy)</span>
+                {t.offerForm.samplePhotosLabel} <span className="font-normal text-gray-400">{t.offerForm.samplePhotosOptional}</span>
               </label>
               <CompactMediaUpload
                 urls={offerPhotos}
@@ -575,7 +571,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                 {termsChecked && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
               </div>
               <p className="text-xs text-gray-600 leading-relaxed">
-                <span className="font-bold text-gray-800">Platforma qoidalariga roziman</span> va mijoz bilan to'g'ridan-to'g'ri aloqa qilmayman (faqat platforma orqali)
+                <span className="font-bold text-gray-800">{t.offerForm.termsTextBold}</span>{t.offerForm.termsTextRest}
               </p>
             </div>
             {errors.terms && (
@@ -593,7 +589,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                 className="w-full h-12 rounded-2xl font-extrabold text-sm text-white flex items-center justify-center gap-2 transition-all shadow-lg"
                 style={{ background: "linear-gradient(135deg, #DC2626 0%, #EF4444 100%)" }}
               >
-                <TangaCoin size="sm" /> Tanga sotib oling — {offerCost} Tanga kerak
+                <TangaCoin size="sm" /> {tFormat(t.offerForm.buyTangaCtaTpl, { n: offerCost })}
               </button>
             )}
             <div className="flex gap-3">
@@ -601,7 +597,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                 onClick={onClose}
                 className="flex-1 h-12 rounded-2xl border-2 border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors"
               >
-                Bekor qilish
+                {t.offerForm.cancel}
               </button>
               <button
                 onClick={handleSubmit}
@@ -621,8 +617,8 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                 {blockedReason
                   ? blockedLabel
                   : hasEnoughTanga
-                    ? <span className="flex items-center gap-1">Taklifni yuborish (−{offerCost}&nbsp;<TangaCoin size="xs" />)</span>
-                    : "Tanga yetarli emas"}
+                    ? <span className="flex items-center gap-1">{tFormat(t.offerForm.submitOkTpl, { n: offerCost })}<TangaCoin size="xs" />)</span>
+                    : t.offerForm.submitInsufficient}
               </button>
             </div>
           </div>
@@ -636,7 +632,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
             key={`offer-customer-${request.customerId}-${request.region}-${request.district}`}
             mode="customer"
             customerData={{
-              customerName: request.customerName ?? "Mijoz",
+              customerName: request.customerName ?? t.offerForm.customerFallback,
               customerId: request.customerId,
               region: request.region,
               district: request.district,

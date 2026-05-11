@@ -6,6 +6,8 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { motion } from "framer-motion";
 import { Camera, ImagePlus, Star, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import React from "react";
+import { useI18n } from "@/contexts/i18n-context";
+import type { Dict } from "@/lib/i18n/locales/uz";
 
 export interface ReviewSubmitData {
   rating: number;
@@ -60,11 +62,13 @@ export function ReviewModal({
   subjectName,
   subjectInitials,
   subjectColor,
-  prompt = "Xizmatni baholang",
+  prompt,
   showProviderSliders = false,
   onSubmit,
   onSkip,
 }: ReviewModalProps) {
+  const { t } = useI18n();
+  const effectivePrompt = prompt ?? t.reviewModal.defaultPrompt;
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [text, setText] = useState("");
@@ -96,7 +100,7 @@ export function ReviewModal({
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setPhotoError("Faqat rasm faylini yuklang.");
+      setPhotoError(t.reviewModal.photoOnlyImage);
       return;
     }
     setPhotoError("");
@@ -104,7 +108,7 @@ export function ReviewModal({
     try {
       setPhotoUrl(await compressReviewPhoto(file));
     } catch {
-      setPhotoError("Rasmni yuklab bo'lmadi. Boshqa rasm tanlang.");
+      setPhotoError(t.reviewModal.photoFailed);
     } finally {
       setPhotoLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -162,7 +166,7 @@ export function ReviewModal({
               {subjectInitials}
             </div>
             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">
-              {prompt}
+              {effectivePrompt}
             </p>
             <p className="font-extrabold text-gray-900 text-lg leading-tight text-center">
               {subjectName}
@@ -191,21 +195,24 @@ export function ReviewModal({
 
           {showProviderSliders && (
               <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4 mb-4 space-y-4">
-              <p className="text-sm font-black text-gray-500">Xizmat ko'rsatkichlari</p>
+              <p className="text-sm font-black text-gray-500">{t.reviewModal.metricsTitle}</p>
               <MetricSlider
-                label="Xizmat sifati"
+                label={t.reviewModal.metric.serviceQuality}
                 value={serviceQuality}
                 onChange={setServiceQuality}
+                t={t}
               />
               <MetricSlider
-                label="Ijrochi muomalasi"
+                label={t.reviewModal.metric.providerAttitude}
                 value={providerAttitude}
                 onChange={setProviderAttitude}
+                t={t}
               />
               <MetricSlider
-                label="Xizmat narxi"
+                label={t.reviewModal.metric.servicePrice}
                 value={servicePrice}
                 onChange={setServicePrice}
+                t={t}
               />
             </div>
           )}
@@ -214,7 +221,7 @@ export function ReviewModal({
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Izoh qoldiring (ixtiyoriy)..."
+            placeholder={t.reviewModal.commentPlaceholder}
             rows={3}
             className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 resize-none transition-all mb-3"
           />
@@ -229,7 +236,7 @@ export function ReviewModal({
             />
             {photoUrl ? (
               <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
-                <img src={photoUrl} alt="Sharh rasmi" className="w-full h-36 object-cover" />
+                <img src={photoUrl} alt={t.reviewModal.photoAlt} className="w-full h-36 object-cover" />
                 <button
                   onClick={() => setPhotoUrl(undefined)}
                   className="absolute top-2 right-2 w-8 h-8 rounded-xl bg-black/55 text-white flex items-center justify-center backdrop-blur-sm"
@@ -244,14 +251,14 @@ export function ReviewModal({
                 className="w-full h-12 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 text-gray-500 flex items-center justify-center gap-2 text-sm font-bold hover:bg-gray-100 transition-colors disabled:opacity-50"
               >
                 {photoLoading ? <Camera className="w-4 h-4 animate-pulse" /> : <ImagePlus className="w-4 h-4" />}
-                {photoLoading ? "Rasm tayyorlanmoqda..." : "Rasm qo'shish (ixtiyoriy)"}
+                {photoLoading ? t.reviewModal.photoLoading : t.reviewModal.photoBtn}
               </button>
             )}
             {photoError && <p className="text-xs font-semibold text-red-500 mt-1.5">{photoError}</p>}
           </div>
 
           <div className="rounded-2xl border border-gray-100 bg-gray-50 p-3 mb-4">
-            <p className="text-sm font-black text-gray-900 mb-2">Hormang haqida fikringiz</p>
+            <p className="text-sm font-black text-gray-900 mb-2">{t.reviewModal.platformTitle}</p>
             <div className="grid grid-cols-2 gap-2 mb-2">
               <button
                 onClick={() => setPlatformSentiment(platformSentiment === "positive" ? undefined : "positive")}
@@ -277,7 +284,7 @@ export function ReviewModal({
             <textarea
               value={platformFeedback}
               onChange={(e) => setPlatformFeedback(e.target.value)}
-              placeholder="Fikringgizni qoldiring. Sizning fikringgiz biz uchun muhim(ixtiyoriy)..."
+              placeholder={t.reviewModal.platformPlaceholder}
               rows={2}
               className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 resize-none"
             />
@@ -289,14 +296,14 @@ export function ReviewModal({
               onClick={onSkip}
               className="flex-1 h-11 rounded-2xl border-2 border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition-colors"
             >
-              O'tkazib yuborish
+              {t.reviewModal.skip}
             </button>
             <button
               onClick={handleSubmit}
               disabled={rating === 0}
               className="flex-1 h-11 rounded-2xl text-sm font-bold text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              Yuborish ★
+              {t.reviewModal.submit}
             </button>
           </div>
         </div>
@@ -310,15 +317,17 @@ function MetricSlider({
   label,
   value,
   onChange,
+  t,
 }: {
   label: string;
   value: number;
   onChange: (value: number) => void;
+  t: Dict;
 }) {
   const getLabel = (value: number) => {
-    if (value < 40) return "Qoniqarsiz";
-    if (value < 70) return "O‘rtacha";
-    return "A’lo";
+    if (value < 40) return t.reviewModal.metricLabel.poor;
+    if (value < 70) return t.reviewModal.metricLabel.average;
+    return t.reviewModal.metricLabel.excellent;
   };
 
   const getEmoji = (value: number) => {
@@ -387,7 +396,7 @@ function MetricSlider({
       {/* Bottom Labels */}
       <div className="flex justify-between items-center mt-1">
         <span className="text-[10px] font-bold text-gray-400">
-          Qoniqarsiz
+          {t.reviewModal.metricLabel.poor}
         </span>
 
         <span className="text-[11px] font-bold text-violet-600">
@@ -395,7 +404,7 @@ function MetricSlider({
         </span>
 
         <span className="text-[10px] font-bold text-gray-400">
-          A’lo
+          {t.reviewModal.metricLabel.excellent}
         </span>
       </div>
     </div>
