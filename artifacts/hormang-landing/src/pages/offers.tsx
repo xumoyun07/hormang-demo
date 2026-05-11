@@ -22,11 +22,15 @@ import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { getLocalProfile } from "@/lib/local-profile";
 import logoImg from "/hormang-logo.png";
 import { formatDate } from "@/lib/date-utils";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 
 /* ─── Offer Card ─────────────────────────────────────────────────── */
 function OfferCard({ offer, index, anyAccepted }: { offer: Offer; index: number; anyAccepted: boolean }) {
   const [showDetail, setShowDetail] = useState(false);
   const { toast } = useToast();
+  const { t } = useI18n();
+  const tt = t.offersPage;
 
   const req = getRequestById(offer.requestId);
   const isAccepted = offer.status === "accepted";
@@ -91,26 +95,26 @@ function OfferCard({ offer, index, anyAccepted }: { offer: Offer; index: number;
                 <p className="font-bold text-sm text-gray-900">{offer.masterName}</p>
                 {isAccepted && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600">
-                    Qabul qilingan
+                    {tt.accepted}
                   </span>
                 )}
                 {isRejected && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                    Rad etilgan
+                    {tt.rejected}
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-1 mt-0.5">
                 <Clock className="w-3 h-3 text-gray-400" />
                 <span className="text-[11px] text-gray-400 font-medium">
-                  ~{offer.avgResponseTime} daqiqa
+                  {tFormat(tt.minutesTpl, { n: offer.avgResponseTime })}
                 </span>
               </div>
             </div>
             {/* Price */}
             <div className="flex-shrink-0 text-right">
               <p className="font-extrabold text-base text-blue-600">
-                {offer.priceLabel ?? (offer.price.toLocaleString() + " so'm")}
+                {offer.priceLabel ?? (offer.price.toLocaleString() + " " + tt.sumSuffix)}
               </p>
               {offer.completionTime && (
                 <p className="text-[10px] text-gray-400 mt-0.5">{offer.completionTime}</p>
@@ -140,7 +144,7 @@ function OfferCard({ offer, index, anyAccepted }: { offer: Offer; index: number;
                 onClick={(e) => { e.stopPropagation(); setShowDetail(true); }}
                 className="flex-1 h-9 text-xs font-bold border-blue-200 text-blue-600 hover:bg-blue-50 gap-1.5"
               >
-                Batafsil
+                {tt.detailsBtn}
               </Button>
               {isAccepted ? (
                 <Button
@@ -148,7 +152,7 @@ function OfferCard({ offer, index, anyAccepted }: { offer: Offer; index: number;
                   onClick={(e) => { e.stopPropagation(); setShowDetail(true); }}
                   className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5"
                 >
-                  Batafsil
+                  {tt.detailsBtn}
                 </Button>
               ) : canAccept ? (
                 <>
@@ -158,7 +162,7 @@ function OfferCard({ offer, index, anyAccepted }: { offer: Offer; index: number;
                     className="flex-1 h-9 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 gap-1.5"
                   >
                     <Check className="w-3.5 h-3.5" />
-                    Qabul qilish
+                    {tt.acceptBtn}
                   </Button>
                   <button
                     onClick={reject}
@@ -178,16 +182,16 @@ function OfferCard({ offer, index, anyAccepted }: { offer: Offer; index: number;
                 const res = reopenOffer(offer.id);
                 if (!res.ok) {
                   const msg =
-                    res.reason === "request_closed" ? "So'rov yopilgan."
-                    : res.reason === "already_accepted" ? "Boshqa taklif allaqachon qabul qilingan."
-                    : res.reason === "no_request" ? "So'rov topilmadi."
-                    : "Qaytarib bo'lmadi.";
-                  toast({ title: "Qaytarib bo'lmadi", description: msg, variant: "destructive" });
+                    res.reason === "request_closed" ? tt.errorRequestClosed
+                    : res.reason === "already_accepted" ? tt.errorAlreadyAccepted
+                    : res.reason === "no_request" ? tt.errorNoRequest
+                    : tt.errorGeneric;
+                  toast({ title: tt.restoreFailedTitle, description: msg, variant: "destructive" });
                 }
               }}
               className="text-xs text-gray-400 underline"
             >
-              Qaytarish
+              {tt.restoreBtn}
             </button>
           )}
         </div>
@@ -205,6 +209,8 @@ function OfferCard({ offer, index, anyAccepted }: { offer: Offer; index: number;
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function OffersPage() {
   useStoreRefresh();
+  const { t } = useI18n();
+  const tt = t.offersPage;
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const rawSearch = useSearch();
@@ -241,12 +247,12 @@ export default function OffersPage() {
           )}
           <div className="flex-1 min-w-0">
             <h1 className="font-extrabold text-sm text-gray-900 truncate">
-              {filteredReq ? `${filteredReq.emoji} ${filteredReq.categoryName}` : "Olingan takliflar"}
+              {filteredReq ? `${filteredReq.emoji} ${filteredReq.categoryName}` : tt.headerTitle}
             </h1>
             <p className="text-xs text-gray-400">
-              {offers.length} ta taklif
+              {tFormat(tt.countTpl, { n: offers.length })}
               {offers.filter((o) => o.status === "pending").length > 0 &&
-                ` · ${offers.filter((o) => o.status === "pending").length} ta yangi`}
+                tFormat(tt.newCountTpl, { n: offers.filter((o) => o.status === "pending").length })}
             </p>
           </div>
         </div>
@@ -262,15 +268,15 @@ export default function OffersPage() {
             <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mx-auto mb-4">
               <Briefcase className="w-8 h-8 text-blue-400" />
             </div>
-            <h2 className="font-extrabold text-gray-800 text-lg mb-2">Takliflar yo'q</h2>
+            <h2 className="font-extrabold text-gray-800 text-lg mb-2">{tt.emptyTitle}</h2>
             <p className="text-gray-500 text-sm mb-6 max-w-xs mx-auto">
-              So'rov yuborganingizdan so'ng ijrochilar takliflar yuborishadi.
+              {tt.emptyDesc}
             </p>
             <Button
               onClick={() => setLocation("/questionnaire")}
               className="bg-blue-600 hover:bg-blue-700 font-bold"
             >
-              So'rov yuborish
+              {tt.submitRequest}
             </Button>
           </motion.div>
         ) : (

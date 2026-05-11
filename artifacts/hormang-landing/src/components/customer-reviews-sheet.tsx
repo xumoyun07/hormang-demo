@@ -6,6 +6,8 @@
 import { motion } from "framer-motion";
 import { X, UserRound } from "lucide-react";
 import { StarRating } from "@/components/star-rating";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 import {
   getAverageRatingForUser,
   getReviewsForUser,
@@ -21,10 +23,10 @@ function initials(name: string): string {
   return name.split(" ").map((p) => p[0] ?? "").join("").toUpperCase().slice(0, 2) || "X";
 }
 
-function getReviewerMeta(review: Review) {
+function getReviewerMeta(review: Review, fallbackName: string) {
   const local = getLocalProfile(review.reviewerId);
   const offer = review.offerId ? getOfferById(review.offerId) : null;
-  const name = review.reviewerName || offer?.masterName || "Ijrochi";
+  const name = review.reviewerName || offer?.masterName || fallbackName;
   return {
     name,
     initials: review.reviewerInitials || offer?.masterInitials || initials(name),
@@ -33,9 +35,8 @@ function getReviewerMeta(review: Review) {
   };
 }
 
-/* ── Review row ───────────────────────────────────────────────────────── */
-function ReviewRow({ review }: { review: Review }) {
-  const meta = getReviewerMeta(review);
+function ReviewRow({ review, fallbackName }: { review: Review; fallbackName: string }) {
+  const meta = getReviewerMeta(review, fallbackName);
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-4">
@@ -78,6 +79,8 @@ export function CustomerReviewsSheet({
   customerName: string;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
+  const tt = t.customerReviewsSheet;
   const reviews = getReviewsForUser(customerId, "customer").sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
@@ -113,7 +116,7 @@ export function CustomerReviewsSheet({
           <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-100 flex-shrink-0">
             <div>
               <p className="font-black text-gray-900">{customerName}</p>
-              <p className="text-xs text-gray-400">Ijrochilar qoldirgan fikrlar</p>
+              <p className="text-xs text-gray-400">{tt.subtitle}</p>
             </div>
             <button
               onClick={onClose}
@@ -128,13 +131,13 @@ export function CustomerReviewsSheet({
               className="rounded-2xl border border-gray-100 p-4 shadow-sm"
               style={{ background: "linear-gradient(-55deg, #c9d9ff, #ffffff)" }}
             >
-              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wide mb-2">Umumiy baho</p>
+              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wide mb-2">{tt.overallLabel}</p>
               <div className="flex items-center gap-3">
                 <span className="text-3xl font-black text-gray-900">
                   {avg > 0 ? avg.toFixed(1) : "—"}
                 </span>
                 <StarRating rating={avg} size="w-5 h-5" />
-                <span className="text-sm text-gray-500 ml-1">{reviews.length} ta sharh</span>
+                <span className="text-sm text-gray-500 ml-1">{tFormat(tt.reviewsCountTpl, { n: reviews.length })}</span>
               </div>
             </div>
 
@@ -143,12 +146,12 @@ export function CustomerReviewsSheet({
                 <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
                   <UserRound className="w-7 h-7 text-gray-400" />
                 </div>
-                <p className="font-black text-gray-700 mb-1">Hozircha sharh yo'q</p>
-                <p className="text-xs text-gray-400">Yakunlangan xizmatlardan keyin sharhlar bu yerda ko'rinadi.</p>
+                <p className="font-black text-gray-700 mb-1">{tt.emptyTitle}</p>
+                <p className="text-xs text-gray-400">{tt.emptyDesc}</p>
               </div>
             ) : (
               reviews.map((review) => (
-                <ReviewRow key={review.id} review={review} />
+                <ReviewRow key={review.id} review={review} fallbackName={tt.fallbackProvider} />
               ))
             )}
           </div>

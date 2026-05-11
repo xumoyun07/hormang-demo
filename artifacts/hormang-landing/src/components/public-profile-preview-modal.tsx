@@ -23,6 +23,8 @@ import { ReportModal } from "@/components/report-modal";
 import { BadgePill, BadgeConditionsSheet } from "@/components/provider-badges";
 import { getBadges } from "@/lib/badge-store";
 import { useAuth } from "@/contexts/auth-context";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 import type {
   ProviderProfileData,
   CustomerProfileData,
@@ -109,6 +111,8 @@ function ProviderPreviewSheet({
   onClose: () => void;
 }) {
   const { user } = useAuth();
+  const { t } = useI18n();
+  const tt = t.publicProfilePreviewModal;
   const local = getLocalProfile(data.masterId);
   const albums = local.albums ?? [];
   const allPhotos = albums.flatMap((a) => a.photos.map((p) => p.url));
@@ -165,7 +169,7 @@ function ProviderPreviewSheet({
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-500 hover:bg-amber-50 hover:text-amber-600 transition-colors text-xs font-semibold"
               >
                 <Flag className="w-3.5 h-3.5" />
-                Shikoyat
+                {tt.reportBtn}
               </button>
             ) : <div />}
             <button
@@ -206,7 +210,7 @@ function ProviderPreviewSheet({
                 <div
                   className="absolute -bottom-2 -right-1 w-7 h-7 rounded-full flex items-center justify-center"
                   style={{ background: VIOLET, border: "2.5px solid white" }}
-                  title="Tasdiqlangan ijrochi"
+                  title={tt.verifiedTooltip}
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-white" />
                 </div>
@@ -223,12 +227,12 @@ function ProviderPreviewSheet({
                   className="text-xs font-black px-3 py-1 rounded-full text-white"
                   style={{ background: `linear-gradient(135deg, ${VIOLET}, hsl(236,76%,60%))` }}
                 >
-                  Ijrochi
+                  {tt.providerBadge}
                 </span>
                 {local.experience !== undefined && local.experience > 0 && (
                   <span className="text-xs font-bold px-3 py-1 rounded-full text-violet-700 bg-violet-50 border border-violet-200">
                     <Award className="w-3 h-3 inline mr-1 -mt-0.5" />
-                    {local.experience} yil tajriba
+                    {tFormat(tt.yearsExpTpl, { n: local.experience })}
                   </span>
                 )}
               </div>
@@ -246,15 +250,15 @@ function ProviderPreviewSheet({
               <MetricCell
                 topNode={<StarRating rating={avgRating > 0 ? avgRating : 0} size="w-3 h-3" />}
                 value={avgRating > 0 ? avgRating.toFixed(1) : <span className="text-gray-400">—</span>}
-                label={reviewCount > 0 ? `${reviewCount} ta sharh` : "Baholanmagan"}
+                label={reviewCount > 0 ? tFormat(tt.reviewsCountTpl, { n: reviewCount }) : tt.notRated}
                 color="hsl(37,95%,55%)"
                 onClick={reviewCount > 0 ? () => setShowReviews(true) : undefined}
               />
               <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
               <MetricCell
                 icon={Briefcase}
-                value={`${completedCount} ta`}
-                label="Bajarilgan"
+                value={tFormat(tt.completedShort, { n: completedCount })}
+                label={tt.completedLabel}
                 color="hsl(160,60%,40%)"
               />
               <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
@@ -263,7 +267,7 @@ function ProviderPreviewSheet({
                   type="button"
                   onClick={() => setShowBadgeHint(true)}
                   className="group flex flex-col items-center gap-1 rounded-xl hover:bg-violet-50/60 transition-colors py-1 w-full"
-                  title="Nishon shartlarini ko'rish"
+                  title={tt.badgeHintTitle}
                 >
                   {pBadges.length > 0 ? (
                     pBadges.length <= 2 ? (
@@ -303,7 +307,7 @@ function ProviderPreviewSheet({
                 </div>
                 <div>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-1">
-                    Xizmat ko'rsatadigan hududlar
+                    {tt.serviceAreasLabel}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {serviceAreas.map((area) => (
@@ -326,7 +330,7 @@ function ProviderPreviewSheet({
                 style={{ background: VIOLET_LIGHT }}
               >
                 <p className="text-[10px] text-violet-500 font-bold uppercase tracking-wide mb-1.5">
-                  Bio
+                  {tt.bioLabel}
                 </p>
                 <p className="text-sm text-gray-700 leading-relaxed">{bio}</p>
               </div>
@@ -336,7 +340,7 @@ function ProviderPreviewSheet({
             {categories.length > 0 && (
               <div className="mb-5">
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-2">
-                  Xizmat turlari
+                  {tt.serviceTypesLabel}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {categories.map((cat) => (
@@ -350,15 +354,15 @@ function ProviderPreviewSheet({
             {albums.length > 0 && (
               <div className="mb-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">Portfolio</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{tt.portfolioLabel}</p>
                   <span className="text-xs text-violet-600 font-bold">
-                    {allPhotos.length} rasm · {albums.length} albom
+                    {tFormat(tt.portfolioCountTpl, { photos: allPhotos.length, albums: albums.length })}
                   </span>
                 </div>
                 {albums.map((album) => (
                   <div key={album.id}>
                     <p className="text-xs font-semibold text-gray-700 mb-1.5">
-                      {album.title} <span className="text-gray-400 font-normal">({album.photos.length})</span>
+                      {album.title} <span className="text-gray-400 font-normal">{tFormat(tt.portfolioAlbumCountTpl, { n: album.photos.length })}</span>
                     </p>
                     <ImageGrid
                       urls={album.photos.map((p) => p.url)}
@@ -373,7 +377,7 @@ function ProviderPreviewSheet({
 
             {/* ── Privacy note ── */}
             <p className="text-center text-[11px] text-gray-400 leading-relaxed mb-2">
-              📵 Foydalanuvchi ma'lumotlarini himoya qilish maqsadida telefon raqam ko'rsatilmaydi
+              {tt.privacyNote}
             </p>
 
            
@@ -420,7 +424,9 @@ function CustomerPreviewSheet({
   onClose: () => void;
 }) {
   const { user } = useAuth();
-  const name     = data.customerName?.trim() || "Mijoz";
+  const { t } = useI18n();
+  const tt = t.publicProfilePreviewModal;
+  const name     = data.customerName?.trim() || tt.fallbackCustomer;
   const initials = data.customerInitials ?? deriveInitials(name);
   const color    = data.customerColor ?? BLUE;
   const location = data.district
@@ -475,7 +481,7 @@ function CustomerPreviewSheet({
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-500 hover:bg-amber-50 hover:text-amber-600 transition-colors text-xs font-semibold"
               >
                 <Flag className="w-3.5 h-3.5" />
-                Shikoyat
+                {tt.reportBtn}
               </button>
             ) : <div />}
             <button
@@ -525,7 +531,7 @@ function CustomerPreviewSheet({
                   className="text-xs font-black px-3 py-1 rounded-full text-white"
                   style={{ background: `linear-gradient(135deg, ${BLUE}, hsl(199,89%,56%))` }}
                 >
-                  Mijoz
+                  {tt.customerBadge}
                 </span>
               </div>
             </div>
@@ -539,22 +545,22 @@ function CustomerPreviewSheet({
               <MetricCell
                 topNode={<StarRating rating={custAvgRating > 0 ? custAvgRating : 0} size="w-3 h-3" />}
                 value={custAvgRating > 0 ? custAvgRating.toFixed(1) : <span className="text-gray-400">—</span>}
-                label={custReviewCount > 0 ? `${custReviewCount} ta sharh` : "Baholanmagan"}
+                label={custReviewCount > 0 ? tFormat(tt.reviewsCountTpl, { n: custReviewCount }) : tt.notRated}
                 color="hsl(37,95%,55%)"
                 onClick={custReviewCount > 0 && data.customerId ? () => setShowReviews(true) : undefined}
               />
               <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
               <MetricCell
                 icon={Briefcase}
-                value={`${custCompletedCount} ta`}
-                label="Yakunlangan so'rov"
+                value={tFormat(tt.completedShort, { n: custCompletedCount })}
+                label={tt.completedRequestsLabel}
                 color={BLUE}
               />
               <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
               <MetricCell
                 icon={ShieldCheck}
                 value="✓"
-                label="Tasdiqlangan"
+                label={tt.verifiedLabel}
                 color="hsl(160,60%,40%)"
               />
             </div>
@@ -581,7 +587,7 @@ function CustomerPreviewSheet({
                 </div>
                 <div>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-0.5">
-                    Manzil
+                    {tt.serviceAreasLabel}
                   </p>
                   <p className="text-sm font-bold text-gray-800">{location}</p>
                 </div>
@@ -592,7 +598,7 @@ function CustomerPreviewSheet({
 
             {/* ── Privacy note ── */}
             <p className="text-center text-[11px] text-gray-400 leading-relaxed mb-4">
-              📵 Foydalanuvchi ma'lumotlarini himoya qilish maqsadida telefon raqam ko'rsatilmaydi
+              {tt.privacyNote}
             </p>
 
             

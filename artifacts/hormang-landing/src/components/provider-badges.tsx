@@ -21,6 +21,7 @@ import {
   type Badge as BadgeRecord, type BadgeType,
 } from "@/lib/badge-store";
 import type { SafeUser } from "@/lib/auth-client";
+import { useI18n } from "@/contexts/i18n-context";
 
 const ICONS = {
   ShieldCheck, Star, Shield, Award, Crown, Images, BadgeCheck, Eye,
@@ -89,24 +90,21 @@ export function BadgeEmptyState({
   user: SafeUser | null;
   variant?: "compact" | "full";
 }) {
-  // Show top-3 closest-to-earned hints based on current eligibility report.
+  const { t } = useI18n();
+  const tt = t.providerBadges;
   const hints = (user && user.role === "provider"
     ? explainAutoBadges(user).filter((r) => !r.qualified).slice(0, 3)
     : []
   ).map((r) => BADGE_META[r.type].hint);
 
-  const fallbackHints = [
-    "Profilingizni 100% to'ldiring",
-    "50+ buyurtma bajaring",
-    "Kuchli portfolio yarating",
-  ];
+  const fallbackHints = tt.fallbackHints;
   const showHints = hints.length > 0 ? hints : fallbackHints;
 
   if (variant === "compact") {
     return (
       <div className="rounded-2xl border border-dashed border-violet-200 bg-violet-50/40 px-3 py-2.5 text-center">
         <p className="text-[11px] font-bold text-violet-700">
-          Profil nishonlarini qo'lga kiriting
+          {tt.earnTitle}
         </p>
         <p className="text-[10px] text-violet-500/80 mt-0.5">
           {showHints[0]}
@@ -118,10 +116,10 @@ export function BadgeEmptyState({
   return (
     <div className="rounded-2xl border border-dashed border-violet-200 bg-gradient-to-br from-violet-50/60 to-white px-4 py-4">
       <p className="text-xs font-extrabold text-violet-800 mb-1">
-        Profil nishonlarini qo'lga kiriting
+        {tt.earnTitle}
       </p>
       <p className="text-[11px] text-violet-600/80 leading-relaxed mb-2.5">
-        Mijozlar ishonchini oshirish uchun quyidagi shartlardan birini bajaring:
+        {tt.earnDescFull}
       </p>
       <ul className="space-y-1">
         {showHints.map((h, i) => (
@@ -182,6 +180,8 @@ export function BadgeConditionsSheet({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
+  const tt = t.providerBadges;
   const items = ALL_BADGE_TYPES;
 
   return (
@@ -213,8 +213,8 @@ export function BadgeConditionsSheet({
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-3 flex-shrink-0">
                 <div>
-                  <h3 className="font-black text-base text-gray-900">Nishonlar</h3>
-                  <p className="text-[11px] text-gray-400 mt-0.5">Nishon olish shartlari</p>
+                  <h3 className="font-black text-base text-gray-900">{tt.sheetTitle}</h3>
+                  <p className="text-[11px] text-gray-400 mt-0.5">{tt.sheetSubtitle}</p>
                 </div>
                 <button
                   onClick={onClose}
@@ -269,6 +269,10 @@ export function AdminBadgeManager({
   adminId: string;
   onChange?: () => void;
 }) {
+  const { t } = useI18n();
+  const tt = t.providerBadges;
+  const tFmt = (s: string, vars: Record<string, string | number>) =>
+    s.replace(/\{\{(\w+)\}\}/g, (_, k) => String(vars[k] ?? ""));
   const stored = getBadges(targetUser.userId);
 
   function grant(type: BadgeType) {
@@ -297,15 +301,15 @@ export function AdminBadgeManager({
     <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-          <BadgeCheck className="w-3 h-3" /> Badge boshqaruvi
+          <BadgeCheck className="w-3 h-3" /> {tt.badgeManager}
         </p>
       </div>
 
       {/* Current badges */}
       <div>
-        <p className="text-[10px] font-semibold text-gray-500 mb-1.5">Joriy nishonlar</p>
+        <p className="text-[10px] font-semibold text-gray-500 mb-1.5">{tt.currentBadges}</p>
         {stored.length === 0 ? (
-          <p className="text-[11px] text-gray-400 italic">Hech qanday nishon berilmagan</p>
+          <p className="text-[11px] text-gray-400 italic">{tt.noBadgesGiven}</p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {stored.map((b) => {
@@ -314,13 +318,13 @@ export function AdminBadgeManager({
                 <div key={b.type} className="flex items-center gap-1">
                   <BadgePill type={b.type} size="sm" />
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${b.source === "admin" ? "bg-violet-100 text-violet-700" : "bg-gray-200 text-gray-600"}`}>
-                    {b.source === "admin" ? "ADMIN" : "AUTO"}
+                    {b.source === "admin" ? tt.sourceAdmin : tt.sourceAuto}
                   </span>
                   {b.source === "admin" && (
                     <button
                       onClick={() => remove(b.type)}
                       className="text-[9px] font-bold text-rose-600 hover:text-rose-800 px-1"
-                      title={`"${meta.label}" nishonini olib tashlash`}
+                      title={tFmt(tt.removeTitleTpl, { label: meta.label })}
                     >
                       ✕
                     </button>
@@ -334,7 +338,7 @@ export function AdminBadgeManager({
 
       {/* Admin-grantable badges */}
       <div>
-        <p className="text-[10px] font-semibold text-gray-500 mb-1.5">Admin nishonlari</p>
+        <p className="text-[10px] font-semibold text-gray-500 mb-1.5">{tt.adminBadges}</p>
         <div className="space-y-1.5">
           {ADMIN_BADGE_TYPES.map((type) => {
             const meta = BADGE_META[type];
@@ -344,9 +348,9 @@ export function AdminBadgeManager({
               (meta.scope === "both" || targetUser.role !== "customer");
             const blockedReason =
               owns
-                ? "Allaqachon berilgan"
+                ? tt.alreadyGranted
                 : meta.scope === "provider" && targetUser.role === "customer"
-                  ? "Faqat ijrochilarga"
+                  ? tt.onlyProviders
                   : null;
 
             return (
@@ -364,7 +368,7 @@ export function AdminBadgeManager({
                       : "bg-gray-100 text-gray-400 cursor-not-allowed"
                   }`}
                 >
-                  {owns ? "Berilgan ✓" : blockedReason ?? "Berish"}
+                  {owns ? tt.granted : blockedReason ?? tt.grant}
                 </button>
               </div>
             );
@@ -378,11 +382,13 @@ export function AdminBadgeManager({
 /* ─── Admin diagnostics: explain why each auto-badge is/not granted ── */
 
 export function AdminBadgeDiagnostics({ user }: { user: SafeUser }) {
+  const { t } = useI18n();
+  const tt = t.providerBadges;
   if (user.role !== "provider") return null;
   const reasons = explainAutoBadges(user);
   return (
     <div className="space-y-1.5">
-      <p className="text-[10px] font-semibold text-gray-500">Avtomatik nishon shartlari</p>
+      <p className="text-[10px] font-semibold text-gray-500">{tt.autoConditions}</p>
       {reasons.map((r) => {
         const meta = BADGE_META[r.type];
         return (

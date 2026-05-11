@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, MapPin, CheckSquare, Square, Building2, Map } from "lucide-react";
 import { TOSHKENT_DISTRICTS, regionsList } from "@/lib/regions";
 import { type ProviderServiceArea, emptyProviderServiceArea, isServiceAreaEmpty } from "@/lib/matching";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 
 export type { ProviderServiceArea };
 
@@ -47,13 +49,15 @@ function CheckItem({ label, checked, onChange }: { label: string; checked: boole
 }
 
 function Group({ title, icon, colorClass, isAll, selected, items, onAllChange, onItemChange }: GroupProps) {
+  const { t } = useI18n();
+  const tt = t.providerAreaSelector;
   const [open, setOpen] = useState(true);
   const count = isAll ? items.length : selected.length;
 
   const badge = isAll
-    ? <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${colorClass}`}>Barcha hudud</span>
+    ? <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${colorClass}`}>{tt.allAreas}</span>
     : count > 0
-      ? <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${colorClass}`}>{count} ta</span>
+      ? <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${colorClass}`}>{count} {tt.countSuffix}</span>
       : null;
 
   return (
@@ -94,7 +98,7 @@ function Group({ title, icon, colorClass, isAll, selected, items, onAllChange, o
                 ) : (
                   <Square className="w-4 h-4 flex-shrink-0" />
                 )}
-                Barchasini tanlash
+                {tt.selectAll}
               </button>
 
               {/* Individual items — disabled (greyed) when "all" is active */}
@@ -113,7 +117,7 @@ function Group({ title, icon, colorClass, isAll, selected, items, onAllChange, o
 
               {isAll && (
                 <p className="text-xs text-violet-600 px-1 pb-1">
-                  Ushbu guruhning barcha hududlari qamrab olindi
+                  {tt.allCovered}
                 </p>
               )}
             </div>
@@ -132,6 +136,8 @@ interface ProviderAreaSelectorProps {
 }
 
 export function ProviderAreaSelector({ value, onChange }: ProviderAreaSelectorProps) {
+  const { t } = useI18n();
+  const tt = t.providerAreaSelector;
   const area = value ?? emptyProviderServiceArea();
   const empty = isServiceAreaEmpty(area);
 
@@ -156,17 +162,16 @@ export function ProviderAreaSelector({ value, onChange }: ProviderAreaSelectorPr
     setRegion({ cities: next });
   }
 
-  /* Summary line */
   const parts: string[] = [];
-  if (area.toshkent_city.all) parts.push("Butun Toshkent shahri");
-  else if (area.toshkent_city.districts.length > 0) parts.push(`Toshkent shahri: ${area.toshkent_city.districts.length} ta tuman`);
-  if (area.toshkent_region.all) parts.push("Butun Toshkent viloyati");
-  else if (area.toshkent_region.cities.length > 0) parts.push(`Toshkent viloyati: ${area.toshkent_region.cities.length} ta shahar`);
+  if (area.toshkent_city.all) parts.push(tt.summaryAllCity);
+  else if (area.toshkent_city.districts.length > 0) parts.push(tFormat(tt.summaryCityCountTpl, { n: area.toshkent_city.districts.length }));
+  if (area.toshkent_region.all) parts.push(tt.summaryAllRegion);
+  else if (area.toshkent_region.cities.length > 0) parts.push(tFormat(tt.summaryRegionCountTpl, { n: area.toshkent_region.cities.length }));
 
   return (
     <div className="space-y-3">
       <Group
-        title="Toshkent shahri"
+        title={tt.toshkentCity}
         icon={<Building2 className="w-4 h-4 text-violet-600" />}
         colorClass="bg-violet-100 text-violet-700"
         isAll={area.toshkent_city.all}
@@ -177,7 +182,7 @@ export function ProviderAreaSelector({ value, onChange }: ProviderAreaSelectorPr
       />
 
       <Group
-        title="Toshkent viloyati"
+        title={tt.toshkentRegion}
         icon={<Map className="w-4 h-4 text-blue-600" />}
         colorClass="bg-blue-100 text-blue-700"
         isAll={area.toshkent_region.all}
@@ -197,7 +202,7 @@ export function ProviderAreaSelector({ value, onChange }: ProviderAreaSelectorPr
         <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-red-50 border border-red-200">
           <MapPin className="w-4 h-4 text-red-500 flex-shrink-0" />
           <p className="text-xs font-semibold text-red-700">
-            ⚠️ Hech bo'lmasa bitta hudud tanlang — aks holda so'rovlar ko'rinmaydi
+            {tt.warningEmpty}
           </p>
         </div>
       )}

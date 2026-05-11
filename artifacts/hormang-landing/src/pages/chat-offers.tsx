@@ -24,6 +24,8 @@ import { AcceptConfirmModal } from "@/components/accept-confirm-modal";
 import { getLocalProfile } from "@/lib/local-profile";
 import logoImg from "/hormang-logo.png";
 import { formatDate as uzDate } from "@/lib/date-utils";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 
 /* ─── Tab type ───────────────────────────────────────────────────── */
 type Tab = "offers" | "chats";
@@ -42,8 +44,10 @@ function formatDate(iso: string): string {
 function OfferCard({ offer, index, anyAccepted }: {
   offer: Offer;
   index: number;
-  anyAccepted: boolean; // true if ANY other offer on this request has been accepted
+  anyAccepted: boolean;
 }) {
+  const { t } = useI18n();
+  const tt = t.chatOffersPage;
   const [showDetail, setShowDetail] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [, setLocation] = useLocation();
@@ -118,41 +122,41 @@ function OfferCard({ offer, index, anyAccepted }: {
                 <p className="font-bold text-sm text-gray-900">{offer.masterName}</p>
                 {isCompleted && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
-                    Yakunlandi
+                    {tt.completed}
                   </span>
                 )}
                 {isInProgress && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
-                    Rejalashtirildi
+                    {tt.scheduled}
                   </span>
                 )}
                 {!isCompleted && !isInProgress && isAccepted && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600">
-                    Qabul qilingan
+                    {tt.accepted}
                   </span>
                 )}
                 {isRejected && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                    Rad etilgan
+                    {tt.rejected}
                   </span>
                 )}
                 {!isCompleted && !isInProgress && !isAccepted && !isRejected && anyAccepted && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">
-                    Boshqa taklif qabul qilindi
+                    {tt.otherAccepted}
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-1 mt-0.5">
                 <Clock className="w-3 h-3 text-gray-400" />
                 <span className="text-[11px] text-gray-400 font-medium">
-                  ~{offer.avgResponseTime} daqiqa
+                  {tFormat(tt.minutesTpl, { n: offer.avgResponseTime })}
                 </span>
               </div>
             </div>
             {/* Price */}
             <div className="flex-shrink-0 text-right">
               <p className="font-extrabold text-base text-blue-600">{offer.price.toLocaleString()}</p>
-              <p className="text-[10px] text-gray-400">so'm</p>
+              <p className="text-[10px] text-gray-400">{tt.sumSuffix}</p>
             </div>
           </div>
 
@@ -178,7 +182,7 @@ function OfferCard({ offer, index, anyAccepted }: {
                 onClick={(e) => { e.stopPropagation(); setShowDetail(true); }}
                 className="flex-1 h-9 text-xs font-bold border-gray-200 text-gray-500 hover:bg-gray-50 gap-1.5"
               >
-                Batafsil
+                {tt.detailsBtn}
               </Button>
               <Button
                 size="sm"
@@ -186,7 +190,7 @@ function OfferCard({ offer, index, anyAccepted }: {
                 className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
-                Chat
+                {tt.chatBtn}
               </Button>
             </div>
           ) : !isRejected ? (
@@ -197,7 +201,7 @@ function OfferCard({ offer, index, anyAccepted }: {
                 onClick={(e) => { e.stopPropagation(); setShowDetail(true); }}
                 className="flex-1 h-9 text-xs font-bold border-blue-200 text-blue-600 hover:bg-blue-50 gap-1.5"
               >
-                Batafsil
+                {tt.detailsBtn}
               </Button>
               {isAccepted || isInProgress ? (
                 <Button
@@ -206,7 +210,7 @@ function OfferCard({ offer, index, anyAccepted }: {
                   className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 gap-1.5"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
-                  Chat
+                  {tt.chatBtn}
                 </Button>
               ) : canAccept ? (
                 <>
@@ -216,7 +220,7 @@ function OfferCard({ offer, index, anyAccepted }: {
                     className="flex-1 h-9 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 gap-1.5"
                   >
                     <Check className="w-3.5 h-3.5" />
-                    Qabul
+                    {tt.acceptBtn}
                   </Button>
                   <button
                     onClick={reject}
@@ -251,6 +255,8 @@ function OfferCard({ offer, index, anyAccepted }: {
 
 /* ─── Chat Row ───────────────────────────────────────────────────── */
 function ChatRow({ chat, index }: { chat: Chat; index: number }) {
+  const { t } = useI18n();
+  const tt = t.chatOffersPage;
   const [, setLocation] = useLocation();
   const lastMsg = chat.messages[chat.messages.length - 1];
   const providerLocal = getLocalProfile(chat.masterId);
@@ -262,18 +268,18 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
 
   const badge =
     st === "completed"
-      ? { label: "Yakunlandi", cls: "text-blue-600 bg-blue-50 border-blue-200", icon: <CheckCircle2 className="w-3 h-3" /> }
+      ? { label: tt.chatStatusCompleted, cls: "text-blue-600 bg-blue-50 border-blue-200", icon: <CheckCircle2 className="w-3 h-3" /> }
       : customerWaiting
-      ? { label: "Ijrochi kutilmoqda", cls: "text-amber-600 bg-amber-50 border-amber-200", icon: <Clock className="w-3 h-3" /> }
+      ? { label: tt.chatStatusWaitingProvider, cls: "text-amber-600 bg-amber-50 border-amber-200", icon: <Clock className="w-3 h-3" /> }
       : needsCustomerConfirm
-      ? { label: "Tasdiqlang", cls: "text-violet-600 bg-violet-50 border-violet-200", icon: <CheckCircle2 className="w-3 h-3" /> }
+      ? { label: tt.chatStatusConfirm, cls: "text-violet-600 bg-violet-50 border-violet-200", icon: <CheckCircle2 className="w-3 h-3" /> }
       : st === "in_progress"
-      ? { label: "Rejalashtirildi", cls: "text-blue-600 bg-blue-50 border-blue-200", icon: <Clock className="w-3 h-3" /> }
+      ? { label: tt.chatStatusScheduled, cls: "text-blue-600 bg-blue-50 border-blue-200", icon: <Clock className="w-3 h-3" /> }
       : st === "accepted"
-      ? { label: "Qabul qilindi", cls: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: <CheckCircle2 className="w-3 h-3" /> }
+      ? { label: tt.chatStatusAccepted, cls: "text-emerald-600 bg-emerald-50 border-emerald-200", icon: <CheckCircle2 className="w-3 h-3" /> }
       : st === "rejected"
-      ? { label: "Rad etildi", cls: "text-red-500 bg-red-50 border-red-200", icon: <X className="w-3 h-3" /> }
-      : { label: "Kutilmoqda", cls: "text-amber-600 bg-amber-50 border-amber-200", icon: <Clock className="w-3 h-3" /> };
+      ? { label: tt.chatStatusRejected, cls: "text-red-500 bg-red-50 border-red-200", icon: <X className="w-3 h-3" /> }
+      : { label: tt.chatStatusPending, cls: "text-amber-600 bg-amber-50 border-amber-200", icon: <Clock className="w-3 h-3" /> };
 
   const borderCls =
     st === "completed" || st === "in_progress" ? "border-blue-100 hover:border-blue-200" :
@@ -319,7 +325,7 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
         )}
         {lastMsg && (
           <p className="text-[11px] text-gray-400 truncate mt-0.5">
-            {lastMsg.sender === "customer" ? "Siz: " : ""}{lastMsg.text}
+            {lastMsg.sender === "customer" ? tt.youPrefix : ""}{lastMsg.text}
           </p>
         )}
       </div>
@@ -331,6 +337,8 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function ChatOffersPage() {
   useStoreRefresh();
+  const { t } = useI18n();
+  const tt = t.chatOffersPage;
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const rawSearch = useSearch();
@@ -387,10 +395,10 @@ export default function ChatOffersPage() {
             <h1 className="font-extrabold text-sm text-gray-900 truncate">
               {filteredReq
                 ? `${filteredReq.emoji} ${filteredReq.categoryName}`
-                : "Takliflar va suhbatlar"}
+                : tt.headerTitle}
             </h1>
             <p className="text-xs text-gray-400">
-              {pendingCount > 0 ? `${pendingCount} ta yangi taklif` : `${offers.length} taklif · ${chats.length} suhbat`}
+              {pendingCount > 0 ? tFormat(tt.pendingCountTpl, { n: pendingCount }) : tFormat(tt.summaryTpl, { offers: offers.length, chats: chats.length })}
             </p>
           </div>
         </div>
@@ -406,7 +414,7 @@ export default function ChatOffersPage() {
             }`}
           >
             <Inbox className="w-3.5 h-3.5" />
-            Takliflar
+            {tt.tabOffers}
             {pendingCount > 0 && (
               <span className={`text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center ${
                 tab === "offers" ? "bg-white text-blue-600" : "bg-blue-600 text-white"
@@ -424,7 +432,7 @@ export default function ChatOffersPage() {
             }`}
           >
             <LayoutList className="w-3.5 h-3.5" />
-            Suhbatlar
+            {tt.tabChats}
             {chats.length > 0 && (
               <span className={`text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center ${
                 tab === "chats" ? "bg-white text-blue-600" : "bg-gray-400 text-white"
@@ -451,9 +459,9 @@ export default function ChatOffersPage() {
                   <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
                     <Inbox className="w-7 h-7 text-gray-400" />
                   </div>
-                  <p className="font-bold text-gray-600 mb-1">Takliflar yo'q</p>
+                  <p className="font-bold text-gray-600 mb-1">{tt.emptyOffersTitle}</p>
                   <p className="text-sm text-gray-400">
-                    So'rov yuborganingizdan keyin ijrochilar taklif yuborishadi.
+                    {tt.emptyOffersDesc}
                   </p>
                 </div>
               ) : (
@@ -487,9 +495,9 @@ export default function ChatOffersPage() {
                   <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
                     <MessageCircle className="w-7 h-7 text-gray-400" />
                   </div>
-                  <p className="font-bold text-gray-600 mb-1">Suhbatlar yo'q</p>
+                  <p className="font-bold text-gray-600 mb-1">{tt.emptyChatsTitle}</p>
                   <p className="text-sm text-gray-400">
-                    Taklifni qabul qilib, usta bilan suhbat boshlang.
+                    {tt.emptyChatsDesc}
                   </p>
                 </div>
               ) : (

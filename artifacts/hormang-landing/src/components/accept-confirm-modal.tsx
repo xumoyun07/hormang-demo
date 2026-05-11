@@ -1,17 +1,8 @@
-/**
- * AcceptConfirmModal — Shared checklist confirmation before accepting an offer.
- * Used by both the OfferCard (list view) and OfferDetailModal (Batafsil).
- */
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Check, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const ACCEPT_CHECKLIST = [
-  "Men taklif tafsilotlari (narx, muddat, shartlar) bilan tanishib chiqdim va tushundim",
-  "Men ijrochi bilan hurmat va etiket doirasida muloqot qilaman",
-  "Men ijrochi uchun xizmat yuzasidan kerakli ma'lumot va imkoniyatlarni taqdim etaman",
-];
+import { useI18n } from "@/contexts/i18n-context";
 
 interface AcceptConfirmModalProps {
   onConfirm: () => void;
@@ -19,6 +10,8 @@ interface AcceptConfirmModalProps {
 }
 
 export function AcceptConfirmModal({ onConfirm, onCancel }: AcceptConfirmModalProps) {
+  const { t } = useI18n();
+  const tt = t.acceptConfirmModal;
   const [checks, setChecks] = useState([false, false, false, false]);
   const allChecked = checks.every(Boolean);
 
@@ -42,26 +35,21 @@ export function AcceptConfirmModal({ onConfirm, onCancel }: AcceptConfirmModalPr
         className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="px-5 pt-5 pb-3 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
-            <h3 className="font-extrabold text-gray-900 text-base">Taklifni qabul qilish</h3>
+            <h3 className="font-extrabold text-gray-900 text-base">{tt.title}</h3>
           </div>
-          <p className="text-xs text-gray-500 leading-relaxed">
-            Ijrochi taklifini qabul qilishdan oldin quyidagilar bilan tanishib chiqing:
-          </p>
+          <p className="text-xs text-gray-500 leading-relaxed">{tt.intro}</p>
           <ul className="mt-1.5 text-xs text-gray-500 space-y-0.5 pl-3">
-            <li>• 1 ta so'rovga faqat 1 ta taklif qabul qilish mumkin;</li>
-            <li>• Taklifni qabul qilishdan oldin qolgan ijrochilar bilan batafsil muhokama qilishingiz mumkin;</li>
+            {tt.bullets.map((b, i) => <li key={i}>• {b}</li>)}
           </ul>
         </div>
 
-        {/* Checklist */}
         <div className="px-5 py-4 space-y-3">
-          {ACCEPT_CHECKLIST.map((label, i) => (
+          {tt.checklist.map((label, i) => (
             <button
               key={i}
               onClick={() => toggle(i)}
@@ -76,7 +64,6 @@ export function AcceptConfirmModal({ onConfirm, onCancel }: AcceptConfirmModalPr
             </button>
           ))}
 
-          {/* 4th item with link */}
           <button
             onClick={() => toggle(3)}
             className="w-full flex items-start gap-3 text-left"
@@ -87,33 +74,32 @@ export function AcceptConfirmModal({ onConfirm, onCancel }: AcceptConfirmModalPr
               {checks[3] && <Check className="w-3 h-3 text-white" />}
             </div>
             <span className="text-xs text-gray-700 leading-relaxed">
-              Platforma{" "}
+              {tt.rulesPrefix}
               <span
                 className="text-blue-600 underline"
                 onClick={(e) => e.stopPropagation()}
               >
-                shartlari va qoidalariga
-              </span>{" "}
-              roziman
+                {tt.rulesLink}
+              </span>
+              {tt.rulesSuffix}
             </span>
           </button>
         </div>
 
-        {/* Buttons */}
         <div className="px-5 pb-5 flex gap-3">
           <Button
             variant="outline"
             onClick={onCancel}
             className="flex-1 h-11 rounded-2xl text-sm font-bold border-gray-200 text-gray-600"
           >
-            Bekor qilish
+            {tt.cancel}
           </Button>
           <Button
             onClick={() => { if (allChecked) onConfirm(); }}
             disabled={!allChecked}
             className="flex-1 h-11 rounded-2xl text-sm font-bold bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Qabul qilaman
+            {tt.accept}
           </Button>
         </div>
       </motion.div>

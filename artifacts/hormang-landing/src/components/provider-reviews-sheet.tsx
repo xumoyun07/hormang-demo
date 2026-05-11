@@ -24,24 +24,29 @@ import {
 import { getCustomerFromRegistry, getRequestById } from "@/lib/requests-store";
 import { getLocalProfile } from "@/lib/local-profile";
 import { formatDate } from "@/lib/date-utils";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 
 const BLUE = "hsl(221,78%,48%)";
 
-const METRIC_LABELS: Array<{ key: keyof ProviderReviewMetrics; label: string }> = [
-  { key: "serviceQuality", label: "Xizmat sifati" },
-  { key: "providerAttitude", label: "Ijrochi muomalasi" },
-  { key: "servicePrice", label: "Xizmat narxi adolatliligi" },
-];
+function useMetricLabels(): Array<{ key: keyof ProviderReviewMetrics; label: string }> {
+  const { t } = useI18n();
+  return [
+    { key: "serviceQuality", label: t.providerReviewsSheet.metricServiceQuality },
+    { key: "providerAttitude", label: t.providerReviewsSheet.metricProviderAttitude },
+    { key: "servicePrice", label: t.providerReviewsSheet.metricServicePrice },
+  ];
+}
 
 function initials(name: string): string {
   return name.split(" ").map((p) => p[0] ?? "").join("").toUpperCase().slice(0, 2) || "X";
 }
 
-function getReviewerMeta(review: Review) {
+function getReviewerMeta(review: Review, fallback: string) {
   const registry = getCustomerFromRegistry(review.reviewerId);
   const request = getRequestById(review.requestId);
   const local = getLocalProfile(review.reviewerId);
-  const name = review.reviewerName || registry?.name || request?.customerName || "Mijoz";
+  const name = review.reviewerName || registry?.name || request?.customerName || fallback;
   return {
     name,
     initials: review.reviewerInitials || registry?.initials || initials(name),
@@ -75,7 +80,10 @@ function ReviewDetailModal({
   review: Review;
   onClose: () => void;
 }) {
-  const meta = getReviewerMeta(review);
+  const { t } = useI18n();
+  const tt = t.providerReviewsSheet;
+  const METRIC_LABELS = useMetricLabels();
+  const meta = getReviewerMeta(review, tt.fallbackCustomer);
   const [expandedPhoto, setExpandedPhoto] = useState(false);
 
   return (
@@ -144,7 +152,7 @@ function ReviewDetailModal({
                 )}
               </div>
               <p className="text-sm leading-relaxed text-gray-700">
-                {review.comment || "Izoh qoldirilmagan."}
+                {review.comment || tt.noComment}
               </p>
             </div>
 
@@ -161,7 +169,7 @@ function ReviewDetailModal({
                 onClick={() => setExpandedPhoto(true)}
                 className="w-full overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
               >
-                <img src={review.photoUrl} alt="Sharh rasmi" className="w-full h-52 object-cover" />
+                <img src={review.photoUrl} alt={tt.photoAlt} className="w-full h-52 object-cover" />
               </button>
             )}
 
@@ -175,9 +183,9 @@ function ReviewDetailModal({
                   ) : (
                     <MessageCircle className="w-4 h-4 text-gray-400" />
                   )}
-                  <p className="text-sm font-black text-gray-900">Hormang haqida fikri</p>
+                  <p className="text-sm font-black text-gray-900">{tt.aboutHormang}</p>
                 </div>
-                <p className="text-sm text-gray-600">{review.platformFeedback || "Qo'shimcha izoh yo'q."}</p>
+                <p className="text-sm text-gray-600">{review.platformFeedback || tt.noExtraComment}</p>
               </div>
             )}
           </div>
@@ -193,7 +201,7 @@ function ReviewDetailModal({
             className="fixed inset-0 z-[90] bg-black/90 flex items-center justify-center p-4"
             onClick={() => setExpandedPhoto(false)}
           >
-            <img src={review.photoUrl} alt="Sharh rasmi" className="max-w-full max-h-full object-contain rounded-2xl" />
+            <img src={review.photoUrl} alt={tt.photoAlt} className="max-w-full max-h-full object-contain rounded-2xl" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -202,7 +210,10 @@ function ReviewDetailModal({
 }
 
 function ReviewRow({ review, onOpen }: { review: Review; onOpen: () => void }) {
-  const meta = getReviewerMeta(review);
+  const { t } = useI18n();
+  const tt = t.providerReviewsSheet;
+  const METRIC_LABELS = useMetricLabels();
+  const meta = getReviewerMeta(review, tt.fallbackCustomer);
   const metrics = review.providerMetrics;
 
   return (
@@ -261,7 +272,7 @@ function ReviewRow({ review, onOpen }: { review: Review; onOpen: () => void }) {
         onClick={onOpen}
         className="w-full h-9 rounded-xl bg-violet-50 text-violet-700 text-xs font-black flex items-center justify-center gap-1.5 hover:bg-violet-100 transition-colors"
       >
-        Batafsil
+        {tt.detailsBtn}
       </button>
     </div>
   );
@@ -276,6 +287,9 @@ export function ProviderReviewsSheet({
   providerName: string;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
+  const tt = t.providerReviewsSheet;
+  const METRIC_LABELS = useMetricLabels();
   const reviews = getReviewsForUser(providerId, "provider").sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
@@ -320,7 +334,7 @@ export function ProviderReviewsSheet({
           <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-100 flex-shrink-0">
             <div>
               <p className="font-black text-gray-900">{providerName}</p>
-              <p className="text-xs text-gray-400">Mijozlar qoldirgan fikrlar</p>
+              <p className="text-xs text-gray-400">{tt.customersFeedback}</p>
             </div>
             <button
               onClick={onClose}
@@ -336,13 +350,13 @@ export function ProviderReviewsSheet({
             {/* Summary card */}
             <div className="bg-gradient-to-br from-violet-50 to-white rounded-2xl border border-gray-100 p-4 shadow-sm mb-4"
               style={{ background: "linear-gradient(-55deg, #ddcaff, #ffffff)" }}>
-              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wide mb-2">Umumiy baho</p>
+              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wide mb-2">{tt.overallLabel}</p>
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-3xl font-black text-gray-900">
                   {avg > 0 ? avg.toFixed(1) : "—"}
                 </span>
                 <StarRating rating={avg} size="w-5 h-5" />
-                <span className="text-sm text-gray-500 ml-1">{reviews.length} ta sharh</span>
+                <span className="text-sm text-gray-500 ml-1">{tFormat(tt.reviewsCountTpl, { n: reviews.length })}</span>
               </div>
               {hasMetrics && (
                 <div className="space-y-2.5 pt-3">
@@ -359,8 +373,8 @@ export function ProviderReviewsSheet({
                 <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
                   <UserRound className="w-7 h-7 text-gray-400" />
                 </div>
-                <p className="font-black text-gray-700 mb-1">Hozircha sharh yo'q</p>
-                <p className="text-xs text-gray-400">Yakunlangan xizmatlardan keyin sharhlar bu yerda ko'rinadi.</p>
+                <p className="font-black text-gray-700 mb-1">{tt.emptyTitle}</p>
+                <p className="text-xs text-gray-400">{tt.emptyDesc}</p>
               </div>
             ) : (
               reviews.map((review) => (

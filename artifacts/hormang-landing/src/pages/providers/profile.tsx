@@ -11,6 +11,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { onStoreChange } from "@/lib/store-events";
 import { getLocalProfile, type LocalProfile, type PortfolioItem } from "@/lib/local-profile";
 import { getCompletedCount } from "@/lib/completion-store";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 
 const VIOLET_GRADIENT = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 
@@ -18,17 +20,19 @@ function ProviderAvatar({
   photoUrl,
   initials,
   size = "lg",
+  alt,
 }: {
   photoUrl?: string;
   initials: string;
   size?: "sm" | "md" | "lg";
+  alt: string;
 }) {
   const dim = size === "lg" ? "w-20 h-20 text-2xl" : size === "md" ? "w-14 h-14 text-xl" : "w-10 h-10 text-sm";
   if (photoUrl) {
     return (
       <img
         src={photoUrl}
-        alt="Profil"
+        alt={alt}
         className={`${dim} rounded-2xl object-cover border-2 border-white/30 flex-shrink-0`}
       />
     );
@@ -42,7 +46,7 @@ function ProviderAvatar({
   );
 }
 
-function StarRating({ rating, count }: { rating?: number; count?: number }) {
+function StarRating({ rating, count, newLabel, reviewsCountTpl }: { rating?: number; count?: number; newLabel: string; reviewsCountTpl: string }) {
   const r = Math.round(rating ?? 0);
   return (
     <div className="flex items-center gap-1 mt-1">
@@ -59,16 +63,18 @@ function StarRating({ rating, count }: { rating?: number; count?: number }) {
       {rating ? (
         <span className="text-xs text-white/80 ml-1">{rating.toFixed(1)}</span>
       ) : (
-        <span className="text-xs text-white/60 ml-1">Yangi</span>
+        <span className="text-xs text-white/60 ml-1">{newLabel}</span>
       )}
       {count !== undefined && count > 0 && (
-        <span className="text-xs text-white/50">({count} sharh)</span>
+        <span className="text-xs text-white/50">{tFormat(reviewsCountTpl, { n: count })}</span>
       )}
     </div>
   );
 }
 
 export default function ProviderProfilePage() {
+  const { t } = useI18n();
+  const tt = t.providerProfilePage;
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { user: currentUser } = useAuth();
@@ -95,7 +101,7 @@ export default function ProviderProfilePage() {
         setError("");
         loadLocalData(data.user.id);
       })
-      .catch(() => setError("Ijrochi topilmadi"))
+      .catch(() => setError(tt.notFoundError))
       .finally(() => showLoader && setLoading(false));
   }
 
@@ -128,14 +134,14 @@ export default function ProviderProfilePage() {
         <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
           <Briefcase className="w-7 h-7 text-gray-400" />
         </div>
-        <h2 className="text-xl font-bold text-gray-800 mb-2">Ijrochi topilmadi</h2>
-        <p className="text-gray-500 text-sm mb-6">Bunday profil mavjud emas yoki o'chirilgan.</p>
+        <h2 className="text-xl font-bold text-gray-800 mb-2">{tt.notFoundTitle}</h2>
+        <p className="text-gray-500 text-sm mb-6">{tt.notFoundDesc}</p>
         <Button
           variant="outline"
           onClick={() => window.history.back()}
           className="gap-2 border-2 font-semibold"
         >
-          <ChevronLeft className="w-4 h-4" /> Orqaga
+          <ChevronLeft className="w-4 h-4" /> {tt.backBtn}
         </Button>
       </div>
     );
@@ -165,7 +171,7 @@ export default function ProviderProfilePage() {
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="font-bold text-gray-900 text-sm">Ijrochi profili</span>
+          <span className="font-bold text-gray-900 text-sm">{tt.headerTitle}</span>
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-sm"
             style={{ background: VIOLET_GRADIENT }}
@@ -190,20 +196,20 @@ export default function ProviderProfilePage() {
             <div className="p-5 text-white">
               {/* Avatar + name + rating */}
               <div className="flex items-center gap-4 mb-4">
-                <ProviderAvatar photoUrl={photoUrl} initials={initials} size="lg" />
+                <ProviderAvatar photoUrl={photoUrl} initials={initials} size="lg" alt={tt.profileAlt} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h1 className="font-extrabold text-lg leading-tight">{fullName}</h1>
                     {profile?.isVerified && (
                       <span className="flex items-center gap-1 text-[10px] font-bold bg-white/20 border border-white/30 px-2 py-0.5 rounded-full">
-                        <ShieldCheck className="w-3 h-3" /> Tasdiqlangan
+                        <ShieldCheck className="w-3 h-3" /> {tt.verified}
                       </span>
                     )}
                   </div>
-                  <StarRating rating={profile?.rating} count={provider ? getCompletedCount(provider.id, "provider") : undefined} />
+                  <StarRating rating={profile?.rating} count={provider ? getCompletedCount(provider.id, "provider") : undefined} newLabel={tt.newRating} reviewsCountTpl={tt.reviewsCountTpl} />
                   {provider && getCompletedCount(provider.id, "provider") > 0 ? (
                     <p className="text-xs text-white/60 mt-0.5">
-                      {getCompletedCount(provider.id, "provider")} ta bajarilgan ish
+                      {tFormat(tt.completedCountTpl, { n: getCompletedCount(provider.id, "provider") })}
                     </p>
                   ) : null}
                 </div>
@@ -221,7 +227,7 @@ export default function ProviderProfilePage() {
                     </span>
                   ))
                 ) : (
-                  <span className="text-xs text-white/50">Xizmatlar ko'rsatilmagan</span>
+                  <span className="text-xs text-white/50">{tt.noServices}</span>
                 )}
               </div>
             </div>
@@ -232,18 +238,18 @@ export default function ProviderProfilePage() {
             <div className="bg-white rounded-xl p-3.5 flex items-center gap-2.5 border border-gray-100 shadow-sm">
               <MapPin className="w-4 h-4 text-violet-500 flex-shrink-0" />
               <div className="min-w-0">
-                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Hudud</p>
+                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">{tt.regionLabel}</p>
                 <p className="text-xs font-bold text-gray-800 truncate">
-                  {locationStr || "Ko'rsatilmagan"}
+                  {locationStr || tt.notSpecified}
                 </p>
               </div>
             </div>
             <div className="bg-white rounded-xl p-3.5 flex items-center gap-2.5 border border-gray-100 shadow-sm">
               <Award className="w-4 h-4 text-violet-500 flex-shrink-0" />
               <div className="min-w-0">
-                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">Tajriba</p>
+                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">{tt.experienceLabel}</p>
                 <p className="text-xs font-bold text-gray-800">
-                  {experience ? `${experience} yil` : "Ko'rsatilmagan"}
+                  {experience ? tFormat(tt.yearsTpl, { n: experience }) : tt.notSpecified}
                 </p>
               </div>
             </div>
@@ -251,7 +257,7 @@ export default function ProviderProfilePage() {
 
           {serviceAreas.length > 0 && (
             <div className="bg-white rounded-xl p-3.5 border border-gray-100 shadow-sm">
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-2">Xizmat hududlari</p>
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-2">{tt.serviceAreasLabel}</p>
               <div className="flex flex-wrap gap-1.5">
                 {serviceAreas.map((area) => (
                   <span key={area} className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-violet-50 text-violet-700 border border-violet-100">
@@ -273,7 +279,7 @@ export default function ProviderProfilePage() {
                 transition={{ duration: 0.3 }}
                 className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5"
               >
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Bio</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">{tt.bioLabel}</p>
                 <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl p-3">{bio}</p>
               </motion.div>
             )}
@@ -291,14 +297,14 @@ export default function ProviderProfilePage() {
                 className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5"
               >
                 <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">
-                  Portfolio ({portfolioItems.length} ta ish)
+                  {tFormat(tt.portfolioLabelTpl, { n: portfolioItems.length })}
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   {portfolioItems.map((item, i) => (
                     <div key={i} className="relative group aspect-square overflow-hidden rounded-xl border border-gray-100">
                       <img
                         src={item.url}
-                        alt={item.caption || `Portfolio ${i + 1}`}
+                        alt={item.caption || tFormat(tt.portfolioAltTpl, { n: i + 1 })}
                         className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                       {item.caption && (
@@ -317,16 +323,16 @@ export default function ProviderProfilePage() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-2 flex-wrap">
             {provider.phone && (
               <span className="flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-full">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Telefon tasdiqlangan
+                <CheckCircle2 className="w-3.5 h-3.5" /> {tt.phoneVerified}
               </span>
             )}
             {profile?.isVerified && (
               <span className="flex items-center gap-1.5 text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-200 px-3 py-1.5 rounded-full">
-                <ShieldCheck className="w-3.5 h-3.5" /> Hujjatlar tasdiqlangan
+                <ShieldCheck className="w-3.5 h-3.5" /> {tt.docsVerified}
               </span>
             )}
             {!provider.phone && !profile?.isVerified && (
-              <span className="text-xs text-gray-400">Tasdiqlash ma'lumotlari yo'q</span>
+              <span className="text-xs text-gray-400">{tt.noVerifyData}</span>
             )}
           </div>
 
@@ -339,14 +345,14 @@ export default function ProviderProfilePage() {
               className="rounded-2xl p-4 text-center border border-violet-100"
               style={{ background: "linear-gradient(135deg, #F5F3FF 0%, #EFF6FF 100%)" }}
             >
-              <p className="text-sm font-bold text-gray-700 mb-1">Bu sizning ommaviy profilingiz</p>
-              <p className="text-xs text-gray-500 mb-3">Mijozlarga ko'rinadigan ko'rinish</p>
+              <p className="text-sm font-bold text-gray-700 mb-1">{tt.ownProfileTitle}</p>
+              <p className="text-xs text-gray-500 mb-3">{tt.ownProfileDesc}</p>
               <Button
                 onClick={() => setLocation("/profile/settings")}
                 className="gap-2 font-bold text-sm h-9"
                 style={{ background: VIOLET_GRADIENT }}
               >
-                Profilni tahrirlash <ArrowRight className="w-4 h-4" />
+                {tt.editProfile} <ArrowRight className="w-4 h-4" />
               </Button>
             </motion.div>
           ) : (
@@ -357,9 +363,9 @@ export default function ProviderProfilePage() {
               className="rounded-2xl p-5 text-white shadow-md"
               style={{ background: VIOLET_GRADIENT }}
             >
-              <h3 className="font-bold text-base mb-1">{provider.firstName} bilan bog'laning</h3>
+              <h3 className="font-bold text-base mb-1">{tFormat(tt.contactTitleTpl, { name: provider.firstName ?? "" })}</h3>
               <p className="text-white/70 text-sm mb-4">
-                So'rovingizni yuboring — ijrochi tez orada javob beradi
+                {tt.contactDesc}
               </p>
               <Button
                 onClick={() =>
@@ -367,7 +373,7 @@ export default function ProviderProfilePage() {
                 }
                 className="w-full bg-white text-violet-700 hover:bg-white/90 font-bold gap-2 shadow-sm"
               >
-                So'rov yuborish <ArrowRight className="w-4 h-4 ml-auto" />
+                {tt.submitRequest} <ArrowRight className="w-4 h-4 ml-auto" />
               </Button>
             </motion.div>
           )}

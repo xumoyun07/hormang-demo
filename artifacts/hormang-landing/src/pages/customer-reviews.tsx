@@ -15,6 +15,8 @@ import {
 import { getLocalProfile } from "@/lib/local-profile";
 import { getOfferById } from "@/lib/requests-store";
 import { formatDate } from "@/lib/date-utils";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 
 const VIOLET = "hsl(262,80%,54%)";
 
@@ -27,10 +29,10 @@ function initials(name: string): string {
     .slice(0, 2) || "X";
 }
 
-function getReviewerMeta(review: Review) {
+function getReviewerMeta(review: Review, fallback: string) {
   const local = getLocalProfile(review.reviewerId);
   const offer = review.offerId ? getOfferById(review.offerId) : null;
-  const name = review.reviewerName || offer?.masterName || "Ijrochi";
+  const name = review.reviewerName || offer?.masterName || fallback;
   return {
     name,
     initials: review.reviewerInitials || offer?.masterInitials || initials(name),
@@ -47,7 +49,8 @@ function ReviewCard({
   review: Review;
   onProfile: () => void;
 }) {
-  const meta = getReviewerMeta(review);
+  const { t } = useI18n();
+  const meta = getReviewerMeta(review, t.customerReviewsPage.fallbackProvider);
 
   return (
     <motion.div
@@ -95,6 +98,8 @@ function ReviewCard({
 export default function CustomerReviewsPage() {
   useStoreRefresh();
   const { user } = useAuth();
+  const { t } = useI18n();
+  const tt = t.customerReviewsPage;
   const [, navigate] = useLocation();
   const customerId = user?.id ?? "";
 
@@ -104,7 +109,7 @@ export default function CustomerReviewsPage() {
   const avg = getAverageRatingForUser(customerId, "customer");
 
   const [profileReview, setProfileReview] = useState<Review | null>(null);
-  const profileMeta = profileReview ? getReviewerMeta(profileReview) : null;
+  const profileMeta = profileReview ? getReviewerMeta(profileReview, tt.fallbackProvider) : null;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -117,8 +122,8 @@ export default function CustomerReviewsPage() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="font-black text-gray-900 text-lg">Baholashlarim</h1>
-            <p className="text-xs text-gray-400">Ijrochilar qoldirgan fikrlar</p>
+            <h1 className="font-black text-gray-900 text-lg">{tt.title}</h1>
+            <p className="text-xs text-gray-400">{tt.subtitle}</p>
           </div>
         </div>
       </div>
@@ -128,13 +133,13 @@ export default function CustomerReviewsPage() {
           className="rounded-2xl border border-gray-100 p-4 shadow-sm mb-4"
           style={{ background: "linear-gradient(-55deg, #c9d9ff, #ffffff)" }}
         >
-          <p className="text-[11px] uppercase font-bold tracking-wide text-gray-500 mb-1">Umumiy baho</p>
+          <p className="text-[11px] uppercase font-bold tracking-wide text-gray-500 mb-1">{tt.overallLabel}</p>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-3xl font-bold text-gray-900">
               {avg > 0 ? avg.toFixed(1) : "—"}
             </span>
             <StarRating rating={avg} size="w-5 h-5" />
-            <span className="text-sm text-gray-500">{reviews.length} ta sharh</span>
+            <span className="text-sm text-gray-500">{tFormat(tt.reviewsCountTpl, { n: reviews.length })}</span>
           </div>
         </div>
 
@@ -143,9 +148,9 @@ export default function CustomerReviewsPage() {
             <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
               <UserRound className="w-7 h-7 text-gray-400" />
             </div>
-            <h2 className="font-bold text-gray-800 mb-1">Hozircha sharh yo'q</h2>
+            <h2 className="font-bold text-gray-800 mb-1">{tt.emptyTitle}</h2>
             <p className="text-sm text-gray-400">
-              Yakunlangan xizmatlardan keyin ijrochilar baholari shu yerda ko'rinadi
+              {tt.emptyDesc}
             </p>
           </div>
         ) : (

@@ -1,18 +1,9 @@
-/**
- * ReportModal — slide-up bottom sheet for reporting a user.
- *
- * Features:
- *   - 7 reason options (radio-style buttons)
- *   - Optional description textarea (max 500 chars)
- *   - Evidence image upload (max 3 images, compressed)
- *   - Block user toggle
- *   - Safeguard checks (no self-report, 24h dedup)
- *   - Success toast on submit
- */
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
 import { X, Flag, ImagePlus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 import {
   submitReport,
   canSubmitReport,
@@ -21,18 +12,6 @@ import {
   type ReportReason,
 } from "@/lib/report-store";
 
-/* ── Reason options ───────────────────────────────────────────────── */
-const REASONS: { value: ReportReason; label: string }[] = [
-  { value: "spam",                  label: "Spam" },
-  { value: "fake_profile",          label: "Soxta profil" },
-  { value: "abuse",                 label: "Qo'pol muomala" },
-  { value: "fraud",                 label: "Firibgarlik" },
-  { value: "inappropriate_content", label: "Nomaqul kontent" },
-  { value: "outside_contact",       label: "Xizmatdan tashqari aloqa" },
-  { value: "other",                 label: "Boshqa" },
-];
-
-/* ── Image compression helper ─────────────────────────────────────── */
 async function compressToDataUrl(file: File, maxPx = 900): Promise<string> {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -52,7 +31,6 @@ async function compressToDataUrl(file: File, maxPx = 900): Promise<string> {
   });
 }
 
-/* ── Props ────────────────────────────────────────────────────────── */
 export interface ReportModalProps {
   reporterUserId: string;
   reportedUserId: string;
@@ -67,6 +45,17 @@ export function ReportModal({
   onClose,
 }: ReportModalProps) {
   const { toast } = useToast();
+  const { t } = useI18n();
+  const tt = t.reportModal;
+  const REASONS = useMemo<{ value: ReportReason; label: string }[]>(() => [
+    { value: "spam",                  label: tt.reasons.spam },
+    { value: "fake_profile",          label: tt.reasons.fake_profile },
+    { value: "abuse",                 label: tt.reasons.abuse },
+    { value: "fraud",                 label: tt.reasons.fraud },
+    { value: "inappropriate_content", label: tt.reasons.inappropriate_content },
+    { value: "outside_contact",       label: tt.reasons.outside_contact },
+    { value: "other",                 label: tt.reasons.other },
+  ], [tt]);
   const [reason,      setReason]      = useState<ReportReason | "">("");
   const [description, setDescription] = useState("");
   const [images,      setImages]      = useState<string[]>([]);
@@ -104,7 +93,7 @@ export function ReportModal({
       if (blockToo && !alreadyBlocked) {
         blockUser(reporterUserId, reportedUserId);
       }
-      toast({ title: "Shikoyatingiz yuborildi ✅" });
+      toast({ title: tt.submittedToast });
       onClose();
     } finally {
       setSubmitting(false);
@@ -113,7 +102,6 @@ export function ReportModal({
 
   return (
     <>
-      {/* Overlay */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -123,7 +111,6 @@ export function ReportModal({
         onClick={onClose}
       />
 
-      {/* Sheet */}
       <motion.div
         initial={{ y: "100%", opacity: 0.6 }}
         animate={{ y: 0, opacity: 1 }}
@@ -136,12 +123,10 @@ export function ReportModal({
           style={{ maxHeight: "90dvh", boxShadow: "0 -8px 48px rgba(0,0,0,0.2)" }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Drag handle */}
           <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
             <div className="w-10 h-1 rounded-full bg-gray-200" />
           </div>
 
-          {/* Header */}
           <div className="flex items-center justify-between px-5 pb-3 pt-1 flex-shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0">
@@ -149,7 +134,7 @@ export function ReportModal({
               </div>
               <div>
                 <h2 className="font-black text-gray-900 text-base leading-tight">
-                  Foydalanuvchi haqida shikoyat
+                  {tt.title}
                 </h2>
                 <p className="text-[11px] text-gray-400 font-medium leading-tight">{reportedName}</p>
               </div>
@@ -162,13 +147,11 @@ export function ReportModal({
             </button>
           </div>
 
-          {/* Scrollable body */}
           <div className="overflow-y-auto flex-1 px-5 pb-2 space-y-5">
 
-            {/* ── Reason selection ── */}
             <div>
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2.5">
-                Shikoyat sababi <span className="text-rose-500">*</span>
+                {tt.reasonLabel} <span className="text-rose-500">*</span>
               </p>
               <div className="space-y-2">
                 {REASONS.map((r) => (
@@ -196,16 +179,15 @@ export function ReportModal({
               </div>
             </div>
 
-            {/* ── Description ── */}
             <div>
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2.5">
-                Qo'shimcha izoh{" "}
-                <span className="text-gray-400 font-normal normal-case">(ixtiyoriy)</span>
+                {tt.descLabel}{" "}
+                <span className="text-gray-400 font-normal normal-case">{tt.optional}</span>
               </p>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value.slice(0, 500))}
-                placeholder="Qo'shimcha izoh..."
+                placeholder={tt.descPlaceholder}
                 rows={3}
                 className="w-full px-3.5 py-3 rounded-2xl border border-gray-200 text-sm resize-none focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/20 transition-all placeholder:text-gray-300"
               />
@@ -214,15 +196,14 @@ export function ReportModal({
                   charLeft < 60 ? "text-amber-600" : "text-gray-300"
                 }`}
               >
-                {charLeft} belgi qoldi
+                {tFormat(tt.charsLeftTpl, { n: charLeft })}
               </p>
             </div>
 
-            {/* ── Evidence images ── */}
             <div>
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2.5">
-                Dalil rasmlari{" "}
-                <span className="text-gray-400 font-normal normal-case">(ixtiyoriy, max 3 ta)</span>
+                {tt.evidenceLabel}{" "}
+                <span className="text-gray-400 font-normal normal-case">{tt.evidenceOptional}</span>
               </p>
               <div className="flex items-start gap-2.5 flex-wrap">
                 {images.map((src, i) => (
@@ -245,7 +226,7 @@ export function ReportModal({
                     className="w-[72px] h-[72px] rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 text-gray-300 hover:border-amber-300 hover:text-amber-400 transition-colors flex-shrink-0"
                   >
                     <ImagePlus className="w-5 h-5" />
-                    <span className="text-[9px] font-bold">Rasm</span>
+                    <span className="text-[9px] font-bold">{tt.photoBtn}</span>
                   </button>
                 )}
               </div>
@@ -259,7 +240,6 @@ export function ReportModal({
               />
             </div>
 
-            {/* ── Block user toggle ── */}
             <button
               onClick={() => !alreadyBlocked && setBlockToo((b) => !b)}
               className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl border transition-all ${
@@ -274,12 +254,10 @@ export function ReportModal({
                     blockToo || alreadyBlocked ? "text-rose-700" : "text-gray-700"
                   }`}
                 >
-                  {alreadyBlocked ? "Foydalanuvchi bloklangan ✓" : "Foydalanuvchini bloklash"}
+                  {alreadyBlocked ? tt.blockedDone : tt.blockUser}
                 </p>
                 <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">
-                  {alreadyBlocked
-                    ? "Siz bu foydalanuvchini bloklagansiz"
-                    : "Foydalanuvchi xabar, taklif va so'rovlari ko'rinmaydi"}
+                  {alreadyBlocked ? tt.blockedDesc : tt.blockDesc}
                 </p>
               </div>
               <div
@@ -298,7 +276,6 @@ export function ReportModal({
             <div className="pb-1" />
           </div>
 
-          {/* Footer */}
           <div className="px-5 pb-6 pt-3 border-t border-gray-100 flex-shrink-0">
             <button
               disabled={!reason || submitting}
@@ -313,10 +290,10 @@ export function ReportModal({
               {submitting ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Yuborilmoqda...
+                  {tt.submitting}
                 </span>
               ) : (
-                "Shikoyatni yuborish"
+                tt.submit
               )}
             </button>
           </div>

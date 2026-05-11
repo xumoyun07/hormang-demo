@@ -8,8 +8,13 @@ import {
   getReferralCode, getReferralLink, getReferralStats,
   ensureReferralIndex, TANGA_PER_REFERRAL, MAX_REFERRALS, MAX_REFERRAL_TANGA,
 } from "@/lib/referral-store";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 
-export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }: { title?: string } = {}) {
+export function ReferralCard({ title }: { title?: string } = {}) {
+  const { t } = useI18n();
+  const tt = t.referralCard;
+  const headingTitle = title ?? tt.titleProvider;
   const { user } = useAuth();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -31,11 +36,11 @@ export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }
     navigator.clipboard.writeText(referralLink).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    toast({ title: "Referral havola nusxalandi! 🔗", description: "Do'stlaringizga yuboring." });
+    toast({ title: tt.toastCopiedTitle, description: tt.toastCopiedDesc });
   }
 
   function shareToTelegram() {
-    const text = `Hormangda ijrochi bo'ling va pul ishlang! Mening havolam orqali ro'yxatdan o'ting: ${referralLink}`;
+    const text = `${tt.shareTextTelegram} ${referralLink}`;
     window.open(
       `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent(text)}`,
       "_blank"
@@ -43,7 +48,7 @@ export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }
   }
 
   function shareToWhatsApp() {
-    const text = `Hormangda ijrochi bo'ling! Havolam orqali ro'yxatdan o'ting: ${referralLink}`;
+    const text = `${tt.shareTextWhatsapp} ${referralLink}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   }
 
@@ -52,7 +57,7 @@ export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }
       {/* Section header */}
       <div className="flex items-center gap-2 mb-3">
         <Gift className="w-4 h-4 text-amber-500" />
-        <h2 className="font-bold text-sm text-gray-900">{title}</h2>
+        <h2 className="font-bold text-sm text-gray-900">{headingTitle}</h2>
       </div>
 
       {/* Main golden card */}
@@ -75,16 +80,15 @@ export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }
               <div className="flex items-center gap-2 mb-1">
                 <TangaCoin size="lg" />
                 <span className="font-extrabold text-white text-lg leading-tight">
-                  +{MAX_REFERRAL_TANGA} Tanga bepul
+                  {tFormat(tt.bonusTpl, { n: MAX_REFERRAL_TANGA })}
                 </span>
               </div>
               <p className="text-amber-100 text-xs leading-relaxed">
-                Har bir muvaffaqiyatli taklif uchun {TANGA_PER_REFERRAL} Tanga
-                {" · "}Maksimal {MAX_REFERRAL_TANGA} Tanga
+                {tFormat(tt.bonusDescTpl, { per: TANGA_PER_REFERRAL, max: MAX_REFERRAL_TANGA })}
               </p>
             </div>
             <div className="bg-white/20 rounded-xl px-3 py-1.5 text-center flex-shrink-0">
-              <p className="text-[10px] text-amber-100 font-semibold uppercase tracking-wide">Jami topildi</p>
+              <p className="text-[10px] text-amber-100 font-semibold uppercase tracking-wide">{tt.totalEarned}</p>
               <p className="text-white font-extrabold text-lg leading-none">
                 {stats.earned}&nbsp;<TangaCoin size="md" />
               </p>
@@ -95,14 +99,14 @@ export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }
           <div className="mb-4">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-amber-100 text-xs font-semibold">
-                {stats.count}/{MAX_REFERRALS} ijrochi taklif qildingiz
+                {tFormat(tt.progressTpl, { count: stats.count, max: MAX_REFERRALS })}
               </span>
               {canEarnMore ? (
                 <span className="text-amber-200 text-[11px]">
-                  Yana {remaining} ta qoldi
+                  {tFormat(tt.remainingTpl, { n: remaining })}
                 </span>
               ) : (
-                <span className="text-amber-200 text-[11px] font-bold">✅ Maksimum!</span>
+                <span className="text-amber-200 text-[11px] font-bold">{tt.maxReached}</span>
               )}
             </div>
             <div className="h-2.5 rounded-full bg-white/20 overflow-hidden">
@@ -120,7 +124,7 @@ export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }
           <div className="bg-white/15 rounded-xl px-3 py-2 flex items-center justify-between mb-4 border border-white/20">
             <div>
               <p className="text-[10px] text-amber-200 font-semibold uppercase tracking-wider mb-0.5">
-                Referral kodingiz
+                {tt.yourCode}
               </p>
               <p className="text-white font-extrabold text-sm tracking-wide">{referralCode}</p>
             </div>
@@ -133,7 +137,7 @@ export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }
                 ? <Check className="w-3.5 h-3.5 text-white" />
                 : <Copy className="w-3.5 h-3.5 text-white" />}
               <span className="text-white text-xs font-bold">
-                {copied ? "Nusxalandi!" : "Nusxalash"}
+                {copied ? tt.copied : tt.copy}
               </span>
             </motion.button>
           </div>
@@ -146,7 +150,7 @@ export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }
               className="h-10 rounded-xl bg-white text-amber-700 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm hover:bg-amber-50 transition-colors col-span-1"
             >
               <Copy className="w-3.5 h-3.5" />
-              Havola
+              {tt.linkBtn}
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -155,7 +159,7 @@ export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }
               style={{ background: "linear-gradient(135deg, #2AABEE, #229ED9)" }}
             >
               <Send className="w-3.5 h-3.5" />
-              Telegram
+              {tt.telegram}
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -164,7 +168,7 @@ export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }
               style={{ background: "linear-gradient(135deg, #25D366, #128C7E)" }}
             >
               <Send className="w-3.5 h-3.5" />
-              WhatsApp
+              {tt.whatsapp}
             </motion.button>
           </div>
         </div>

@@ -24,28 +24,32 @@ import {
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 import { isUserSuspended, SUSPENDED_MESSAGE } from "@/lib/safety-store";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" });
 }
 
-function formatDay(iso: string): string {
+function formatDay(iso: string, today: string, yesterday: string): string {
   const d = new Date(iso);
-  const today = new Date();
-  if (d.toDateString() === today.toDateString()) return "Bugun";
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) return "Kecha";
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return today;
+  const y = new Date(now);
+  y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return yesterday;
   return formatDate(iso);
 }
 
 /* ─── Offer status badge ─────────────────────────────────────────── */
 function OfferStatusBadge({ status }: { status: Offer["status"] }) {
+  const { t } = useI18n();
+  const tt = t.chatPage;
   if (status === "accepted") {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
         <CheckCircle2 className="w-3 h-3" />
-        Qabul qilindi
+        {tt.statusAccepted}
       </span>
     );
   }
@@ -53,7 +57,7 @@ function OfferStatusBadge({ status }: { status: Offer["status"] }) {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
         <X className="w-3 h-3" />
-        Rad etildi
+        {tt.statusRejected}
       </span>
     );
   }
@@ -61,7 +65,7 @@ function OfferStatusBadge({ status }: { status: Offer["status"] }) {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
         <Loader2 className="w-3 h-3 animate-spin" />
-        Bajarilmoqda
+        {tt.statusInProgress}
       </span>
     );
   }
@@ -69,20 +73,21 @@ function OfferStatusBadge({ status }: { status: Offer["status"] }) {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full">
         <Flag className="w-3 h-3" />
-        Yakunlandi
+        {tt.statusCompleted}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
       <Clock className="w-3 h-3" />
-      Kutilmoqda
+      {tt.statusPending}
     </span>
   );
 }
 
 /* ─── Status banner shown inside message list ────────────────────── */
 function StatusBanner({ status }: { status: Offer["status"] }) {
+  const { t } = useI18n();
   if (status === "accepted") {
     return (
       <motion.div
@@ -92,7 +97,7 @@ function StatusBanner({ status }: { status: Offer["status"] }) {
       >
         <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 text-emerald-700 text-xs font-semibold shadow-sm">
           <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-          Taklif qabul qilindi — Suhbat davom etmoqda
+          {t.chatPage.bannerAccepted}
         </div>
       </motion.div>
     );
@@ -134,7 +139,7 @@ function MessageBubble({ msg, isFirst }: { msg: ChatMessage; isFirst: boolean })
         {msg.attachment?.type === "image" && (
           <img
             src={msg.attachment.url}
-            alt="rasm"
+            alt={msg.attachment.url}
             className="w-full max-w-[220px] object-cover rounded-t-2xl"
             style={{ display: "block" }}
           />
@@ -168,6 +173,8 @@ export default function ChatPage() {
   const chatId = params?.chatId ?? "";
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
+  const tt = t.chatPage;
 
   useStoreRefresh();
 
@@ -209,12 +216,12 @@ export default function ChatPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-500 font-semibold mb-4">Chat topilmadi</p>
+          <p className="text-gray-500 font-semibold mb-4">{tt.notFound}</p>
           <button
             onClick={() => setLocation("/my-requests")}
             className="text-blue-600 font-bold text-sm"
           >
-            So'rovlarimga qaytish
+            {tt.backToRequests}
           </button>
         </div>
       </div>
@@ -288,7 +295,7 @@ export default function ChatPage() {
 
   const grouped: Array<{ day: string; messages: ChatMessage[] }> = [];
   for (const msg of chat.messages) {
-    const day = formatDay(msg.timestamp);
+    const day = formatDay(msg.timestamp, tt.today, tt.yesterday);
     const last = grouped[grouped.length - 1];
     if (last?.day === day) last.messages.push(msg);
     else grouped.push({ day, messages: [msg] });
@@ -339,7 +346,7 @@ export default function ChatPage() {
             <div className="flex items-center gap-1.5">
               <Circle className="w-2 h-2 fill-emerald-500 text-emerald-500 flex-shrink-0" />
               <p className="text-[11px] text-gray-400">
-                O'rtacha javob vaqti: {chat.avgResponseTime} daqiqa
+                {tFormat(tt.avgResponseTpl, { n: chat.avgResponseTime })}
               </p>
             </div>
           </button>
@@ -355,7 +362,7 @@ export default function ChatPage() {
           {customerWaiting && (
             <div className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
               <Clock className="w-3 h-3" />
-              Ijrochi kutilmoqda
+              {tt.waitingProvider}
             </div>
           )}
 
@@ -366,7 +373,7 @@ export default function ChatPage() {
               className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-[11px] font-bold transition-colors active:scale-95"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              Tugatildi
+              {tt.completeBtn}
             </button>
           )}
 
@@ -377,7 +384,7 @@ export default function ChatPage() {
                 <button
                   onClick={() => { setReviewDismissed(false); setShowReview(true); }}
                   className="w-7 h-7 rounded-xl bg-white-400 hover:bg-gray-200 flex items-center justify-center transition-colors active:scale-95 shadow-sm"
-                    title="Baholash"
+                    title={tt.rateTitle}
                   >
                     <Star className="w-5 h-5 text-amber-500" />
                 </button>
@@ -393,7 +400,7 @@ export default function ChatPage() {
         <div className="max-w-lg mx-auto w-full px-4 pt-4 pb-4">
           {grouped.length === 0 && (
             <div className="text-center py-8 text-gray-400 text-sm">
-              Hozircha xabar yo'q
+              {tt.noMessages}
             </div>
           )}
 
@@ -458,7 +465,7 @@ export default function ChatPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="Xabar yozing..."
+            placeholder={tt.inputPlaceholder}
             className="flex-1 px-4 py-2.5 rounded-2xl bg-gray-50 border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all"
           />
           <button
@@ -499,7 +506,7 @@ export default function ChatPage() {
             subjectName={chat.masterName}
             subjectInitials={chat.masterInitials}
             subjectColor={chat.masterColor}
-            prompt="Ijrochini baholang"
+            prompt={tt.rateProvider}
             showProviderSliders
             onSubmit={handleReviewSubmit}
             onSkip={() => setShowReview(false)}
@@ -512,9 +519,9 @@ export default function ChatPage() {
         {showCompleteConfirm && (
           <ConfirmModal
             key="customer-complete-confirm"
-            title="Xizmat yakunlanganligini tasdiqlaysizmi?"
-            message={"Bu amalni ortga qaytarib bo'lmaydi.\n\nIjrochi ishni muvaffaqiyatli yakunlaganiga ishonchingiz komilmi?\nXizmat yakunida ijrochini baholashinggiz mumkin."}
-            confirmText="Ha, tasdiqlayman"
+            title={tt.completeConfirmTitle}
+            message={tt.completeConfirmMsg}
+            confirmText={tt.completeConfirmYes}
             onConfirm={handleComplete}
             onClose={() => setShowCompleteConfirm(false)}
           />
