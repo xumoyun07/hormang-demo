@@ -323,18 +323,12 @@ export default function PlansPage() {
           />
           <p className="text-sm font-semibold text-amber-100 mb-3">Joriy balans</p>
           <div className="flex items-center gap-4">
-            <div className="relative w-20 h-20 flex items-center justify-center flex-shrink-0">
-              <div className="absolute w-2 h-2" />
-              <div className="absolute animate-orbit">
-                <img
-                  src="/tanga-coin.jpg"
-                  alt="Tanga"
-                  draggable={false}
-                  className="w-14 h-14 rounded-full object-cover"
-                  style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.35)" }}
-                />
-              </div>
-            </div>
+            <img
+              src="/tanga-coin.jpg"
+              alt="Tanga"
+              draggable={false}
+              className="w-18 h-18 rounded-2xl object-cover flex-shrink-0"              
+            />
             <div>
               <p className="text-5xl font-black text-white leading-none">{balance}</p>
               <p className="text-amber-200 text-xs font-semibold mt-1">Tanga</p>

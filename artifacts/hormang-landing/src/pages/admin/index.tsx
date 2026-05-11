@@ -4479,10 +4479,12 @@ function MonoTransactions({ txs, reload }: { txs: TangaTx[]; reload: () => void 
   const monthStr = now.toISOString().slice(0, 7);
 
   function txTypeInfo(tx: TangaTx): { label: string; cls: string } {
-    if (tx.type === "purchase")         return { label: "Xarid",      cls: "bg-emerald-50 text-emerald-700 border-emerald-100" };
-    if (tx.type === "referral")         return { label: "Referral",   cls: "bg-blue-50 text-blue-700 border-blue-100" };
-    if (tx.type === "admin_adjustment") return { label: "Admin",      cls: "bg-violet-50 text-violet-700 border-violet-100" };
-    return                                     { label: "Sarflandi",  cls: "bg-rose-50 text-rose-700 border-rose-100" };
+    if (tx.type === "purchase")                  return { label: "Xarid",         cls: "bg-emerald-50 text-emerald-700 border-emerald-100" };
+    if (tx.type === "referral")                  return { label: "Referral",      cls: "bg-blue-50 text-blue-700 border-blue-100" };
+    if (tx.type === "admin_adjustment")          return { label: "Admin",         cls: "bg-violet-50 text-violet-700 border-violet-100" };
+    if (tx.type === "refund")                    return { label: "Qaytarildi",    cls: "bg-teal-50 text-teal-700 border-teal-100" };
+    if (tx.type === "profile_completion_reward") return { label: "Profil bonusi", cls: "bg-amber-50 text-amber-700 border-amber-100" };
+    return                                              { label: "Sarflandi",     cls: "bg-rose-50 text-rose-700 border-rose-100" };
   }
 
   const filtered = txs.filter((tx) => {
