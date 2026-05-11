@@ -86,7 +86,7 @@ export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }
             <div className="bg-white/20 rounded-xl px-3 py-1.5 text-center flex-shrink-0">
               <p className="text-[10px] text-amber-100 font-semibold uppercase tracking-wide">Jami topildi</p>
               <p className="text-white font-extrabold text-lg leading-none">
-                {stats.earned}&nbsp;<TangaCoin size="xs" />
+                {stats.earned}&nbsp;<TangaCoin size="md" />
               </p>
             </div>
           </div>
