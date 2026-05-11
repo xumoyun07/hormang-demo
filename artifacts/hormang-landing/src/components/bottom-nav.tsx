@@ -64,7 +64,7 @@ export function BottomNav() {
   const activeColor = isProvider ? "#7C3AED" : "#2563EB";
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 shadow-[0_-2px_12px_rgba(0,0,0,0.05)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-[hsl(var(--surface))] border-t border-gray-100 dark:border-[hsl(var(--hairline))] shadow-[0_-2px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_-2px_12px_rgba(0,0,0,0.4)]">
       <div className="max-w-lg mx-auto flex">
         {tabs.map((tab) => {
           const active = isActive(tab.href);
@@ -83,10 +83,10 @@ export function BottomNav() {
               }}
               className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-1 relative transition-colors ${
                 disabled
-                  ? "text-gray-300 cursor-default"
+                  ? "text-gray-300 dark:text-gray-600 cursor-default"
                   : active
                   ? "text-[var(--tab-color)]"
-                  : "text-gray-400 hover:text-gray-600"
+                  : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               }`}
               style={{ "--tab-color": activeColor } as React.CSSProperties}
             >
