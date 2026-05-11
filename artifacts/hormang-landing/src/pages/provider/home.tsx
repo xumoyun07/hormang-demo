@@ -8,6 +8,7 @@
  *   5. Referral System
  */
 import { useState, useEffect, useRef } from "react";
+import { TangaCoin } from "@/components/tanga-coin";
 import { useLocation } from "wouter";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
@@ -126,7 +127,7 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
           {/* Reward badge */}
           <div className="flex items-center justify-center gap-2.5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5 mb-5">
             <span className="text-2xl font-extrabold text-amber-600 leading-none">+5</span>
-            <span className="text-xl leading-none">🪙</span>
+            <TangaCoin size="lg" />
             <div className="text-left">
               <p className="text-sm font-extrabold text-amber-700">Tanga bonus berildi!</p>
               <p className="text-[11px] text-amber-500">Balansingizga qo'shildi</p>
@@ -292,7 +293,7 @@ function ProfileCompletion() {
                 ))}
                 {!rewardGranted && (
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 mt-1">
-                    <span className="text-sm">🪙</span>
+                    <TangaCoin size="sm" />
                     100% to'ldiring va +5 Tanga bonus oling
                   </div>
                 )}

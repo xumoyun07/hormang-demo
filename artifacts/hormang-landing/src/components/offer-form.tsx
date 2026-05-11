@@ -8,6 +8,7 @@
  *  - No editable avg-response-time field (removed)
  */
 import { useState } from "react";
+import { TangaCoin } from "@/components/tanga-coin";
 import { CompactMediaUpload } from "@/components/media-upload";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
@@ -333,7 +334,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
             {/* ── Tanga Cost Banner ── */}
             {hasEnoughTanga ? (
               <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
-                <span className="text-xl flex-shrink-0">🪙</span>
+                <TangaCoin size="lg" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-extrabold text-amber-900">
                     Bu so'rovga taklif yuborish uchun <span className="text-amber-700">{offerCost} Tanga</span> sarflanadi
@@ -345,7 +346,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
               </div>
             ) : (
               <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
-                <span className="text-xl flex-shrink-0">🪙</span>
+                <TangaCoin size="lg" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-extrabold text-red-800">
                     Bu taklif uchun <strong>{offerCost} Tanga</strong> kerak
@@ -592,7 +593,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                 className="w-full h-12 rounded-2xl font-extrabold text-sm text-white flex items-center justify-center gap-2 transition-all shadow-lg"
                 style={{ background: "linear-gradient(135deg, #DC2626 0%, #EF4444 100%)" }}
               >
-                🪙 Tanga sotib oling — {offerCost} Tanga kerak
+                <TangaCoin size="sm" /> Tanga sotib oling — {offerCost} Tanga kerak
               </button>
             )}
             <div className="flex gap-3">

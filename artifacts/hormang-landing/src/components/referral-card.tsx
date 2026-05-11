@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { TangaCoin } from "@/components/tanga-coin";
 import { motion } from "framer-motion";
 import { Gift, Check, Copy, Send } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
@@ -72,7 +73,7 @@ export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }
           <div className="flex items-start justify-between mb-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-2xl">🪙</span>
+                <TangaCoin size="lg" />
                 <span className="font-extrabold text-white text-lg leading-tight">
                   +{MAX_REFERRAL_TANGA} Tanga bepul
                 </span>
@@ -85,7 +86,7 @@ export function ReferralCard({ title = "Ijrochi do'stlaringizni taklif qiling" }
             <div className="bg-white/20 rounded-xl px-3 py-1.5 text-center flex-shrink-0">
               <p className="text-[10px] text-amber-100 font-semibold uppercase tracking-wide">Jami topildi</p>
               <p className="text-white font-extrabold text-lg leading-none">
-                {stats.earned}&nbsp;🪙
+                {stats.earned}&nbsp;<TangaCoin size="xs" />
               </p>
             </div>
           </div>
