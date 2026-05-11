@@ -1,12 +1,3 @@
-/**
- * /provider/chats — Suhbatlarim page (Provider side)
- * - Search bar
- * - Sorting tabs: All | Unread | By service
- * - Chat rows with last message + unread badge + offer status
- * - Inline ChatView matches customer chat quality (day groups, animated bubbles)
- * - Customer avatar in header is clickable → shows customer profile modal
- * - Input disabled when offer is rejected
- */
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 
@@ -35,15 +26,12 @@ import logoImg from "/hormang-logo.png";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { getLocalProfile } from "@/lib/local-profile";
 import { formatDate } from "@/lib/date-utils";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
+import type { Dict } from "@/lib/i18n/locales/uz";
 
-/* ─── Constants ──────────────────────────────────────────────────── */
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 
-const SERVICE_CATEGORIES = [
-  "Tozalash", "Ta'mirlash", "Enagalik", "Tadbir xizmatlari",
-  "Ko'chirish yuk yetkazish", "Go'zallik", "Avto xizmat", "Repetitorlar", "Ustachilik",
-];
-/* ─── Helpers ─────────────────────────────────────────────────────── */
 function formatTime(iso: string): string {
   const d = new Date(iso);
   const today = new Date();
@@ -53,23 +41,22 @@ function formatTime(iso: string): string {
   return formatDate(iso);
 }
 
-function formatDay(iso: string): string {
+function formatDay(iso: string, t: Dict): string {
   const d = new Date(iso);
   const today = new Date();
-  if (d.toDateString() === today.toDateString()) return "Bugun";
+  if (d.toDateString() === today.toDateString()) return t.providerChats.separators.today;
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) return "Kecha";
+  if (d.toDateString() === yesterday.toDateString()) return t.providerChats.separators.yesterday;
   return formatDate(iso);
 }
 
-/* ─── Offer Status Badge ──────────────────────────────────────────── */
-function OfferStatusBadge({ status }: { status: Offer["status"] }) {
+function OfferStatusBadge({ status, t }: { status: Offer["status"]; t: Dict }) {
   if (status === "accepted") {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
         <CheckCircle2 className="w-3 h-3" />
-        Qabul qilindi
+        {t.providerChats.badges.accepted}
       </span>
     );
   }
@@ -77,7 +64,7 @@ function OfferStatusBadge({ status }: { status: Offer["status"] }) {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
         <X className="w-3 h-3" />
-        Rad etildi
+        {t.providerChats.badges.rejected}
       </span>
     );
   }
@@ -85,7 +72,7 @@ function OfferStatusBadge({ status }: { status: Offer["status"] }) {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
         <Loader2 className="w-3 h-3 animate-spin" />
-        Bajarilmoqda
+        {t.providerChats.badges.inProgress}
       </span>
     );
   }
@@ -93,20 +80,19 @@ function OfferStatusBadge({ status }: { status: Offer["status"] }) {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full">
         <Flag className="w-3 h-3" />
-        Yakunlandi
+        {t.providerChats.badges.completed}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
       <Clock className="w-3 h-3" />
-      Kutilmoqda
+      {t.providerChats.badges.pending}
     </span>
   );
 }
 
-/* ─── Status Banner (inside message list) ────────────────────────── */
-function StatusBanner({ status }: { status: Offer["status"] }) {
+function StatusBanner({ status, t }: { status: Offer["status"]; t: Dict }) {
   if (status === "accepted") {
     return (
       <motion.div
@@ -116,7 +102,7 @@ function StatusBanner({ status }: { status: Offer["status"] }) {
       >
         <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 text-emerald-700 text-xs font-semibold shadow-sm">
           <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-          Taklif qabul qilindi — Suhbat davom etmoqda
+          {t.providerChats.banner.acceptedContinue}
         </div>
       </motion.div>
     );
@@ -124,7 +110,6 @@ function StatusBanner({ status }: { status: Offer["status"] }) {
   return null;
 }
 
-/* ─── Day Separator ──────────────────────────────────────────────── */
 function DaySeparator({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 my-4">
@@ -135,9 +120,7 @@ function DaySeparator({ label }: { label: string }) {
   );
 }
 
-/* ─── Message Bubble (Provider side) ────────────────────────────── */
 function MsgBubble({ msg, isFirst }: { msg: ProviderChatMessage; isFirst: boolean }) {
-  // System notifications render as centered pills
   if (msg.sender === "system") {
     return (
       <motion.div
@@ -186,13 +169,13 @@ function MsgBubble({ msg, isFirst }: { msg: ProviderChatMessage; isFirst: boolea
   );
 }
 
-/* ─── Schedule Modal ─────────────────────────────────────────────── */
 interface ScheduleModalProps {
   onSave: (date: string, time: string, location: string) => void;
   onClose: () => void;
   defaultLocation?: string;
 }
 function ScheduleModal({ onSave, onClose, defaultLocation = "" }: ScheduleModalProps) {
+  const { t } = useI18n();
   const [date, setDate] = useState("");
   const [time, setTime] = useState("09:00");
   const [location, setLocation] = useState(defaultLocation);
@@ -201,7 +184,7 @@ function ScheduleModal({ onSave, onClose, defaultLocation = "" }: ScheduleModalP
 
   function handleSave() {
     if (!date) return;
-    onSave(date, time, location.trim() || "—");
+    onSave(date, time, location.trim() || t.providerChats.schedule.locationDash);
   }
 
   return (
@@ -232,7 +215,7 @@ function ScheduleModal({ onSave, onClose, defaultLocation = "" }: ScheduleModalP
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
               <CalendarPlus className="w-4 h-4 text-violet-600" />
-              <h3 className="font-extrabold text-gray-900 text-base">Xizmatni rejalashtirish</h3>
+              <h3 className="font-extrabold text-gray-900 text-base">{t.providerChats.schedule.title}</h3>
             </div>
             <button onClick={onClose} className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 transition-colors">
               <X className="w-4 h-4" />
@@ -241,7 +224,7 @@ function ScheduleModal({ onSave, onClose, defaultLocation = "" }: ScheduleModalP
 
           <div className="space-y-3 mb-5">
             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block">Sana</label>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block">{t.providerChats.schedule.date}</label>
               <input
                 type="date"
                 min={today}
@@ -251,7 +234,7 @@ function ScheduleModal({ onSave, onClose, defaultLocation = "" }: ScheduleModalP
               />
             </div>
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block">Vaqt</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block">{t.providerChats.schedule.time}</label>
                 <input
                   type="time"
                   value={time}
@@ -262,15 +245,16 @@ function ScheduleModal({ onSave, onClose, defaultLocation = "" }: ScheduleModalP
               </div>
 
               <p className="text-sm text-gray-600 mt-1">
-                Tanlangan vaqt: <span className="font-mono font-bold text-gray-800">{time}</span>
+                {tFormat(t.providerChats.schedule.selectedTimeTpl, { time: "" })}
+                <span className="font-mono font-bold text-gray-800">{time}</span>
               </p>
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block">Manzil</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block">{t.providerChats.schedule.location}</label>
                 <input
                   type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  placeholder="Ko'cha, uy raqami..."
+                  placeholder={t.providerChats.schedule.locationPlaceholder}
                   className="w-full h-11 px-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 transition-all"
                 />
               </div>
@@ -281,7 +265,7 @@ function ScheduleModal({ onSave, onClose, defaultLocation = "" }: ScheduleModalP
               onClick={onClose}
               className="flex-1 h-11 rounded-2xl border-2 border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition-colors"
             >
-              Bekor qilish
+              {t.providerChats.schedule.cancel}
             </button>
             <button
               onClick={handleSave}
@@ -289,7 +273,7 @@ function ScheduleModal({ onSave, onClose, defaultLocation = "" }: ScheduleModalP
               className="flex-1 h-11 rounded-2xl text-sm font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
               style={{ background: VIOLET }}
             >
-              Rejalashtirish
+              {t.providerChats.schedule.save}
             </button>
           </div>
         </div>
@@ -298,9 +282,9 @@ function ScheduleModal({ onSave, onClose, defaultLocation = "" }: ScheduleModalP
   );
 }
 
-/* ─── Inline Chat View ───────────────────────────────────────────── */
 function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) {
   useStoreRefresh();
+  const { t } = useI18n();
   const [text, setText] = useState("");
   const [attachPreview, setAttachPreview] = useState<string | null>(null);
   const [showCustomerProfile, setShowCustomerProfile] = useState(false);
@@ -346,9 +330,6 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 
   const alreadyCompleted = offer?.status === "completed";
 
-  /* Auto-prompt review on every chat open (and when offer becomes completed).
-   * reviewDismissed prevents re-prompting within the same session; it resets
-   * on the next mount so the provider is prompted again next time they open. */
   useEffect(() => {
     if (alreadyCompleted && masterId && chat && !hasReviewedRequest(chat.requestId, masterId) && !reviewDismissed) {
       setShowReview(true);
@@ -396,7 +377,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
       categoryEmoji: chat.categoryEmoji,
     });
     setShowSchedule(false);
-    sendSystemMessage(chatId, `📅 Xizmat rejalashtirildi: ${date} soat ${time}`);
+    sendSystemMessage(chatId, tFormat(t.providerChats.schedule.systemMsgTpl, { date, time }));
   }
 
   function handleReviewSubmit(data: ReviewSubmitData) {
@@ -427,10 +408,9 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 
   const defaultLocation = [request?.district, request?.region].filter(Boolean).join(", ");
 
-  // Group messages by day
   const grouped: Array<{ day: string; messages: ProviderChatMessage[] }> = [];
   for (const msg of chat.messages) {
-    const day = formatDay(msg.timestamp);
+    const day = formatDay(msg.timestamp, t);
     const last = grouped[grouped.length - 1];
     if (last?.day === day) last.messages.push(msg);
     else grouped.push({ day, messages: [msg] });
@@ -444,7 +424,6 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
       transition={{ type: "spring", stiffness: 400, damping: 35 }}
       className="fixed inset-x-0 top-0 bottom-14 bg-gray-50 z-40 flex flex-col"
     >
-      {/* Header */}
       <div className="bg-white border-b border-gray-100 shrink-0 z-10 shadow-sm">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           <button
@@ -454,7 +433,6 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             <X className="w-4 h-4" />
           </button>
 
-          {/* Clickable customer avatar */}
           <button
             onClick={() => setShowCustomerProfile(true)}
             className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-sm active:scale-95 transition-transform ring-2 ring-transparent hover:ring-violet-300 overflow-hidden"
@@ -467,7 +445,6 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             )}
           </button>
 
-          {/* Clickable name + subtitle area */}
           <button
             onClick={() => setShowCustomerProfile(true)}
             className="flex-1 min-w-0 text-left"
@@ -476,12 +453,11 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             <div className="flex items-center gap-1.5">
               <Circle className="w-2 h-2 fill-emerald-500 text-emerald-500 flex-shrink-0" />
               <p className="text-[11px] text-gray-400">
-                O'rtacha javob vaqti: {chat.avgResponseTime} daqiqa
+                {tFormat(t.providerChats.header.avgResponseTpl, { n: chat.avgResponseTime })}
               </p>
             </div>
           </button>
 
-          {/* Live offer status badge or Complete / Review button */}
           {canComplete ? (
             <button
               onClick={() => setShowCompleteConfirm(true)}
@@ -489,12 +465,12 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
               style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              Tugatildi
+              {t.providerChats.header.completed}
             </button>
           ) : providerWaiting ? (
             <div className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
               <Clock className="w-3 h-3" />
-              Mijoz kutilmoqda
+              {t.providerChats.badges.customerWaiting}
             </div>
           ) : alreadyCompleted ? (
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -502,27 +478,26 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
                 <button
                   onClick={() => { setReviewDismissed(false); setShowReview(true); }}
                   className="w-7 h-7 rounded-xl bg-white-400 hover:bg-gray-200 flex items-center justify-center transition-colors active:scale-95 shadow-sm"
-                  title="Baholash"
+                  title={t.providerChats.header.review}
                 >
                   <Star className="w-5 h-5 text-amber-500" />
                 </button>
               )}
-              <OfferStatusBadge status="completed" />
+              <OfferStatusBadge status="completed" t={t} />
             </div>
           ) : offer ? (
             <div className="flex-shrink-0">
-              <OfferStatusBadge status={offer.status} />
+              <OfferStatusBadge status={offer.status} t={t} />
             </div>
           ) : null}
         </div>
       </div>
 
-      {/* Messages area */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="max-w-lg mx-auto w-full px-4 pt-4 pb-4">
           {grouped.length === 0 && (
             <div className="text-center py-8 text-gray-400 text-sm">
-              Hozircha xabar yo'q
+              {t.providerChats.empty.noMessages}
             </div>
           )}
 
@@ -541,25 +516,23 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             </div>
           ))}
 
-          {/* Fallback status banner for old chats that pre-date system-message injection */}
           {offer && offer.status !== "pending" &&
             !chat.messages.some(
               (m) =>
                 m.sender === "system" &&
                 (m.text.includes("qabul qilindi") || m.text.includes("rad etildi"))
-            ) && <StatusBanner status={offer.status} />}
+            ) && <StatusBanner status={offer.status} t={t} />}
 
           <div ref={bottomRef} className="h-1" />
         </div>
       </div>
 
-      {/* Input — disabled when offer is rejected */}
       {isRejected ? (
         <div className="bg-red-50 border-t border-red-100">
           <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-center gap-2">
             <X className="w-4 h-4 text-red-400 flex-shrink-0" />
             <p className="text-sm font-semibold text-red-500">
-              Taklif rad etildi. Suhbat yopildi.
+              {t.providerChats.rejected}
             </p>
           </div>
         </div>
@@ -568,7 +541,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
           {attachPreview && (
             <div className="max-w-lg mx-auto px-4 pt-2">
               <div className="relative inline-block">
-                <img src={attachPreview} alt="attachment" className="h-16 w-16 rounded-xl object-cover border border-gray-200" />
+                <img src={attachPreview} alt={t.providerChats.input.attachAlt} className="h-16 w-16 rounded-xl object-cover border border-gray-200" />
                 <button
                   onClick={() => setAttachPreview(null)}
                   className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white"
@@ -579,13 +552,12 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             </div>
           )}
           <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-2">
-            {/* Schedule button */}
             {canSchedule && (
               isAlreadyPlanned ? (
                 <button
                   disabled
                   className="flex items-center gap-1.5 h-11 px-3 rounded-2xl border border-gray-200 bg-gray-50 text-gray-400 text-[11px] font-semibold flex-shrink-0 cursor-not-allowed opacity-60 select-none"
-                  title="Xizmat rejalashtirilgan"
+                  title={t.providerChats.schedule.plannedTitle}
                 >
                   <CalendarCheck2 className="w-4 h-4" />
                 </button>
@@ -593,7 +565,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
                 <button
                   onClick={() => setShowSchedule(true)}
                   className="w-11 h-11 rounded-2xl border-2 border-dashed border-violet-300 flex items-center justify-center text-violet-500 hover:bg-violet-50 transition-colors flex-shrink-0 active:scale-95"
-                  title="Xizmatni rejalashtirish"
+                  title={t.providerChats.schedule.title}
                 >
                   <CalendarPlus className="w-5 h-5" />
                 </button>
@@ -617,7 +589,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
-              placeholder="Xabar yozing..."
+              placeholder={t.providerChats.input.placeholder}
               className="flex-1 h-11 px-4 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
             />
             <button
@@ -632,7 +604,6 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
         </div>
       )}
 
-      {/* Customer profile modal */}
       <AnimatePresence>
         {showCustomerProfile && (
           <PublicProfilePreviewModal
@@ -651,7 +622,6 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
         )}
       </AnimatePresence>
 
-      {/* Schedule modal */}
       <AnimatePresence>
         {showSchedule && (
           <ScheduleModal
@@ -663,7 +633,6 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
         )}
       </AnimatePresence>
 
-      {/* Review modal */}
       <AnimatePresence>
         {showReview && offer && (
           <ReviewModal
@@ -671,21 +640,20 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             subjectName={chat.customerName}
             subjectInitials={chat.customerInitials}
             subjectColor={chat.customerColor}
-            prompt="Mijozni baholang"
+            prompt={t.providerChats.review.prompt}
             onSubmit={handleReviewSubmit}
             onSkip={() => { setShowReview(false); setReviewDismissed(true); }}
           />
         )}
       </AnimatePresence>
 
-      {/* Completion confirmation modal */}
       <AnimatePresence>
         {showCompleteConfirm && (
           <ConfirmModal
             key="provider-chats-complete-confirm"
-            title="Xizmat yakunlanganligini tasdiqlaysizmi?"
-            message={"Bu amalni ortga qaytarib bo'lmaydi.\n\nXizmat haqiqatan ham yakunlandimi?\nXizmat yakunida xaridor xizmat sifatini baholashi mumkin."}
-            confirmText="Ha, yakunlandi"
+            title={t.providerChats.complete.title}
+            message={t.providerChats.complete.message}
+            confirmText={t.providerChats.complete.confirm}
             onConfirm={handleComplete}
             onClose={() => setShowCompleteConfirm(false)}
           />
@@ -695,8 +663,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   );
 }
 
-/* ─── Chat Row ───────────────────────────────────────────────────── */
-function ChatRow({ chat, index, onClick }: { chat: ProviderChat; index: number; onClick: () => void }) {
+function ChatRow({ chat, index, onClick, t }: { chat: ProviderChat; index: number; onClick: () => void; t: Dict }) {
   const lastMsg = chat.messages[chat.messages.length - 1];
   const offer = getOfferForChat(chat.requestId, chat.masterId);
   const customerLocal = chat.customerId ? getLocalProfile(chat.customerId) : null;
@@ -738,14 +705,14 @@ function ChatRow({ chat, index, onClick }: { chat: ProviderChat; index: number; 
             ? (
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
                 <Clock className="w-3 h-3" />
-                Mijoz kutilmoqda
+                {t.providerChats.badges.customerWaiting}
               </span>
             )
-            : <OfferStatusBadge status={offer.status} />
+            : <OfferStatusBadge status={offer.status} t={t} />
         )}
         {lastMsg && (
           <p className="text-[11px] text-gray-400 truncate mt-0.5">
-            {lastMsg.sender === "provider" ? "Siz: " : ""}{lastMsg.text}
+            {lastMsg.sender === "provider" ? t.providerChats.row.youPrefix : ""}{lastMsg.text}
           </p>
         )}
       </div>
@@ -765,11 +732,11 @@ function ChatRow({ chat, index, onClick }: { chat: ProviderChat; index: number; 
   );
 }
 
-/* ─── Main Page ──────────────────────────────────────────────────── */
 type SortTab = "all" | "unread" | "by-service";
 
 export default function ProviderChatsPage() {
   useStoreRefresh();
+  const { t } = useI18n();
   const [, setLocation] = useLocation();
   const [tab, setTab] = useState<SortTab>("all");
   const [query, setQuery] = useState("");
@@ -781,7 +748,7 @@ export default function ProviderChatsPage() {
 
   const chats = getProviderChats(masterId);
   const totalUnread = chats.reduce((s, c) => s + c.unread, 0);
-  const services = SERVICE_CATEGORIES;
+  const services = t.providerChats.serviceCategories;
 
   let displayed = chats;
   if (tab === "unread") displayed = chats.filter((c) => c.unread > 0);
@@ -802,14 +769,13 @@ export default function ProviderChatsPage() {
   }
 
   const tabs: Array<{ id: SortTab; label: string; count?: number }> = [
-    { id: "all", label: "Barchasi", count: chats.length },
-    { id: "unread", label: "O'qilmagan", count: totalUnread || undefined },
-    { id: "by-service", label: "Xizmat bo'yicha" },
+    { id: "all", label: t.providerChats.tabs.all, count: chats.length },
+    { id: "unread", label: t.providerChats.tabs.unread, count: totalUnread || undefined },
+    { id: "by-service", label: t.providerChats.tabs.byService },
   ];
 
   return (
     <div className={openChatId ? "h-screen overflow-hidden bg-gray-50" : "min-h-screen bg-gray-50 pb-24"}>
-      {/* Header */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 pt-4 pb-3">
           <div className="flex items-center gap-3 mb-3">
@@ -817,63 +783,62 @@ export default function ProviderChatsPage() {
               <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
             </button>
             <div className="flex-1">
-              <h1 className="font-extrabold text-sm text-gray-900">Suhbatlarim</h1>
+              <h1 className="font-extrabold text-sm text-gray-900">{t.providerChats.title}</h1>
               <p className="text-xs text-gray-400">
-                {totalUnread > 0 ? `${totalUnread} ta o'qilmagan` : `${chats.length} ta suhbat`}
+                {totalUnread > 0
+                  ? tFormat(t.providerChats.unreadCountTpl, { n: totalUnread })
+                  : tFormat(t.providerChats.totalCountTpl, { n: chats.length })}
               </p>
             </div>
           </div>
 
-          {/* Search */}
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Mijoz yoki xizmat..."
+              placeholder={t.providerChats.searchPlaceholder}
               className="w-full h-10 pl-9 pr-4 rounded-2xl bg-gray-50 border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
             />
           </div>
 
-          {/* Tabs */}
           <div className="flex gap-2">
-            {tabs.map((t) => (
+            {tabs.map((tt) => (
               <button
-                key={t.id}
+                key={tt.id}
                 onClick={() => {
-                  setTab(t.id);
-                  if (t.id !== "by-service") setSelectedService(null);
+                  setTab(tt.id);
+                  if (tt.id !== "by-service") setSelectedService(null);
                 }}
                 className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all ${
-                  tab === t.id
+                  tab === tt.id
                     ? "text-white shadow-sm"
                     : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                 }`}
-                style={tab === t.id ? { background: VIOLET } : {}}
+                style={tab === tt.id ? { background: VIOLET } : {}}
               >
-                {t.label}
-                {t.count !== undefined && t.count > 0 && (
+                {tt.label}
+                {tt.count !== undefined && tt.count > 0 && (
                   <span className={`text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center ${
-                    tab === t.id ? "bg-white text-violet-700" : "bg-violet-500 text-white"
+                    tab === tt.id ? "bg-white text-violet-700" : "bg-violet-500 text-white"
                   }`}>
-                    {t.count}
+                    {tt.count}
                   </span>
                 )}
-                {t.id === "by-service" && tab === "by-service" && (
+                {tt.id === "by-service" && tab === "by-service" && (
                   <ChevronDown className="w-3 h-3" />
                 )}
               </button>
             ))}
           </div>
 
-          {/* Service filter dropdown */}
           {tab === "by-service" && (
             <div className="mt-2 relative">
               <button
                 onClick={() => setShowServiceMenu((v) => !v)}
                 className="w-full h-9 px-3 rounded-xl border border-gray-200 bg-gray-50 text-xs text-left flex items-center justify-between text-gray-700"
               >
-                {selectedService ?? "Barcha xizmatlar"}
+                {selectedService ?? t.providerChats.serviceFilter.all}
                 <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
               </button>
               {showServiceMenu && (
@@ -882,9 +847,9 @@ export default function ProviderChatsPage() {
                     onClick={() => { setSelectedService(null); setShowServiceMenu(false); }}
                     className="w-full px-4 py-2.5 text-xs text-left text-gray-500 hover:bg-gray-50 border-b border-gray-100"
                   >
-                    Barcha xizmatlar
+                    {t.providerChats.serviceFilter.all}
                   </button>
-                  {services.map((s) => (
+                  {services.map((s: string) => (
                     <button
                       key={s}
                       onClick={() => { setSelectedService(s); setShowServiceMenu(false); }}
@@ -900,16 +865,15 @@ export default function ProviderChatsPage() {
         </div>
       </div>
 
-      {/* Chat list */}
       <div className="max-w-lg mx-auto px-4 py-4">
         {displayed.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
               <MessageCircle className="w-7 h-7 text-gray-400" />
             </div>
-            <p className="font-bold text-gray-600 mb-1">Suhbatlar yo'q</p>
+            <p className="font-bold text-gray-600 mb-1">{t.providerChats.empty.none}</p>
             <p className="text-sm text-gray-400">
-              {tab === "unread" ? "Barcha xabarlar o'qilgan." : "Hozircha suhbat mavjud emas."}
+              {tab === "unread" ? t.providerChats.empty.noUnread : t.providerChats.empty.noChats}
             </p>
           </div>
         ) : (
@@ -920,13 +884,13 @@ export default function ProviderChatsPage() {
                 chat={chat}
                 index={i}
                 onClick={() => setOpenChatId(chat.id)}
+                t={t}
               />
             ))}
           </div>
         )}
       </div>
 
-      {/* Inline chat view */}
       <AnimatePresence>
         {openChatId && (
           <ChatView

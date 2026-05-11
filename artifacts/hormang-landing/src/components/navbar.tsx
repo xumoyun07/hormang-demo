@@ -4,12 +4,14 @@ import { Menu, X, LogOut, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/auth-context";
+import { useI18n } from "@/contexts/i18n-context";
 import logoImg from "/hormang-logo.png";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { t } = useI18n();
   const [, setLocation] = useLocation();
   const [logoHovered, setLogoHovered] = useState(false);
 
@@ -20,9 +22,9 @@ export function Navbar() {
   }, []);
 
   const navLinks = [
-    { name: "Xizmatlar", href: "#categories" },
-    { name: "Qanday ishlaydi", href: "#how-it-works" },
-    { name: "Narxlar", href: "#pricing" },
+    { name: t.navbar.services, href: "#categories" },
+    { name: t.navbar.howItWorks, href: "#how-it-works" },
+    { name: t.navbar.pricing, href: "#pricing" },
   ];
 
   async function handleLogout() {
@@ -100,7 +102,7 @@ export function Navbar() {
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     <Button variant="ghost" size="sm" onClick={handleLogout} className="text-gray-500 hover:text-gray-800 gap-1.5 font-medium">
                       <LogOut className="w-3.5 h-3.5" />
-                      Chiqish
+                      {t.navbar.logout}
                     </Button>
                   </motion.div>
                 </>
@@ -113,7 +115,7 @@ export function Navbar() {
                       onClick={() => setLocation("/auth/login")}
                     >
                       <User className="w-3.5 h-3.5" />
-                      Kirish
+                      {t.navbar.login}
                     </Button>
                   </motion.div>
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.38 }}>
@@ -121,7 +123,7 @@ export function Navbar() {
                       className="font-semibold bg-blue-500 hover:bg-blue-700 shadow-sm"
                       onClick={() => setLocation("/auth/role")}
                     >
-                      Ro'yxatdan o'tish
+                      {t.navbar.signup}
                     </Button>
                   </motion.div>
                 </>
@@ -183,7 +185,7 @@ export function Navbar() {
                       {user.firstName} {user.lastName}
                     </Button>
                     <Button variant="ghost" className="w-full font-semibold gap-2 text-gray-500" onClick={handleLogout}>
-                      <LogOut className="w-4 h-4" /> Chiqish
+                      <LogOut className="w-4 h-4" /> {t.navbar.logout}
                     </Button>
                   </>
                 ) : (
@@ -193,13 +195,13 @@ export function Navbar() {
                       className="w-full font-semibold border-gray-200"
                       onClick={() => { setMobileMenuOpen(false); setLocation("/auth/login"); }}
                     >
-                      Kirish
+                      {t.navbar.login}
                     </Button>
                     <Button
                       className="w-full font-semibold bg-blue-600 hover:bg-blue-700"
                       onClick={() => { setMobileMenuOpen(false); setLocation("/auth/role"); }}
                     >
-                      Ro'yxatdan o'tish
+                      {t.navbar.signup}
                     </Button>
                   </>
                 )}
