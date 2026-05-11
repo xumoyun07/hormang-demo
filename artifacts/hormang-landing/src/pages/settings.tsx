@@ -191,28 +191,6 @@ export default function SettingsPage() {
           />
         </Section>
 
-        {/* ── Provider-only: Token history ── */}
-        {isProvider && (
-          <Section title="Ijrochi">
-            <div className="px-4 py-3.5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "hsl(262,80%,96%)" }}>
-                <TangaCoin size="md" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-gray-900">Tokenlar tarixi</p>
-                <p className="text-xs text-gray-500 mt-0.5">Token sarflanishi haqida ma'lumot</p>
-              </div>
-            </div>
-            {/* Empty state */}
-            <div className="px-4 pb-5 flex flex-col items-center text-center">
-              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
-                <Package className="w-6 h-6 text-gray-300" />
-              </div>
-              <p className="text-sm font-semibold text-gray-500 mb-0.5">Hozircha tarix yo'q</p>
-              <p className="text-xs text-gray-400">Token sarflash tarixi bu yerda ko'rinadi</p>
-            </div>
-          </Section>
-        )}
 
         {/* ── Account ── */}
         <Section title="Hisob">
