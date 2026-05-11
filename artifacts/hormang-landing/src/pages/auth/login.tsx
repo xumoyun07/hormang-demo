@@ -4,6 +4,8 @@ import { useLocation } from "wouter";
 import { Phone, ArrowRight, Loader2, LogIn, ChevronLeft, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 import { sendSmsCode, loginUser } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
 import logoImg from "/hormang-logo.png";
@@ -22,6 +24,7 @@ function formatPhone(raw: string): string {
 export default function LoginPage() {
   const [, setLocation] = useLocation();
   const { setAuth } = useAuth();
+  const { t } = useI18n();
   const { toast } = useToast();
 
   const [step, setStep] = useState<Step>("phone");
@@ -50,7 +53,7 @@ export default function LoginPage() {
     setError("");
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 9) {
-      setError("To'g'ri telefon raqami kiriting");
+      setError(t.auth.shared.invalidPhone);
       return;
     }
     setLoading(true);
@@ -59,9 +62,9 @@ export default function LoginPage() {
       setDevCode(res.devCode ?? null);
       setStep("otp");
       startResendTimer();
-      toast({ title: "Tasdiqlash kodi yuborildi" });
+      toast({ title: t.common.codeSent });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Xatolik yuz berdi";
+      const msg = err instanceof Error ? err.message : t.common.errorGeneric;
       setError(msg);
     } finally {
       setLoading(false);
@@ -71,17 +74,17 @@ export default function LoginPage() {
   async function handleVerifyOtp() {
     setError("");
     if (otp.length < 6) {
-      setError("6 xonali kodni kiriting");
+      setError(t.auth.shared.invalidOtp);
       return;
     }
     setLoading(true);
     try {
       const res = await loginUser({ phone: getFullPhone(), otp });
       setAuth(res.user, res.providerProfile ?? null);
-      toast({ title: `Xush kelibsiz, ${res.user.firstName}!` });
+      toast({ title: tFormat(t.auth.login.welcomeTpl, { name: res.user.firstName }) });
       setLocation("/dashboard");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Xatolik yuz berdi";
+      const msg = err instanceof Error ? err.message : t.common.errorGeneric;
       setError(msg);
     } finally {
       setLoading(false);
@@ -97,9 +100,9 @@ export default function LoginPage() {
       const res = await sendSmsCode(getFullPhone(), "login");
       setDevCode(res.devCode ?? null);
       startResendTimer();
-      toast({ title: "Yangi kod yuborildi" });
+      toast({ title: t.common.newCodeSent });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Xatolik yuz berdi";
+      const msg = err instanceof Error ? err.message : t.common.errorGeneric;
       setError(msg);
     } finally {
       setLoading(false);
@@ -122,11 +125,9 @@ export default function LoginPage() {
           >
             <img src={logoImg} alt="Hormang" className="w-24 h-24 object-contain drop-shadow-lg" />
           </motion.div>
-          <h1 className="text-2xl font-display font-bold text-foreground mb-1">Hisobingizga kiring</h1>
+          <h1 className="text-2xl font-display font-bold text-foreground mb-1">{t.auth.login.title}</h1>
           <p className="text-muted-foreground text-sm">
-            {step === "phone"
-              ? "Telefon raqamingizni kiriting"
-              : `+998 ${phone} ga kod yuborildi`}
+            {step === "phone" ? t.auth.login.enterPhone : tFormat(t.auth.shared.sentToTpl, { phone })}
           </p>
         </div>
 
@@ -154,7 +155,7 @@ export default function LoginPage() {
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-1.5">
                   <Phone className="w-3.5 h-3.5 inline mr-1.5 text-primary" />
-                  Telefon raqam
+                  {t.auth.shared.phoneLabel}
                 </label>
                 <div className="flex items-center gap-0">
                   <span className="h-11 px-3 flex items-center rounded-l-xl border border-r-0 border-border bg-muted text-sm font-semibold text-muted-foreground select-none">
@@ -165,7 +166,7 @@ export default function LoginPage() {
                     value={phone}
                     onChange={e => setPhone(formatPhone(e.target.value))}
                     onKeyDown={e => e.key === "Enter" && handleSendCode()}
-                    placeholder="90 123 45 67"
+                    placeholder={t.auth.shared.phonePlaceholder}
                     maxLength={12}
                     className="flex-1 h-11 px-4 rounded-r-xl border border-border bg-background text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all text-sm"
                     autoFocus
@@ -179,11 +180,11 @@ export default function LoginPage() {
                 className="w-full h-11 font-bold text-sm gap-2"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                {loading ? "Yuborilmoqda..." : "Tasdiqlash kodi yuborish"}
+                {loading ? t.common.sending : t.auth.shared.sendCode}
               </Button>
 
               <p className="text-center text-xs text-muted-foreground pt-1">
-                SMS orqali 6 xonali tasdiqlash kodi yuboriladi
+                {t.auth.shared.smsHint}
               </p>
             </motion.div>
           )}
@@ -199,14 +200,14 @@ export default function LoginPage() {
             >
               {devCode && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                  <p className="text-xs text-amber-700 font-semibold mb-0.5">Demo rejim — SMS simulyatsiya</p>
+                  <p className="text-xs text-amber-700 font-semibold mb-0.5">{t.common.demoSmsTitle}</p>
                   <p className="text-amber-900 font-bold text-lg tracking-[0.3em]">{devCode}</p>
                 </div>
               )}
 
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-1.5">
-                  Tasdiqlash kodi
+                  {t.auth.shared.otpLabel}
                 </label>
                 <input
                   type="text"
@@ -214,7 +215,7 @@ export default function LoginPage() {
                   value={otp}
                   onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   onKeyDown={e => e.key === "Enter" && handleVerifyOtp()}
-                  placeholder="000000"
+                  placeholder={t.auth.shared.otpPlaceholder}
                   maxLength={6}
                   className="w-full h-14 px-4 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all text-2xl font-bold tracking-[0.4em] text-center"
                   autoFocus
@@ -227,7 +228,7 @@ export default function LoginPage() {
                 className="w-full h-11 font-bold text-sm gap-2"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
-                {loading ? "Tekshirilmoqda..." : "Kirish"}
+                {loading ? t.common.checking : t.auth.login.submit}
               </Button>
 
               <div className="flex items-center justify-between">
@@ -236,7 +237,7 @@ export default function LoginPage() {
                   onClick={() => { setStep("phone"); setOtp(""); setDevCode(null); setError(""); }}
                   className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
                 >
-                  <ChevronLeft className="w-4 h-4" /> Raqamni o'zgartirish
+                  <ChevronLeft className="w-4 h-4" /> {t.common.changePhone}
                 </button>
                 <button
                   type="button"
@@ -245,7 +246,7 @@ export default function LoginPage() {
                   className="text-sm text-primary hover:underline flex items-center gap-1.5 disabled:opacity-50 disabled:no-underline transition-all"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  {resendTimer > 0 ? `${resendTimer}s` : "Qayta yuborish"}
+                  {resendTimer > 0 ? `${resendTimer}s` : t.common.resend}
                 </button>
               </div>
             </motion.div>
@@ -253,22 +254,22 @@ export default function LoginPage() {
         </AnimatePresence>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          Hali ro'yxatdan o'tmaganmisiz?{" "}
+          {t.auth.login.notRegistered}{" "}
           <button
             onClick={() => setLocation("/auth/role")}
             className="font-bold text-primary hover:underline"
           >
-            Ro'yxatdan o'tish
+            {t.auth.login.register}
           </button>
         </p>
 
         <p className="text-center text-xs text-muted-foreground mt-3">
-          Eski hisobingiz bormi?{" "}
+          {t.auth.login.legacyAccount}{" "}
           <button
             onClick={() => setLocation("/auth/migrate")}
             className="font-medium text-muted-foreground hover:text-primary hover:underline transition-colors"
           >
-            Ko'chirish
+            {t.auth.login.migrate}
           </button>
         </p>
       </motion.div>

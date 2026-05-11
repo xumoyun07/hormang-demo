@@ -12,4 +12,8 @@ export const LOCALES: { code: Locale; name: string }[] = [
 
 export const dictionaries: Record<Locale, Dict> = { uz, ru, en };
 
+export function tFormat(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, k) => String(vars[k] ?? ""));
+}
+
 export type { Dict };

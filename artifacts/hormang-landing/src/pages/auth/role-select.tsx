@@ -1,13 +1,20 @@
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { ShoppingBag, Briefcase, ArrowRight } from "lucide-react";
+import { useI18n } from "@/contexts/i18n-context";
 
 export default function RoleSelectPage() {
   const [, setLocation] = useLocation();
+  const { t } = useI18n();
 
   function pick(role: "buyer" | "provider") {
     setLocation(`/auth/register?role=${role}`);
   }
+
+  const options = [
+    { role: "buyer" as const,    icon: ShoppingBag, title: t.auth.roleSelect.buyerTitle,    desc: t.auth.roleSelect.buyerDesc },
+    { role: "provider" as const, icon: Briefcase,   title: t.auth.roleSelect.providerTitle, desc: t.auth.roleSelect.providerDesc },
+  ];
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -28,28 +35,15 @@ export default function RoleSelectPage() {
             Hormang
           </motion.div>
           <h1 className="text-3xl font-display font-bold text-foreground mb-3">
-            Xush kelibsiz!
+            {t.auth.roleSelect.welcome}
           </h1>
           <p className="text-muted-foreground text-base">
-            Hormangdan qanday foydalanmoqchisiz?
+            {t.auth.roleSelect.question}
           </p>
         </div>
 
         <div className="grid gap-4">
-          {[
-            {
-              role: "buyer" as const,
-              icon: ShoppingBag,
-              title: "Xizmat qidiraman",
-              desc: "Tozalovchi, usta, enaga va boshqa mahalliy xizmatlarni toping",
-            },
-            {
-              role: "provider" as const,
-              icon: Briefcase,
-              title: "Xizmat ko'rsataman",
-              desc: "Profilingizni yarating va mahalliy mijozlarni toping",
-            },
-          ].map(({ role, icon: Icon, title, desc }) => (
+          {options.map(({ role, icon: Icon, title, desc }) => (
             <motion.button
               key={role}
               whileHover={{ scale: 1.02, y: -2 }}
@@ -73,12 +67,12 @@ export default function RoleSelectPage() {
         </div>
 
         <p className="text-center text-sm text-muted-foreground mt-8">
-          Allaqachon hisobingiz bormi?{" "}
+          {t.auth.roleSelect.haveAccount}{" "}
           <button
             onClick={() => setLocation("/auth/login")}
             className="font-bold text-primary hover:underline"
           >
-            Kirish
+            {t.auth.roleSelect.login}
           </button>
         </p>
       </motion.div>

@@ -7,17 +7,12 @@ import { useLocation, useSearch } from "wouter";
 import { Phone, Loader2, CheckCircle2, XCircle, ChevronLeft, ChevronRight, ArrowRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 import { sendSmsCode, registerUser, saveProviderProfile } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
 import { recordReferralSignup, processReferralReward } from "@/lib/referral-store";
 import logoImg from "/hormang-logo.png";
-
-const SERVICE_CATEGORIES = [
-  "Tozalik", "Ta'mirlash / Usta", "Enaga / Bola parvarishi",
-  "Ovqat pishirish", "Ko'chirish / Transport", "Go'zallik / Sartaroshlik",
-  "Avto xizmat", "Repetitor / O'qituvchi", "Elektr ishlari",
-  "Santexnika", "Dizayn / Yaratuvchanlik", "Boshqalar",
-];
 
 function formatPhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -28,39 +23,45 @@ function formatPhone(raw: string): string {
   return `${digits.slice(0, 3)} ${digits.slice(2, 5)} ${digits.slice(5, 7)} ${digits.slice(7, 9)}`;
 }
 
-const infoSchema = z.object({
-  firstName: z.string().min(2, "Ism kamida 2 harf"),
-  lastName: z.string().min(2, "Familiya kamida 2 harf"),
-  agreeTerms: z.literal(true, { errorMap: () => ({ message: "Shartlarga rozilik bildirishingiz kerak" }) }),
-});
-
-const providerSchema = z.object({
-  categories: z.array(z.string()).min(1, "Kamida bitta kategoriya tanlang"),
-  bio: z.string().max(300).optional(),
-  preferredLocation: z.string().optional(),
-});
-
-type InfoData = z.infer<typeof infoSchema>;
-type ProviderData = z.infer<typeof providerSchema>;
 type Step = "info" | "phone" | "otp" | "provider";
 
-function InfoForm({ role, onDone }: { role: "buyer" | "provider"; onDone: (d: InfoData) => void }) {
+function makeInfoSchema(t: ReturnType<typeof useI18n>["t"]) {
+  return z.object({
+    firstName: z.string().min(2, t.auth.register.firstNameMin),
+    lastName: z.string().min(2, t.auth.register.lastNameMin),
+    agreeTerms: z.literal(true, { errorMap: () => ({ message: t.auth.register.agreeRequired }) }),
+  });
+}
+
+function makeProviderSchema(t: ReturnType<typeof useI18n>["t"]) {
+  return z.object({
+    categories: z.array(z.string()).min(1, t.auth.register.catsRequired),
+    bio: z.string().max(300).optional(),
+    preferredLocation: z.string().optional(),
+  });
+}
+
+type InfoData = z.infer<ReturnType<typeof makeInfoSchema>>;
+type ProviderData = z.infer<ReturnType<typeof makeProviderSchema>>;
+
+function InfoForm({ onDone }: { role: "buyer" | "provider"; onDone: (d: InfoData) => void }) {
+  const { t } = useI18n();
   const { register, handleSubmit, formState: { errors } } = useForm<InfoData>({
-    resolver: zodResolver(infoSchema),
+    resolver: zodResolver(makeInfoSchema(t)),
   });
 
   return (
     <form onSubmit={handleSubmit(onDone)} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-semibold text-foreground mb-1.5">Ism</label>
-          <input {...register("firstName")} placeholder="Alisher"
+          <label className="block text-sm font-semibold text-foreground mb-1.5">{t.auth.register.firstName}</label>
+          <input {...register("firstName")} placeholder={t.auth.register.firstNamePh}
             className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all" />
           {errors.firstName && <p className="text-destructive text-xs mt-1">{errors.firstName.message}</p>}
         </div>
         <div>
-          <label className="block text-sm font-semibold text-foreground mb-1.5">Familiya</label>
-          <input {...register("lastName")} placeholder="Toshmatov"
+          <label className="block text-sm font-semibold text-foreground mb-1.5">{t.auth.register.lastName}</label>
+          <input {...register("lastName")} placeholder={t.auth.register.lastNamePh}
             className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all" />
           {errors.lastName && <p className="text-destructive text-xs mt-1">{errors.lastName.message}</p>}
         </div>
@@ -69,25 +70,30 @@ function InfoForm({ role, onDone }: { role: "buyer" | "provider"; onDone: (d: In
         <input {...register("agreeTerms")} id="terms" type="checkbox"
           className="w-4 h-4 mt-0.5 rounded accent-primary border-border" />
         <label htmlFor="terms" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
-          <span className="text-primary font-semibold hover:underline">Foydalanish shartlari</span> va{" "}
-          <span className="text-primary font-semibold hover:underline">Maxfiylik siyosatiga</span> roziman
+          {t.auth.register.agreementBefore}
+          <span className="text-primary font-semibold hover:underline">{t.auth.register.termsLink}</span>
+          {" "}
+          <span className="text-primary font-semibold hover:underline">{t.auth.register.privacyLink}</span>
+          {t.auth.register.agreementAfter}
         </label>
       </div>
       {errors.agreeTerms && <p className="text-destructive text-xs -mt-2">{errors.agreeTerms.message}</p>}
       <Button type="submit" className="w-full h-11 font-bold gap-2">
-        Davom etish <ChevronRight className="w-4 h-4" />
+        {t.common.continue} <ChevronRight className="w-4 h-4" />
       </Button>
     </form>
   );
 }
 
 function ProviderForm({ onDone, onBack, loading }: { onDone: (d: ProviderData) => void; onBack: () => void; loading: boolean }) {
+  const { t } = useI18n();
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<ProviderData>({
-    resolver: zodResolver(providerSchema),
+    resolver: zodResolver(makeProviderSchema(t)),
     defaultValues: { categories: [] },
   });
 
   const selected = watch("categories") ?? [];
+  const SERVICE_CATEGORIES = t.auth.register.serviceCategories;
 
   function toggleCat(cat: string) {
     if (selected.includes(cat)) {
@@ -101,7 +107,7 @@ function ProviderForm({ onDone, onBack, loading }: { onDone: (d: ProviderData) =
     <form onSubmit={handleSubmit(onDone)} className="space-y-5">
       <div>
         <label className="block text-sm font-semibold text-foreground mb-3">
-          Xizmat kategoriyalarini tanlang <span className="text-destructive">*</span>
+          {t.auth.register.catsLabel} <span className="text-destructive">*</span>
         </label>
         <div className="flex flex-wrap gap-2">
           {SERVICE_CATEGORIES.map(cat => {
@@ -128,24 +134,24 @@ function ProviderForm({ onDone, onBack, loading }: { onDone: (d: ProviderData) =
       </div>
       <div>
         <label className="block text-sm font-semibold text-foreground mb-1.5">
-          O'zingiz haqida <span className="text-muted-foreground font-normal">(ixtiyoriy)</span>
+          {t.auth.register.bioLabel} <span className="text-muted-foreground font-normal">({t.common.optional})</span>
         </label>
         <textarea {...register("bio")} rows={3}
-          placeholder="Tajribangiz, ko'nikmalaringiz haqida qisqacha yozing..."
+          placeholder={t.auth.register.bioPlaceholder}
           className="w-full px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all resize-none" />
       </div>
       <div>
-        <label className="block text-sm font-semibold text-foreground mb-1.5">Hudud <span className="text-muted-foreground font-normal">(ixtiyoriy)</span></label>
-        <input {...register("preferredLocation")} placeholder="Toshkent, Yunusobod"
+        <label className="block text-sm font-semibold text-foreground mb-1.5">{t.auth.register.locationLabel} <span className="text-muted-foreground font-normal">({t.common.optional})</span></label>
+        <input {...register("preferredLocation")} placeholder={t.auth.register.locationPlaceholder}
           className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all" />
       </div>
       <div className="flex gap-3">
         <Button type="button" variant="outline" onClick={onBack} className="h-11 px-5 border-2 font-semibold gap-1">
-          <ChevronLeft className="w-4 h-4" /> Orqaga
+          <ChevronLeft className="w-4 h-4" /> {t.common.back}
         </Button>
         <Button type="submit" disabled={loading} className="flex-1 h-11 font-bold gap-2">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-          {loading ? "Yaratilmoqda..." : "Profil yaratish"}
+          {loading ? t.auth.register.creatingProfile : t.auth.register.createProfile}
         </Button>
       </div>
     </form>
@@ -159,6 +165,7 @@ export default function RegisterPage() {
   const refCode = params.get("ref") ?? "";
   const [, setLocation] = useLocation();
   const { setAuth, user } = useAuth();
+  const { t } = useI18n();
   const { toast } = useToast();
 
   const [step, setStep] = useState<Step>("info");
@@ -192,7 +199,7 @@ export default function RegisterPage() {
     setServerError("");
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 9) {
-      setServerError("To'g'ri telefon raqami kiriting (kamida 9 raqam)");
+      setServerError(t.auth.shared.invalidPhoneLong);
       return;
     }
     setLoading(true);
@@ -202,7 +209,7 @@ export default function RegisterPage() {
       setStep("otp");
       startResendTimer();
     } catch (err: unknown) {
-      setServerError(err instanceof Error ? err.message : "Xatolik yuz berdi");
+      setServerError(err instanceof Error ? err.message : t.common.errorGeneric);
     } finally {
       setLoading(false);
     }
@@ -217,9 +224,9 @@ export default function RegisterPage() {
       const res = await sendSmsCode(getFullPhone(), "register");
       setDevCode(res.devCode ?? null);
       startResendTimer();
-      toast({ title: "Yangi kod yuborildi" });
+      toast({ title: t.common.newCodeSent });
     } catch (err: unknown) {
-      setServerError(err instanceof Error ? err.message : "Xatolik yuz berdi");
+      setServerError(err instanceof Error ? err.message : t.common.errorGeneric);
     } finally {
       setLoading(false);
     }
@@ -229,7 +236,7 @@ export default function RegisterPage() {
     if (!infoData) return;
     setServerError("");
     if (otp.length < 6) {
-      setServerError("6 xonali kodni kiriting");
+      setServerError(t.auth.shared.invalidOtp);
       return;
     }
     setLoading(true);
@@ -245,7 +252,7 @@ export default function RegisterPage() {
       if (role === "buyer") {
         setAuth(res.user, null);
         if (refCode) recordReferralSignup(refCode, res.user.id);
-        toast({ title: `Xush kelibsiz, ${res.user.firstName}! Hormangga xush kelibsiz.` });
+        toast({ title: tFormat(t.auth.register.welcomeBuyerTpl, { name: res.user.firstName }) });
         setLocation("/dashboard");
       } else {
         setAuth(res.user, null);
@@ -253,7 +260,7 @@ export default function RegisterPage() {
         setStep("provider");
       }
     } catch (err: unknown) {
-      setServerError(err instanceof Error ? err.message : "Xatolik yuz berdi");
+      setServerError(err instanceof Error ? err.message : t.common.errorGeneric);
     } finally {
       setLoading(false);
     }
@@ -270,10 +277,10 @@ export default function RegisterPage() {
       });
       setAuth(user!, profile);
       processReferralReward(user!.id);
-      toast({ title: `Profilingiz tayyor, ${user?.firstName}! Endi so'rovlar kuting.` });
+      toast({ title: tFormat(t.auth.register.welcomeProviderTpl, { name: user?.firstName ?? "" }) });
       setLocation("/dashboard");
     } catch (err: unknown) {
-      setServerError(err instanceof Error ? err.message : "Xatolik yuz berdi");
+      setServerError(err instanceof Error ? err.message : t.common.errorGeneric);
     } finally {
       setLoading(false);
     }
@@ -310,16 +317,16 @@ export default function RegisterPage() {
           </div>
 
           <h1 className="text-2xl font-display font-bold text-foreground mb-1">
-            {step === "info" && "Hisobingizni yarating"}
-            {step === "phone" && "Telefon raqamingiz"}
-            {step === "otp" && "Kodni tasdiqlang"}
-            {step === "provider" && "Ijrochi profilingiz"}
+            {step === "info" && t.auth.register.titleInfo}
+            {step === "phone" && t.auth.register.titlePhone}
+            {step === "otp" && t.auth.register.titleOtp}
+            {step === "provider" && t.auth.register.titleProvider}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {step === "info" && "Ismingizni kiriting"}
-            {step === "phone" && "SMS tasdiqlash uchun raqamingizni kiriting"}
-            {step === "otp" && `+998 ${phone} ga kod yuborildi`}
-            {step === "provider" && "Xizmatlaringiz haqida ko'proq ma'lumot bering"}
+            {step === "info" && t.auth.register.descInfo}
+            {step === "phone" && t.auth.register.descPhone}
+            {step === "otp" && tFormat(t.auth.register.sentToTpl, { phone })}
+            {step === "provider" && t.auth.register.descProvider}
           </p>
         </div>
 
@@ -346,7 +353,7 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-1.5">
                   <Phone className="w-3.5 h-3.5 inline mr-1.5 text-primary" />
-                  Telefon raqam
+                  {t.auth.shared.phoneLabel}
                 </label>
                 <div className="flex items-center">
                   <span className="h-11 px-3 flex items-center rounded-l-xl border border-r-0 border-border bg-muted text-sm font-semibold text-muted-foreground select-none">
@@ -357,7 +364,7 @@ export default function RegisterPage() {
                     value={phone}
                     onChange={e => setPhone(formatPhone(e.target.value))}
                     onKeyDown={e => e.key === "Enter" && handleSendCode()}
-                    placeholder="90 123 45 67"
+                    placeholder={t.auth.shared.phonePlaceholder}
                     maxLength={12}
                     className="flex-1 h-11 px-4 rounded-r-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
                     autoFocus
@@ -366,11 +373,11 @@ export default function RegisterPage() {
               </div>
               <div className="flex gap-3">
                 <Button type="button" variant="outline" onClick={() => setStep("info")} className="h-11 px-5 border-2 font-semibold gap-1">
-                  <ChevronLeft className="w-4 h-4" /> Orqaga
+                  <ChevronLeft className="w-4 h-4" /> {t.common.back}
                 </Button>
                 <Button onClick={handleSendCode} disabled={loading} className="flex-1 h-11 font-bold gap-2">
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                  {loading ? "Yuborilmoqda..." : "Kodni yuborish"}
+                  {loading ? t.common.sending : t.auth.shared.sendCodeShort}
                 </Button>
               </div>
             </motion.div>
@@ -380,19 +387,19 @@ export default function RegisterPage() {
             <motion.div key="otp" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }} className="space-y-4">
               {devCode && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                  <p className="text-xs text-amber-700 font-semibold mb-0.5">Demo rejim — SMS simulyatsiya</p>
+                  <p className="text-xs text-amber-700 font-semibold mb-0.5">{t.common.demoSmsTitle}</p>
                   <p className="text-amber-900 font-bold text-lg tracking-[0.3em]">{devCode}</p>
                 </div>
               )}
               <div>
-                <label className="block text-sm font-semibold text-foreground mb-1.5">Tasdiqlash kodi</label>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">{t.auth.shared.otpLabel}</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={otp}
                   onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   onKeyDown={e => e.key === "Enter" && handleVerifyAndRegister()}
-                  placeholder="000000"
+                  placeholder={t.auth.shared.otpPlaceholder}
                   maxLength={6}
                   className="w-full h-14 px-4 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all text-2xl font-bold tracking-[0.4em] text-center"
                   autoFocus
@@ -400,17 +407,17 @@ export default function RegisterPage() {
               </div>
               <Button onClick={handleVerifyAndRegister} disabled={loading || otp.length < 6} className="w-full h-11 font-bold gap-2">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                {loading ? (role === "buyer" ? "Ro'yxatdan o'tilmoqda..." : "Tekshirilmoqda...") : "Tasdiqlash"}
+                {loading ? (role === "buyer" ? t.auth.register.registeringBuyer : t.common.checking) : t.auth.register.submitOtp}
               </Button>
               <div className="flex items-center justify-between">
                 <button type="button" onClick={() => { setStep("phone"); setOtp(""); setDevCode(null); setServerError(""); }}
                   className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors">
-                  <ChevronLeft className="w-4 h-4" /> Raqamni o'zgartirish
+                  <ChevronLeft className="w-4 h-4" /> {t.common.changePhone}
                 </button>
                 <button type="button" onClick={handleResend} disabled={resendTimer > 0}
                   className="text-sm text-primary hover:underline flex items-center gap-1.5 disabled:opacity-50 transition-all">
                   <RefreshCw className="w-3.5 h-3.5" />
-                  {resendTimer > 0 ? `${resendTimer}s` : "Qayta yuborish"}
+                  {resendTimer > 0 ? `${resendTimer}s` : t.common.resend}
                 </button>
               </div>
             </motion.div>
@@ -424,9 +431,9 @@ export default function RegisterPage() {
         </AnimatePresence>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          Allaqachon hisobingiz bormi?{" "}
+          {t.auth.register.haveAccount}{" "}
           <button onClick={() => setLocation("/auth/login")} className="font-bold text-primary hover:underline">
-            Kirish
+            {t.auth.register.login}
           </button>
         </p>
       </motion.div>

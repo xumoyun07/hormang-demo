@@ -2,35 +2,21 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { Home, LayoutGrid, ClipboardList, MessageCircle, LayoutDashboard, Wallet, List } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
+import { useI18n } from "@/contexts/i18n-context";
 import { getOffersByCustomer } from "@/lib/requests-store";
 import { getTotalUnread, getUnseenRequests } from "@/lib/provider-store";
 import { useToast } from "@/hooks/use-toast";
 
-const BUYER_TABS = [
-  { label: "Bosh sahifa", icon: Home, href: "/customer-home" },
-  { label: "Kategoriyalar", icon: LayoutGrid, href: "/questionnaire" },
-  { label: "So'rovlarim", icon: ClipboardList, href: "/my-requests" },
-  { label: "Suhbatlarim", icon: MessageCircle, href: "/chat-offers" },
-  { label: "Profil", icon: LayoutDashboard, href: "/dashboard" },
-];
-
-const PROVIDER_TABS = [
-  { label: "Bosh sahifa", icon: Home, href: "/provider-home", disabled: false },
-  { label: "So'rovlar", icon: List, href: "/provider/requests", disabled: false },
-  { label: "Hamyon", icon: Wallet, href: "/plans", disabled: false },
-  { label: "Suhbatlar", icon: MessageCircle, href: "/provider/chats", disabled: false },
-  { label: "Profil", icon: LayoutDashboard, href: "/dashboard", disabled: false },
-];
-
 export function BottomNav() {
   const [location, setLocation] = useLocation();
   const { user, activeRole, providerProfile } = useAuth();
+  const { t } = useI18n();
   const { toast } = useToast();
-  
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [window.location.pathname]);
-  
+
   if (!user) return null;
 
   const isProvider = activeRole === "provider";
@@ -39,6 +25,22 @@ export function BottomNav() {
   const pendingOffers = isProvider ? 0 : getOffersByCustomer(user?.id ?? "").filter((o) => o.status === "pending").length;
   const unseenCount = isProvider ? getUnseenRequests(selectedCategories, [], user?.id ?? "").length : 0;
   const unreadChats = isProvider ? getTotalUnread(user?.id ?? "") : 0;
+
+  const BUYER_TABS = [
+    { label: t.bottomNav.buyer.home,       icon: Home,            href: "/customer-home" },
+    { label: t.bottomNav.buyer.categories, icon: LayoutGrid,      href: "/questionnaire" },
+    { label: t.bottomNav.buyer.requests,   icon: ClipboardList,   href: "/my-requests" },
+    { label: t.bottomNav.buyer.chats,      icon: MessageCircle,   href: "/chat-offers" },
+    { label: t.bottomNav.buyer.profile,    icon: LayoutDashboard, href: "/dashboard" },
+  ];
+
+  const PROVIDER_TABS = [
+    { label: t.bottomNav.provider.home,     icon: Home,            href: "/provider-home", disabled: false },
+    { label: t.bottomNav.provider.requests, icon: List,            href: "/provider/requests", disabled: false },
+    { label: t.bottomNav.provider.wallet,   icon: Wallet,          href: "/plans", disabled: false },
+    { label: t.bottomNav.provider.chats,    icon: MessageCircle,   href: "/provider/chats", disabled: false },
+    { label: t.bottomNav.provider.profile,  icon: LayoutDashboard, href: "/dashboard", disabled: false },
+  ];
 
   function isActive(href: string): boolean {
     if (href === "/") return location === "/";
@@ -76,7 +78,7 @@ export function BottomNav() {
               key={tab.label}
               onClick={() => {
                 if (disabled) {
-                  toast({ title: "Tez orada mavjud bo'ladi", description: "Smart-Hormang hozircha ishlab chiqilmoqda" });
+                  toast({ title: t.common.soon, description: t.bottomNav.smartSoon });
                   return;
                 }
                 setLocation(tab.href);

@@ -1,12 +1,15 @@
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Search, ClipboardList, Settings, LogOut, Heart, ChevronRight } from "lucide-react";
 
 export default function BuyerDashboard() {
   const { user, logout } = useAuth();
   const [, setLocation] = useLocation();
+  const { t } = useI18n();
 
   async function handleLogout() {
     await logout();
@@ -16,28 +19,28 @@ export default function BuyerDashboard() {
   const menuItems = [
     {
       icon: Search,
-      title: "Xizmat qidirish",
-      desc: "Mahalliy mutaxassislarni toping",
+      title: t.dashboard.buyerItems.search.title,
+      desc: t.dashboard.buyerItems.search.desc,
       action: () => setLocation("/"),
       highlight: true,
     },
     {
       icon: ClipboardList,
-      title: "Buyurtmalarim",
-      desc: "Barcha buyurtmalar va holati",
+      title: t.dashboard.buyerItems.requests.title,
+      desc: t.dashboard.buyerItems.requests.desc,
       action: () => { sessionStorage.setItem("request_history_referrer", "/dashboard"); setLocation("/request-history"); },
     },
     {
       icon: Heart,
-      title: "Saqlanganlar",
-      desc: "Sevimli ijrochilar va xizmatlar",
+      title: t.dashboard.buyerItems.saved.title,
+      desc: t.dashboard.buyerItems.saved.desc,
       action: undefined,
-      badge: "Tez kunda",
+      badge: t.dashboard.buyerItems.saved.badge,
     },
     {
       icon: Settings,
-      title: "Profil sozlamalari",
-      desc: "Ma'lumotlar, parol va hisobing",
+      title: t.dashboard.buyerItems.profile.title,
+      desc: t.dashboard.buyerItems.profile.desc,
       action: () => setLocation("/profile/settings"),
     },
   ];
@@ -75,8 +78,8 @@ export default function BuyerDashboard() {
                 {user?.firstName?.[0]}{user?.lastName?.[0]}
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Xush kelibsiz, {user?.firstName}!</h1>
-                <p className="text-gray-500 text-sm">Mijoz paneli</p>
+                <h1 className="text-xl font-bold text-gray-900">{tFormat(t.dashboard.welcomeTpl, { name: user?.firstName ?? "" })}</h1>
+                <p className="text-gray-500 text-sm">{t.dashboard.customerPanel}</p>
               </div>
             </div>
           </div>
@@ -119,7 +122,7 @@ export default function BuyerDashboard() {
 
           <div className="mt-8 text-center">
             <Button onClick={() => setLocation("/")} variant="outline" size="sm" className="border-2 font-semibold gap-2">
-              Bosh sahifaga qaytish
+              {t.dashboard.backHome}
             </Button>
           </div>
         </motion.div>
