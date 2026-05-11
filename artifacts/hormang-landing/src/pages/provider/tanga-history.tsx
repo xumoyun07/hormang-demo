@@ -6,7 +6,7 @@ import { useState } from "react";
 import { TangaCoin } from "@/components/tanga-coin";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, ExternalLink } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { getTangaTransactions, type TangaTransaction } from "@/lib/tanga-history-store";
@@ -78,22 +78,23 @@ function TxRow({
               minute: "2-digit",
             })}
           </p>
-          <p className="text-[10px] text-violet-500 mt-0.5">
-            Balans:&nbsp;{balanceAfter}&nbsp;<TangaCoin size="xs" />
-          </p>
+        {offer && ( 
+            <button
+              onClick={onView}
+              className="text-[9px] font-bold px-1.5 py-0.5 rounded-lg bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-100 transition-colors active:scale-95"
+            >
+              Batafsil <ExternalLink className="w-2.5 h-2.5 inline" />
+            </button>
+          )}  
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           <span className={`text-sm font-extrabold ${tone.amount}`}>
-            {tone.sign}{Math.abs(signed)}&nbsp;<TangaCoin size="xs" />
+            {tone.sign}{Math.abs(signed)}&nbsp;<TangaCoin size="sm" />
           </span>
-          {offer && (
-            <button
-              onClick={onView}
-              className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-100 transition-colors active:scale-95"
-            >
-              Batafsil
-            </button>
-          )}
+          <p className="text-[10px] text-gray-600 font-bold mt-0.1">
+          &nbsp;{balanceAfter}&nbsp; <span className="text-[10px] text-gray-400 font-bold mt-0.1">Tanga </span> 
+          </p> 
+          
         </div>
       </div>
     </motion.div>
