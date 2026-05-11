@@ -25,6 +25,8 @@ import { getLocalProfile } from "@/lib/local-profile";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { AcceptConfirmModal } from "@/components/accept-confirm-modal";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 
 /* ─── Constants ────────────────────────────────────────────────────── */
 
@@ -36,13 +38,16 @@ const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", 
 
 function formatAnswerValue(
   value: unknown,
-  options?: { label: string; value: string; type?: string }[],
-  otherText?: string,
+  options: { label: string; value: string; type?: string }[] | undefined,
+  otherText: string | undefined,
+  yes: string,
+  no: string,
+  sumSuffix: string,
 ): string {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "string" && value.startsWith("data:")) return "__IMAGE__";
-  if (typeof value === "boolean") return value ? "Ha" : "Yo'q";
-  if (typeof value === "number") return value.toLocaleString("uz-Latn-UZ") + (String(value).length > 3 ? " so'm" : "");
+  if (typeof value === "boolean") return value ? yes : no;
+  if (typeof value === "number") return value.toLocaleString("uz-Latn-UZ") + (String(value).length > 3 ? " " + sumSuffix : "");
   const otherOpt = options?.find((o) => o.type === "other");
   if (typeof value === "string") {
     if (otherOpt && value === otherOpt.value && otherText) return otherText;
@@ -64,23 +69,33 @@ function formatAnswerValue(
   return String(value);
 }
 
-function urgencyLabel(u: unknown): { label: string; color: string } {
-  if (u === "urgent") return { label: "Shoshilinch", color: "text-red-600 bg-red-50 border border-red-100" };
-  if (u === "normal") return { label: "Oddiy", color: "text-blue-600 bg-blue-50 border border-blue-100" };
-  return { label: "Moslashuvchan", color: "text-gray-500 bg-gray-100 border border-gray-200" };
+function urgencyLabel(
+  u: unknown,
+  urgent: string,
+  normal: string,
+  flexible: string,
+): { label: string; color: string } {
+  if (u === "urgent") return { label: urgent, color: "text-red-600 bg-red-50 border border-red-100" };
+  if (u === "normal") return { label: normal, color: "text-blue-600 bg-blue-50 border border-blue-100" };
+  return { label: flexible, color: "text-gray-500 bg-gray-100 border border-gray-200" };
 }
 
 function formatDate(iso: string): string {
   return formatUzDate(iso);
 }
 
-function timeAgo(iso: string): string {
+function timeAgo(
+  iso: string,
+  minsTpl: string,
+  hoursTpl: string,
+  daysTpl: string,
+): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 60) return `${mins} daqiqa oldin`;
+  if (mins < 60) return tFormat(minsTpl, { n: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} soat oldin`;
-  return `${Math.floor(hrs / 24)} kun oldin`;
+  if (hrs < 24) return tFormat(hoursTpl, { n: hrs });
+  return tFormat(daysTpl, { n: Math.floor(hrs / 24) });
 }
 
 /* ─── Offer Detail Modal ───────────────────────────────────────────── */
@@ -97,6 +112,8 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
   const [, setLocation] = useLocation();
   const [showProviderProfile, setShowProviderProfile] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const { t } = useI18n();
+  const tt = t.offerDetailModal;
 
   /* ── Reactive live data ───────────────────────────────────────────
      Subscribe to store changes so the modal re-renders whenever
@@ -141,7 +158,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
       const raw = req?.answers?.[q.id];
       if (raw === null || raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0)) return null;
       const otherText = req?.answers?.[q.id + "_other"] as string | undefined;
-      const formatted = formatAnswerValue(raw, q.options, otherText);
+      const formatted = formatAnswerValue(raw, q.options, otherText, tt.yes, tt.no, tt.sumSuffix);
       if (formatted === "__IMAGE__") return null;
       return { label: q.label, value: formatted };
     })
@@ -160,11 +177,11 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
 
   /* Derive request metadata */
   const urgency = req?.answers?.["urgency"] as string | undefined;
-  const urg = urgencyLabel(urgency);
+  const urg = urgencyLabel(urgency, tt.urgencyUrgent, tt.urgencyNormal, tt.urgencyFlexible);
   const location = [req?.district, req?.region].filter(Boolean).join(", ");
   const budgetAnswer = req?.answers?.["budget"];
   const budgetLabel = typeof budgetAnswer === "number"
-    ? budgetAnswer.toLocaleString("uz-Latn-UZ") + " so'm"
+    ? budgetAnswer.toLocaleString("uz-Latn-UZ") + " " + tt.sumSuffix
     : null;
 
   function openChat() {
@@ -216,15 +233,15 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div className="flex-1">
-              <h2 className="font-extrabold text-base text-gray-900">Taklif tafsilotlari</h2>
+              <h2 className="font-extrabold text-base text-gray-900">{tt.title}</h2>
               <p className="text-xs text-gray-400">
                 {isCompleted
-                  ? "✅ Xizmat yakunlangan"
+                  ? tt.subStateCompleted
                   : isInProgress
-                  ? "🔵 Xizmat bajarilmoqda"
+                  ? tt.subStateInProgress
                   : readOnly
-                  ? "Faqat ko'rish rejimi"
-                  : "Ko'rish rejimi · o'qish uchun"}
+                  ? tt.subStateReadOnly
+                  : tt.subStateView}
               </p>
             </div>
             <button
@@ -239,7 +256,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
           <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
 
             {/* ── Provider offer section ─── */}
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ijrochi taklifi</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{tt.sectionProviderOffer}</p>
 
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
               {/* Provider header */}
@@ -263,28 +280,28 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                     <p className="font-extrabold text-sm text-gray-900">{offer.masterName}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       <Clock className="w-3 h-3 text-gray-400" />
-                      <span className="text-[11px] text-gray-400">~{offer.avgResponseTime} daqiqa javob beradi</span>
+                      <span className="text-[11px] text-gray-400">{tFormat(tt.minutesResponseTpl, { n: offer.avgResponseTime })}</span>
                     </div>
                   </div>
                   {/* Status badge */}
                   {isCompleted && (
                     <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
-                      Yakunlandi
+                      {tt.statusCompleted}
                     </span>
                   )}
                   {isInProgress && (
                     <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
-                      Bajarilmoqda
+                      {tt.statusInProgress}
                     </span>
                   )}
                   {isAccepted && (
                     <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-600 flex-shrink-0">
-                      Qabul qilingan
+                      {tt.statusAccepted}
                     </span>
                   )}
                   {isRejected && (
                     <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">
-                      Rad etilgan
+                      {tt.statusRejected}
                     </span>
                   )}
                 </div>
@@ -296,7 +313,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                     className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-violet-600 hover:text-violet-800 transition-colors"
                   >
                     <User className="w-3.5 h-3.5" />
-                    Ijrochi profilini ko'rish
+                    {tt.viewProviderProfile}
                   </button>
                 )}
               </div>
@@ -304,14 +321,14 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
               {/* Price + time grid */}
               <div className="grid grid-cols-2 divide-x divide-gray-100 border-b border-gray-100">
                 <div className="px-4 py-3">
-                  <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Narx</p>
+                  <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">{tt.priceLabel}</p>
                   <p className="font-extrabold text-base text-blue-600">
-                    {offer.priceLabel ?? (offer.price.toLocaleString() + " so'm")}
+                    {offer.priceLabel ?? (offer.price.toLocaleString() + " " + tt.sumSuffix)}
                   </p>
                 </div>
                 {offer.completionTime && (
                   <div className="px-4 py-3">
-                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">Muddat</p>
+                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">{tt.durationLabel}</p>
                     <p className="font-bold text-sm text-gray-800">{offer.completionTime}</p>
                   </div>
                 )}
@@ -319,7 +336,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
 
               {/* Message */}
               <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-1.5">Xabar</p>
+                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-1.5">{tt.messageLabel}</p>
                 <p className="text-sm text-gray-700 leading-relaxed">{offer.message}</p>
               </div>
 
@@ -327,7 +344,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
               {offer.startDate && (
                 <div className="px-4 py-2 flex items-center gap-1.5 text-xs text-gray-500 border-b border-gray-100">
                   <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                  <span>Boshlanish: {offer.startDate}</span>
+                  <span>{tFormat(tt.startDateLabelTpl, { date: offer.startDate })}</span>
                 </div>
               )}
 
@@ -336,7 +353,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                 <div className="px-4 py-3 border-b border-gray-100">
                   <ImageGrid
                     urls={offerImageUrls}
-                    label="Ijrochi rasmlari"
+                    label={tt.providerImagesLabel}
                     columns={3}
                   />
                 </div>
@@ -344,14 +361,14 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
 
               {/* Date sent */}
               <div className="px-4 py-2.5">
-                <p className="text-[10px] text-gray-400">Yuborildi: {formatDate(offer.createdAt)} · {timeAgo(offer.createdAt)}</p>
+                <p className="text-[10px] text-gray-400">{tFormat(tt.sentAtTpl, { date: formatDate(offer.createdAt), ago: timeAgo(offer.createdAt, tt.minutesAgoTpl, tt.hoursAgoTpl, tt.daysAgoTpl) })}</p>
               </div>
             </div>
 
             {/* ── Request section ─── */}
             {req && (
               <>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mijoz so'rovi</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{tt.sectionCustomerRequest}</p>
 
                 <div className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
                   {/* Request top bar */}
@@ -362,7 +379,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-extrabold text-sm text-gray-900">{req.categoryName}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{timeAgo(req.createdAt)}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{timeAgo(req.createdAt, tt.minutesAgoTpl, tt.hoursAgoTpl, tt.daysAgoTpl)}</p>
                       </div>
                       {urgency && (
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${urg.color}`}>
@@ -391,7 +408,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                   {/* Q&A pairs */}
                   {qaPairs.length > 0 && (
                     <div className="px-4 py-3 space-y-2.5 border-b border-gray-100">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Savol · Javob</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{tt.sectionQA}</p>
                       {qaPairs.map((pair, i) => (
                         <div key={i} className="flex gap-2 text-xs">
                           <div className="flex-shrink-0 w-1 rounded-full bg-blue-200 self-stretch" />
@@ -409,7 +426,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                     <div className="px-4 py-3">
                       <ImageGrid
                         urls={customerPhotoUrls}
-                        label="Mening rasmlarim"
+                        label={tt.customerImagesLabel}
                         columns={3}
                       />
                     </div>
@@ -422,7 +439,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
             {readOnly && tangaTx && (
               <>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Tranzaksiya ma&apos;lumotlari
+                  {tt.sectionTransactionInfo}
                 </p>
                 <div className="bg-amber-50 border border-amber-100 rounded-2xl overflow-hidden">
                   {/* Top row: coin icon + amount */}
@@ -432,7 +449,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wide">
-                        Sarflangan Tanga
+                        {tt.spentTangaLabel}
                       </p>
                       <p className="font-extrabold text-amber-700 text-base leading-tight">
                         −{tangaTx.amount} Tanga
@@ -441,27 +458,27 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                     {/* Offer status badge */}
                     {liveOffer.status === "accepted" && (
                       <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-100 text-emerald-600 flex-shrink-0">
-                        Qabul qilingan
+                        {tt.statusAccepted}
                       </span>
                     )}
                     {liveOffer.status === "rejected" && (
                       <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-500 flex-shrink-0">
-                        Rad etilgan
+                        {tt.statusRejected}
                       </span>
                     )}
                     {liveOffer.status === "pending" && (
                       <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
-                        Kutilmoqda
+                        {tt.statusPending}
                       </span>
                     )}
                     {liveOffer.status === "in_progress" && (
                       <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
-                        Bajarilmoqda
+                        {tt.statusInProgress}
                       </span>
                     )}
                     {liveOffer.status === "completed" && (
                       <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
-                        Yakunlandi
+                        {tt.statusCompleted}
                       </span>
                     )}
                   </div>
@@ -470,19 +487,19 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                   <div className="px-4 py-2.5 space-y-1">
                     {/* Provider name (always shown, especially useful in admin) */}
                     <div className="flex items-center justify-between">
-                      <p className="text-[10px] text-amber-500 font-semibold">Ijrochi:</p>
+                      <p className="text-[10px] text-amber-500 font-semibold">{tt.txProvider}</p>
                       <p className="text-[11px] font-bold text-amber-700">{offer.masterName}</p>
                     </div>
                     {/* Category */}
                     <div className="flex items-center justify-between">
-                      <p className="text-[10px] text-amber-500 font-semibold">Kategoriya:</p>
+                      <p className="text-[10px] text-amber-500 font-semibold">{tt.txCategory}</p>
                       <p className="text-[11px] font-bold text-amber-700">
                         {tangaTx.categoryEmoji} {tangaTx.categoryName}
                       </p>
                     </div>
                     {/* Date + time */}
                     <div className="flex items-center justify-between">
-                      <p className="text-[10px] text-amber-500 font-semibold">Sana va vaqt:</p>
+                      <p className="text-[10px] text-amber-500 font-semibold">{tt.txDateTime}</p>
                       <p className="text-[11px] text-amber-700 font-semibold">
                         {formatDate(tangaTx.createdAt)}&ensp;
                         {new Date(tangaTx.createdAt).toLocaleTimeString("uz-Latn-UZ", {
@@ -507,7 +524,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
               {/* If another offer on this request was already accepted, show a notice */}
               {anyAccepted && (
                 <p className="text-center text-xs text-gray-400 font-semibold bg-gray-50 rounded-xl py-2 px-3">
-                  Bu so'rovga boshqa taklif qabul qilingan
+                  {tt.anyAcceptedNotice}
                 </p>
               )}
 
@@ -517,7 +534,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                 style={{ background: BLUE }}
               >
                 <MessageCircle className="w-4 h-4" />
-                Chat ochish
+                {tt.chatBtn}
               </Button>
 
               {canAccept && (
@@ -527,13 +544,13 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                     className="flex-1 h-10 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 gap-1.5"
                   >
                     <Check className="w-3.5 h-3.5" />
-                    Qabul qilish
+                    {tt.acceptBtn}
                   </Button>
                   <button
                     onClick={reject}
                     className="flex-1 h-10 rounded-xl border-2 border-gray-200 text-xs font-bold text-gray-500 hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition-colors"
                   >
-                    Rad etish
+                    {tt.rejectBtn}
                   </button>
                 </div>
               )}

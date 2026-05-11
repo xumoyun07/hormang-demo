@@ -22,6 +22,8 @@ import {
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import logoImg from "/hormang-logo.png";
 import { useAuth } from "@/contexts/auth-context";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 import { BottomNav } from "@/components/bottom-nav";
 import { useToast } from "@/hooks/use-toast";
 import { updateProfile, updateProviderProfile, sendSmsCode, addPhone } from "@/lib/auth-client";
@@ -154,6 +156,8 @@ function SectionHeader({ icon: Icon, title, sub }: {
 function AddPhoneModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { setAuth, user, providerProfile } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
+  const tt = t.misc;
   const [phone, setPhone]           = useState("");
   const [otp, setOtp]               = useState("");
   const [devCode, setDevCode]       = useState<string | null>(null);
@@ -177,27 +181,27 @@ function AddPhoneModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
 
   async function sendCode() {
     setError("");
-    if (phone.replace(/\D/g, "").length < 9) { setError("To'g'ri raqam kiriting"); return; }
+    if (phone.replace(/\D/g, "").length < 9) { setError(tt.correctNumber); return; }
     setLoading(true);
     try {
       const res = await sendSmsCode("+998" + phone.replace(/\D/g, ""), "add-phone");
       setDevCode(res.devCode ?? null);
       setStep("otp");
       startTimer();
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : "Xatolik"); }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : tt.error); }
     finally { setLoading(false); }
   }
 
   async function verify() {
     setError("");
-    if (otp.length < 6) { setError("6 xonali kodni kiriting"); return; }
+    if (otp.length < 6) { setError(tt.enter6DigitCode); return; }
     setLoading(true);
     try {
       const res = await addPhone({ phone: "+998" + phone.replace(/\D/g, ""), otp });
       setAuth(res.user, providerProfile);
-      toast({ title: "Telefon muvaffaqiyatli qo'shildi" });
+      toast({ title: tt.phoneAddedOk });
       onSuccess();
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : "Xatolik"); }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : tt.error); }
     finally { setLoading(false); }
   }
 
@@ -206,9 +210,9 @@ function AddPhoneModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
         className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-        <h3 className="font-extrabold text-gray-900 text-lg mb-1">Telefon raqam qo'shish</h3>
+        <h3 className="font-extrabold text-gray-900 text-lg mb-1">{tt.addPhoneTitle}</h3>
         <p className="text-gray-500 text-sm mb-4">
-          {step === "phone" ? "Raqamingizni kiriting, SMS kod yuboriladi" : `+998 ${phone} ga kod yuborildi`}
+          {step === "phone" ? tt.enterNumberSendSms : tFormat(tt.codeSentToTpl, { phone })}
         </p>
         {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-3 py-2 mb-4">{error}</div>}
         <AnimatePresence mode="wait">
@@ -275,6 +279,8 @@ function AddPhoneModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
 export default function ProfileSettingsPage() {
   const { user, providerProfile, setAuth, setProviderProfile, activeRole, loading } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
+  const tt = t.misc;
   const [, setLocation] = useLocation();
 
   /* Welcome banner for new providers */
@@ -708,10 +714,10 @@ export default function ProfileSettingsPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-extrabold text-gray-900 text-sm mb-0.5">
-                    {displayPct === 100 ? "Profil to'liq to'ldirilgan! 🎉" : `Profil ${displayPct}% to'ldirilgan`}
+                    {displayPct === 100 ? tt.profileFullEmoji : tFormat(tt.profilePctTpl, { pct: displayPct })}
                   </p>
                   {displayPct < 100 && (
-                    <p className="text-xs text-gray-400 mb-1">{displayMissing.length} ta maydon qoldi</p>
+                    <p className="text-xs text-gray-400 mb-1">{tFormat(tt.fieldsLeftTpl, { n: displayMissing.length })}</p>
                   )}
                   {displayPct < 100 && (
                     <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -818,14 +824,14 @@ export default function ProfileSettingsPage() {
                 onChange={(e) => { setFirstName(e.target.value); setErrors((p) => ({ ...p, firstName: "" })); }}
                 placeholder="Ism" className={inputCls()} />
             </Field>
-            <Field label="Familiya" required error={errors.lastName}>
+            <Field label={tt.lastNameLabel} required error={errors.lastName}>
               <input value={lastName}
                 onChange={(e) => { setLastName(e.target.value); setErrors((p) => ({ ...p, lastName: "" })); }}
-                placeholder="Familiya" className={inputCls()} />
+                placeholder={tt.lastNamePlaceholder} className={inputCls()} />
             </Field>
           </div>
 
-          <Field label="Telefon raqami" hint="Kirish uchun ishlatiladi, o'zgartirib bo'lmaydi">
+          <Field label={tt.phoneLabel} hint={tt.phoneHint}>
             <div className="w-full h-11 px-4 rounded-2xl border-2 border-gray-100 bg-gray-50 text-sm text-gray-500 flex items-center gap-2">
               <Lock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
               <span>{user.phone ?? "—"}</span>
@@ -935,8 +941,8 @@ export default function ProfileSettingsPage() {
           <motion.div ref={refServices}
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <SectionHeader icon={Briefcase} title="Xizmatlarim"
-              sub="Taklif qiluvchi xizmatlarni belgilang" />
+            <SectionHeader icon={Briefcase} title={tt.myServices}
+              sub={tt.myServicesSub} />
 
             <div className="flex flex-wrap gap-2 mb-3">
               {SERVICE_CATEGORIES.map((cat) => {
@@ -974,7 +980,7 @@ export default function ProfileSettingsPage() {
             <div className="space-y-4">
               {/* Experience */}
               <div ref={refExperience}>
-                <Field label="Tajriba (yil)" hint="Ushbu sohada ishlagan yillar soni">
+                <Field label={tt.experienceLabel} hint={tt.experienceHint}>
                   <input type="number" value={experience}
                     onChange={(e) => setExperience(e.target.value)}
                     placeholder="Masalan: 3" min={0} max={50} className={inputCls()} />
@@ -1108,7 +1114,7 @@ export default function ProfileSettingsPage() {
                               updateAlbumPhotos(album.id, urls.map((url) => ({ url })))
                             }
                             max={20}
-                            hint="Rasm qo'shish yoki olib tashlash uchun tortib tashlang"
+                            hint={tt.photoDragHint}
                             maxDim={900}
                             quality={0.72}
                           />
@@ -1142,7 +1148,7 @@ export default function ProfileSettingsPage() {
             {saving ? <Loader2 className="w-5 h-5 animate-spin" />
               : saved  ? <CheckCircle2 className="w-5 h-5" />
               : <Save className="w-5 h-5" />}
-            {saving ? "Saqlanmoqda..." : saved ? "Saqlandi!" : "Profilni saqlash"}
+            {saving ? tt.saving : saved ? tt.saved : tt.saveProfile}
           </button>
 
           {saved && (

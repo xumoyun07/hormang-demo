@@ -12,6 +12,8 @@ import {
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 import { formatDate } from "@/lib/date-utils";
 import type { CustomerRequest } from "@/lib/requests-store";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 
 /* ─── Skip keys (shown elsewhere in UI) ──────────────────────────── */
 const SKIP_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district"]);
@@ -24,9 +26,9 @@ function formatAnswerValue(
 ): string {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "string" && value.startsWith("data:")) return "__IMAGE__";
-  if (typeof value === "boolean") return value ? "Ha" : "Yo'q";
+  if (typeof value === "boolean") return value ? "✓" : "—";
   if (typeof value === "number")
-    return value.toLocaleString("uz-Latn-UZ") + (String(value).length > 3 ? " so'm" : "");
+    return value.toLocaleString();
   const otherOpt = options?.find((o) => o.type === "other");
   if (typeof value === "string") {
     if (otherOpt && value === otherOpt.value && otherText) return otherText;
@@ -50,12 +52,12 @@ function formatAnswerValue(
   return String(value);
 }
 
-const URGENCY_MAP: Record<string, { label: string; color: string }> = {
-  today_tomorrow: { label: "Bugun / ertaga", color: "text-red-600 bg-red-50 border border-red-100" },
-  "3_7_days":     { label: "3–7 kun",        color: "text-orange-600 bg-orange-50 border border-orange-100" },
-  "1_2_weeks":    { label: "1–2 hafta",       color: "text-yellow-700 bg-yellow-50 border border-yellow-100" },
-  "1_month":      { label: "1 oy",            color: "text-emerald-600 bg-emerald-50 border border-emerald-100" },
-  flexible:       { label: "Shoshilinch emas", color: "text-gray-500 bg-gray-100 border border-gray-200" },
+const URGENCY_COLOR: Record<string, string> = {
+  today_tomorrow: "text-red-600 bg-red-50 border border-red-100",
+  "3_7_days":     "text-orange-600 bg-orange-50 border border-orange-100",
+  "1_2_weeks":    "text-yellow-700 bg-yellow-50 border border-yellow-100",
+  "1_month":      "text-emerald-600 bg-emerald-50 border border-emerald-100",
+  flexible:       "text-gray-500 bg-gray-100 border border-gray-200",
 };
 
 /* ─── Component ───────────────────────────────────────────────────── */
@@ -65,6 +67,8 @@ interface Props {
 }
 
 export function RequestPreviewModal({ req, onClose }: Props) {
+  const { t } = useI18n();
+  const tt = t.requestPreviewModal;
   const allQuestions = getAllQuestionsForCategory(req.categoryId);
   const activeQuestions = collectActiveQuestions(
     allQuestions,
@@ -89,15 +93,17 @@ export function RequestPreviewModal({ req, onClose }: Props) {
     : (req.requestPhotos ?? []);
 
   const urgency = req.answers?.["urgency"] as string | undefined;
-  const urgInfo = urgency ? (URGENCY_MAP[urgency] ?? null) : null;
+  const urgInfo = urgency
+    ? { label: t.requestHistory.urgency[urgency as keyof typeof t.requestHistory.urgency] ?? urgency, color: URGENCY_COLOR[urgency] ?? "text-gray-500 bg-gray-100 border border-gray-200" }
+    : null;
   const location = [req.district, req.region].filter(Boolean).join(", ");
   const budgetAnswer = req.answers?.["budget"];
   const openToOffers = req.answers?.["budget_open"] as boolean | undefined;
   const budgetLabel =
     openToOffers
-      ? "Taklifga ochiq"
+      ? tt.openToOffers
       : typeof budgetAnswer === "number"
-      ? budgetAnswer.toLocaleString("uz-Latn-UZ") + " so'm"
+      ? `${budgetAnswer.toLocaleString()} ${tt.sumSuffix}`
       : null;
 
   return (
@@ -129,8 +135,8 @@ export function RequestPreviewModal({ req, onClose }: Props) {
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1">
-            <h2 className="font-extrabold text-base text-gray-900">So'rov tafsilotlari</h2>
-            <p className="text-xs text-gray-400">Ko'rish rejimi · o'qish uchun</p>
+            <h2 className="font-extrabold text-base text-gray-900">{tt.title}</h2>
+            <p className="text-xs text-gray-400">{tt.subtitle}</p>
           </div>
           <button
             onClick={onClose}
@@ -185,7 +191,7 @@ export function RequestPreviewModal({ req, onClose }: Props) {
             {qaPairs.length > 0 && (
               <div className="px-4 py-3 space-y-2.5 border-b border-gray-100">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Savol · Javob
+                  {tt.qaLabel}
                 </p>
                 {qaPairs.map((pair, i) => (
                   <div key={i} className="flex gap-2 text-xs">
@@ -202,14 +208,14 @@ export function RequestPreviewModal({ req, onClose }: Props) {
             {/* Customer uploaded photos */}
             {photoUrls.length > 0 && (
               <div className="px-4 py-3">
-                <ImageGrid urls={photoUrls} label="Mening rasmlarim" columns={3} />
+                <ImageGrid urls={photoUrls} label={tt.myPhotos} columns={3} />
               </div>
             )}
 
             {/* Empty state for Q&A */}
             {qaPairs.length === 0 && photoUrls.length === 0 && (
               <div className="px-4 py-6 text-center">
-                <p className="text-xs text-gray-400">Qo'shimcha ma'lumot yo'q</p>
+                <p className="text-xs text-gray-400">{tt.empty}</p>
               </div>
             )}
           </div>
@@ -221,7 +227,7 @@ export function RequestPreviewModal({ req, onClose }: Props) {
             onClick={onClose}
             className="w-full h-11 rounded-2xl bg-gray-100 text-sm font-bold text-gray-600 hover:bg-gray-200 transition-colors"
           >
-            Yopish
+            {tt.close}
           </button>
         </div>
       </motion.div>

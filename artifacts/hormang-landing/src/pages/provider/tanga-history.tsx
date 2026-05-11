@@ -16,6 +16,8 @@ import { TangaChip } from "@/pages/plans";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { BottomNav } from "@/components/bottom-nav";
 import { formatDate } from "@/lib/date-utils";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 
 const VIOLET = "linear-gradient(135deg,#7C3AED 0%,#6D28D9 100%)";
 
@@ -48,6 +50,8 @@ function TxRow({
   balanceAfter: number;
   onView: () => void;
 }) {
+  const { t } = useI18n();
+  const tt = t.tangaHistoryPage;
   const signed = signedAmount(tx);
   const isIn   = signed >= 0;
   const tone = isIn
@@ -83,7 +87,7 @@ function TxRow({
               onClick={onView}
               className="text-[9px] font-bold px-1.5 py-0.5 rounded-lg bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-100 transition-colors active:scale-95"
             >
-              Batafsil <ExternalLink className="w-2.5 h-2.5 inline" />
+              {tt.detailsBtn} <ExternalLink className="w-2.5 h-2.5 inline" />
             </button>
           )}  
         </div>
@@ -92,7 +96,7 @@ function TxRow({
             {tone.sign}{Math.abs(signed)}&nbsp;<TangaCoin size="sm" />
           </span>
           <p className="text-[10px] text-gray-600 font-bold mt-0.1">
-          &nbsp;{balanceAfter}&nbsp; <span className="text-[10px] text-gray-400 font-bold mt-0.1">Tanga </span> 
+          &nbsp;{balanceAfter}&nbsp; <span className="text-[10px] text-gray-400 font-bold mt-0.1">{tt.tangaLabel} </span> 
           </p> 
           
         </div>
@@ -104,6 +108,8 @@ function TxRow({
 /* ─── Main page ──────────────────────────────────────────────────── */
 export default function TangaHistoryPage() {
   useStoreRefresh();
+  const { t } = useI18n();
+  const tt = t.tangaHistoryPage;
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const [viewOfferId, setViewOfferId] = useState<string | null>(null);
@@ -152,8 +158,8 @@ export default function TangaHistoryPage() {
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1">
-            <h1 className="font-extrabold text-base text-gray-900">Tanga tarixi</h1>
-            <p className="text-xs text-gray-400">Sarflangan Tanga tranzaksiyalari</p>
+            <h1 className="font-extrabold text-base text-gray-900">{tt.headerTitle}</h1>
+            <p className="text-xs text-gray-400">{tt.headerSubtitle}</p>
           </div>
           <TangaChip userId={user?.id ?? ""} onClick={() => setLocation("/plans")} />
         </div>
@@ -172,14 +178,14 @@ export default function TangaHistoryPage() {
             }}
           />
           <p className="text-[11px] font-bold uppercase tracking-widest text-violet-200 mb-1 relative">
-            Tanga balansi
+            {tt.balanceLabel}
           </p>
           <p className="text-4xl font-extrabold leading-tight relative">
             <TangaCoin size="xl" /> {balance}
           </p>
           <p className="text-violet-200 text-xs mt-2 relative">
-            {spendTxs.length} ta taklif · {totalSpent} Tanga sarflangan
-            {totalEarnedReferral > 0 && ` · +${totalEarnedReferral} Tanga referral mukofoti`}
+            {tFormat(tt.summaryTpl, { count: spendTxs.length, total: totalSpent })}
+            {totalEarnedReferral > 0 && tFormat(tt.referralBonusTpl, { n: totalEarnedReferral })}
           </p>
         </div>
 
@@ -187,20 +193,20 @@ export default function TangaHistoryPage() {
         {transactions.length > 0 && (
           <div className={`grid gap-3 ${totalEarnedReferral > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
             <div className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm text-center">
-              <p className="text-[10px] font-semibold text-gray-400 mb-1">Jami sarflandi</p>
+              <p className="text-[10px] font-semibold text-gray-400 mb-1">{tt.totalSpent}</p>
               <p className="font-extrabold text-amber-600 text-xl">
                 {totalSpent}&nbsp;<TangaCoin size="sm" />
               </p>
             </div>
             <div className="bg-white rounded-2xl border border-gray-100 p-3.5 shadow-sm text-center">
-              <p className="text-[10px] font-semibold text-gray-400 mb-1">O'rtacha xarajat</p>
+              <p className="text-[10px] font-semibold text-gray-400 mb-1">{tt.avgSpent}</p>
               <p className="font-extrabold text-violet-600 text-xl">
                 {avgSpent}&nbsp;<TangaCoin size="sm" />
               </p>
             </div>
             {totalEarnedReferral > 0 && (
               <div className="bg-emerald-50 rounded-2xl border border-emerald-100 p-3.5 shadow-sm text-center">
-                <p className="text-[10px] font-semibold text-emerald-600 mb-1">Referral mukofot</p>
+                <p className="text-[10px] font-semibold text-emerald-600 mb-1">{tt.referralReward}</p>
                 <p className="font-extrabold text-emerald-600 text-xl">
                   +{totalEarnedReferral}&nbsp;<TangaCoin size="sm" />
                 </p>
@@ -214,24 +220,24 @@ export default function TangaHistoryPage() {
           <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-12 text-center">
             <div className="flex justify-center mb-3"><TangaCoin size="xl" /></div>
             <p className="font-bold text-gray-500 text-sm mb-1">
-              Hali tranzaksiyalar yo'q
+              {tt.emptyTitle}
             </p>
             <p className="text-xs text-gray-400 leading-relaxed max-w-[220px] mx-auto">
-              Taklif yuborganingizda Tanga sarflanishi bu yerda ko'rinadi
+              {tt.emptyDesc}
             </p>
             <button
               onClick={() => setLocation("/provider/requests")}
               className="mt-4 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-sm transition-all active:scale-95"
               style={{ background: VIOLET }}
             >
-              So'rovlarni ko'rish
+              {tt.viewRequestsBtn}
             </button>
           </div>
         ) : (
           <div className="space-y-2">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">
-              Barcha tranzaksiyalar · {transactions.length} ta
-              {referralTxs.length > 0 && ` (${referralTxs.length} ta referral mukofoti)`}
+              {tFormat(tt.allTxTpl, { n: transactions.length })}
+              {referralTxs.length > 0 && tFormat(tt.referralTxSuffixTpl, { n: referralTxs.length })}
             </p>
             {transactions.map((tx) => {
               const offer = allOffers.find((o) => o.id === tx.offerId);

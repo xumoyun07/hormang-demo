@@ -17,15 +17,21 @@ import {
 import { getCustomerFromRegistry, getRequestById } from "@/lib/requests-store";
 import { getLocalProfile } from "@/lib/local-profile";
 import { formatDate } from "@/lib/date-utils";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 
 const BLUE = "hsl(221,78%,48%)";
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 
-const METRIC_LABELS: Array<{ key: keyof ProviderReviewMetrics; label: string }> = [
-  { key: "serviceQuality", label: "Xizmat sifati" },
-  { key: "providerAttitude", label: "Ijrochi muomalasi" },
-  { key: "servicePrice", label: "Xizmat narxi adolatliligi" },
-];
+function useMetricLabels(): Array<{ key: keyof ProviderReviewMetrics; label: string }> {
+  const { t } = useI18n();
+  const tt = t.providerReviewsPage;
+  return [
+    { key: "serviceQuality", label: tt.metricServiceQuality },
+    { key: "providerAttitude", label: tt.metricProviderAttitude },
+    { key: "servicePrice", label: tt.metricServicePrice },
+  ];
+}
 
 function initials(name: string): string {
   return name
@@ -36,11 +42,11 @@ function initials(name: string): string {
     .slice(0, 2) || "X";
 }
 
-function getReviewerMeta(review: Review) {
+function getReviewerMeta(review: Review, fallback: string) {
   const registry = getCustomerFromRegistry(review.reviewerId);
   const request = getRequestById(review.requestId);
   const local = getLocalProfile(review.reviewerId);
-  const name = review.reviewerName || registry?.name || request?.customerName || "Mijoz";
+  const name = review.reviewerName || registry?.name || request?.customerName || fallback;
   return {
     name,
     initials: review.reviewerInitials || registry?.initials || initials(name),
@@ -61,6 +67,8 @@ function MetricScale({
   value: number;
   variant?: "light" | "dark";
 }) {
+  const { t } = useI18n();
+  const tt = t.providerReviewsPage;
   const safeValue = Math.max(0, Math.min(100, Math.round(value || 0)));
   const isDark = variant === "dark";
 
@@ -83,8 +91,8 @@ function MetricScale({
         </span>
       </div>
       <div className={`flex justify-between text-[10px] font-bold mt-1 ${isDark ? "text-white/65" : "text-gray-400"}`}>
-        <span>Qoniqarsiz</span>
-        <span>Qoniqarli</span>
+        <span>{tt.metricLow}</span>
+        <span>{tt.metricHigh}</span>
       </div>
     </div>
   );
@@ -97,6 +105,7 @@ function ReviewMetricsBlock({
   metrics?: ProviderReviewMetrics;
   variant?: "light" | "dark";
 }) {
+  const METRIC_LABELS = useMetricLabels();
   if (!metrics) return null;
   return (
     <div className={variant === "dark" ? "space-y-3 mt-4" : "space-y-3 rounded-2xl border border-gray-100 bg-white p-4"}>
@@ -119,7 +128,9 @@ function ReviewPreviewModal({
   review: Review;
   onClose: () => void;
 }) {
-  const meta = getReviewerMeta(review);
+  const { t } = useI18n();
+  const tt = t.providerReviewsPage;
+  const meta = getReviewerMeta(review, tt.fallbackCustomer);
   const [expandedPhoto, setExpandedPhoto] = useState(false);
 
   return (
@@ -181,7 +192,7 @@ function ReviewPreviewModal({
               )}
             </div>
             <p className="text-sm leading-relaxed text-gray-700">
-              {review.comment || "Izoh qoldirilmagan."}
+              {review.comment || tt.noComment}
             </p>
           </div>
           {review.providerMetrics && (
@@ -194,7 +205,7 @@ function ReviewPreviewModal({
               onClick={() => setExpandedPhoto(true)}
               className="w-full overflow-hidden rounded-2xl border border-gray-100 mb-4 bg-gray-50"
             >
-              <img src={review.photoUrl} alt="Sharh rasmi" className="w-full h-52 object-cover" />
+              <img src={review.photoUrl} alt={tt.reviewPhotoAlt} className="w-full h-52 object-cover" />
             </button>
           )}
           {(review.platformSentiment || review.platformFeedback) && (
@@ -207,9 +218,9 @@ function ReviewPreviewModal({
                 ) : (
                   <MessageCircle className="w-4 h-4 text-gray-400" />
                 )}
-                <p className="text-sm font-black text-gray-900">Hormang haqida fikri</p>
+                <p className="text-sm font-black text-gray-900">{tt.platformOpinion}</p>
               </div>
-              <p className="text-sm text-gray-600">{review.platformFeedback || "Qo'shimcha izoh yo'q."}</p>
+              <p className="text-sm text-gray-600">{review.platformFeedback || tt.noExtraComment}</p>
             </div>
           )}
         </div>
@@ -223,7 +234,7 @@ function ReviewPreviewModal({
             className="fixed inset-0 z-[90] bg-black/90 flex items-center justify-center p-4"
             onClick={() => setExpandedPhoto(false)}
           >
-            <img src={review.photoUrl} alt="Sharh rasmi" className="max-w-full max-h-full object-contain rounded-2xl" />
+            <img src={review.photoUrl} alt={tt.reviewPhotoAlt} className="max-w-full max-h-full object-contain rounded-2xl" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -240,7 +251,10 @@ function ReviewCard({
   onPreview: () => void;
   onProfile: () => void;
 }) {
-  const meta = getReviewerMeta(review);
+  const { t } = useI18n();
+  const tt = t.providerReviewsPage;
+  const META_LABELS = useMetricLabels();
+  const meta = getReviewerMeta(review, tt.fallbackCustomer);
   const metrics = review.providerMetrics;
 
   return (
@@ -281,11 +295,11 @@ function ReviewCard({
         )}
       </div>
       <p className="text-sm text-gray-600 leading-relaxed mt-3 line-clamp-3">
-        {review.comment || "Izoh qoldirilmagan."}
+        {review.comment || tt.noComment}
       </p>
       {metrics && (
         <div className="mt-3 space-y-2 rounded-2xl bg-gray-50 border border-gray-100 p-3">
-          {METRIC_LABELS.map((metric) => (
+          {META_LABELS.map((metric) => (
             <div key={metric.key} className="flex items-center gap-2">
               <span className="w-24 text-[10px] font-black text-gray-500 truncate">{metric.label}</span>
               <div className="flex-1 h-2 rounded-full bg-gray-200 overflow-hidden">
@@ -306,7 +320,7 @@ function ReviewCard({
         className="mt-3 w-full h-10 rounded-2xl bg-violet-50 text-violet-700 text-sm font-black flex items-center justify-center gap-2 hover:bg-violet-100 transition-colors"
       >
         <Eye className="w-4 h-4" />
-        Sharhni ko'rish
+        {tt.viewReview}
       </button>
     </motion.div>
   );
@@ -336,6 +350,8 @@ function CompactMetric({
 }
 export default function ProviderReviewsPage() {
   useStoreRefresh();
+  const { t } = useI18n();
+  const tt = t.providerReviewsPage;
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const providerId = user?.id ?? "";
@@ -346,7 +362,7 @@ export default function ProviderReviewsPage() {
   const metricAverages = getProviderReviewAverages(providerId);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [profileReview, setProfileReview] = useState<Review | null>(null);
-  const profileMeta = profileReview ? getReviewerMeta(profileReview) : null;
+  const profileMeta = profileReview ? getReviewerMeta(profileReview, tt.fallbackCustomer) : null;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -359,8 +375,8 @@ export default function ProviderReviewsPage() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="font-black text-gray-900 text-lg">Sharhlarim</h1>
-            <p className="text-xs text-gray-400">Mijozlar qoldirgan fikrlar</p>
+            <h1 className="font-black text-gray-900 text-lg">{tt.title}</h1>
+            <p className="text-xs text-gray-400">{tt.subtitle}</p>
           </div>
         </div>
       </div>
@@ -374,7 +390,7 @@ export default function ProviderReviewsPage() {
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="text-[11px] uppercase font-bold tracking-wide text-gray-500">
-                Umumiy baho
+                {tt.overallLabel}
               </p>
 
               <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -385,7 +401,7 @@ export default function ProviderReviewsPage() {
                 <StarRating rating={avg} size="w-5 h-5" />
 
                 <span className="text-sm text-gray-500">
-                  {reviews.length} ta sharh
+                  {tFormat(tt.reviewsCountTpl, { n: reviews.length })}
                 </span>
               </div>
             </div>
@@ -394,9 +410,9 @@ export default function ProviderReviewsPage() {
           {/* Metrics */}
           <div className="space-y-3">
             {[
-              { label: "Xizmat sifati", value: metricAverages.serviceQuality },
-              { label: "Ijrochi muomalasi", value: metricAverages.providerAttitude },
-              { label: "Narx adolatliligi", value: metricAverages.servicePrice },
+              { label: tt.metricServiceQuality, value: metricAverages.serviceQuality },
+              { label: tt.metricProviderAttitude, value: metricAverages.providerAttitude },
+              { label: tt.metricServicePriceShort, value: metricAverages.servicePrice },
             ].map((item) => (
               <div key={item.label}>
                 <div className="flex justify-between text-xs mb-1">
@@ -428,11 +444,11 @@ export default function ProviderReviewsPage() {
             </div>
 
             <h2 className="font-bold text-gray-800 mb-1">
-              Hozircha sharh yo‘q
+              {tt.emptyTitle}
             </h2>
 
             <p className="text-sm text-gray-400">
-              Yakunlangan xizmatlardan keyin mijozlar baholari shu yerda ko‘rinadi
+              {tt.emptyDesc}
             </p>
           </div>
         ) : (

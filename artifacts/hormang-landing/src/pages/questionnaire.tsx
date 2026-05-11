@@ -18,6 +18,7 @@ import {
 } from "@/lib/requests-store";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
+import { useI18n } from "@/contexts/i18n-context";
 import { getLocalProfile } from "@/lib/local-profile";
 import { compressImage } from "@/lib/image-utils";
 import { regionsList, TOSHKENT_DISTRICTS } from "@/lib/regions";
@@ -152,6 +153,7 @@ function ConditionalInlineBlock({
   answers: Answers;
   onChange: (id: string, val: unknown) => void;
 }) {
+  const { t } = useI18n();
   if (questions.length === 0) return null;
 
   const pillBase = "px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-150 cursor-pointer select-none";
@@ -222,7 +224,7 @@ function ConditionalInlineBlock({
               const bExamples = (bq.autofillExamples ?? []).filter(Boolean);
               return (
                 <div className="space-y-2">
-                  <input type="text" value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder || "Matn kiriting…"}
+                  <input type="text" value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder || t.misc.textPlaceholder}
                     className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all" />
                   {bExamples.length > 0 && (
                     <div className="flex flex-wrap gap-2">
@@ -239,7 +241,7 @@ function ConditionalInlineBlock({
               const bExamples = (bq.autofillExamples ?? []).filter(Boolean);
               return (
                 <div className="space-y-2">
-                  <textarea rows={3} value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder || "Matn kiriting…"}
+                  <textarea rows={3} value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder || t.misc.textPlaceholder}
                     className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none transition-all" />
                   {bExamples.length > 0 && (
                     <div className="flex flex-wrap gap-2">
@@ -551,6 +553,8 @@ function QuestionInput({
 
   const otherInputClass = "w-full px-4 py-3.5 rounded-2xl border border-blue-300 bg-blue-50/60 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all";
 
+  const { t } = useI18n();
+
   if (question.type === "location") {
     return <LocationQuestionInput value={value} onChange={onChange} userId={userId} />;
   }
@@ -653,7 +657,7 @@ function QuestionInput({
           rows={4}
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={question.placeholder || "Matn kiriting…"}
+          placeholder={question.placeholder || t.misc.textPlaceholder}
           className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none transition-all"
         />
         {examples.length > 0 && (
@@ -682,7 +686,7 @@ function QuestionInput({
           type="text"
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={question.placeholder || "Matn kiriting…"}
+          placeholder={question.placeholder || t.misc.textPlaceholder}
           className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
         />
         {examples.length > 0 && (
@@ -853,7 +857,7 @@ function QuestionInput({
               <div className="relative">
                 <img
                   src={dataUrl}
-                  alt="Yuklangan rasm"
+                  alt={t.misc.uploadedImageAlt}
                   className="w-full max-h-64 object-cover"
                 />
                 <button
@@ -1159,6 +1163,8 @@ function SummaryScreen({
   onSeeProviders: (photos: string[]) => void;
   onBack: () => void;
 }) {
+  const { t } = useI18n();
+  const tt = t.misc;
   const cat = getCategoryById(categoryId);
   const allQuestions = getAllQuestionsForCategory(categoryId);
   const urgency = answers["urgency"] as string | undefined;
@@ -1188,14 +1194,14 @@ function SummaryScreen({
         <div className="flex gap-3 mb-5">
           {urgencyInfo && (
             <div className={`flex-1 rounded-2xl border px-4 py-3 ${urgencyInfo.color}`}>
-              <p className="text-xs font-bold uppercase tracking-wide mb-0.5 opacity-70">Shoshilinchlik</p>
+              <p className="text-xs font-bold uppercase tracking-wide mb-0.5 opacity-70">{tt.urgency}</p>
               <p className="text-sm font-bold">{urgencyInfo.label}</p>
             </div>
           )}
           <div className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-3">
-            <p className="text-xs font-bold uppercase tracking-wide mb-0.5 text-gray-400">Byudjet</p>
+            <p className="text-xs font-bold uppercase tracking-wide mb-0.5 text-gray-400">{tt.budget}</p>
             <p className="text-sm font-bold text-gray-900">
-              {openToOffers ? "Taklifga ochiq" : budget ? `${Number(budget).toLocaleString()} so'm` : "Ko'rsatilmagan"}
+              {openToOffers ? tt.openToOffers : budget ? `${Number(budget).toLocaleString()} ${tt.soum}` : tt.notSpecified}
             </p>
           </div>
         </div>
@@ -1336,6 +1342,8 @@ function RecommendationsScreen({
 export default function QuestionnairePage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
+  const tt = t.misc;
   const [, setLocation] = useLocation();
   const rawSearch = useSearch();
   const params = new URLSearchParams(rawSearch);
@@ -1375,8 +1383,8 @@ export default function QuestionnairePage() {
     } catch (e) {
       const err = e as Error & { code?: string };
       toast({
-        title: "Yangi so'rov yaratib bo'lmaydi",
-        description: err.message ?? "Iltimos, biroz kutib turing.",
+        title: tt.cantCreateRequest,
+        description: err.message ?? tt.pleaseWait,
         variant: "destructive",
       });
     }
@@ -1398,25 +1406,23 @@ export default function QuestionnairePage() {
             ⏳
           </div>
           <h1 className="text-lg font-extrabold text-gray-900 mb-1.5">
-            Yangi so'rovlar oralig'ida kutish vaqti mavjud
+            {tt.cooldownTitle}
           </h1>
           <p className="text-xs text-gray-500 mb-5 leading-relaxed">
-            {cooldown.extended
-              ? "Siz oxirgi 24 soatda 3+ ta so'rov yaratgansiz. Sifatli xizmat uchun biroz kutib turing."
-              : "So'rovlar spamiga qarshi himoya — har bir so'rov orasida qisqa interval mavjud."}
+            {cooldown.extended ? tt.cooldownExtended : tt.cooldownNormal}
           </p>
           <div className="rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3 mb-5">
-            <p className="text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-1">Keyingi so'rovgacha</p>
+            <p className="text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-1">{tt.cooldownNextLabel}</p>
             <p className="text-2xl font-extrabold text-blue-700 tabular-nums">
               {formatCooldownRemaining(cooldown.remainingMs)}
             </p>
-            <p className="text-[10px] text-blue-400 mt-1">qoldi</p>
+            <p className="text-[10px] text-blue-400 mt-1">{tt.cooldownRemain}</p>
           </div>
           <Button
             onClick={() => setLocation("/my-requests")}
             className="w-full font-bold bg-blue-600 hover:bg-blue-700"
           >
-            So'rovlarimni ko'rish
+            {tt.viewMyRequests}
           </Button>
         </motion.div>
       </div>

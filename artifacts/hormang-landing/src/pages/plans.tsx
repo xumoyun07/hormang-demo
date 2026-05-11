@@ -15,6 +15,8 @@ import {
 import { recordTangaTransaction } from "@/lib/tanga-history-store";
 import { ReferralCard } from "@/components/referral-card";
 import { isUserSuspended, SUSPENDED_MESSAGE } from "@/lib/safety-store";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 
 const GOLD_GRAD = "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
 const GOLD_DARK = "linear-gradient(135deg, #f59e0b 0%, #92400e 100%)";
@@ -56,6 +58,8 @@ export function TangaChip({ userId, onClick }: { userId: string; onClick?: () =>
 
 /* ─── Countdown hook ─────────────────────────────────────────────── */
 function useCountdown(validUntil?: string): string | null {
+  const { t } = useI18n();
+  const tt = t.plansPage;
   const [label, setLabel] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,16 +73,16 @@ function useCountdown(validUntil?: string): string | null {
       const h = Math.floor((totalSec % 86_400) / 3_600);
       const m = Math.floor((totalSec % 3_600) / 60);
       const s = totalSec % 60;
-      if (d >= 1)  setLabel(`${d} kun qoldi`);
-      else if (h >= 1) setLabel(`${h} soat ${m} daqiqa qoldi`);
-      else if (m >= 1) setLabel(`${m} daqiqa ${s} soniya qoldi`);
-      else         setLabel(`${s} soniya qoldi`);
+      if (d >= 1)  setLabel(tFormat(tt.days, { n: d }));
+      else if (h >= 1) setLabel(tFormat(tt.hoursMinutes, { h, m }));
+      else if (m >= 1) setLabel(tFormat(tt.minutesSeconds, { m, s }));
+      else         setLabel(tFormat(tt.seconds, { s }));
     }
 
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [validUntil]);
+  }, [validUntil, tt]);
 
   return label;
 }
@@ -93,6 +97,8 @@ function PlanCard({
   onBuy: () => void;
   userId: string;
 }) {
+  const { t } = useI18n();
+  const tt = t.plansPage;
   const countdown  = useCountdown(tier.validUntil);
   const isExpired  = tier.validUntil ? new Date(tier.validUntil) <= new Date() : false;
   const saleActive = isSaleActive(tier);
@@ -113,8 +119,8 @@ function PlanCard({
         <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
           <Check className="w-6 h-6 text-emerald-600" />
         </div>
-        <p className="font-extrabold text-emerald-700 text-sm">Muvaffaqiyatli!</p>
-        <p className="text-xs text-emerald-600">{totalTokens} Tanga qo'shildi 🎉</p>
+        <p className="font-extrabold text-emerald-700 text-sm">{tt.successTitle}</p>
+        <p className="text-xs text-emerald-600">{tFormat(tt.successDescTpl, { n: totalTokens })}</p>
       </div>
     );
   }
@@ -123,7 +129,7 @@ function PlanCard({
     return (
       <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-col items-center justify-center min-h-[220px] gap-3">
         <div className="w-10 h-10 rounded-full border-[3px] border-amber-400 border-t-transparent animate-spin" />
-        <p className="text-xs font-semibold text-gray-400">Sotib olinmoqda…</p>
+        <p className="text-xs font-semibold text-gray-400">{tt.buying}</p>
       </div>
     );
   }
@@ -136,9 +142,9 @@ function PlanCard({
         {(tier.featured || tier.hotOffer || tier.bonusPlan || tier.badge) && (
           <div className="flex flex-wrap gap-1.5 mb-2.5">
             {tier.badge && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">{tier.badge}</span>}
-            {tier.featured && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">⭐ Tavsiya etilgan</span>}
-            {tier.hotOffer && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600">🔥 Qaynoq taklif</span>}
-            {tier.bonusPlan && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">🎁 Bonusli</span>}
+            {tier.featured && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{tt.badgeFeatured}</span>}
+            {tier.hotOffer && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600">{tt.badgeHot}</span>}
+            {tier.bonusPlan && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{tt.badgeBonus}</span>}
           </div>
         )}
 
@@ -162,7 +168,7 @@ function PlanCard({
             <p className="text-3xl font-black text-gray-900 leading-none">{tier.credits}</p>
             {(tier.bonusTokens ?? 0) > 0 && (
               <p className="text-[11px] font-bold text-emerald-600 mt-0.5">
-                +{tier.bonusTokens} bonus → jami {totalTokens} Tanga
+                {tFormat(tt.bonusTotalTpl, { bonus: tier.bonusTokens ?? 0, total: totalTokens })}
               </p>
             )}
           </div>
@@ -171,18 +177,18 @@ function PlanCard({
         {/* Price */}
         <div className="flex items-baseline gap-2 mb-2">
           <span className="text-lg font-extrabold text-gray-900">
-            {effectivePrice === 0 ? "Bepul" : `${effectivePrice.toLocaleString()} so'm`}
+            {effectivePrice === 0 ? tt.free : `${effectivePrice.toLocaleString()} ${tt.sumSuffix}`}
           </span>
           {saleActive && tier.salePrice !== undefined && tier.price > tier.salePrice && (
             <>
-              <span className="text-xs text-gray-400 line-through">{tier.price.toLocaleString()} so'm</span>
+              <span className="text-xs text-gray-400 line-through">{tier.price.toLocaleString()} {tt.sumSuffix}</span>
               <span className="text-[10px] font-black text-white bg-orange-500 px-1.5 py-0.5 rounded-full">
-                {Math.round((1 - tier.salePrice / tier.price) * 100)}% tejash
+                {tFormat(tt.saveTpl, { n: Math.round((1 - tier.salePrice / tier.price) * 100) })}
               </span>
             </>
           )}
           {!saleActive && tier.salePrice !== undefined && (
-            <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">Aksiya tugadi</span>
+            <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">{tt.saleEnded}</span>
           )}
         </div>
 
@@ -190,7 +196,7 @@ function PlanCard({
         {saleActive && remaining !== null && (
           <div className="flex items-center gap-1.5 mb-2 px-2.5 py-1.5 bg-orange-50 rounded-xl border border-orange-100">
             <span className="text-[10px] font-black text-orange-600">🔥</span>
-            <span className="text-[11px] font-bold text-orange-700">{remaining} ta joy qoldi</span>
+            <span className="text-[11px] font-bold text-orange-700">{tFormat(tt.slotsLeftTpl, { n: remaining })}</span>
           </div>
         )}
 
@@ -198,12 +204,12 @@ function PlanCard({
         {perUserLimit > 0 && !userLimitHit && userRemaining !== null && (
           <div className="flex items-center gap-1.5 mb-2 px-2.5 py-1.5 bg-blue-50 rounded-xl border border-blue-100">
             <span className="text-[10px] font-black text-blue-600">👤</span>
-            <span className="text-[11px] font-bold text-blue-700">Siz uchun: {userRemaining} ta imkoniyat</span>
+            <span className="text-[11px] font-bold text-blue-700">{tFormat(tt.userQuotaTpl, { n: userRemaining })}</span>
           </div>
         )}
         {userLimitHit && (
           <div className="mb-2 px-2.5 py-1.5 bg-gray-50 rounded-xl border border-gray-100 text-[11px] font-bold text-gray-500 text-center">
-            Sizning limitingiz tugadi
+            {tt.userLimitReached}
           </div>
         )}
 
@@ -211,12 +217,12 @@ function PlanCard({
         {countdown && !isExpired && (
           <div className="flex items-center gap-1.5 mb-2 px-2.5 py-1.5 bg-amber-50 rounded-xl border border-amber-100">
             <Timer className="w-3 h-3 text-amber-500 flex-shrink-0" />
-            <span className="text-[11px] font-bold text-amber-700">⏳ {countdown}</span>
+            <span className="text-[11px] font-bold text-amber-700">{tFormat(tt.countdownLeft, { label: countdown })}</span>
           </div>
         )}
         {isExpired && tier.validUntil && (
           <div className="mb-2 px-2.5 py-1.5 bg-gray-50 rounded-xl border border-gray-100 text-[11px] font-bold text-gray-400 text-center">
-            Muddati tugagan
+            {tt.expired}
           </div>
         )}
 
@@ -227,7 +233,7 @@ function PlanCard({
           className="w-full h-10 rounded-xl font-bold text-sm text-white transition-all active:scale-[.98] disabled:opacity-40 disabled:cursor-not-allowed shadow-sm mt-1"
           style={{ background: disabled ? "#d1d5db" : GOLD_DARK }}
         >
-          {userLimitHit ? "Limit tugdi" : "Sotib olish"}
+          {userLimitHit ? tt.limitReachedBtn : tt.buyBtn}
         </button>
       </div>
     </div>
@@ -237,6 +243,8 @@ function PlanCard({
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function PlansPage() {
   useStoreRefresh();
+  const { t } = useI18n();
+  const tt = t.plansPage;
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -262,13 +270,13 @@ export default function PlansPage() {
       setBuying(null);
       if (!result.ok) {
         const msg =
-          result.error === "sale_sold_out"          ? "Aksiya joylari tugadi."
-          : result.error === "per_user_limit_exceeded" ? "Siz ushbu reja uchun limitga yetdingiz."
-          : result.error === "not_started"           ? "Aksiya hali boshlanmagan."
-          : result.error === "expired"               ? "Reja muddati tugagan."
-          : result.error === "tier_inactive"         ? "Reja faol emas."
-          : "Reja topilmadi.";
-        toast({ title: "Sotib olib bo'lmadi", description: msg, variant: "destructive" });
+          result.error === "sale_sold_out"          ? tt.errSaleSoldOut
+          : result.error === "per_user_limit_exceeded" ? tt.errPerUserLimit
+          : result.error === "not_started"           ? tt.errNotStarted
+          : result.error === "expired"               ? tt.errExpired
+          : result.error === "tier_inactive"         ? tt.errTierInactive
+          : tt.errTierNotFound;
+        toast({ title: tt.purchaseFailedTitle, description: msg, variant: "destructive" });
         return;
       }
       const total = result.total!;
@@ -278,7 +286,11 @@ export default function PlansPage() {
         requestId: "",
         categoryName: tier.name,
         categoryEmoji: "💳",
-        description: `"${tier.name}" rejasi xaridi: ${tier.credits} Tanga${(tier.bonusTokens ?? 0) > 0 ? ` + ${tier.bonusTokens} bonus` : ""}`,
+        description: tFormat(tt.purchaseDescTpl, {
+          name: tier.name,
+          credits: tier.credits,
+          bonus: (tier.bonusTokens ?? 0) > 0 ? tFormat(tt.bonusSuffixTpl, { n: tier.bonusTokens ?? 0 }) : "",
+        }),
         amount: total,
         priceSom: result.pricePaid,
         type: "purchase",
@@ -286,8 +298,8 @@ export default function PlansPage() {
       });
       setBought(tier.id);
       toast({
-        title: `${total} Tanga qo'shildi! 🎉`,
-        description: `Joriy balans: ${getTangaBalance(userId)} Tanga`,
+        title: tFormat(tt.successToastTitleTpl, { n: total }),
+        description: tFormat(tt.successToastDescTpl, { n: getTangaBalance(userId) }),
       });
       setTimeout(() => setBought(null), 2500);
     }, 900);
@@ -302,8 +314,8 @@ export default function PlansPage() {
             <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
           </button>
           <div className="flex-1">
-            <h1 className="font-extrabold text-sm text-gray-900">Tanga Rejalari</h1>
-            <p className="text-xs text-gray-400">Xizmatlar uchun tokenlar sotib oling</p>
+            <h1 className="font-extrabold text-sm text-gray-900">{tt.headerTitle}</h1>
+            <p className="text-xs text-gray-400">{tt.headerSubtitle}</p>
           </div>
           <CoinIcon size={30} />
         </div>
@@ -321,7 +333,7 @@ export default function PlansPage() {
             className="absolute inset-0 opacity-20 pointer-events-none"
             style={{ backgroundImage: "radial-gradient(circle at 80% 10%, white 0%, transparent 55%)" }}
           />
-          <p className="text-sm font-semibold text-amber-100 mb-3">Hamyon</p>
+          <p className="text-sm font-semibold text-amber-100 mb-3">{tt.walletLabel}</p>
           <div className="flex items-center gap-4">
             <img
               src="/tanga-coin.jpg"
@@ -331,17 +343,17 @@ export default function PlansPage() {
             />
             <div>
               <p className="text-5xl font-black text-white leading-none">{balance}</p>
-              <p className="text-amber-200 text-xs font-semibold mt-1">Tanga</p>
+              <p className="text-amber-200 text-xs font-semibold mt-1">{tt.tangaLabel}</p>
             </div>
           </div>
           <p className="text-amber-200/70 text-[10px] mt-3">
-            * Tangalar mijoz xizmat-so'rovlariga ijrochi takliflarini yuborish uchun ishlatiladi
+            {tt.walletNote}
           </p>
           <button
             onClick={() => setLocation("/provider/tanga-history")}
             className="mt-3 flex items-center gap-1.5 text-[11px] font-bold text-amber-100 hover:text-white transition-colors"
           >
-            🧾 Tanga sarflash tarixini ko'rish →
+            {tt.historyLink}
           </button>
         </motion.div>
 
@@ -351,8 +363,8 @@ export default function PlansPage() {
             <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
               <Sparkles className="w-8 h-8 text-amber-400" />
             </div>
-            <p className="font-bold text-gray-600 mb-1">Hozircha faol rejalar yo'q</p>
-            <p className="text-sm text-gray-400">Admin tez orada yangi rejalar qo'shadi</p>
+            <p className="font-bold text-gray-600 mb-1">{tt.emptyTitle}</p>
+            <p className="text-sm text-gray-400">{tt.emptyDesc}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -379,7 +391,7 @@ export default function PlansPage() {
 
         {/* Referral card */}
         <div className="mt-6">
-          <ReferralCard title="Bepul Tanga ishlab oling" />
+          <ReferralCard title={tt.referralTitle} />
         </div>
       </div>
 
