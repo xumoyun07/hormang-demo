@@ -4,6 +4,8 @@ import { useLocation } from "wouter";
 import { Mail, Phone, Loader2, ArrowRight, ChevronLeft, RefreshCw, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 import { sendSmsCode, migrateAccount } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
 import logoImg from "/hormang-logo.png";
@@ -22,6 +24,7 @@ function formatPhone(raw: string): string {
 export default function MigratePage() {
   const [, setLocation] = useLocation();
   const { setAuth } = useAuth();
+  const { t } = useI18n();
   const { toast } = useToast();
 
   const [step, setStep] = useState<Step>("credentials");
@@ -51,8 +54,8 @@ export default function MigratePage() {
 
   function handleCredentialsContinue() {
     setError("");
-    if (!email.includes("@")) { setError("To'g'ri email kiriting"); return; }
-    if (!password) { setError("Parolni kiriting"); return; }
+    if (!email.includes("@")) { setError(t.auth.migrate.invalidEmail); return; }
+    if (!password) { setError(t.auth.migrate.enterPassword); return; }
     setStep("phone");
   }
 
@@ -60,7 +63,7 @@ export default function MigratePage() {
     setError("");
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 9) {
-      setError("To'g'ri telefon raqami kiriting");
+      setError(t.auth.shared.invalidPhone);
       return;
     }
     setLoading(true);
@@ -70,7 +73,7 @@ export default function MigratePage() {
       setStep("otp");
       startResendTimer();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof Error ? err.message : t.common.errorGeneric);
     } finally {
       setLoading(false);
     }
@@ -86,7 +89,7 @@ export default function MigratePage() {
       setDevCode(res.devCode ?? null);
       startResendTimer();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof Error ? err.message : t.common.errorGeneric);
     } finally {
       setLoading(false);
     }
@@ -94,7 +97,7 @@ export default function MigratePage() {
 
   async function handleMigrate() {
     setError("");
-    if (otp.length < 6) { setError("6 xonali kodni kiriting"); return; }
+    if (otp.length < 6) { setError(t.auth.shared.invalidOtp); return; }
     setLoading(true);
     try {
       const res = await migrateAccount({
@@ -104,10 +107,10 @@ export default function MigratePage() {
         otp,
       });
       setAuth(res.user, res.providerProfile ?? null);
-      toast({ title: `Hisobingiz muvaffaqiyatli ko'chirildi, ${res.user.firstName}!` });
+      toast({ title: tFormat(t.auth.migrate.successTpl, { name: res.user.firstName }) });
       setLocation("/dashboard");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof Error ? err.message : t.common.errorGeneric);
     } finally {
       setLoading(false);
     }
@@ -143,19 +146,18 @@ export default function MigratePage() {
           </div>
 
           <h1 className="text-2xl font-display font-bold text-foreground mb-1">
-            Hisobni ko'chirish
+            {t.auth.migrate.title}
           </h1>
           <p className="text-muted-foreground text-sm">
-            {step === "credentials" && "Eski hisobingiz ma'lumotlarini kiriting"}
-            {step === "phone" && "Yangi telefon raqamingizni qo'shing"}
-            {step === "otp" && `+998 ${phone} ga tasdiqlash kodi yuborildi`}
+            {step === "credentials" && t.auth.migrate.descCredentials}
+            {step === "phone" && t.auth.migrate.descPhone}
+            {step === "otp" && tFormat(t.auth.migrate.sentToTpl, { phone })}
           </p>
         </div>
 
         <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-5">
           <p className="text-blue-700 text-xs leading-relaxed">
-            Bu sahifa faqat eski email va parol bilan ro'yxatdan o'tgan foydalanuvchilar uchun.
-            Telefon raqamni bog'laganingizdan so'ng, keyingi safar SMS kod orqali kirishingiz mumkin.
+            {t.auth.migrate.notice}
           </p>
         </div>
 
@@ -176,7 +178,7 @@ export default function MigratePage() {
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-1.5">
                   <Mail className="w-3.5 h-3.5 inline mr-1.5 text-primary" />
-                  Email
+                  {t.auth.migrate.emailLabel}
                 </label>
                 <input
                   type="email"
@@ -188,14 +190,14 @@ export default function MigratePage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-foreground mb-1.5">Parol</label>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">{t.auth.migrate.passwordLabel}</label>
                 <div className="relative">
                   <input
                     type={showPw ? "text" : "password"}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && handleCredentialsContinue()}
-                    placeholder="Parolingizni kiriting"
+                    placeholder={t.auth.migrate.passwordPh}
                     className="w-full h-11 px-4 pr-11 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
                   />
                   <button type="button" onClick={() => setShowPw(v => !v)}
@@ -205,7 +207,7 @@ export default function MigratePage() {
                 </div>
               </div>
               <Button onClick={handleCredentialsContinue} className="w-full h-11 font-bold gap-2">
-                Davom etish <ArrowRight className="w-4 h-4" />
+                {t.common.continue} <ArrowRight className="w-4 h-4" />
               </Button>
             </motion.div>
           )}
@@ -215,7 +217,7 @@ export default function MigratePage() {
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-1.5">
                   <Phone className="w-3.5 h-3.5 inline mr-1.5 text-primary" />
-                  Yangi telefon raqam
+                  {t.auth.migrate.newPhoneLabel}
                 </label>
                 <div className="flex items-center">
                   <span className="h-11 px-3 flex items-center rounded-l-xl border border-r-0 border-border bg-muted text-sm font-semibold text-muted-foreground select-none">
@@ -226,7 +228,7 @@ export default function MigratePage() {
                     value={phone}
                     onChange={e => setPhone(formatPhone(e.target.value))}
                     onKeyDown={e => e.key === "Enter" && handleSendCode()}
-                    placeholder="90 123 45 67"
+                    placeholder={t.auth.shared.phonePlaceholder}
                     maxLength={12}
                     className="flex-1 h-11 px-4 rounded-r-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
                     autoFocus
@@ -235,11 +237,11 @@ export default function MigratePage() {
               </div>
               <div className="flex gap-3">
                 <Button type="button" variant="outline" onClick={() => setStep("credentials")} className="h-11 px-5 border-2 font-semibold gap-1">
-                  <ChevronLeft className="w-4 h-4" /> Orqaga
+                  <ChevronLeft className="w-4 h-4" /> {t.common.back}
                 </Button>
                 <Button onClick={handleSendCode} disabled={loading} className="flex-1 h-11 font-bold gap-2">
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                  {loading ? "Yuborilmoqda..." : "Kodni yuborish"}
+                  {loading ? t.common.sending : t.auth.shared.sendCodeShort}
                 </Button>
               </div>
             </motion.div>
@@ -249,19 +251,19 @@ export default function MigratePage() {
             <motion.div key="otp" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.25 }} className="space-y-4">
               {devCode && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                  <p className="text-xs text-amber-700 font-semibold mb-0.5">Demo rejim — SMS simulyatsiya</p>
+                  <p className="text-xs text-amber-700 font-semibold mb-0.5">{t.common.demoSmsTitle}</p>
                   <p className="text-amber-900 font-bold text-lg tracking-[0.3em]">{devCode}</p>
                 </div>
               )}
               <div>
-                <label className="block text-sm font-semibold text-foreground mb-1.5">Tasdiqlash kodi</label>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">{t.auth.shared.otpLabel}</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={otp}
                   onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   onKeyDown={e => e.key === "Enter" && handleMigrate()}
-                  placeholder="000000"
+                  placeholder={t.auth.shared.otpPlaceholder}
                   maxLength={6}
                   className="w-full h-14 px-4 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all text-2xl font-bold tracking-[0.4em] text-center"
                   autoFocus
@@ -269,17 +271,17 @@ export default function MigratePage() {
               </div>
               <Button onClick={handleMigrate} disabled={loading || otp.length < 6} className="w-full h-11 font-bold gap-2">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                {loading ? "Ko'chirilmoqda..." : "Hisobni ko'chirish"}
+                {loading ? t.auth.migrate.submitting : t.auth.migrate.submit}
               </Button>
               <div className="flex items-center justify-between">
                 <button type="button" onClick={() => { setStep("phone"); setOtp(""); setDevCode(null); }}
                   className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors">
-                  <ChevronLeft className="w-4 h-4" /> Raqamni o'zgartirish
+                  <ChevronLeft className="w-4 h-4" /> {t.common.changePhone}
                 </button>
                 <button type="button" onClick={handleResend} disabled={resendTimer > 0}
                   className="text-sm text-primary hover:underline flex items-center gap-1.5 disabled:opacity-50 transition-all">
                   <RefreshCw className="w-3.5 h-3.5" />
-                  {resendTimer > 0 ? `${resendTimer}s` : "Qayta yuborish"}
+                  {resendTimer > 0 ? `${resendTimer}s` : t.common.resend}
                 </button>
               </div>
             </motion.div>
@@ -287,9 +289,9 @@ export default function MigratePage() {
         </AnimatePresence>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          Yangi foydalanuvchimisiz?{" "}
+          {t.auth.migrate.newUser}{" "}
           <button onClick={() => setLocation("/auth/login")} className="font-bold text-primary hover:underline">
-            Kirish
+            {t.auth.migrate.login}
           </button>
         </p>
       </motion.div>

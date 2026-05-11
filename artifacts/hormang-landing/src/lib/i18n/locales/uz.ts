@@ -10,33 +10,38 @@ export const uz = {
     loading: "Yuklanmoqda...",
     success: "Muvaffaqiyatli",
     error: "Xatolik",
+    errorGeneric: "Xatolik yuz berdi",
     soon: "Tez orada mavjud bo'ladi",
     enabled: "Yoqilgan",
     disabled: "O'chirilgan",
     optional: "ixtiyoriy",
     required: "majburiy",
+    sending: "Yuborilmoqda...",
+    checking: "Tekshirilmoqda...",
+    resend: "Qayta yuborish",
+    changePhone: "Raqamni o'zgartirish",
+    demoSmsTitle: "Demo rejim — SMS simulyatsiya",
+    codeSent: "Tasdiqlash kodi yuborildi",
+    newCodeSent: "Yangi kod yuborildi",
+    yes: "Ha",
+    no: "Yo'q",
+    delete: "O'chirish",
+    edit: "Tahrirlash",
+    add: "Qo'shish",
+    search: "Qidirish",
+    next: "Keyingi",
+    submit: "Yuborish",
+    select: "Tanlash",
   },
   settings: {
     title: "Sozlamalar",
     panelProvider: "Ijrochi paneli",
     panelCustomer: "Mijoz paneli",
     sections: {
-      notifications: {
-        title: "Bildirishnomalar va sozlamalar",
-        desc: "Bildirishnomalar va ilova sozlamalari",
-      },
-      security: {
-        title: "Maxfiylik va xavfsizlik",
-        desc: "Hisob va xavfsizlik",
-      },
-      help: {
-        title: "Yordam va qo'llab-quvvatlash",
-        desc: "Yordam va qo'llab-quvvatlash",
-      },
-      about: {
-        title: "Ilova haqida",
-        desc: "Ilova ma'lumotlari",
-      },
+      notifications: { title: "Bildirishnomalar va sozlamalar", desc: "Bildirishnomalar va ilova sozlamalari" },
+      security:      { title: "Maxfiylik va xavfsizlik",        desc: "Hisob va xavfsizlik" },
+      help:          { title: "Yordam va qo'llab-quvvatlash",   desc: "Yordam va qo'llab-quvvatlash" },
+      about:         { title: "Ilova haqida",                    desc: "Ilova ma'lumotlari" },
     },
     logout: "Hisobdan chiqish",
     version: "Versiya",
@@ -47,14 +52,14 @@ export const uz = {
     sectionPush: "Bildirishnomalar",
     sectionPrefs: "Ilova sozlamalari",
     rows: {
-      messages: { title: "Yangi xabarlar", desc: "Kimdir xabar yuborganda" },
-      requestsProvider: { title: "Yangi so'rovlar", desc: "Yangi buyurtma so'rovi kelganda" },
-      offersCustomer: { title: "Yangi takliflar", desc: "Ijrochidan taklif kelganda" },
-      app: { title: "Ilova bildirishnomalari", desc: "Yangiliklar va e'lonlar" },
-      language: { title: "Interfeys tili", desc: "Ilova ko'rsatiladigan til" },
-      darkMode: { title: "Tungi rejim", desc: "Quyuq mavzu" },
-      reduceMotion: { title: "Animatsiyalarni kamaytirish", desc: "Harakatlanish effektlarini kamaytirish" },
-      systemTheme: { title: "Tizim mavzusiga moslash", desc: "Qurilma sozlamalariga ergashing" },
+      messages:         { title: "Yangi xabarlar",          desc: "Kimdir xabar yuborganda" },
+      requestsProvider: { title: "Yangi so'rovlar",         desc: "Yangi buyurtma so'rovi kelganda" },
+      offersCustomer:   { title: "Yangi takliflar",         desc: "Ijrochidan taklif kelganda" },
+      app:              { title: "Ilova bildirishnomalari", desc: "Yangiliklar va e'lonlar" },
+      language:         { title: "Interfeys tili",          desc: "Ilova ko'rsatiladigan til" },
+      darkMode:         { title: "Tungi rejim",             desc: "Quyuq mavzu" },
+      reduceMotion:     { title: "Animatsiyalarni kamaytirish", desc: "Harakatlanish effektlarini kamaytirish" },
+      systemTheme:      { title: "Tizim mavzusiga moslash", desc: "Qurilma sozlamalariga ergashing" },
     },
   },
   security: {
@@ -62,10 +67,10 @@ export const uz = {
     subtitle: "Hisobingizni himoya qiling",
     statusCard: { low: "Past", medium: "O'rta", high: "Yuqori", level: "Xavfsizlik darajasi" },
     rows: {
-      phone: { title: "Telefon raqam", verified: "Tasdiqlangan", change: "Telefon raqamni o'zgartirish" },
-      email: { title: "Email manzil", notSet: "Ro'yxatdan o'tkazilmagan", register: "Email manzilni ro'yxatdan o'tkazish", change: "Email manzilni o'zgartirish", desc: "Email xavfsizligi va tiklash" },
-      twoFA: { title: "Ikki bosqichli autentifikatsiya", desc: "SMS orqali qo'shimcha himoya", needsEmail: "2FA uchun email talab qilinadi" },
-      changePhone: { needsEmail: "Email manzil ro'yxatdan o'tkazilgandan keyin mavjud" },
+      phone:         { title: "Telefon raqam", verified: "Tasdiqlangan", change: "Telefon raqamni o'zgartirish" },
+      email:         { title: "Email manzil", notSet: "Ro'yxatdan o'tkazilmagan", register: "Email manzilni ro'yxatdan o'tkazish", change: "Email manzilni o'zgartirish", desc: "Email xavfsizligi va tiklash" },
+      twoFA:         { title: "Ikki bosqichli autentifikatsiya", desc: "SMS orqali qo'shimcha himoya", needsEmail: "2FA uchun email talab qilinadi" },
+      changePhone:   { needsEmail: "Email manzil ro'yxatdan o'tkazilgandan keyin mavjud" },
       deleteAccount: { title: "Hisobni o'chirish", desc: "Hisobingiz va barcha ma'lumotlaringiz o'chiriladi" },
     },
     dangerZone: "Xavfli zona",
@@ -80,8 +85,8 @@ export const uz = {
     sectionGuidelines: "Hamjamiyat qoidalari",
     sectionLegal: "Huquqiy",
     feedback: { title: "Fikr-mulohaza yuborish", desc: "Taklif yoki shikoyat yuboring" },
-    contact: { email: "Email", telegram: "Telegram", copy: "Nusxa olish", copied: "Nusxa olindi" },
-    legal: { terms: "Foydalanish shartlari", privacy: "Maxfiylik siyosati", licenses: "Litsenziyalar" },
+    contact:  { email: "Email", telegram: "Telegram", copy: "Nusxa olish", copied: "Nusxa olindi" },
+    legal:    { terms: "Foydalanish shartlari", privacy: "Maxfiylik siyosati", licenses: "Litsenziyalar" },
     soon: "Tez orada",
   },
   about: {
@@ -118,63 +123,189 @@ export const uz = {
       { title: "Platformadan tashqari firibgarlik yo'q", desc: "Hormang orqali topishilgan mijozlarni boshqa kanallarga ko'chirib aldash man etiladi." },
     ],
   },
-} satisfies Dict;
+  bottomNav: {
+    buyer: {
+      home: "Bosh sahifa",
+      categories: "Kategoriyalar",
+      requests: "So'rovlarim",
+      chats: "Suhbatlarim",
+      profile: "Profil",
+    },
+    provider: {
+      home: "Bosh sahifa",
+      requests: "So'rovlar",
+      wallet: "Hamyon",
+      chats: "Suhbatlar",
+      profile: "Profil",
+    },
+    smartSoon: "Smart-Hormang hozircha ishlab chiqilmoqda",
+  },
+  notFound: {
+    title: "404 Sahifa topilmadi",
+    description: "Sahifani routerga qo'shishni unutdingizmi?",
+  },
+  auth: {
+    shared: {
+      phoneLabel: "Telefon raqam",
+      phonePlaceholder: "90 123 45 67",
+      otpLabel: "Tasdiqlash kodi",
+      otpPlaceholder: "000000",
+      sendCode: "Tasdiqlash kodi yuborish",
+      sendCodeShort: "Kodni yuborish",
+      smsHint: "SMS orqali 6 xonali tasdiqlash kodi yuboriladi",
+      invalidPhone: "To'g'ri telefon raqami kiriting",
+      invalidPhoneLong: "To'g'ri telefon raqami kiriting (kamida 9 raqam)",
+      invalidOtp: "6 xonali kodni kiriting",
+      sentToTpl: "+998 {{phone}} ga kod yuborildi",
+    },
+    login: {
+      title: "Hisobingizga kiring",
+      enterPhone: "Telefon raqamingizni kiriting",
+      submit: "Kirish",
+      welcomeTpl: "Xush kelibsiz, {{name}}!",
+      notRegistered: "Hali ro'yxatdan o'tmaganmisiz?",
+      register: "Ro'yxatdan o'tish",
+      legacyAccount: "Eski hisobingiz bormi?",
+      migrate: "Ko'chirish",
+    },
+    register: {
+      titleInfo: "Hisobingizni yarating",
+      titlePhone: "Telefon raqamingiz",
+      titleOtp: "Kodni tasdiqlang",
+      titleProvider: "Ijrochi profilingiz",
+      descInfo: "Ismingizni kiriting",
+      descPhone: "SMS tasdiqlash uchun raqamingizni kiriting",
+      sentToTpl: "+998 {{phone}} ga kod yuborildi",
+      descProvider: "Xizmatlaringiz haqida ko'proq ma'lumot bering",
+      firstName: "Ism",
+      firstNamePh: "Alisher",
+      lastName: "Familiya",
+      lastNamePh: "Toshmatov",
+      firstNameMin: "Ism kamida 2 harf",
+      lastNameMin: "Familiya kamida 2 harf",
+      termsLink: "Foydalanish shartlari",
+      privacyLink: "Maxfiylik siyosatiga",
+      agreementBefore: " va ",
+      agreementAfter: " roziman",
+      agreeRequired: "Shartlarga rozilik bildirishingiz kerak",
+      catsLabel: "Xizmat kategoriyalarini tanlang",
+      catsRequired: "Kamida bitta kategoriya tanlang",
+      bioLabel: "O'zingiz haqida",
+      bioPlaceholder: "Tajribangiz, ko'nikmalaringiz haqida qisqacha yozing...",
+      locationLabel: "Hudud",
+      locationPlaceholder: "Toshkent, Yunusobod",
+      createProfile: "Profil yaratish",
+      creatingProfile: "Yaratilmoqda...",
+      submitOtp: "Tasdiqlash",
+      registeringBuyer: "Ro'yxatdan o'tilmoqda...",
+      welcomeBuyerTpl: "Xush kelibsiz, {{name}}! Hormangga xush kelibsiz.",
+      welcomeProviderTpl: "Profilingiz tayyor, {{name}}! Endi so'rovlar kuting.",
+      haveAccount: "Allaqachon hisobingiz bormi?",
+      login: "Kirish",
+      serviceCategories: [
+        "Tozalik", "Ta'mirlash / Usta", "Enaga / Bola parvarishi",
+        "Ovqat pishirish", "Ko'chirish / Transport", "Go'zallik / Sartaroshlik",
+        "Avto xizmat", "Repetitor / O'qituvchi", "Elektr ishlari",
+        "Santexnika", "Dizayn / Yaratuvchanlik", "Boshqalar",
+      ],
+    },
+    roleSelect: {
+      welcome: "Xush kelibsiz!",
+      question: "Hormangdan qanday foydalanmoqchisiz?",
+      buyerTitle: "Xizmat qidiraman",
+      buyerDesc: "Tozalovchi, usta, enaga va boshqa mahalliy xizmatlarni toping",
+      providerTitle: "Xizmat ko'rsataman",
+      providerDesc: "Profilingizni yarating va mahalliy mijozlarni toping",
+      haveAccount: "Allaqachon hisobingiz bormi?",
+      login: "Kirish",
+    },
+    migrate: {
+      title: "Hisobni ko'chirish",
+      descCredentials: "Eski hisobingiz ma'lumotlarini kiriting",
+      descPhone: "Yangi telefon raqamingizni qo'shing",
+      sentToTpl: "+998 {{phone}} ga tasdiqlash kodi yuborildi",
+      notice: "Bu sahifa faqat eski email va parol bilan ro'yxatdan o'tgan foydalanuvchilar uchun. Telefon raqamni bog'laganingizdan so'ng, keyingi safar SMS kod orqali kirishingiz mumkin.",
+      invalidEmail: "To'g'ri email kiriting",
+      enterPassword: "Parolni kiriting",
+      emailLabel: "Email",
+      passwordLabel: "Parol",
+      passwordPh: "Parolingizni kiriting",
+      newPhoneLabel: "Yangi telefon raqam",
+      submit: "Hisobni ko'chirish",
+      submitting: "Ko'chirilmoqda...",
+      successTpl: "Hisobingiz muvaffaqiyatli ko'chirildi, {{name}}!",
+      newUser: "Yangi foydalanuvchimisiz?",
+      login: "Kirish",
+    },
+  },
+  dashboard: {
+    becomeProviderCard: {
+      title: "Ijrochi bo'lishni istaysizmi?",
+      desc: "Profil yarating va mijozlarga xizmat ko'rsatib daromad oling",
+      benefits: [
+        "Xizmatlaringizga mos kategoriya tanlang",
+        "Mijozlarga taklif jo'nating",
+        "Mijozlar bilan bog'lanib daromad oling",
+      ],
+      cta: "Ijrochi bo'lish",
+    },
+    modal: {
+      title: "Ijrochi bo'lish",
+      subtitle: "Faoliyat yuritish uchun kamida bitta xizmat turini tanlang",
+      selectedTpl: "{{count}} ta xizmat tanlandi",
+      saving: "Saqlanmoqda...",
+      continue: "Davom etish",
+      categories: [
+        "Tozalash", "Ta'mirlash", "Enagalik", "Tadbir xizmatlari",
+        "Ko'chirish / yuk yetkazish", "Go'zallik", "Avto xizmat",
+        "Repetitorlar", "Ustachilik",
+      ],
+    },
+    rolePillBuyer: "Mijoz",
+    rolePillProvider: "Ijrochi",
+    becomeProviderBtn: "Ijrochi bo'lish",
+    guest: "Mehmon",
+    phoneVerified: "Telefon tasdiqlangan",
+    phoneNotVerified: "Telefon tasdiqlanmagan",
+    buyerItems: {
+      search:    { title: "Xizmat qidirish",          desc: "Mahalliy mutaxassislarni toping" },
+      requests:  { title: "So'rovlarim",              desc: "Barcha so'rovlar tarixi" },
+      saved:     { title: "Saqlanganlar",             desc: "Sevimli ijrochilar", badge: "Tez kunda" },
+      profile:   { title: "Profil sozlamalari",       desc: "Ma'lumotlar, parol va hisobing" },
+      settings:  { title: "Sozlamalar",               desc: "Bildirishnomalar, til va boshqalar" },
+      feedback:  { title: "Takliflar va shikoyatlar", desc: "Muammo, shikoyat yoki taklif yuboring" },
+    },
+    providerItems: {
+      newRequests: { title: "Yangi so'rovlar",          desc: "Kelayotgan buyurtma so'rovlarini ko'ring" },
+      stats:       { title: "Statistika",                desc: "Ko'rishlar, buyurtmalar va daromad", soon: "Tez kunda" },
+      reviews:     { title: "Sharhlarim",                desc: "Mijozlar fikr-mulohazalari" },
+      profile:     { title: "Profil sozlamalari",        desc: "Xizmatlar, bio, parol va hisobing" },
+      settings:    { title: "Sozlamalar",                desc: "Bildirishnomalar, til va boshqalar" },
+      feedback:    { title: "Takliflar va shikoyatlar",  desc: "Muammo, shikoyat yoki taklif yuboring" },
+    },
+    historyToast: "Xizmatlar tarixi tez kunda qo'shiladi",
+    historyToastModal: "Xizmatlar tarixi modali tez kunda qo'shiladi",
+    badgesEmpty: "Nishonlar →",
+    closeCompletionAria: "Profil tugallangan kartasini yopish",
+    profileFullShort: "Profil to'liq! 🎉",
+    profileFillTitle: "Profilni to'ldiring",
+    fieldsLeftTpl: "{{count}} ta maydon qoldi",
+    profileFullCardLabel: "Profil to'liq to'ldirilgan",
+    add: "Qo'shish →",
+    completedReviewsSuffixTpl: "{{count}} ta bajarilgan xizmat",
+    reviewCountTpl: "({{count}} ta baho)",
+    completedSuffixTpl: "{{count}} bajarildi",
+    idCheckSoon: "ID tekshiruvi — tez kunda",
+    welcomeTpl: "Xush kelibsiz, {{name}}!",
+    customerPanel: "Mijoz paneli",
+    providerPanel: "Ijrochi paneli",
+    backHome: "Bosh sahifaga qaytish",
+    profileCompleteFull: "Profil to'liq to'ldirilgan! 🎉",
+    profileCompletePartialTpl: "Profil {{pct}}% to'ldirilgan",
+    fillSoon: "Tez to'ldiring",
+    allFieldsFilled: "Barcha maydonlar to'ldirilgan",
+    soon: "Tez kunda",
+  },
+};
 
-export interface Dict {
-  common: {
-    save: string; cancel: string; close: string; confirm: string; continue: string;
-    back: string; done: string; loading: string; success: string; error: string;
-    soon: string; enabled: string; disabled: string; optional: string; required: string;
-  };
-  settings: {
-    title: string; panelProvider: string; panelCustomer: string;
-    sections: {
-      notifications: { title: string; desc: string };
-      security:      { title: string; desc: string };
-      help:          { title: string; desc: string };
-      about:         { title: string; desc: string };
-    };
-    logout: string; version: string;
-  };
-  notifications: {
-    title: string; subtitle: string; sectionPush: string; sectionPrefs: string;
-    rows: {
-      messages:         { title: string; desc: string };
-      requestsProvider: { title: string; desc: string };
-      offersCustomer:   { title: string; desc: string };
-      app:              { title: string; desc: string };
-      language:         { title: string; desc: string };
-      darkMode:         { title: string; desc: string };
-      reduceMotion:     { title: string; desc: string };
-      systemTheme:      { title: string; desc: string };
-    };
-  };
-  security: {
-    title: string; subtitle: string;
-    statusCard: { low: string; medium: string; high: string; level: string };
-    rows: {
-      phone:          { title: string; verified: string; change: string };
-      email:          { title: string; notSet: string; register: string; change: string; desc: string };
-      twoFA:          { title: string; desc: string; needsEmail: string };
-      changePhone:    { needsEmail: string };
-      deleteAccount:  { title: string; desc: string };
-    };
-    dangerZone: string; soon: string;
-  };
-  help: {
-    title: string; subtitle: string;
-    sectionFeedback: string; sectionFAQ: string; sectionContact: string;
-    sectionGuidelines: string; sectionLegal: string;
-    feedback: { title: string; desc: string };
-    contact:  { email: string; telegram: string; copy: string; copied: string };
-    legal:    { terms: string; privacy: string; licenses: string };
-    soon: string;
-  };
-  about: {
-    title: string; subtitle: string; version: string; build: string;
-    copyright: string; description: string; licenses: string; openSource: string;
-  };
-  language: { pickerTitle: string; uz: string; ru: string; en: string };
-  faq:      { items: { q: string; a: string }[] };
-  guidelines: { items: { title: string; desc: string }[] };
-}
+export type Dict = typeof uz;

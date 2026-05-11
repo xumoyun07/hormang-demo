@@ -16,6 +16,8 @@ import { getBadges, evaluateAutoBadges, type BadgeType } from "@/lib/badge-store
 import { onStoreChange } from "@/lib/store-events";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 import { saveProviderProfile } from "@/lib/auth-client";
 import { processReferralReward } from "@/lib/referral-store";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +41,7 @@ const VIOLET_SOLID = "hsl(262,80%,54%)";
 const VIOLET_GRAD  = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 
 function BecomeProviderCard({ onBecome }: { onBecome: () => void }) {
+  const { t } = useI18n();
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -52,29 +55,24 @@ function BecomeProviderCard({ onBecome }: { onBecome: () => void }) {
           <Briefcase className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h3 className="font-extrabold text-base leading-tight">Ijrochi bo'lishni istaysizmi?</h3>
-          <p className="text-white/75 text-xs mt-0.5">Profil yarating va mijozlarga xizmat ko'rsatib daromad oling</p>
+          <h3 className="font-extrabold text-base leading-tight">{t.dashboard.becomeProviderCard.title}</h3>
+          <p className="text-white/75 text-xs mt-0.5">{t.dashboard.becomeProviderCard.desc}</p>
         </div>
       </div>
       <div className="flex flex-col gap-2 text-xs text-white/80 mb-4">
-        <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-white/60 flex-shrink-0" /> Xizmatlaringizga mos kategoriya tanlang</div>
-        <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-white/60 flex-shrink-0" /> Mijozlarga taklif jo'nating</div>
-        <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-white/60 flex-shrink-0" /> Mijozlar bilan bog'lanib daromad oling</div>
+        {t.dashboard.becomeProviderCard.benefits.map((b) => (
+          <div key={b} className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-white/60 flex-shrink-0" /> {b}</div>
+        ))}
       </div>
       <button
         onClick={onBecome}
         className="w-full bg-white text-violet-700 font-extrabold py-2.5 rounded-xl text-sm hover:bg-white/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"
       >
-        Ijrochi bo'lish <ArrowRight className="w-4 h-4" />
+        {t.dashboard.becomeProviderCard.cta} <ArrowRight className="w-4 h-4" />
       </button>
     </motion.div>
   );
 }
-
-const PROVIDER_CATEGORIES = [
-  "Tozalash", "Ta'mirlash", "Enagalik", "Tadbir xizmatlari",
-  "Ko'chirish / yuk yetkazish", "Go'zallik", "Avto xizmat", "Repetitorlar", "Ustachilik",
-];
 
 function BecomeProviderModal({
   onClose,
@@ -85,6 +83,8 @@ function BecomeProviderModal({
   onSubmit: (categories: string[]) => void;
   loading: boolean;
 }) {
+  const { t } = useI18n();
+  const PROVIDER_CATEGORIES = t.dashboard.modal.categories;
   const [selected, setSelected] = useState<string[]>([]);
 
   function toggle(cat: string) {
@@ -116,9 +116,9 @@ function BecomeProviderModal({
             >
               <Briefcase className="w-5 h-5 text-white" />
             </div>
-            <h2 className="text-lg font-extrabold text-gray-900 leading-tight">Ijrochi bo'lish</h2>
+            <h2 className="text-lg font-extrabold text-gray-900 leading-tight">{t.dashboard.modal.title}</h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              Faoliyat yuritish uchun kamida bitta xizmat turini tanlang
+              {t.dashboard.modal.subtitle}
             </p>
           </div>
           <button
@@ -159,7 +159,7 @@ function BecomeProviderModal({
               animate={{ opacity: 1, y: 0 }}
               className="text-xs text-violet-600 font-semibold mt-3"
             >
-              {selected.length} ta xizmat tanlandi
+              {tFormat(t.dashboard.modal.selectedTpl, { count: selected.length })}
             </motion.p>
           )}
         </div>
@@ -173,7 +173,7 @@ function BecomeProviderModal({
             className="flex-shrink-0 border-2 font-semibold"
             disabled={loading}
           >
-            Bekor qilish
+            {t.common.cancel}
           </Button>
           <Button
             type="button"
@@ -183,7 +183,7 @@ function BecomeProviderModal({
             style={{ background: VIOLET_GRAD }}
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-            {loading ? "Saqlanmoqda..." : "Davom etish"}
+            {loading ? t.dashboard.modal.saving : t.dashboard.modal.continue}
           </Button>
         </div>
       </motion.div>
@@ -193,6 +193,7 @@ function BecomeProviderModal({
 
 function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => void; onBecome: () => void }) {
   const { user, providerProfile } = useAuth();
+  const { t } = useI18n();
   const [local, setLocal] = useState<LocalProfile>({});
   const storeVersion = useStoreRefresh();
 
@@ -208,39 +209,39 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
   const items = [
     {
       icon: Search,
-      title: "Xizmat qidirish",
-      desc: "Mahalliy mutaxassislarni toping",
+      title: t.dashboard.buyerItems.search.title,
+      desc: t.dashboard.buyerItems.search.desc,
       action: () => onNavigate("/questionnaire"),
       highlight: true,
     },
     {
       icon: ClipboardList,
-      title: "So'rovlarim",
-      desc: "Barcha so'rovlar tarixi",
+      title: t.dashboard.buyerItems.requests.title,
+      desc: t.dashboard.buyerItems.requests.desc,
       action: () => { sessionStorage.setItem("request_history_referrer", "/dashboard"); onNavigate("/request-history"); },
     },
     {
       icon: Heart,
-      title: "Saqlanganlar",
-      desc: "Sevimli ijrochilar",
-      badge: "Tez kunda",
+      title: t.dashboard.buyerItems.saved.title,
+      desc: t.dashboard.buyerItems.saved.desc,
+      badge: t.dashboard.buyerItems.saved.badge,
     },
     {
       icon: UserPen,
-      title: "Profil sozlamalari",
-      desc: "Ma'lumotlar, parol va hisobing",
+      title: t.dashboard.buyerItems.profile.title,
+      desc: t.dashboard.buyerItems.profile.desc,
       action: () => onNavigate("/profile/settings"),
     },
     {
       icon: Settings,
-      title: "Sozlamalar",
-      desc: "Bildirishnomalar, til va boshqalar",
+      title: t.dashboard.buyerItems.settings.title,
+      desc: t.dashboard.buyerItems.settings.desc,
       action: () => onNavigate("/settings"),
     },
     {
       icon: MessagesSquare,
-      title: "Takliflar va shikoyatlar",
-      desc: "Muammo, shikoyat yoki taklif yuboring",
+      title: t.dashboard.buyerItems.feedback.title,
+      desc: t.dashboard.buyerItems.feedback.desc,
       action: () => onNavigate("/feedback"),
     },
   ];
@@ -274,13 +275,13 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
               <h2 className="text-base font-bold text-gray-900 truncate">
-                {fullName || "Mehmon"}
+                {fullName || t.dashboard.guest}
               </h2>
               <span
                 className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white flex-shrink-0"
                 style={{ background: "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)" }}
               >
-                Mijoz
+                {t.dashboard.rolePillBuyer}
               </span>
             </div>
 
@@ -303,11 +304,11 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
         <div className="flex items-center gap-2 mt-3 flex-wrap">
           {user?.phone ? (
             <span className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-green-50 text-green-700 border border-green-100">
-              <Phone className="w-3 h-3" /> Telefon tasdiqlangan
+              <Phone className="w-3 h-3" /> {t.dashboard.phoneVerified}
             </span>
           ) : (
             <span className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-amber-50 text-amber-700 border border-amber-100">
-              <Phone className="w-3 h-3" /> Telefon tasdiqlanmagan
+              <Phone className="w-3 h-3" /> {t.dashboard.phoneNotVerified}
             </span>
           )}
         </div>
@@ -381,6 +382,7 @@ function CircularProgress({ pct }: { pct: number }) {
 function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void }) {
   const { user, providerProfile } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [local, setLocal] = useState<LocalProfile>({});
   const storeVersion = useStoreRefresh();
   const completionDismissKey = user?.id ? `profile_completion_dismissed_${user.id}` : "";
@@ -437,40 +439,40 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
   const menuItems = [
     {
       icon: Inbox,
-      title: "Yangi so'rovlar",
-      desc: "Kelayotgan buyurtma so'rovlarini ko'ring",
+      title: t.dashboard.providerItems.newRequests.title,
+      desc: t.dashboard.providerItems.newRequests.desc,
       badge: unseenCount.toString(),
       badgeColor: "bg-blue-600 text-white",
       action: () => onNavigate("/provider/requests"),
     },
     {
       icon: TrendingUp,
-      title: "Statistika",
-      desc: "Ko'rishlar, buyurtmalar va daromad",
+      title: t.dashboard.providerItems.stats.title,
+      desc: t.dashboard.providerItems.stats.desc,
       comingSoon: true,
     },
     {
       icon: Star,
-      title: "Sharhlarim",
-      desc: "Mijozlar fikr-mulohazalari",
+      title: t.dashboard.providerItems.reviews.title,
+      desc: t.dashboard.providerItems.reviews.desc,
       action: () => onNavigate("/provider-reviews"),
     },
     {
       icon: UserPen,
-      title: "Profil sozlamalari",
-      desc: "Xizmatlar, bio, parol va hisobing",
+      title: t.dashboard.providerItems.profile.title,
+      desc: t.dashboard.providerItems.profile.desc,
       action: () => onNavigate("/profile/settings"),
     },
     {
       icon: Settings,
-      title: "Sozlamalar",
-      desc: "Bildirishnomalar, til va boshqalar",
+      title: t.dashboard.providerItems.settings.title,
+      desc: t.dashboard.providerItems.settings.desc,
       action: () => onNavigate("/settings"),
     },
     {
       icon: MessagesSquare,
-      title: "Takliflar va shikoyatlar",
-      desc: "Muammo, shikoyat yoki taklif yuboring",
+      title: t.dashboard.providerItems.feedback.title,
+      desc: t.dashboard.providerItems.feedback.desc,
       action: () => onNavigate("/feedback"),
     },
   ];
@@ -510,7 +512,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
               </h2>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white flex-shrink-0"
                 style={{ background: VIOLET_GRAD }}>
-                Ijrochi
+                {t.dashboard.rolePillProvider}
               </span>
             </div>
 
@@ -538,10 +540,10 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
               <span className="text-gray-200">·</span>
               <button
                 className="flex items-center gap-1"
-                onClick={() => toast({ title: "Xizmatlar tarixi tez kunda qo'shiladi" })}
+                onClick={() => toast({ title: t.dashboard.historyToast })}
               >
                 <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                <span className="text-xs font-semibold text-gray-600">{completedCount} bajarildi</span>
+                <span className="text-xs font-semibold text-gray-600">{tFormat(t.dashboard.completedSuffixTpl, { count: completedCount })}</span>
               </button>
             </div>
 
@@ -570,11 +572,11 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
                       onClick={() => setShowBadgeSheet(true)}
                       className="text-[11px] font-semibold text-violet-500 hover:text-violet-700 transition-colors flex-shrink-0"
                     >
-                      Nishonlar →
+                      {t.dashboard.badgesEmpty}
                     </button>
                   )}
                   <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 border border-gray-100 flex-shrink-0 whitespace-nowrap">
-                    <IdCard className="w-3 h-3 flex-shrink-0" /> ID tekshiruvi — tez kunda
+                    <IdCard className="w-3 h-3 flex-shrink-0" /> {t.dashboard.idCheckSoon}
                   </span>
                 </div>
               );
@@ -619,7 +621,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
               setCompletionDismissed(true);
             }}
             className="absolute right-3 top-3 w-7 h-7 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-            aria-label="Profil tugallangan kartasini yopish"
+            aria-label={t.dashboard.closeCompletionAria}
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -639,7 +641,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
           {/* Info */}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-gray-800 mb-1">
-              {pct === 100 ? "Profil to'liq! 🎉" : "Profilni to'ldiring"}
+              {pct === 100 ? t.dashboard.profileFullShort : t.dashboard.profileFillTitle}
             </p>
             {/* Bar */}
             <div className="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden mb-2">
@@ -652,7 +654,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
               />
             </div>
             {pct < 100 && (
-              <p className="text-xs text-gray-400">{missing.length} ta maydon qoldi</p>
+              <p className="text-xs text-gray-400">{tFormat(t.dashboard.fieldsLeftTpl, { count: missing.length })}</p>
             )}
           </div>
         </div>
@@ -673,7 +675,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
                   onClick={() => onNavigate("/profile/settings")}
                   className="text-[11px] font-bold text-violet-600 hover:text-violet-800 flex-shrink-0 transition-colors"
                 >
-                  Qo'shish →
+                  {t.dashboard.add}
                 </button>
               </div>
             ))}
@@ -684,7 +686,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
           <div className="mt-3 flex items-center gap-2 bg-violet-50 rounded-xl px-3 py-2.5">
             <CheckCircle2 className="w-4 h-4 text-violet-600 flex-shrink-0" />
             <span className="text-xs font-semibold text-violet-700">
-              Profil to'liq to'ldirilgan
+              {t.dashboard.profileFullCardLabel}
             </span>
           </div>
         )}
@@ -718,7 +720,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
           {badge ? (
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeColor}`}>{badge}</span>
           ) : comingSoon ? (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">Tez kunda</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">{t.dashboard.soon}</span>
           ) : action ? (
             <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-violet-500 flex-shrink-0" />
           ) : null}
@@ -731,6 +733,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
 export default function UnifiedDashboard() {
   const { user, providerProfile, activeRole, switchRole, setProviderProfile, logout } = useAuth();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [, setLocation] = useLocation();
   const [logoHovered, setLogoHovered] = useState(false);
   const [headerLocal, setHeaderLocal] = useState<LocalProfile>({});
@@ -773,7 +776,7 @@ export default function UnifiedDashboard() {
       setShowBecomeModal(false);
       setLocation("/profile/settings");
     } catch (err: unknown) {
-      toast({ title: err instanceof Error ? err.message : "Xatolik yuz berdi", variant: "destructive" });
+      toast({ title: err instanceof Error ? err.message : t.common.errorGeneric, variant: "destructive" });
     } finally {
       setBecomingProvider(false);
     }
@@ -828,7 +831,7 @@ export default function UnifiedDashboard() {
                         <span className="relative">
                           {role === "buyer" ? <ShoppingBag className="w-3.5 h-3.5" /> : <Briefcase className="w-3.5 h-3.5" />}
                         </span>
-                        <span className="relative">{role === "buyer" ? "Mijoz" : "Ijrochi"}</span>
+                        <span className="relative">{role === "buyer" ? t.dashboard.rolePillBuyer : t.dashboard.rolePillProvider}</span>
                       </button>
                     );
                   })}
@@ -844,7 +847,7 @@ export default function UnifiedDashboard() {
                     ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     : <Briefcase className="w-3.5 h-3.5" />
                   }
-                  Ijrochi bo'lish
+                  {t.dashboard.becomeProviderBtn}
                 </button>
               )}
             </div>
