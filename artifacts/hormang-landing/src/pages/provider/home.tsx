@@ -19,6 +19,9 @@ import {
 import { BottomNav } from "@/components/bottom-nav";
 import { OfferForm } from "@/components/offer-form";
 import { useAuth } from "@/contexts/auth-context";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
+import type { Dict } from "@/lib/i18n/locales/uz";
 import { useToast } from "@/hooks/use-toast";
 import {
   getMatchingRequests, getUpcomingServices, markServiceDone,
@@ -50,19 +53,19 @@ function formatDate(iso: string): string {
   return formatUzDate(iso);
 }
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: Dict): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 60) return `${mins} daqiqa oldin`;
+  if (mins < 60) return tFormat(t.time.minutesAgoTpl, { n: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} soat oldin`;
-  return `${Math.floor(hrs / 24)} kun oldin`;
+  if (hrs < 24) return tFormat(t.time.hoursAgoTpl, { n: hrs });
+  return tFormat(t.time.daysAgoTpl, { n: Math.floor(hrs / 24) });
 }
 
-function urgencyLabel(u: ProviderRequest["urgency"]): { label: string; color: string } {
-  if (u === "urgent") return { label: "Shoshilinch", color: "text-red-600 bg-red-50 border-red-100" };
-  if (u === "normal") return { label: "Oddiy", color: "text-blue-600 bg-blue-50 border-blue-100" };
-  return { label: "Moslashuvchan", color: "text-gray-500 bg-gray-100 border-gray-200" };
+function urgencyLabel(u: ProviderRequest["urgency"], t: Dict): { label: string; color: string } {
+  if (u === "urgent") return { label: t.urgency.urgent, color: "text-red-600 bg-red-50 border-red-100" };
+  if (u === "normal") return { label: t.urgency.normal, color: "text-blue-600 bg-blue-50 border-blue-100" };
+  return { label: t.urgency.flexible, color: "text-gray-500 bg-gray-100 border-gray-200" };
 }
 
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -85,6 +88,7 @@ const CONFETTI_DOTS = [
 
 /* ─── Celebration Modal ──────────────────────────────────────────── */
 function CelebrationModal({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -118,10 +122,10 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
 
         {/* Body */}
         <div className="px-6 pt-5 pb-6 text-center">
-          <h2 className="text-xl font-extrabold text-gray-900 mb-1.5">Tabriklaymiz!</h2>
+          <h2 className="text-xl font-extrabold text-gray-900 mb-1.5">{t.providerHome.celebration.title}</h2>
           <p className="text-sm text-gray-500 mb-5 leading-relaxed">
-            Profilingiz <span className="font-bold text-violet-600">100%</span> to'ldirildi.
-            <br />Siz HORMANGning ishonchli ijrochilar qatoridasiz!
+            {tFormat(t.providerHome.celebration.bodyTpl, { pct: 100 })}
+            <br />{t.providerHome.celebration.bodyLine2}
           </p>
 
           {/* Reward badge */}
@@ -129,8 +133,8 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
             <span className="text-2xl font-extrabold text-amber-600 leading-none">+5</span>
             <TangaCoin size="lg" />
             <div className="text-left">
-              <p className="text-sm font-extrabold text-amber-700">Tanga bonus berildi!</p>
-              <p className="text-[11px] text-amber-500">Balansingizga qo'shildi</p>
+              <p className="text-sm font-extrabold text-amber-700">{t.providerHome.celebration.rewardTitle}</p>
+              <p className="text-[11px] text-amber-500">{t.providerHome.celebration.rewardSubtitle}</p>
             </div>
           </div>
 
@@ -139,7 +143,7 @@ function CelebrationModal({ onClose }: { onClose: () => void }) {
             className="w-full py-3.5 rounded-2xl font-bold text-white text-sm transition-all active:scale-[.98] shadow-md shadow-violet-200"
             style={{ background: VIOLET }}
           >
-            Rahmat 🎊
+            {t.providerHome.celebration.closeBtn}
           </button>
         </div>
       </motion.div>
@@ -175,6 +179,7 @@ function CircularProgress({ pct }: { pct: number }) {
 function ProfileCompletion() {
   useStoreRefresh();
   const { user, providerProfile } = useAuth();
+  const { t } = useI18n();
   const [, setLocation] = useLocation();
   const dismissKey = user?.id ? `profile_completion_dismissed_${user.id}` : "";
   const [dismissed, setDismissed] = useState(false);
@@ -195,13 +200,11 @@ function ProfileCompletion() {
     setDismissed(localStorage.getItem(dismissKey) === "1");
   }, [dismissKey]);
 
-  /* Sync reward status from store on every refresh */
   useEffect(() => {
     if (!user?.id) return;
     setRewardGranted(getProfileRewardStatus(user.id).granted);
   }, [user?.id]);
 
-  /* Try to grant one-time reward when profile hits 100% */
   useEffect(() => {
     if (!user?.id || pct !== 100) return;
     const wasJustGranted = tryGrantProfileReward(user.id);
@@ -213,15 +216,6 @@ function ProfileCompletion() {
     }
   }, [user?.id, pct]);
 
-  /* Re-evaluate auto-badges whenever any store data changes.
-   * This covers ALL badge types:
-   *   • verified / strong_portfolio — local profile edits emit storeChange
-   *   • top_provider / trusted_provider — review/completion store changes
-   *   • premium_provider — tanga-history store changes
-   *   • experienced_provider — completion store changes
-   * Runs once immediately so badges are current on mount, then on every
-   * downstream store event so removal/grant happens in real time.
-   */
   useEffect(() => {
     if (!user || user.role !== "provider") return;
     evaluateAutoBadges(user);
@@ -253,7 +247,7 @@ function ProfileCompletion() {
               setDismissed(true);
             }}
             className="absolute right-3 top-3 w-7 h-7 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-            aria-label="Profil tugallangan kartasini yopish"
+            aria-label={t.providerHome.profileCompletion.closeAria}
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -267,19 +261,19 @@ function ProfileCompletion() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-gray-900 text-sm mb-0.5">
-              {pct === 100 ? "Profil to'liq! 🎉" : "Profilingizni to'ldiring"}
+              {pct === 100 ? t.providerHome.profileCompletion.fullTitle : t.providerHome.profileCompletion.fillTitle}
             </p>
-            <p className="text-xs text-gray-500 mb-2">{checks.length - missing.length}/{checks.length} qadamlar bajarildi</p>
+            <p className="text-xs text-gray-500 mb-2">{tFormat(t.providerHome.profileCompletion.stepsTpl, { done: checks.length - missing.length, total: checks.length })}</p>
             {pct === 100 ? (
               <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 bg-violet-50 rounded-xl px-3 py-2">
                   <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
-                  Profil to'liq to'ldirilgan
+                  {t.providerHome.profileCompletion.fullBadge}
                 </div>
                 {rewardGranted ? (
                   <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-1.5">
                     <span className="text-sm">🎖</span>
-                    5 Tanga bonusi olindi ✅
+                    {t.providerHome.profileCompletion.rewardClaimed}
                   </div>
                 ) : null}
               </div>
@@ -294,7 +288,7 @@ function ProfileCompletion() {
                 {!rewardGranted && (
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 mt-1">
                     <TangaCoin size="sm" />
-                    100% to'ldiring va +5 Tanga bonus oling
+                    {t.providerHome.profileCompletion.rewardHint}
                   </div>
                 )}
               </div>
@@ -320,11 +314,11 @@ function ProfileCompletion() {
                 </div>
               ) : (
                 <span className="text-[11px] text-gray-400 font-medium flex-1">
-                  Hali nishonlar yo'q
+                  {t.providerHome.profileCompletion.noBadges}
                 </span>
               )}
               <span className="text-[10px] text-violet-400 group-hover:text-violet-600 transition-colors font-semibold flex-shrink-0 whitespace-nowrap">
-                Shartlar →
+                {t.providerHome.profileCompletion.conditions}
               </span>
             </button>
           );
@@ -340,6 +334,7 @@ function ProfileCompletion() {
 function UpcomingServices() {
   useStoreRefresh();
   const { user } = useAuth();
+  const { t } = useI18n();
   const masterId = user?.id ?? "";
   const services = getUpcomingServices(masterId).filter((s) => s.status === "upcoming");
   const [selectedService, setSelectedService] = useState<UpcomingService | null>(null);
@@ -399,15 +394,15 @@ function UpcomingServices() {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <CalendarDays className="w-4 h-4 text-violet-600" />
-          <h2 className="font-bold text-sm text-gray-900">Yaqinlashayotgan xizmatlar</h2>
+          <h2 className="font-bold text-sm text-gray-900">{t.providerHome.upcoming.title}</h2>
         </div>
-        <span className="text-xs font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">{services.length} ta</span>
+        <span className="text-xs font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">{tFormat(t.providerHome.countTpl, { n: services.length })}</span>
       </div>
 
       {services.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 card-shadow p-5 text-center">
           <CalendarDays className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-          <p className="text-sm font-medium text-gray-400">Hozircha rejalashtirilgan xizmat yo'q</p>
+          <p className="text-sm font-medium text-gray-400">{t.providerHome.upcoming.empty}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -439,7 +434,7 @@ function UpcomingServices() {
               <button
                 onClick={(e) => requestComplete(s, e)}
                 className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 flex items-center justify-center flex-shrink-0 transition-colors"
-                title="Bajarildi"
+                title={t.providerHome.upcoming.doneBtnTitle}
               >
                 <Check className="w-4 h-4 text-emerald-600" />
               </button>
@@ -448,7 +443,6 @@ function UpcomingServices() {
         </div>
       )}
 
-      {/* Offer detail modal (read-only) for clicking a service card */}
       <AnimatePresence>
         {selectedService && selectedOffer && (
           <OfferDetailModal
@@ -460,7 +454,6 @@ function UpcomingServices() {
         )}
       </AnimatePresence>
 
-      {/* Review modal after marking done */}
       <AnimatePresence>
         {reviewService && (
           <ReviewModal
@@ -468,7 +461,7 @@ function UpcomingServices() {
             subjectName={reviewService.customerName}
             subjectInitials={reviewService.customerInitials}
             subjectColor={reviewService.customerColor}
-            prompt="Mijozni baholang"
+            prompt={t.providerHome.upcoming.reviewPrompt}
             onSubmit={handleReviewSubmit}
             onSkip={() => {
               markServiceDone(reviewService.id, masterId);
@@ -478,14 +471,13 @@ function UpcomingServices() {
         )}
       </AnimatePresence>
 
-      {/* Completion confirmation modal */}
       <AnimatePresence>
         {confirmService && (
           <ConfirmModal
             key="home-complete-confirm"
-            title="Xizmat yakunlanganligini tasdiqlaysizmi?"
-            message={"Bu amalni ortga qaytarib bo'lmaydi.\n\nXizmat haqiqatan ham yakunlandimi?\nXizmat yakunida xaridor xizmat sifatini baholashi mumkin."}
-            confirmText="Ha, yakunlandi"
+            title={t.providerHome.upcoming.confirmTitle}
+            message={t.providerHome.upcoming.confirmMessage}
+            confirmText={t.providerHome.upcoming.confirmYes}
             onConfirm={() => handleDone(confirmService)}
             onClose={() => setConfirmService(null)}
           />
@@ -513,7 +505,8 @@ function RequestSlideCard({
   index: number;
   total: number;
 }) {
-  const urg = urgencyLabel(request.urgency);
+  const { t } = useI18n();
+  const urg = urgencyLabel(request.urgency, t);
 
   return (
     <motion.div
@@ -529,7 +522,7 @@ function RequestSlideCard({
         <span className="text-2xl">{request.emoji}</span>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-sm text-gray-900">{request.categoryName}</p>
-          <p className="text-xs text-gray-400">{request.customerName} · {timeAgo(request.createdAt)}</p>
+          <p className="text-xs text-gray-400">{request.customerName} · {timeAgo(request.createdAt, t)}</p>
         </div>
         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${urg.color}`}>
           {urg.label}
@@ -542,20 +535,20 @@ function RequestSlideCard({
 
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Byudjet</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">{t.providerHome.card.budget}</p>
             <p className="text-sm font-extrabold text-violet-700">{request.budgetLabel}</p>
           </div>
           <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Manzil</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">{t.providerHome.card.location}</p>
             <p className="text-sm font-bold text-gray-800 truncate">{request.location}</p>
           </div>
           <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Takliflar</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">{t.providerHome.card.offers}</p>
             {(() => {
               const cnt = getRequestOfferCount(request.id);
               return (
                 <p className={`text-sm font-extrabold ${cnt === 0 ? "text-red-500" : "text-emerald-600"}`}>
-                  {cnt} ta
+                  {tFormat(t.providerHome.countTpl, { n: cnt })}
                 </p>
               );
             })()}
@@ -580,7 +573,7 @@ function RequestSlideCard({
             onClick={() => onIgnore(request.id)}
             className="flex-1 h-11 rounded-2xl border-2 border-red-100 bg-red-50 text-red-600 font-bold text-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 hover:bg-red-100"
           >
-            O'chirish
+            {t.providerHome.card.delete}
           </button>
           <button
             onClick={() => onRespond(request.id)}
@@ -588,7 +581,7 @@ function RequestSlideCard({
             style={{ background: VIOLET }}
           >
             <Send className="w-4 h-4" />
-            Taklif yuborish
+            {t.providerHome.card.sendOffer}
           </button>
         </div>
       </div>
@@ -614,6 +607,7 @@ function RequestsModal({
   onMarkAllSeen: () => void;
   isNewModal: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <AnimatePresence>
       <motion.div
@@ -640,9 +634,9 @@ function RequestsModal({
                     onMarkAllSeen();
                   }}
                   className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors"
-                  title="Barchasini ko'rilgan deb belgilash"
+                  title={t.providerHome.modal.markAllSeen}
                 >
-                  Barchasini ko'rilgan deb belgilash
+                  {t.providerHome.modal.markAllSeen}
                 </button>
               )}
               <button
@@ -660,12 +654,12 @@ function RequestsModal({
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Inbox className="w-10 h-10 text-gray-300 mb-3" />
                 <p className="text-sm font-semibold text-gray-400">
-                  Sizning kategoriyalaringiz bo'yicha so'rovlar yo'q
+                  {t.providerHome.modal.noMatching}
                 </p>
               </div>
             ) : (
               requests.map((r, i) => {
-                const urg = urgencyLabel(r.urgency);
+                const urg = urgencyLabel(r.urgency, t);
                 const offerCnt = getRequestOfferCount(r.id);
                 const isResponded = r.status === "responded";
                 return (
@@ -681,12 +675,12 @@ function RequestsModal({
                       <span className="text-2xl">{r.emoji}</span>
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-sm text-gray-900">{r.categoryName}</p>
-                        <p className="text-xs text-gray-400">{r.customerName} · {timeAgo(r.createdAt)}</p>
+                        <p className="text-xs text-gray-400">{r.customerName} · {timeAgo(r.createdAt, t)}</p>
                       </div>
                       {isResponded ? (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 flex items-center gap-1">
                           <Check className="w-2.5 h-2.5" />
-                          Taklif yuborildi
+                          {t.providerHome.card.offerSent}
                         </span>
                       ) : (
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${urg.color}`}>
@@ -704,17 +698,17 @@ function RequestsModal({
                       {/* Info chips */}
                       <div className="grid grid-cols-3 gap-2 mb-3">
                         <div className="bg-gray-50 rounded-xl p-2 text-center">
-                          <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">Byudjet</p>
+                          <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{t.providerHome.card.budget}</p>
                           <p className="text-xs font-extrabold text-violet-700">{r.budgetLabel}</p>
                         </div>
                         <div className="bg-gray-50 rounded-xl p-2 text-center">
-                          <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">Manzil</p>
+                          <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{t.providerHome.card.location}</p>
                           <p className="text-xs font-bold text-gray-700 truncate">{r.location}</p>
                         </div>
                         <div className="bg-gray-50 rounded-xl p-2 text-center">
-                          <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">Takliflar</p>
+                          <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{t.providerHome.card.offers}</p>
                           <p className={`text-xs font-extrabold ${offerCnt === 0 ? "text-red-500" : "text-emerald-600"}`}>
-                            {offerCnt} ta
+                            {tFormat(t.providerHome.countTpl, { n: offerCnt })}
                           </p>
                         </div>
                       </div>
@@ -723,7 +717,7 @@ function RequestsModal({
                       {isResponded ? (
                         <div className="h-9 rounded-xl border-2 border-emerald-100 bg-emerald-50 text-emerald-700 font-bold text-xs flex items-center justify-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Taklif yuborilgan — javob kutilmoqda
+                          {t.providerHome.card.offerSentWaiting}
                         </div>
                       ) : (
                         <div className="flex gap-2">
@@ -731,7 +725,7 @@ function RequestsModal({
                             onClick={() => onIgnore(r.id)}
                             className="flex-1 h-9 rounded-xl border-2 border-red-100 bg-red-50 text-red-600 font-bold text-xs flex items-center justify-center gap-1 transition-all active:scale-95 hover:bg-red-100"
                           >
-                            O'chirish
+                            {t.providerHome.card.delete}
                           </button>
                           <button
                             onClick={() => onRespond(r.id)}
@@ -739,7 +733,7 @@ function RequestsModal({
                             style={{ background: VIOLET }}
                           >
                             <Send className="w-3.5 h-3.5" />
-                            Taklif yuborish
+                            {t.providerHome.card.sendOffer}
                           </button>
                         </div>
                       )}
@@ -760,6 +754,7 @@ type ModalType = "all" | "new" | "zero" | null;
 
 function AvailableRequests() {
   useStoreRefresh();
+  const { t } = useI18n();
   const [modal, setModal] = useState<ModalType>(null);
   const [slideIndex, setSlideIndex] = useState(0);
   const [offerRequest, setOfferRequest] = useState<ProviderRequest | null>(null);
@@ -774,9 +769,7 @@ function AvailableRequests() {
   const requests = getMatchingRequests(selectedCategories, serviceAreas, providerId, serviceAreaV2);
   const seen = getSeenIds(providerId);
 
-  // All non-ignored requests (open + responded) — visible to every provider
   const visibleRequests = requests.filter((r) => r.status !== "ignored");
-  // New/unseen = only open requests the provider hasn't seen yet
   const newUnseen       = requests.filter((r) => !seen.includes(r.id) && r.status === "open");
   const zeroOffers      = getRequestsWithZeroOffers(selectedCategories, serviceAreas, providerId, serviceAreaV2);
 
@@ -784,17 +777,15 @@ function AvailableRequests() {
   const totalOpen     = visibleRequests.length;
   const zeroCount     = zeroOffers.length;
 
-  // Toast when new matching requests arrive
   const prevUnseenCount = useRef<number | null>(null);
   useEffect(() => {
     if (prevUnseenCount.current !== null && newCount > prevUnseenCount.current) {
       const diff = newCount - prevUnseenCount.current;
-      toast({ title: `Yangi so'rov! 🔔`, description: `${diff} ta yangi so'rov paydo bo'ldi.` });
+      toast({ title: t.providerHome.available.toastTitle, description: tFormat(t.providerHome.available.toastDescTpl, { n: diff }) });
     }
     prevUnseenCount.current = newCount;
   }, [newCount]);
 
-  // Slide card state
   const slideReqs = newUnseen;
   const current   = slideReqs[slideIndex];
 
@@ -819,7 +810,6 @@ function AvailableRequests() {
     markSeen(id, providerId);
   }
 
-  // Determine modal request list
   const modalRequests =
     modal === "all"  ? visibleRequests :
     modal === "new"  ? newUnseen :
@@ -827,9 +817,9 @@ function AvailableRequests() {
     [];
 
   const modalTitle =
-    modal === "all"  ? "Barcha mos keladigan so'rovlar" :
-    modal === "new"  ? "Yangi so'rovlar" :
-    modal === "zero" ? "Taklif olmagan so'rovlar" :
+    modal === "all"  ? t.providerHome.modal.titleAll :
+    modal === "new"  ? t.providerHome.modal.titleNew :
+    modal === "zero" ? t.providerHome.modal.titleZero :
     "";
 
   return (
@@ -837,21 +827,19 @@ function AvailableRequests() {
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-3">
           <Inbox className="w-4 h-4 text-violet-600" />
-          <h2 className="font-bold text-sm text-gray-900">Mavjud so'rovlar</h2>
+          <h2 className="font-bold text-sm text-gray-900">{t.providerHome.available.title}</h2>
         </div>
 
         {/* ── Clickable Stats Row ── */}
         <div className="grid grid-cols-3 gap-2 mb-4">
-          {/* All */}
           <button
             onClick={() => setModal("all")}
             className="bg-white rounded-2xl border border-gray-100 card-shadow p-3 text-center transition-all active:scale-95 hover:border-violet-200 hover:shadow-md"
           >
             <p className="text-xl font-black text-gray-900">{totalOpen}</p>
-            <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">Barcha so'rovlar</p>
+            <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">{t.providerHome.available.statAll}</p>
           </button>
 
-          {/* New — red dot only when there are unseen */}
           <button
             onClick={() => setModal("new")}
             className="bg-white rounded-2xl border border-gray-100 card-shadow p-3 text-center relative transition-all active:scale-95 hover:border-red-200 hover:shadow-md"
@@ -860,10 +848,9 @@ function AvailableRequests() {
               <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500" />
             )}
             <p className="text-xl font-black text-gray-900">{newCount}</p>
-            <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">Yangi so'rovlar</p>
+            <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">{t.providerHome.available.statNew}</p>
           </button>
 
-          {/* Zero offers */}
           <button
             onClick={() => setModal("zero")}
             className="bg-white rounded-2xl border border-gray-100 card-shadow p-3 text-center transition-all active:scale-95 hover:border-orange-200 hover:shadow-md"
@@ -871,7 +858,7 @@ function AvailableRequests() {
             <p className={`text-xl font-black ${zeroCount > 0 ? "text-red-500" : "text-gray-900"}`}>
               {zeroCount}
             </p>
-            <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">Taklif olmagan so'rovlar</p>
+            <p className="text-[10px] font-bold text-gray-400 mt-0.5 leading-tight">{t.providerHome.available.statZero}</p>
           </button>
         </div>
 
@@ -898,27 +885,26 @@ function AvailableRequests() {
                 onClick={() => setSlideIndex((i) => Math.max(0, i - 1))}
                 className="flex items-center gap-1 text-xs font-semibold text-gray-400 disabled:opacity-30 hover:text-violet-600 transition-colors"
               >
-                <ChevronLeft className="w-4 h-4" /> Oldingi
+                <ChevronLeft className="w-4 h-4" /> {t.providerHome.available.prev}
               </button>
               <button
                 disabled={slideIndex >= slideReqs.length - 1}
                 onClick={() => setSlideIndex((i) => Math.min(i + 1, slideReqs.length - 1))}
                 className="flex items-center gap-1 text-xs font-semibold text-gray-400 disabled:opacity-30 hover:text-violet-600 transition-colors"
               >
-                Keyingi <ChevronRight className="w-4 h-4" />
+                {t.providerHome.available.next} <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
         )}
 
-        {/* Empty state when no new requests at all */}
         {slideReqs.length === 0 && (
           <div className="text-center py-6">
             <Inbox className="w-8 h-8 text-gray-300 mx-auto mb-2" />
             <p className="text-sm font-semibold text-gray-400">
               {selectedCategories.length > 0
-                ? "Hozircha yangi so'rovlar yo'q"
-                : "So'rovlarni ko'rish uchun xizmat kategoriyalarini tanlang"}
+                ? t.providerHome.available.emptyNew
+                : t.providerHome.available.pickCategories}
             </p>
           </div>
         )}
@@ -962,6 +948,7 @@ function AnnouncementModal({
   ann: Announcement;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [, setLocation] = useLocation();
   return (
     <>
@@ -992,7 +979,7 @@ function AnnouncementModal({
                 ? "bg-orange-50 text-orange-700 border-orange-200"
                 : "bg-blue-50 text-blue-700 border-blue-200"
             }`}>
-              {ann.type === "event" ? "🎯 Tadbir" : "📰 Yangilik"}
+              {ann.type === "event" ? t.providerHome.events.typeEvent : t.providerHome.events.typeNews}
             </span>
             {ann.isPinned && <span className="text-base">📌</span>}
           </div>
@@ -1000,7 +987,7 @@ function AnnouncementModal({
           <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{ann.content}</p>
           {ann.expiresAt && (
             <p className="text-[10px] text-gray-400">
-              ⏳ Muddat: {new Date(ann.expiresAt).toLocaleDateString("uz-UZ")}
+              {tFormat(t.providerHome.events.deadlineTpl, { date: new Date(ann.expiresAt).toLocaleDateString("uz-UZ") })}
             </p>
           )}
         </div>
@@ -1016,7 +1003,7 @@ function AnnouncementModal({
           )}
           <button onClick={onClose}
             className="w-full py-2.5 rounded-2xl font-bold text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
-            Yopish
+            {t.providerHome.modal.closeBtn}
           </button>
         </div>
       </motion.div>
@@ -1028,6 +1015,7 @@ function AnnouncementModal({
 function EventsSection() {
   useStoreRefresh();
   const { user } = useAuth();
+  const { t } = useI18n();
   const [selected, setSelected] = useState<Announcement | null>(null);
 
   const items = getPublishedAnnouncements("providers");
@@ -1047,14 +1035,14 @@ function EventsSection() {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-violet-600" />
-            <h2 className="font-bold text-sm text-gray-900">Yangiliklar va tadbirlar</h2>
+            <h2 className="font-bold text-sm text-gray-900">{t.providerHome.events.title}</h2>
             {unseenCount > 0 && (
               <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-red-500 text-white">
                 {unseenCount}
               </span>
             )}
           </div>
-          <span className="text-[10px] text-gray-400">{items.length} ta</span>
+          <span className="text-[10px] text-gray-400">{tFormat(t.providerHome.countTpl, { n: items.length })}</span>
         </div>
 
         <div className="space-y-2">
@@ -1085,12 +1073,12 @@ function EventsSection() {
                               ? "bg-orange-50 text-orange-700 border-orange-200"
                               : "bg-blue-50 text-blue-700 border-blue-200"
                           }`}>
-                            {ann.type === "event" ? "🎯 Tadbir" : "📰 Yangilik"}
+                            {ann.type === "event" ? t.providerHome.events.typeEvent : t.providerHome.events.typeNews}
                           </span>
                           {ann.isPinned && <span className="text-[11px]">📌</span>}
                           {isNew && (
                             <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-red-600 border border-red-200">
-                              Yangi
+                              {t.providerHome.events.isNew}
                             </span>
                           )}
                         </div>
@@ -1132,6 +1120,7 @@ function EventsSection() {
 export default function ProviderHomePage() {
   useStoreRefresh();
   const { user, providerProfile } = useAuth();
+  const { t } = useI18n();
   const [, setLocation] = useLocation();
   const [logoHovered, setLogoHovered] = useState(false);
   const [headerLocal, setHeaderLocal] = useState<ReturnType<typeof getLocalProfile>>({});
@@ -1153,7 +1142,7 @@ export default function ProviderHomePage() {
       {/* Header */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10 card-shadow">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => setLocation("/provider-home")} 
+          <button onClick={() => setLocation("/provider-home")}
           onMouseEnter={() => setLogoHovered(true)}
           onMouseLeave={() => setLogoHovered(false)}
             className="flex items-center gap-2.5">
@@ -1162,11 +1151,11 @@ export default function ProviderHomePage() {
           </button>
           <div className="flex-1" />
           <span className="text-[11px] font-bold px-2.5 py-1 rounded-full text-white" style={{ background: VIOLET }}>
-            Ijrochi
+            {t.providerHome.roleBadge}
           </span>
           {unseenCount > 0 && (
             <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-500 text-white">
-              {unseenCount} yangi
+              {tFormat(t.providerHome.newCountTpl, { n: unseenCount })}
             </span>
           )}
           <TangaChip userId={user?.id ?? ""} onClick={() => setLocation("/plans")} />
@@ -1192,9 +1181,9 @@ export default function ProviderHomePage() {
           className="mb-5"
         >
           <h1 className="text-lg font-extrabold text-gray-900">
-            Assalomu alaykum, {user?.firstName}! 👋
+            {tFormat(t.providerHome.greetingTpl, { name: user?.firstName ?? "" })}
           </h1>
-          <p className="text-sm text-gray-400 mt-0.5">Bugungi so'rovlar va xizmatlaringiz</p>
+          <p className="text-sm text-gray-400 mt-0.5">{t.providerHome.greetingSubtitle}</p>
         </motion.div>
 
         <ProfileCompletion />
