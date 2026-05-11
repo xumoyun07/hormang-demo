@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
+import { ThemeProvider } from "@/contexts/theme-context";
+import { I18nProvider } from "@/contexts/i18n-context";
 import { migrateOnce } from "@/lib/migration";
 
 migrateOnce();
@@ -24,6 +26,10 @@ import OffersPage from "@/pages/offers";
 import ChatPage from "@/pages/chat";
 import ChatOffersPage from "@/pages/chat-offers";
 import SettingsPage from "@/pages/settings";
+import NotificationsSettingsPage from "@/pages/settings/notifications";
+import SecuritySettingsPage from "@/pages/settings/security";
+import HelpSettingsPage from "@/pages/settings/help";
+import AboutSettingsPage from "@/pages/settings/about";
 import MigratePage from "@/pages/auth/migrate";
 import ProviderHomePage from "@/pages/provider/home";
 import ProviderRequestsPage from "@/pages/provider/requests";
@@ -112,6 +118,18 @@ function Router() {
       <Route path="/settings">
         {() => <ProtectedRoute component={SettingsPage} />}
       </Route>
+      <Route path="/settings/notifications">
+        {() => <ProtectedRoute component={NotificationsSettingsPage} />}
+      </Route>
+      <Route path="/settings/security">
+        {() => <ProtectedRoute component={SecuritySettingsPage} />}
+      </Route>
+      <Route path="/settings/help">
+        {() => <ProtectedRoute component={HelpSettingsPage} />}
+      </Route>
+      <Route path="/settings/about">
+        {() => <ProtectedRoute component={AboutSettingsPage} />}
+      </Route>
       <Route path="/providers/:id" component={ProviderProfilePage} />
       <Route path="/questionnaire" component={QuestionnairePage} />
       <Route path="/admin" component={AdminDashboard} />
@@ -179,15 +197,19 @@ function DevTestButton() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <AuthProvider>
-            <Router />
-            <DevTestButton />
-          </AuthProvider>
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+      <ThemeProvider>
+        <I18nProvider>
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <AuthProvider>
+                <Router />
+                <DevTestButton />
+              </AuthProvider>
+            </WouterRouter>
+            <Toaster />
+          </TooltipProvider>
+        </I18nProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
