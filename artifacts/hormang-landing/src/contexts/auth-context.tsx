@@ -15,6 +15,7 @@ interface AuthState {
   setProviderProfile: (profile: ProviderProfile | null) => void;
   switchRole: (role: Role) => void;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 /* ─── Per-user role key ──────────────────────────────────────────── */
@@ -123,6 +124,7 @@ const AuthContext = createContext<AuthState>({
   setProviderProfile: () => {},
   switchRole: () => {},
   logout: async () => {},
+  refreshUser: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -267,6 +269,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const { user: u, providerProfile: pp } = await getMe();
+      setUser(u);
+      setProviderProfileState(pp);
+    } catch {
+      setUser(null);
+      setProviderProfileState(null);
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     const outgoingId = user?.id;
     await logoutUser();
@@ -283,7 +296,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, providerProfile, activeRole, loading,
-      setAuth, setProviderProfile, switchRole, logout,
+      setAuth, setProviderProfile, switchRole, logout, refreshUser,
     }}>
       {children}
     </AuthContext.Provider>
