@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
-import { Phone, ArrowRight, Loader2, LogIn, ChevronLeft, RefreshCw } from "lucide-react";
+import { Phone, Mail, ArrowRight, Loader2, LogIn, ChevronLeft, RefreshCw, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
-import { sendSmsCode, loginUser } from "@/lib/auth-client";
+import { sendSmsCode, loginUser, loginWithEmail, verifyLogin2FA, resendLogin2FA, type LoginChallenge } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
 import logoImg from "/hormang-logo.png";
 
-type Step = "phone" | "otp";
+type Step = "phone" | "otp" | "email" | "twofa";
+type Mode = "phone" | "email";
 
 function formatPhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -27,13 +28,17 @@ export default function LoginPage() {
   const { t } = useI18n();
   const { toast } = useToast();
 
+  const [mode, setMode] = useState<Mode>("phone");
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
+  const [emailValue, setEmailValue] = useState("");
+  const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [devCode, setDevCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
+  const [challenge, setChallenge] = useState<LoginChallenge | null>(null);
 
   function getFullPhone() {
     return "+998" + phone.replace(/\D/g, "");
@@ -80,14 +85,73 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await loginUser({ phone: getFullPhone(), otp });
-      setAuth(res.user, res.providerProfile ?? null);
-      toast({ title: tFormat(t.auth.login.welcomeTpl, { name: res.user.firstName }) });
-      setLocation("/dashboard");
+      if ("needs2FA" in res) {
+        setChallenge(res);
+        setDevCode(res.devCode ?? null);
+        setOtp("");
+        setStep("twofa");
+        startResendTimer();
+      } else {
+        setAuth(res.user, res.providerProfile ?? null);
+        toast({ title: tFormat(t.auth.login.welcomeTpl, { name: res.user.firstName }) });
+        setLocation("/dashboard");
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t.common.errorGeneric;
       setError(msg);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleEmailLogin() {
+    setError("");
+    if (!emailValue || !password) {
+      setError(t.common.errorGeneric);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await loginWithEmail({ email: emailValue, password });
+      if ("needs2FA" in res) {
+        setChallenge(res);
+        setDevCode(res.devCode ?? null);
+        setOtp("");
+        setStep("twofa");
+        startResendTimer();
+      } else {
+        setAuth(res.user, res.providerProfile ?? null);
+        toast({ title: tFormat(t.auth.login.welcomeTpl, { name: res.user.firstName }) });
+        setLocation("/dashboard");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.common.errorGeneric);
+    } finally { setLoading(false); }
+  }
+
+  async function handleVerify2FA() {
+    if (!challenge || otp.length < 6) return;
+    setError(""); setLoading(true);
+    try {
+      const res = await verifyLogin2FA({ challengeId: challenge.challengeId, otp });
+      setAuth(res.user, res.providerProfile ?? null);
+      toast({ title: tFormat(t.auth.login.welcomeTpl, { name: res.user.firstName }) });
+      setLocation("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.common.errorGeneric);
+    } finally { setLoading(false); }
+  }
+
+  async function handleResend2FA() {
+    if (!challenge || resendTimer > 0) return;
+    setError("");
+    try {
+      const res = await resendLogin2FA(challenge.challengeId);
+      setDevCode(res.devCode ?? null);
+      startResendTimer();
+      toast({ title: t.common.newCodeSent });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.common.errorGeneric);
     }
   }
 
@@ -127,9 +191,31 @@ export default function LoginPage() {
           </motion.div>
           <h1 className="text-2xl font-display font-bold text-foreground mb-1">{t.auth.login.title}</h1>
           <p className="text-muted-foreground text-sm">
-            {step === "phone" ? t.auth.login.enterPhone : tFormat(t.auth.shared.sentToTpl, { phone })}
+            {step === "phone" ? t.auth.login.enterPhone
+              : step === "email" ? t.auth.login.title
+              : step === "twofa" ? tFormat(t.auth.shared.sentToTpl, { phone: challenge?.destination ?? "" })
+              : tFormat(t.auth.shared.sentToTpl, { phone })}
           </p>
         </div>
+
+        {(step === "phone" || step === "email") && (
+          <div className="flex bg-muted rounded-xl p-1 mb-4">
+            <button
+              type="button"
+              onClick={() => { setMode("phone"); setStep("phone"); setError(""); }}
+              className={`flex-1 h-9 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${mode === "phone" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}
+            >
+              <Phone className="w-3.5 h-3.5" /> {t.auth.shared.phoneLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode("email"); setStep("email"); setError(""); }}
+              className={`flex-1 h-9 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${mode === "email" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}
+            >
+              <Mail className="w-3.5 h-3.5" /> Email
+            </button>
+          </div>
+        )}
 
         {error && (
           <motion.div
@@ -186,6 +272,106 @@ export default function LoginPage() {
               <p className="text-center text-xs text-muted-foreground pt-1">
                 {t.auth.shared.smsHint}
               </p>
+            </motion.div>
+          )}
+
+          {step === "email" && (
+            <motion.div
+              key="email"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.25 }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">
+                  <Mail className="w-3.5 h-3.5 inline mr-1.5 text-primary" /> Email
+                </label>
+                <input
+                  type="email"
+                  value={emailValue}
+                  onChange={(e) => setEmailValue(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleEmailLogin()}
+                  placeholder="you@example.com"
+                  className="w-full h-11 px-4 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-sm"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">
+                  <Lock className="w-3.5 h-3.5 inline mr-1.5 text-primary" /> {t.security.flows.changeEmail.currentPasswordLabel}
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleEmailLogin()}
+                  placeholder="••••••••"
+                  className="w-full h-11 px-4 rounded-xl border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-sm"
+                />
+              </div>
+              <Button onClick={handleEmailLogin} disabled={loading} className="w-full h-11 font-bold text-sm gap-2">
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
+                {loading ? t.common.checking : t.auth.login.submit}
+              </Button>
+            </motion.div>
+          )}
+
+          {step === "twofa" && (
+            <motion.div
+              key="twofa"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.25 }}
+              className="space-y-4"
+            >
+              {devCode && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                  <p className="text-xs text-amber-700 font-semibold mb-0.5">{t.common.demoSmsTitle}</p>
+                  <p className="text-amber-900 font-bold text-lg tracking-[0.3em]">{devCode}</p>
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">
+                  <Lock className="w-3.5 h-3.5 inline mr-1.5 text-primary" />
+                  {t.security.rows.twoFA.title}
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  onKeyDown={(e) => e.key === "Enter" && handleVerify2FA()}
+                  placeholder="000000"
+                  maxLength={6}
+                  className="w-full h-14 px-4 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-2xl font-bold tracking-[0.4em] text-center"
+                  autoFocus
+                />
+              </div>
+              <Button onClick={handleVerify2FA} disabled={loading || otp.length < 6} className="w-full h-11 font-bold text-sm gap-2">
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
+                {loading ? t.common.checking : t.auth.login.submit}
+              </Button>
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => { setStep(mode === "phone" ? "phone" : "email"); setOtp(""); setDevCode(null); setChallenge(null); setError(""); }}
+                  className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" /> {t.common.back}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResend2FA}
+                  disabled={resendTimer > 0}
+                  className="text-sm text-primary hover:underline flex items-center gap-1.5 disabled:opacity-50 disabled:no-underline transition-all"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  {resendTimer > 0 ? `${resendTimer}s` : t.common.resend}
+                </button>
+              </div>
             </motion.div>
           )}
 
