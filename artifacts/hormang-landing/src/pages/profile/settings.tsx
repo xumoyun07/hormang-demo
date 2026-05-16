@@ -41,10 +41,25 @@ import { MediaUploadZone } from "@/components/media-upload";
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 const VIOLET_SOLID = "hsl(262,80%,54%)";
 
-const SERVICE_CATEGORIES = [
-  "Tozalash", "Ta'mirlash", "Enagalik", "Tadbir xizmatlari",
-  "Ko'chirish / yuk yetkazish", "Go'zallik", "Avto xizmat", "Repetitorlar", "Ustachilik",
+/* All known category strings across every supported locale, grouped by position.
+ * Used to normalize categories stored in a different locale to the active one. */
+const ALL_LOCALE_CATEGORIES: string[][] = [
+  /* Uzbek  */ ["Tozalash", "Ta'mirlash", "Enagalik", "Tadbir xizmatlari", "Ko'chirish / yuk yetkazish", "Go'zallik", "Avto xizmat", "Repetitorlar", "Ustachilik"],
+  /* English */ ["Cleaning", "Repair", "Nanny", "Event services", "Moving / delivery", "Beauty", "Auto services", "Tutors", "Handyman"],
 ];
+
+/** Map stored category strings to the current locale's equivalent by position.
+ *  Handles the case where the user stored categories in a different language. */
+function normalizeCategories(stored: string[], current: string[]): string[] {
+  return [...new Set(stored.map(cat => {
+    if (current.includes(cat)) return cat; // already in current locale
+    for (const locale of ALL_LOCALE_CATEGORIES) {
+      const idx = locale.indexOf(cat);
+      if (idx >= 0 && idx < current.length) return current[idx];
+    }
+    return cat; // unknown: keep as-is
+  }))];
+}
 
 /* ─── Image compression ──────────────────────────────────────────── */
 function compressDataUrl(dataUrl: string, maxWidth = 1024, quality = 0.75): Promise<string> {
@@ -316,16 +331,18 @@ export default function ProfileSettingsPage() {
   const [showAreaInfo, setShowAreaInfo] = useState(false);
 
   /* ── Consolidated init effect ─────────────────────────────────────
-   * Runs whenever the authenticated user or their server-side providerProfile
-   * changes. Reads localStorage synchronously so categories/bio are always
-   * available as a fallback even when the API returns empty data (e.g. after
-   * a server restart). This replaces three separate effects that had
-   * a timing race between each other. */
-  useEffect(() => {
+   * useLayoutEffect (not useEffect) so this runs synchronously before the
+   * browser paints and — critically — before any useEffect (including the
+   * persistLocal auto-save) fires. Without this, persistLocal fires on the
+   * first render with selectedServices=[] and clears local.categories before
+   * the categories from providerProfile have a chance to load, causing the
+   * category chips in profile/settings to appear empty even when the provider
+   * already selected one during the "Become Provider" flow. */
+  useLayoutEffect(() => {
     if (!user) {
       setLocal({});
       setPhotoUrl(undefined);
-      setPortfolioItems([]);
+      setAlbums([]);
       setFirstName("");
       setLastName("");
       setBio("");
@@ -354,12 +371,18 @@ export default function ProfileSettingsPage() {
     setAlbums(loaded.albums ?? []);
 
     /* Categories: server wins, local is authoritative fallback.
-     * This ensures categories survive an API restart / empty getMe response. */
-    if (providerProfile?.categories?.length) {
-      setSelectedServices(providerProfile.categories);
-    } else if (loaded.categories?.length) {
-      console.log(`[Hormang] 📦 categories — local fallback: ${loaded.categories.join(", ")}`);
-      setSelectedServices(loaded.categories);
+     * Categories are normalized to the active locale so a value stored in one
+     * language (e.g. "Moving / delivery" from English modal) is converted to
+     * the matching entry in the current locale ("Ko'chirish / yuk yetkazish"). */
+    const currentCategories = t.dashboard.modal.categories;
+    const raw = providerProfile?.categories?.length
+      ? providerProfile.categories
+      : (loaded.categories ?? []);
+    if (raw.length) {
+      if (!providerProfile?.categories?.length) {
+        console.log(`[Hormang] 📦 categories — local fallback: ${raw.join(", ")}`);
+      }
+      setSelectedServices(normalizeCategories(raw, currentCategories));
     } else {
       setSelectedServices([]);
     }
@@ -945,7 +968,7 @@ export default function ProfileSettingsPage() {
               sub={tt.myServicesSub} />
 
             <div className="flex flex-wrap gap-2 mb-3">
-              {SERVICE_CATEGORIES.map((cat) => {
+              {t.dashboard.modal.categories.map((cat) => {
                 const active = selectedServices.includes(cat);
                 return (
                   <button key={cat} type="button"
