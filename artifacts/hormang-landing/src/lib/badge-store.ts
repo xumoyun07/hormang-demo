@@ -62,6 +62,8 @@ export interface BadgeMeta {
   pillBg:      string;
   pillText:    string;
   pillBorder:  string;
+  /** Optional inline style — overrides the Tailwind classes above for richer effects (gradients, glows, etc.) */
+  pillStyle?:  React.CSSProperties;
   /** Lucide icon name (resolved by the UI layer) */
   icon:        "ShieldCheck" | "Star" | "Shield" | "Award" | "Crown" | "Images" | "BadgeCheck" | "Eye";
   /** Display priority — lower = shown first */
@@ -143,10 +145,16 @@ export const BADGE_META: Record<BadgeType, BadgeMeta> = {
     hint: "Hormang platformasida 500+ Tanga sarflagan ijrochi",
     source: "auto",
     scope: "provider",
-    pillBg:     "bg-violet-50",
-    pillText:   "text-violet-700",
-    pillBorder: "border-violet-200",
-    icon: "BadgeCheck",
+    pillBg:     "bg-zinc-900",
+    pillText:   "text-amber-400",
+    pillBorder: "border-amber-500",
+    pillStyle: {
+      background: "linear-gradient(135deg, #1c1917 0%, #292524 60%, #1c1917 100%)",
+      color: "#FBBF24",
+      borderColor: "#92400E",
+      boxShadow: "0 0 0 1px rgba(251,191,36,0.18), inset 0 1px 0 rgba(255,255,255,0.06)",
+    },
+    icon: "Crown",
     order: 6,
   },
   strong_portfolio: {

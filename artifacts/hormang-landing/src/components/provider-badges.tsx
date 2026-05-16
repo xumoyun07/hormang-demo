@@ -48,6 +48,7 @@ export function BadgePill({
   return (
     <span
       className={`inline-flex items-center rounded-full font-bold border whitespace-nowrap leading-none ${sz} ${meta.pillBg} ${meta.pillText} ${meta.pillBorder}`}
+      style={meta.pillStyle}
       title={meta.description}
     >
       <Icon className={iconSz} strokeWidth={2.5} />
