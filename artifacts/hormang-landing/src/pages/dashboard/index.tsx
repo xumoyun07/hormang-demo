@@ -394,7 +394,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
   }, [user?.id, storeVersion]);
 
   useEffect(() => {
-    if (!user || user.role !== "provider") return;
+    if (!user) return;
     evaluateAutoBadges(user);
     return onStoreChange(() => evaluateAutoBadges(user));
   }, [user]);
@@ -418,6 +418,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
     serviceAreaV2:  local.serviceAreaV2,
     experience:     local.experience,
     portfolioItems: local.portfolioItems ?? [],
+    albums:         local.albums ?? [],
     bio:            local.bio,
     categories:     selectedCategories,
   };

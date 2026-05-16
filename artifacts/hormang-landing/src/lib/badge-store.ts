@@ -278,10 +278,12 @@ function accountAgeDays(user: SafeUser): number {
 /** Returns the set of auto badges this provider currently qualifies for. */
 export function computeQualifiedAutoBadges(user: SafeUser): Set<BadgeType> {
   const out = new Set<BadgeType>();
-  if (user.role !== "provider") return out;
 
-  const local          = getLocalProfile(user.id);
+  const local           = getLocalProfile(user.id);
   const providerProfile = getStoredProviderProfile(user.id);
+
+  // Accept both native-provider accounts and buyer accounts that became providers.
+  if (user.role !== "provider" && !providerProfile) return out;
   const checks         = getCompletionChecks(user, providerProfile, local);
   const completion     = getCompletionPct(checks);
   const rating      = getAverageRatingForUser(user.id, "provider");

@@ -217,7 +217,7 @@ function ProfileCompletion() {
   }, [user?.id, pct]);
 
   useEffect(() => {
-    if (!user || user.role !== "provider") return;
+    if (!user) return;
     evaluateAutoBadges(user);
     return onStoreChange(() => evaluateAutoBadges(user));
   }, [user]);
