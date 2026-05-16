@@ -19,6 +19,7 @@
  * so badge moderation history is queryable from the AuditLogSection.
  */
 import type { SafeUser } from "./auth-client";
+import { getStoredProviderProfile } from "./auth-client";
 import { getLocalProfile, getCompletionChecks, getCompletionPct } from "./local-profile";
 import {
   getAverageRatingForUser,
@@ -83,7 +84,7 @@ export const BADGE_META: Record<BadgeType, BadgeMeta> = {
     pillBg:     "bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50",
     pillText:   "text-amber-800",
     pillBorder: "border-amber-300/70 ring-1 ring-amber-200/60 shadow-[0_2px_8px_-2px_rgba(217,119,6,0.25)]",
-    icon: "Crown",
+    icon: "UserStar",
     order: 1,
   },
   top_provider: {
@@ -279,9 +280,10 @@ export function computeQualifiedAutoBadges(user: SafeUser): Set<BadgeType> {
   const out = new Set<BadgeType>();
   if (user.role !== "provider") return out;
 
-  const local       = getLocalProfile(user.id);
-  const checks      = getCompletionChecks(user, null, local);
-  const completion  = getCompletionPct(checks);
+  const local          = getLocalProfile(user.id);
+  const providerProfile = getStoredProviderProfile(user.id);
+  const checks         = getCompletionChecks(user, providerProfile, local);
+  const completion     = getCompletionPct(checks);
   const rating      = getAverageRatingForUser(user.id, "provider");
   const reviewCount = getReviewsForUser(user.id, "provider").length;
   const completed   = getCompletedCount(user.id, "provider");

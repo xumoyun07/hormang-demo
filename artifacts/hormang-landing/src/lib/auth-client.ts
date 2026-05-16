@@ -226,6 +226,11 @@ function findProfile(userId: string): ProviderProfile | null {
   return readProfiles().find((p) => p.userId === userId) ?? null;
 }
 
+/** Public read-only accessor for the stored provider profile (no auth required). */
+export function getStoredProviderProfile(userId: string): ProviderProfile | null {
+  return findProfile(userId);
+}
+
 /* ─── OTP store (shared for SMS + email) ───────────────────────────────── */
 
 interface OtpEntry {

@@ -217,7 +217,12 @@ export function getCompletionChecks(
   providerProfile: ProviderProfile | null,
   local: LocalProfile,
 ): CompletionCheck[] {
-  const portfolioCount = (local.portfolioItems ?? []).length
+  /* Count portfolio photos across all storage formats (albums is current; portfolioItems
+   * and portfolioImages are legacy). getLocalProfile already migrates old formats to
+   * albums on read, so albums is the authoritative source when present. */
+  const albumsPhotoCount = (local.albums ?? []).reduce((s, a) => s + (a.photos?.length ?? 0), 0);
+  const portfolioCount = albumsPhotoCount
+    || (local.portfolioItems ?? []).length
     || (local.portfolioImages ?? []).length;
   const categories = (providerProfile?.categories?.length ? providerProfile.categories : local.categories) ?? [];
   const bio = providerProfile?.bio?.trim() || local.bio?.trim() || "";
