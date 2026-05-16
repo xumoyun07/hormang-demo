@@ -236,6 +236,7 @@ export function BadgeConditionsSheet({
                     >
                       <span
                         className={`inline-flex items-center rounded-full font-bold border whitespace-nowrap px-2.5 py-1 text-[11px] gap-1.5 flex-shrink-0 ${meta.pillBg} ${meta.pillText} ${meta.pillBorder}`}
+                        style={meta.pillStyle}
                       >
                         <Icon className="w-3 h-3" strokeWidth={2.5} />
                         {meta.label}
