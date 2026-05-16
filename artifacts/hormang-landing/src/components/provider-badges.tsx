@@ -13,7 +13,7 @@
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ShieldCheck, Star, Shield, Award, Crown, Images, BadgeCheck, Eye, X,
+  ShieldCheck, Star, Shield, Award, Crown, Images, BadgeCheck, Eye, X, UserStar,
 } from "lucide-react";
 import {
   BADGE_META, ADMIN_BADGE_TYPES, ALL_BADGE_TYPES, getBadges, evaluateAutoBadges, explainAutoBadges,
@@ -24,7 +24,7 @@ import type { SafeUser } from "@/lib/auth-client";
 import { useI18n } from "@/contexts/i18n-context";
 
 const ICONS = {
-  ShieldCheck, Star, Shield, Award, Crown, Images, BadgeCheck, Eye,
+  ShieldCheck, Star, Shield, Award, Crown, Images, BadgeCheck, Eye, UserStar,
 } as const;
 
 /* ─── Single pill ──────────────────────────────────────────────────── */

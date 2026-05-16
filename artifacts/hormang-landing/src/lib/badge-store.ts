@@ -65,7 +65,7 @@ export interface BadgeMeta {
   /** Optional inline style — overrides the Tailwind classes above for richer effects (gradients, glows, etc.) */
   pillStyle?:  React.CSSProperties;
   /** Lucide icon name (resolved by the UI layer) */
-  icon:        "ShieldCheck" | "Star" | "Shield" | "Award" | "Crown" | "Images" | "BadgeCheck" | "Eye";
+  icon:        "ShieldCheck" | "Star" | "Shield" | "Award" | "Crown" | "Images" | "BadgeCheck" | "Eye" | "UserStar";
   /** Display priority — lower = shown first */
   order:       number;
 }
@@ -154,7 +154,7 @@ export const BADGE_META: Record<BadgeType, BadgeMeta> = {
       borderColor: "#D97706",
       boxShadow: "0 0 0 1px rgba(217,119,6,0.20), inset 0 1px 0 rgba(255,255,255,0.55)",
     },
-    icon: "Crown",
+    icon: "UserStar",
     order: 6,
   },
   strong_portfolio: {
