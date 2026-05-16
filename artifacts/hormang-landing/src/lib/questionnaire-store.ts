@@ -18,7 +18,10 @@ export type QuestionType =
   | "location";
 
 export interface QuestionOption {
+  /** Primary display label (Uzbek). Use labelLocalized when available. */
   label: string;
+  /** Multilingual label — maps to future DB columns option_label_uz / option_label_ru */
+  labelLocalized?: import("./localization").LocalizedText;
   value: string;
   /** "other" → selecting this option reveals a free-text input below it */
   type?: "fixed" | "other";
@@ -28,12 +31,19 @@ export interface QuestionOption {
 
 export interface Question {
   id: string;
+  /** Primary display label (Uzbek). Use labelLocalized when available. */
   label: string;
+  /** Multilingual question text — maps to future DB columns label_uz / label_ru */
+  labelLocalized?: import("./localization").LocalizedText;
   type: QuestionType;
   options?: QuestionOption[];
   required?: boolean;
   placeholder?: string;
+  /** Multilingual placeholder — maps to future DB columns placeholder_uz / placeholder_ru */
+  placeholderLocalized?: import("./localization").LocalizedText;
   helpText?: string;
+  /** Multilingual help text — maps to future DB columns help_text_uz / help_text_ru */
+  helpTextLocalized?: import("./localization").LocalizedText;
   min?: number;
   max?: number;
   step?: number;

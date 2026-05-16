@@ -1,6 +1,7 @@
 /**
- * Admin Panel — Advanced Question Manager
+ * Admin Panel — Advanced Multilingual Question Manager
  * Password: hormang2024
+ * Supports UZ (primary) + RU (recommended) translations.
  * Changes are only persisted when the "Saqlash" button is clicked.
  */
 import { useState, useRef } from "react";
@@ -11,7 +12,7 @@ import {
   Save, X, Check, RefreshCw, Eye, EyeOff, GripVertical,
   AlertTriangle, Star, Layers, GitBranch, Hash, ToggleLeft,
   Calendar, FileUp, AlignLeft, List, Type, Sliders,
-  SlidersHorizontal, ChevronRight, Info, MapPin,
+  SlidersHorizontal, ChevronRight, Info, MapPin, Copy, Languages,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,7 +46,8 @@ const TYPE_LABELS: Record<string, string> = Object.fromEntries(QUESTION_TYPES.ma
 /* ─── Editor types ───────────────────────────────────────────────── */
 interface EditorOption {
   _key: string;
-  label: string;
+  label: string;    /** UZ label — primary */
+  labelRu: string;  /** RU label */
   value: string;
   type: "fixed" | "other";
   tangaCost: string;
@@ -53,12 +55,15 @@ interface EditorOption {
 
 interface EditorState {
   id: string;
-  label: string;
+  label: string;        /** UZ question text — primary */
+  labelRu: string;      /** RU question text */
   type: QuestionType;
   required: boolean;
   isCore: boolean;
-  helpText: string;
-  placeholder: string;
+  helpText: string;        /** UZ help text */
+  helpTextRu: string;      /** RU help text */
+  placeholder: string;     /** UZ placeholder */
+  placeholderRu: string;   /** RU placeholder */
   min: string;
   max: string;
   step: string;
@@ -72,19 +77,26 @@ interface EditorState {
 
 function mkKey() { return `_${Math.random().toString(36).slice(2, 8)}`; }
 
+function blankOption(): EditorOption {
+  return { _key: mkKey(), label: "", labelRu: "", value: "", type: "fixed" as const, tangaCost: "0" };
+}
+
 function blankEditor(): EditorState {
   return {
     id: `q_${Date.now()}`,
     label: "",
+    labelRu: "",
     type: "single-select",
     required: false,
     isCore: false,
     helpText: "",
+    helpTextRu: "",
     placeholder: "",
+    placeholderRu: "",
     min: "",
     max: "",
     step: "",
-    options: [{ _key: mkKey(), label: "", value: "", type: "fixed" as const, tangaCost: "0" }],
+    options: [blankOption()],
     autofillExamples: [],
     condEnabled: false,
     condQuestionId: "",
@@ -96,24 +108,28 @@ function blankEditor(): EditorState {
 function editorFromQuestion(q: Question): EditorState {
   return {
     id: q.id,
-    label: q.label,
+    label: q.labelLocalized?.uz ?? q.label,
+    labelRu: q.labelLocalized?.ru ?? "",
     type: q.type,
     required: !!q.required,
     isCore: !!q.isCore,
-    helpText: q.helpText ?? "",
-    placeholder: q.placeholder ?? "",
+    helpText: q.helpTextLocalized?.uz ?? q.helpText ?? "",
+    helpTextRu: q.helpTextLocalized?.ru ?? "",
+    placeholder: q.placeholderLocalized?.uz ?? q.placeholder ?? "",
+    placeholderRu: q.placeholderLocalized?.ru ?? "",
     min: q.min != null ? String(q.min) : "",
     max: q.max != null ? String(q.max) : "",
     step: q.step != null ? String(q.step) : "",
     options: q.options?.length
       ? q.options.map((o) => ({
           _key: mkKey(),
-          label: o.label,
+          label: o.labelLocalized?.uz ?? o.label,
+          labelRu: o.labelLocalized?.ru ?? "",
           value: o.value,
           type: (o.type === "other" ? "other" : "fixed") as "fixed" | "other",
           tangaCost: o.tangaCost != null ? String(o.tangaCost) : "0",
         }))
-      : [{ _key: mkKey(), label: "", value: "", type: "fixed" as const, tangaCost: "0" }],
+      : [blankOption()],
     autofillExamples: q.autofillExamples ?? [],
     condEnabled: !!q.conditional,
     condQuestionId: q.conditional?.questionId ?? "",
@@ -123,30 +139,76 @@ function editorFromQuestion(q: Question): EditorState {
 }
 
 function editorToQuestion(e: EditorState): Question {
-  const q: Question = { id: e.id, label: e.label, type: e.type };
+  const uzLabel = e.label.trim();
+  const ruLabel = e.labelRu.trim();
+  const uzPlaceholder = e.placeholder.trim();
+  const ruPlaceholder = e.placeholderRu.trim();
+  const uzHelp = e.helpText.trim();
+  const ruHelp = e.helpTextRu.trim();
+
+  const q: Question = {
+    id: e.id,
+    label: uzLabel || ruLabel,   // UZ primary, RU fallback
+    type: e.type,
+  };
+
+  if (uzLabel || ruLabel) {
+    q.labelLocalized = {
+      ...(uzLabel ? { uz: uzLabel } : {}),
+      ...(ruLabel ? { ru: ruLabel } : {}),
+    };
+  }
+
   if (e.required) q.required = true;
   if (e.isCore) q.isCore = true;
-  if (e.placeholder.trim()) q.placeholder = e.placeholder.trim();
-  if (e.helpText.trim()) q.helpText = e.helpText.trim();
+
+  if (uzPlaceholder || ruPlaceholder) {
+    q.placeholder = uzPlaceholder || ruPlaceholder;
+    q.placeholderLocalized = {
+      ...(uzPlaceholder ? { uz: uzPlaceholder } : {}),
+      ...(ruPlaceholder ? { ru: ruPlaceholder } : {}),
+    };
+  }
+
+  if (uzHelp || ruHelp) {
+    q.helpText = uzHelp || ruHelp;
+    q.helpTextLocalized = {
+      ...(uzHelp ? { uz: uzHelp } : {}),
+      ...(ruHelp ? { ru: ruHelp } : {}),
+    };
+  }
+
   if (e.min !== "") q.min = Number(e.min);
   if (e.max !== "") q.max = Number(e.max);
   if (e.step !== "") q.step = Number(e.step);
+
   const needsOptions = e.type === "single-select" || e.type === "multi-select";
   if (needsOptions) {
     q.options = e.options
-      .filter((o) => o.label.trim())
+      .filter((o) => o.label.trim() || o.labelRu.trim())
       .map((o): QuestionOption => {
+        const uz = o.label.trim();
+        const ru = o.labelRu.trim();
         const cost = parseInt(o.tangaCost, 10);
-        return {
-          label: o.label.trim(),
-          value: o.value.trim() || o.label.trim().toLowerCase().replace(/\s+/g, "_"),
+        const opt: QuestionOption = {
+          label: uz || ru,
+          value: o.value.trim() || (uz || ru).toLowerCase().replace(/\s+/g, "_"),
           ...(o.type === "other" ? { type: "other" as const } : {}),
           ...(cost > 0 ? { tangaCost: cost } : {}),
         };
+        if (uz || ru) {
+          opt.labelLocalized = {
+            ...(uz ? { uz } : {}),
+            ...(ru ? { ru } : {}),
+          };
+        }
+        return opt;
       });
   }
+
   const filled = (e.autofillExamples ?? []).map((s) => s.trim()).filter(Boolean);
   if (filled.length > 0) q.autofillExamples = filled;
+
   if (e.condEnabled && e.condQuestionId) {
     q.conditional = { questionId: e.condQuestionId, value: e.condValue };
   }
@@ -214,18 +276,59 @@ function Toggle({ checked, onChange, size = "sm" }: { checked: boolean; onChange
   );
 }
 
+/* ─── Language Tab Bar (reusable mini component) ─────────────────── */
+function LangTabs({
+  lang, onChange,
+  uzFilled, ruFilled,
+}: {
+  lang: "uz" | "ru";
+  onChange: (l: "uz" | "ru") => void;
+  uzFilled: boolean;
+  ruFilled: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+      <button
+        onClick={() => onChange("uz")}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${lang === "uz" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+      >
+        <span className="text-sm">🇺🇿</span>
+        <span>O'Z</span>
+        {uzFilled
+          ? <span className="text-[10px] text-emerald-600 font-black">✅</span>
+          : <span className="text-[10px] text-gray-300 font-black">○</span>}
+      </button>
+      <button
+        onClick={() => onChange("ru")}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${lang === "ru" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
+      >
+        <span className="text-sm">🇷🇺</span>
+        <span>РУС</span>
+        {ruFilled
+          ? <span className="text-[10px] text-emerald-600 font-black">✅</span>
+          : <span className="text-[10px] text-amber-500 font-black">⚠️</span>}
+      </button>
+    </div>
+  );
+}
+
 /* ─── Live Question Preview ──────────────────────────────────────── */
-function QuestionPreview({ q }: { q: EditorState }) {
+function QuestionPreview({ q, lang = "uz" }: { q: EditorState; lang?: "uz" | "ru" }) {
   const [selectedSingle, setSelectedSingle] = useState<string>("");
   const [selectedMulti, setSelectedMulti] = useState<string[]>([]);
   const [showOther, setShowOther] = useState(false);
   const [rangeVal, setRangeVal] = useState(q.min || "0");
 
+  const resolvedLabel = lang === "ru" ? (q.labelRu || q.label) : q.label;
+  const resolvedPlaceholder = lang === "ru" ? (q.placeholderRu || q.placeholder) : q.placeholder;
+  const resolvedHelp = lang === "ru" ? (q.helpTextRu || q.helpText) : q.helpText;
+  function optLabel(o: EditorOption) { return lang === "ru" ? (o.labelRu || o.label) : o.label; }
+
   if (q.type === "section-header") {
     return (
       <div className="py-3 px-4 border-l-4 border-blue-400 bg-blue-50 rounded-r-xl">
-        <p className="font-extrabold text-blue-700 text-sm">{q.label || "Bo'lim sarlavhasi"}</p>
-        {q.helpText && <p className="text-xs text-blue-500 mt-0.5">{q.helpText}</p>}
+        <p className="font-extrabold text-blue-700 text-sm">{resolvedLabel || "Bo'lim sarlavhasi"}</p>
+        {resolvedHelp && <p className="text-xs text-blue-500 mt-0.5">{resolvedHelp}</p>}
       </div>
     );
   }
@@ -233,26 +336,28 @@ function QuestionPreview({ q }: { q: EditorState }) {
   return (
     <div className="space-y-2">
       <div className="flex items-start gap-1">
-        <p className="text-sm font-semibold text-gray-800 leading-snug flex-1">{q.label || <span className="text-gray-300 italic">Savol matni…</span>}</p>
+        <p className="text-sm font-semibold text-gray-800 leading-snug flex-1">
+          {resolvedLabel || <span className="text-gray-300 italic">Savol matni…</span>}
+        </p>
         {q.required && <span className="text-red-500 text-xs font-bold mt-0.5">*</span>}
       </div>
-      {q.helpText && <p className="text-xs text-gray-400">{q.helpText}</p>}
+      {resolvedHelp && <p className="text-xs text-gray-400">{resolvedHelp}</p>}
 
       {q.type === "single-select" && (
         <div className="flex flex-wrap gap-1.5">
-          {q.options.filter(o => o.label).map((o) => (
+          {q.options.filter(o => optLabel(o)).map((o) => (
             <button key={o._key} onClick={() => { setSelectedSingle(o._key); setShowOther(o.type === "other"); }}
               className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${selectedSingle === o._key ? "border-blue-500 bg-blue-600 text-white" : "border-gray-200 bg-white text-gray-600 hover:border-blue-300"}`}>
-              {o.label}
+              {optLabel(o)}
             </button>
           ))}
-          {showOther && <input placeholder="Boshqa variantni kiriting..." className="mt-1 w-full px-3 py-1.5 rounded-lg border border-blue-300 text-xs focus:outline-none" />}
+          {showOther && <input placeholder={lang === "ru" ? "Введите вариант..." : "Boshqa variantni kiriting..."} className="mt-1 w-full px-3 py-1.5 rounded-lg border border-blue-300 text-xs focus:outline-none" />}
         </div>
       )}
 
       {q.type === "multi-select" && (
         <div className="flex flex-wrap gap-1.5">
-          {q.options.filter(o => o.label).map((o) => {
+          {q.options.filter(o => optLabel(o)).map((o) => {
             const on = selectedMulti.includes(o._key);
             return (
               <button key={o._key} onClick={() => {
@@ -261,11 +366,11 @@ function QuestionPreview({ q }: { q: EditorState }) {
                 setShowOther(q.options.some(x => x.type === "other" && next.includes(x._key)));
               }}
                 className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all flex items-center gap-1 ${on ? "border-blue-500 bg-blue-600 text-white" : "border-gray-200 bg-white text-gray-600 hover:border-blue-300"}`}>
-                {on && <Check className="w-3 h-3" />}{o.label}
+                {on && <Check className="w-3 h-3" />}{optLabel(o)}
               </button>
             );
           })}
-          {showOther && <input placeholder="Boshqa variantni kiriting..." className="mt-1 w-full px-3 py-1.5 rounded-lg border border-blue-300 text-xs focus:outline-none" />}
+          {showOther && <input placeholder={lang === "ru" ? "Введите вариант..." : "Boshqa variantni kiriting..."} className="mt-1 w-full px-3 py-1.5 rounded-lg border border-blue-300 text-xs focus:outline-none" />}
         </div>
       )}
 
@@ -276,22 +381,22 @@ function QuestionPreview({ q }: { q: EditorState }) {
               <div className="w-2 h-2 rounded-full bg-white" />
             </div>
             <MapPin className="w-3.5 h-3.5 text-blue-500" />
-            <p className="text-xs font-semibold text-blue-700">📍 Mening manzilim (profildan)</p>
+            <p className="text-xs font-semibold text-blue-700">
+              {lang === "ru" ? "📍 Мой адрес (из профиля)" : "📍 Mening manzilim (profildan)"}
+            </p>
           </div>
           <div className="flex items-center gap-2 p-3 rounded-xl border border-gray-200 bg-white">
             <div className="w-4 h-4 rounded-full border-2 border-gray-300 flex-shrink-0" />
-            <p className="text-xs font-semibold text-gray-600">Boshqa manzil</p>
-          </div>
-          <div className="flex gap-2 pl-6">
-            <span className="flex-1 px-2 py-1.5 rounded-lg border border-gray-200 text-[11px] text-center text-gray-500">🏙 Toshkent shahri</span>
-            <span className="flex-1 px-2 py-1.5 rounded-lg border border-gray-200 text-[11px] text-center text-gray-500">🗺 Toshkent viloyati</span>
+            <p className="text-xs font-semibold text-gray-600">
+              {lang === "ru" ? "Другой адрес" : "Boshqa manzil"}
+            </p>
           </div>
         </div>
       )}
 
       {q.type === "text" && (
         <div className="space-y-2">
-          <input placeholder={q.placeholder || "Matn kiriting…"} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:border-blue-300" />
+          <input placeholder={resolvedPlaceholder || (lang === "ru" ? "Введите текст…" : "Matn kiriting…")} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:border-blue-300" />
           {q.autofillExamples && q.autofillExamples.filter(Boolean).length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {q.autofillExamples.filter(Boolean).map((ex, i) => (
@@ -303,7 +408,7 @@ function QuestionPreview({ q }: { q: EditorState }) {
       )}
       {q.type === "textarea" && (
         <div className="space-y-2">
-          <textarea rows={2} placeholder={q.placeholder || "Matn kiriting…"} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:border-blue-300 resize-none" />
+          <textarea rows={2} placeholder={resolvedPlaceholder || (lang === "ru" ? "Введите текст…" : "Matn kiriting…")} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:border-blue-300 resize-none" />
           {q.autofillExamples && q.autofillExamples.filter(Boolean).length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {q.autofillExamples.filter(Boolean).map((ex, i) => (
@@ -315,9 +420,9 @@ function QuestionPreview({ q }: { q: EditorState }) {
       )}
       {q.type === "number" && (
         <div className="flex items-center gap-2">
-          <input type="number" placeholder={q.placeholder || "0"} min={q.min || undefined} max={q.max || undefined} step={q.step || undefined}
+          <input type="number" placeholder={resolvedPlaceholder || "0"} min={q.min || undefined} max={q.max || undefined} step={q.step || undefined}
             className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:border-blue-300" />
-          {q.helpText && <span className="text-xs text-gray-400 font-medium">{q.helpText}</span>}
+          {resolvedHelp && <span className="text-xs text-gray-400 font-medium">{resolvedHelp}</span>}
         </div>
       )}
       {q.type === "range" && (
@@ -330,15 +435,19 @@ function QuestionPreview({ q }: { q: EditorState }) {
       )}
       {q.type === "yes-no" && (
         <div className="flex gap-2">
-          <button className="px-4 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-semibold">✓ Ha</button>
-          <button className="px-4 py-2 rounded-lg border border-red-200 bg-red-50 text-red-600 text-xs font-semibold">✗ Yo'q</button>
+          <button className="px-4 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-semibold">
+            {lang === "ru" ? "✓ Да" : "✓ Ha"}
+          </button>
+          <button className="px-4 py-2 rounded-lg border border-red-200 bg-red-50 text-red-600 text-xs font-semibold">
+            {lang === "ru" ? "✗ Нет" : "✗ Yo'q"}
+          </button>
         </div>
       )}
       {q.type === "date" && <input type="date" className="px-3 py-2 rounded-lg border border-gray-200 text-xs focus:outline-none focus:border-blue-300" />}
       {q.type === "file" && (
         <div className="border-2 border-dashed border-gray-200 rounded-lg p-3 text-center">
           <FileUp className="w-5 h-5 text-gray-300 mx-auto mb-1" />
-          <p className="text-xs text-gray-400">Fayl yuklash</p>
+          <p className="text-xs text-gray-400">{lang === "ru" ? "Загрузить файл" : "Fayl yuklash"}</p>
         </div>
       )}
     </div>
@@ -347,26 +456,35 @@ function QuestionPreview({ q }: { q: EditorState }) {
 
 /* ─── Single Option Row (in editor) ─────────────────────────────── */
 function OptionRow({
-  opt, index, total,
+  opt, index, total, lang,
   onChange, onDelete, onMove,
   isDragging, onDragStart, onDragOver, onDrop,
   otherExists,
 }: {
   opt: EditorOption; index: number; total: number;
+  lang: "uz" | "ru";
   onChange: (f: keyof EditorOption, v: string) => void;
   onDelete: () => void; onMove: (dir: -1 | 1) => void;
   isDragging: boolean;
   onDragStart: () => void; onDragOver: (e: React.DragEvent) => void; onDrop: () => void;
-  /** true if another option in this question is already "other" */
   otherExists: boolean;
 }) {
   const isOther = opt.type === "other";
   const canSetOther = isOther || !otherExists;
 
+  const labelField = lang === "ru" ? "labelRu" : "label";
+  const labelVal = lang === "ru" ? opt.labelRu : opt.label;
+  const labelPlaceholder = isOther
+    ? (lang === "ru" ? "Другое" : "Boshqa")
+    : (lang === "ru" ? `Вариант ${index + 1}` : `Variant ${index + 1}`);
+
   function setType(t: "fixed" | "other") {
     onChange("type", t);
     if (t === "other" && !opt.label.trim()) onChange("label", "Boshqa");
   }
+
+  const uzFilled = !!opt.label.trim();
+  const ruFilled = !!opt.labelRu.trim();
 
   return (
     <div
@@ -377,25 +495,32 @@ function OptionRow({
       className={`rounded-xl border transition-all ${isDragging ? "opacity-40 border-blue-300 bg-blue-50" : isOther ? "border-violet-200 bg-violet-50/50" : "border-gray-200 bg-gray-50 hover:border-gray-300"}`}
     >
       <div className="flex items-center gap-2 p-2.5">
-        {/* Drag handle */}
         <div className="cursor-grab text-gray-300 hover:text-gray-500 flex-shrink-0">
           <GripVertical className="w-4 h-4" />
         </div>
 
-        {/* Label input */}
-        <input
-          value={opt.label}
-          onChange={(e) => onChange("label", e.target.value)}
-          placeholder={isOther ? "Boshqa" : `Variant ${index + 1}`}
-          className={`flex-1 px-2.5 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-1 transition-all ${isOther ? "border-violet-200 bg-white focus:ring-violet-300 focus:border-violet-400 text-violet-800 font-semibold" : "border-gray-200 bg-white focus:ring-blue-300 focus:border-blue-400"}`}
-        />
+        {/* Label input — switches between UZ and RU based on lang */}
+        <div className="flex-1 relative">
+          <input
+            value={labelVal}
+            onChange={(e) => onChange(labelField, e.target.value)}
+            placeholder={labelPlaceholder}
+            className={`w-full px-2.5 py-1.5 rounded-lg border text-xs focus:outline-none focus:ring-1 transition-all ${isOther ? "border-violet-200 bg-white focus:ring-violet-300 focus:border-violet-400 text-violet-800 font-semibold" : "border-gray-200 bg-white focus:ring-blue-300 focus:border-blue-400"}`}
+          />
+          {/* Completeness dots — only shown when both UZ and RU are being edited */}
+          {lang === "uz" && ruFilled && (
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-emerald-500 font-black" title="RU ham to'ldirilgan">🇷🇺✅</span>
+          )}
+          {lang === "ru" && !ruFilled && uzFilled && (
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-amber-400 font-black" title="RU tarjima yo'q">⚠️</span>
+          )}
+        </div>
 
-        {/* Tanga cost input */}
+        {/* Tanga cost */}
         <div className="flex items-center gap-1 flex-shrink-0 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
           <TangaCoin size="xs" />
           <input
-            type="number"
-            min="0"
+            type="number" min="0"
             value={opt.tangaCost}
             onChange={(e) => onChange("tangaCost", e.target.value)}
             placeholder="0"
@@ -404,20 +529,15 @@ function OptionRow({
           />
         </div>
 
-        {/* Fixed / Boshqa type toggle */}
+        {/* Fixed / Boshqa toggle */}
         <div className="flex rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
-          <button
-            onClick={() => setType("fixed")}
-            className={`px-2 py-1 text-[10px] font-bold transition-colors ${!isOther ? "bg-blue-600 text-white" : "bg-white text-gray-400 hover:bg-gray-50"}`}
-          >
+          <button onClick={() => setType("fixed")}
+            className={`px-2 py-1 text-[10px] font-bold transition-colors ${!isOther ? "bg-blue-600 text-white" : "bg-white text-gray-400 hover:bg-gray-50"}`}>
             Fixed
           </button>
-          <button
-            onClick={() => canSetOther && setType("other")}
-            disabled={!canSetOther}
+          <button onClick={() => canSetOther && setType("other")} disabled={!canSetOther}
             title={!canSetOther ? "Allaqachon bir 'Boshqa' variant bor" : "Boshqa (matn kiritish)"}
-            className={`px-2 py-1 text-[10px] font-bold transition-colors border-l border-gray-200 ${isOther ? "bg-violet-600 text-white" : canSetOther ? "bg-white text-gray-400 hover:bg-gray-50" : "bg-white text-gray-200 cursor-not-allowed"}`}
-          >
+            className={`px-2 py-1 text-[10px] font-bold transition-colors border-l border-gray-200 ${isOther ? "bg-violet-600 text-white" : canSetOther ? "bg-white text-gray-400 hover:bg-gray-50" : "bg-white text-gray-200 cursor-not-allowed"}`}>
             Boshqa
           </button>
         </div>
@@ -439,11 +559,10 @@ function OptionRow({
         </div>
       </div>
 
-      {/* "Boshqa" indicator */}
       {isOther && (
         <div className="px-3 pb-2.5 flex items-center gap-1.5 text-[11px] text-violet-500 font-medium">
           <span className="w-1.5 h-1.5 rounded-full bg-violet-400 inline-block" />
-          Tanlanganda matn kiritish maydoni paydo bo'ladi
+          {lang === "ru" ? "При выборе появится поле для ввода текста" : "Tanlanganda matn kiritish maydoni paydo bo'ladi"}
         </div>
       )}
     </div>
@@ -452,19 +571,11 @@ function OptionRow({
 
 /* ─── Branch Panel Modal ─────────────────────────────────────────── */
 function BranchPanelModal({
-  optionLabel,
-  optionValue,
-  questions,
-  allQuestions,
-  onChange,
-  onClose,
+  optionLabel, optionValue, questions, allQuestions, onChange, onClose,
 }: {
-  optionLabel: string;
-  optionValue: string;
-  questions: Question[];
-  allQuestions: Question[];
-  onChange: (qs: Question[]) => void;
-  onClose: () => void;
+  optionLabel: string; optionValue: string;
+  questions: Question[]; allQuestions: Question[];
+  onChange: (qs: Question[]) => void; onClose: () => void;
 }) {
   const [editorState, setEditorState] = useState<EditorState | null>(null);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
@@ -483,27 +594,19 @@ function BranchPanelModal({
       ? questions.map((orig, i) => (i === editingIdx ? q : orig))
       : [...questions, q];
     onChange(qs);
-    setEditorState(null);
-    setEditingIdx(null);
-    setShowAdd(false);
+    setEditorState(null); setEditingIdx(null); setShowAdd(false);
   }
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, y: 32 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 32 }}
-        className="bg-white w-full sm:rounded-3xl sm:border sm:border-gray-100 sm:max-w-2xl max-h-[90vh] flex flex-col shadow-2xl"
-      >
+      <motion.div initial={{ opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 32 }}
+        className="bg-white w-full sm:rounded-3xl sm:border sm:border-gray-100 sm:max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
         <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 flex-shrink-0">
           <div className="w-8 h-8 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
             <GitBranch className="w-4 h-4 text-violet-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-gray-900 text-sm">
-              «{optionLabel}» uchun shartli savollar
-            </p>
+            <p className="font-bold text-gray-900 text-sm">«{optionLabel}» uchun shartli savollar</p>
             <p className="text-xs text-gray-400">{questions.length} ta follow-up savol</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors flex-shrink-0">
@@ -522,20 +625,15 @@ function BranchPanelModal({
             </div>
           )}
           {questions.map((q, i) => (
-            <QuestionCard
-              key={q.id} q={q} index={i} total={questions.length}
+            <QuestionCard key={q.id} q={q} index={i} total={questions.length}
               onEdit={() => { setEditorState(editorFromQuestion(q)); setEditingIdx(i); }}
-              onDelete={() => del(i)}
-              onMove={(d) => move(i, d)}
-            />
+              onDelete={() => del(i)} onMove={(d) => move(i, d)} />
           ))}
         </div>
 
         <div className="border-t border-gray-100 px-5 py-4 flex items-center justify-between flex-shrink-0">
-          <button
-            onClick={() => { setShowAdd(true); setEditorState(null); setEditingIdx(null); }}
-            className="flex items-center gap-2 text-sm font-semibold text-violet-600 hover:text-violet-700 transition-colors"
-          >
+          <button onClick={() => { setShowAdd(true); setEditorState(null); setEditingIdx(null); }}
+            className="flex items-center gap-2 text-sm font-semibold text-violet-600 hover:text-violet-700 transition-colors">
             <Plus className="w-4 h-4" /> Follow-up savol qo'shish
           </button>
           <Button variant="outline" onClick={onClose} className="font-semibold border-gray-200">Yopish</Button>
@@ -558,10 +656,7 @@ function BranchPanelModal({
 
 /* ─── Question Editor Modal ──────────────────────────────────────── */
 function QuestionEditorModal({
-  initial,
-  allQuestions,
-  onSave,
-  onClose,
+  initial, allQuestions, onSave, onClose,
 }: {
   initial?: EditorState;
   allQuestions: Question[];
@@ -572,6 +667,7 @@ function QuestionEditorModal({
     const base = initial ?? blankEditor();
     return { ...base, conditionalBranches: base.conditionalBranches ?? {} };
   });
+  const [editorLang, setEditorLang] = useState<"uz" | "ru">("uz");
   const [showPreview, setShowPreview] = useState(true);
   const [branchEditorFor, setBranchEditorFor] = useState<string | null>(null);
   const dragIdx = useRef<number | null>(null);
@@ -583,8 +679,34 @@ function QuestionEditorModal({
   const needsNumeric = s.type === "number" || s.type === "range";
   const needsPlaceholder = ["text", "textarea", "number"].includes(s.type);
 
+  /* Completeness */
+  const uzFilled = !!s.label.trim();
+  const ruFilled = !!s.labelRu.trim();
+
+  /* Active-lang field bindings */
+  const activeLabelVal = editorLang === "uz" ? s.label : s.labelRu;
+  const activeLabelKey: keyof EditorState = editorLang === "uz" ? "label" : "labelRu";
+  const activePlaceholderVal = editorLang === "uz" ? s.placeholder : s.placeholderRu;
+  const activePlaceholderKey: keyof EditorState = editorLang === "uz" ? "placeholder" : "placeholderRu";
+  const activeHelpVal = editorLang === "uz" ? s.helpText : s.helpTextRu;
+  const activeHelpKey: keyof EditorState = editorLang === "uz" ? "helpText" : "helpTextRu";
+
+  /* Copy from Uzbek → Russian */
+  function copyFromUz() {
+    setS((prev) => ({
+      ...prev,
+      labelRu: prev.labelRu || prev.label,
+      placeholderRu: prev.placeholderRu || prev.placeholder,
+      helpTextRu: prev.helpTextRu || prev.helpText,
+      options: prev.options.map((o) => ({
+        ...o,
+        labelRu: o.labelRu || o.label,
+      })),
+    }));
+  }
+
   function addOption() {
-    setS((prev) => ({ ...prev, options: [...prev.options, { _key: mkKey(), label: "", value: "", type: "fixed" as const, tangaCost: "0" }] }));
+    setS((prev) => ({ ...prev, options: [...prev.options, blankOption()] }));
   }
   function updateOption(i: number, field: keyof EditorOption, val: string) {
     setS((prev) => ({ ...prev, options: prev.options.map((o, idx) => idx === i ? { ...o, [field]: val } : o) }));
@@ -601,7 +723,7 @@ function QuestionEditorModal({
   }
 
   function handleSave() {
-    if (!s.label.trim() && s.type !== "section-header") return;
+    if (!s.label.trim() && !s.labelRu.trim() && s.type !== "section-header") return;
     onSave(editorToQuestion(s));
   }
 
@@ -614,14 +736,19 @@ function QuestionEditorModal({
 
         {/* Modal header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
-          <div>
-            <p className="font-bold text-gray-900 text-base">{initial ? "Savolni tahrirlash" : "Yangi savol qo'shish"}</p>
-            <p className="text-xs text-gray-400 mt-0.5">Barcha o'zgarishlar sahifaga "Saqlash" tugmasida qo'llanadi</p>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <Languages className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <p className="font-bold text-gray-900 text-base">{initial ? "Savolni tahrirlash" : "Yangi savol qo'shish"}</p>
+              <p className="text-xs text-gray-400 mt-0.5">Barcha o'zgarishlar sahifaga "Saqlash" tugmasida qo'llanadi</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setShowPreview(!showPreview)}
               className={`h-8 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${showPreview ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}>
-              <Eye className="w-3.5 h-3.5" />{showPreview ? "" : ""}
+              <Eye className="w-3.5 h-3.5" />
             </button>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors">
               <X className="w-4 h-4" />
@@ -635,16 +762,6 @@ function QuestionEditorModal({
           {/* ── Left: Fields ── */}
           <div className="flex-1 overflow-y-auto p-5 space-y-5 min-w-0">
 
-            {/* Savol matni */}
-            <div>
-              <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
-                Savol matni {s.type !== "section-header" && <span className="text-red-400">*</span>}
-              </label>
-              <textarea rows={2} value={s.label} onChange={(e) => set("label", e.target.value)}
-                placeholder={s.type === "section-header" ? "Bo'lim nomi…" : "Savol matnini yozing..."}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 resize-none transition-all" />
-            </div>
-
             {/* Savol turi */}
             <div>
               <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">Savol turi</label>
@@ -656,6 +773,39 @@ function QuestionEditorModal({
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* ── Language tabs ── */}
+            <div className="flex items-center justify-between">
+              <LangTabs lang={editorLang} onChange={setEditorLang} uzFilled={uzFilled} ruFilled={ruFilled} />
+              {editorLang === "ru" && (
+                <button onClick={copyFromUz}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100 transition-colors">
+                  <Copy className="w-3 h-3" />
+                  O'zbekchadan nusxa
+                </button>
+              )}
+            </div>
+
+            {/* Savol matni */}
+            <div>
+              <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                {editorLang === "uz" ? "Savol matni (O'zbek)" : "Savol matni (Русский)"}
+                {s.type !== "section-header" && editorLang === "uz" && <span className="text-red-400 ml-1">*</span>}
+              </label>
+              <textarea rows={2} value={activeLabelVal}
+                onChange={(e) => set(activeLabelKey, e.target.value)}
+                placeholder={
+                  editorLang === "uz"
+                    ? (s.type === "section-header" ? "Bo'lim nomi…" : "Savol matnini yozing...")
+                    : (s.type === "section-header" ? "Название раздела…" : "Введите текст вопроса...")
+                }
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 resize-none transition-all" />
+              {editorLang === "ru" && !ruFilled && uzFilled && (
+                <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                  <span>⚠️</span> Rus tilidagi tarjima yo'q — UZ matni zaxira sifatida ishlatiladi
+                </p>
+              )}
             </div>
 
             {/* Location type info */}
@@ -678,12 +828,17 @@ function QuestionEditorModal({
             {/* Options */}
             {needsOptions && (
               <div>
-                <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-2">
-                  Variantlar <span className="text-gray-300 font-normal normal-case">(tortib joyini o'zgartiring)</span>
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400">
+                    Variantlar <span className="text-gray-300 font-normal normal-case">(tortib joyini o'zgartiring)</span>
+                  </label>
+                  {editorLang === "ru" && (
+                    <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full font-semibold">РУС variantlarini kiriting</span>
+                  )}
+                </div>
                 <div className="space-y-2">
                   {s.options.map((opt, i) => (
-                    <OptionRow key={opt._key} opt={opt} index={i} total={s.options.length}
+                    <OptionRow key={opt._key} opt={opt} index={i} total={s.options.length} lang={editorLang}
                       otherExists={s.options.some((o, j) => j !== i && o.type === "other")}
                       onChange={(f, v) => updateOption(i, f, v)}
                       onDelete={() => removeOption(i)}
@@ -709,7 +864,7 @@ function QuestionEditorModal({
               </div>
             )}
 
-            {/* Conditional Branches section */}
+            {/* Conditional Branches */}
             {needsOptions && (
               <div className="border border-violet-200 rounded-xl overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-3 bg-violet-50">
@@ -722,37 +877,32 @@ function QuestionEditorModal({
                   )}
                 </div>
                 <div className="divide-y divide-violet-100">
-                  {s.options.filter((o) => o.label.trim()).length === 0 && (
+                  {s.options.filter((o) => o.label.trim() || o.labelRu.trim()).length === 0 && (
                     <p className="px-4 py-3 text-xs text-gray-400 italic">Avval variantlar qo'shing</p>
                   )}
-                  {s.options.filter((o) => o.label.trim()).map((opt) => {
-                    const optVal = opt.value.trim() || opt.label.trim().toLowerCase().replace(/\s+/g, "_");
+                  {s.options.filter((o) => o.label.trim() || o.labelRu.trim()).map((opt) => {
+                    const optVal = opt.value.trim() || (opt.label || opt.labelRu).trim().toLowerCase().replace(/\s+/g, "_");
+                    const displayLabel = editorLang === "ru" ? (opt.labelRu || opt.label) : opt.label;
                     const branches = s.conditionalBranches[optVal] ?? [];
                     return (
                       <div key={opt._key} className="flex items-center gap-3 px-4 py-2.5">
-                        <span className="text-xs font-semibold text-gray-700 flex-1 truncate">{opt.label}</span>
+                        <span className="text-xs font-semibold text-gray-700 flex-1 truncate">{displayLabel}</span>
                         {branches.length > 0 && (
                           <span className="text-[10px] bg-violet-100 text-violet-700 font-bold px-2 py-0.5 rounded-full flex-shrink-0">
                             {branches.length} savol
                           </span>
                         )}
-                        <button
-                          onClick={() => setBranchEditorFor(optVal)}
-                          className="text-[11px] font-semibold text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-2.5 py-1 rounded-lg transition-colors flex-shrink-0"
-                        >
+                        <button onClick={() => setBranchEditorFor(optVal)}
+                          className="text-[11px] font-semibold text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-2.5 py-1 rounded-lg transition-colors flex-shrink-0">
                           {branches.length > 0 ? "Tahrirlash" : "+ Qo'shish"}
                         </button>
                         {branches.length > 0 && (
-                          <button
-                            onClick={() => setS((prev) => ({
-                              ...prev,
-                              conditionalBranches: Object.fromEntries(
-                                Object.entries(prev.conditionalBranches).filter(([k]) => k !== optVal)
-                              ),
-                            }))}
-                            className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
-                            title="Barcha follow-uplarni o'chirish"
-                          >
+                          <button onClick={() => setS((prev) => ({
+                            ...prev,
+                            conditionalBranches: Object.fromEntries(
+                              Object.entries(prev.conditionalBranches).filter(([k]) => k !== optVal)
+                            ),
+                          }))} className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
                             <X className="w-3.5 h-3.5" />
                           </button>
                         )}
@@ -766,15 +916,18 @@ function QuestionEditorModal({
             {/* Placeholder */}
             {needsPlaceholder && (
               <div>
-                <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">Placeholder matni</label>
-                <input value={s.placeholder} onChange={(e) => set("placeholder", e.target.value)}
-                  placeholder="Foydalanuvchi uchun misol matn…"
+                <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                  {editorLang === "uz" ? "Placeholder (O'zbek)" : "Placeholder (Русский)"}
+                </label>
+                <input value={activePlaceholderVal}
+                  onChange={(e) => set(activePlaceholderKey, e.target.value)}
+                  placeholder={editorLang === "uz" ? "Foydalanuvchi uchun misol matn…" : "Пример текста для пользователя…"}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all" />
               </div>
             )}
 
-            {/* Autofill examples — text / textarea only */}
-            {(s.type === "text" || s.type === "textarea") && (
+            {/* Autofill examples */}
+            {(s.type === "text" || s.type === "textarea") && editorLang === "uz" && (
               <div>
                 <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
                   Misol javoblar <span className="normal-case font-medium text-gray-400">(autofill chips)</span>
@@ -792,21 +945,16 @@ function QuestionEditorModal({
                         placeholder={`Misol ${idx + 1}…`}
                         className="flex-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all"
                       />
-                      <button
-                        onClick={() => {
-                          const next = s.autofillExamples.filter((_, i) => i !== idx);
-                          set("autofillExamples", next);
-                        }}
-                        className="p-1.5 text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
-                      >
+                      <button onClick={() => {
+                        const next = s.autofillExamples.filter((_, i) => i !== idx);
+                        set("autofillExamples", next);
+                      }} className="p-1.5 text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ))}
-                  <button
-                    onClick={() => set("autofillExamples", [...s.autofillExamples, ""])}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-blue-300 text-blue-600 text-xs font-semibold hover:bg-blue-50 transition-colors"
-                  >
+                  <button onClick={() => set("autofillExamples", [...s.autofillExamples, ""])}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-blue-300 text-blue-600 text-xs font-semibold hover:bg-blue-50 transition-colors">
                     <Plus className="w-3.5 h-3.5" /> Misol qo'shish
                   </button>
                 </div>
@@ -832,13 +980,16 @@ function QuestionEditorModal({
 
             {/* Help text */}
             <div>
-              <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">Yordam matni / tavsif</label>
-              <input value={s.helpText} onChange={(e) => set("helpText", e.target.value)}
-                placeholder="Foydalanuvchiga qo'shimcha izoh…"
+              <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                {editorLang === "uz" ? "Yordam matni (O'zbek)" : "Yordam matni (Русский)"}
+              </label>
+              <input value={activeHelpVal}
+                onChange={(e) => set(activeHelpKey, e.target.value)}
+                placeholder={editorLang === "uz" ? "Foydalanuvchiga qo'shimcha izoh…" : "Дополнительное пояснение для пользователя…"}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all" />
             </div>
 
-            {/* Toggles row */}
+            {/* Toggles */}
             <div className="grid grid-cols-2 gap-3">
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
                 <div>
@@ -859,8 +1010,7 @@ function QuestionEditorModal({
             {/* Conditional display */}
             {validQuestions.length > 0 && (
               <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <button
-                  onClick={() => set("condEnabled", !s.condEnabled)}
+                <button onClick={() => set("condEnabled", !s.condEnabled)}
                   className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-2">
                     <GitBranch className="w-4 h-4 text-gray-400" />
@@ -911,18 +1061,35 @@ function QuestionEditorModal({
           {/* ── Right: Live Preview ── */}
           {showPreview && (
             <div className="hidden sm:flex w-72 flex-shrink-0 border-l border-gray-100 bg-gray-50/60 flex-col">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                <Eye className="w-4 h-4 text-gray-400" />
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Ko'rinish</p>
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-gray-400" />
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Ko'rinish</p>
+                </div>
+                {/* Preview language toggle */}
+                <div className="flex gap-1">
+                  {(["uz", "ru"] as const).map((l) => (
+                    <button key={l} onClick={() => setEditorLang(l)}
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition-colors ${editorLang === l ? "bg-blue-600 text-white" : "text-gray-400 hover:text-gray-600"}`}>
+                      {l === "uz" ? "🇺🇿" : "🇷🇺"}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4">
                 <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
-                  <QuestionPreview q={s} />
+                  <QuestionPreview q={s} lang={editorLang} />
                 </div>
-                {s.condEnabled && s.condQuestionId && (
+                {!ruFilled && (
                   <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
-                    <Info className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-amber-700 font-medium">Bu savol faqat shart bajarilganda ko'rinadi</p>
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-700 font-medium">Rus tilidagi tarjima yo'q</p>
+                  </div>
+                )}
+                {s.condEnabled && s.condQuestionId && (
+                  <div className="mt-3 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl p-3">
+                    <Info className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-700 font-medium">Bu savol faqat shart bajarilganda ko'rinadi</p>
                   </div>
                 )}
                 {s.isCore && (
@@ -939,9 +1106,10 @@ function QuestionEditorModal({
         {/* Modal footer */}
         <div className="border-t border-gray-100 px-5 py-4 flex gap-3 flex-shrink-0">
           <Button variant="outline" onClick={onClose} className="flex-1 font-semibold border-gray-200">Bekor qilish</Button>
-          <Button onClick={handleSave} disabled={!s.label.trim() && s.type !== "section-header"}
+          <Button onClick={handleSave}
+            disabled={!s.label.trim() && !s.labelRu.trim() && s.type !== "section-header"}
             className="flex-1 font-bold bg-blue-600 hover:bg-blue-700 gap-2 disabled:opacity-40">
-            <Save className="w-4 h-4" /> Qo'shish
+            <Save className="w-4 h-4" /> {initial ? "Saqlash" : "Qo'shish"}
           </Button>
         </div>
 
@@ -950,23 +1118,41 @@ function QuestionEditorModal({
           {branchEditorFor && (
             <BranchPanelModal
               optionLabel={
-                s.options.find((o) => (o.value.trim() || o.label.trim().toLowerCase().replace(/\s+/g, "_")) === branchEditorFor)?.label ?? branchEditorFor
+                s.options.find((o) => (o.value.trim() || (o.label || o.labelRu).trim().toLowerCase().replace(/\s+/g, "_")) === branchEditorFor)?.label ?? branchEditorFor
               }
               optionValue={branchEditorFor}
               questions={s.conditionalBranches[branchEditorFor] ?? []}
               allQuestions={allQuestions}
-              onChange={(qs) =>
-                setS((prev) => ({
-                  ...prev,
-                  conditionalBranches: { ...prev.conditionalBranches, [branchEditorFor]: qs },
-                }))
-              }
+              onChange={(qs) => setS((prev) => ({
+                ...prev,
+                conditionalBranches: { ...prev.conditionalBranches, [branchEditorFor]: qs },
+              }))}
               onClose={() => setBranchEditorFor(null)}
             />
           )}
         </AnimatePresence>
       </motion.div>
     </div>
+  );
+}
+
+/* ─── Translation Completeness Badge ─────────────────────────────── */
+function TranslationBadge({ q }: { q: Question }) {
+  const hasUz = !!(q.labelLocalized?.uz?.trim() ?? q.label?.trim());
+  const hasRu = !!(q.labelLocalized?.ru?.trim());
+  if (!hasRu) {
+    return (
+      <span className="flex items-center gap-0.5 text-[9px] font-bold text-amber-500 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full flex-shrink-0"
+        title="Rus tilidagi tarjima yo'q">
+        🇷🇺 ⚠️
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-0.5 text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full flex-shrink-0"
+      title="Ikkala tilda ham to'ldirilgan">
+      🇺🇿🇷🇺 ✅
+    </span>
   );
 }
 
@@ -989,6 +1175,7 @@ function QuestionCard({
       <div className="group flex items-center gap-3 px-5 py-3 bg-blue-50 border-b border-gray-50 hover:bg-blue-100 transition-colors">
         <Layers className="w-4 h-4 text-blue-400 flex-shrink-0" />
         <p className="flex-1 text-sm font-extrabold text-blue-700">{q.label}</p>
+        <TranslationBadge q={q} />
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={onEdit} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-100 transition-colors"><Edit3 className="w-3.5 h-3.5" /></button>
           <button onClick={onDelete} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -1016,6 +1203,7 @@ function QuestionCard({
           {q.required && <span className="text-red-500 text-xs font-bold">*</span>}
           {q.isCore && <Star className="w-3 h-3 fill-amber-400 text-amber-400 flex-shrink-0" />}
           {q.conditional && <GitBranch className="w-3 h-3 text-blue-400 flex-shrink-0" />}
+          <TranslationBadge q={q} />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[11px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-semibold">{typeLabel}</span>
@@ -1038,7 +1226,7 @@ function QuestionCard({
         </div>
       </div>
 
-        <div className="flex items-center gap-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-all duration-200">
+      <div className="flex items-center gap-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-all duration-200">
         <button onClick={onEdit} className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
           <Edit3 className="w-3.5 h-3.5" />
         </button>
@@ -1050,7 +1238,7 @@ function QuestionCard({
   );
 }
 
-/* ─── Questions Panel (reusable for category + common) ─────────────── */
+/* ─── Questions Panel ────────────────────────────────────────────── */
 function QuestionsPanel({
   title, emoji, subtitle,
   questions, onChange, allQuestionsForCond,
@@ -1073,25 +1261,23 @@ function QuestionsPanel({
     [qs[i], qs[j]] = [qs[j], qs[i]];
     onChange(qs);
   }
-  function del(i: number) {
-    onChange(questions.filter((_, idx) => idx !== i));
-  }
+  function del(i: number) { onChange(questions.filter((_, idx) => idx !== i)); }
   function save(q: Question) {
-    let qs: Question[];
-    if (editingIdx !== null) {
-      qs = questions.map((orig, i) => (i === editingIdx ? q : orig));
-    } else {
-      qs = [...questions, q];
-    }
+    const qs = editingIdx !== null
+      ? questions.map((orig, i) => (i === editingIdx ? q : orig))
+      : [...questions, q];
     onChange(qs);
-    setEditorState(null);
-    setEditingIdx(null);
-    setShowAdd(false);
+    setEditorState(null); setEditingIdx(null); setShowAdd(false);
   }
 
   const borderColor = accent === "amber" ? "border-amber-200" : "border-gray-100";
   const headerBg = accent === "amber" ? "bg-amber-50" : "bg-white";
   const addColor = accent === "amber" ? "text-amber-600 hover:text-amber-700" : "text-blue-600 hover:text-blue-700";
+
+  /* Translation completeness stats */
+  const total = questions.length;
+  const withRu = questions.filter(q => q.labelLocalized?.ru?.trim()).length;
+  const pct = total > 0 ? Math.round((withRu / total) * 100) : 100;
 
   return (
     <div className={`bg-white rounded-2xl border ${borderColor} overflow-hidden mb-4 shadow-sm`}>
@@ -1102,6 +1288,13 @@ function QuestionsPanel({
           {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
         </div>
         <span className="text-xs bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">{questions.length} savol</span>
+        {/* Translation completeness indicator */}
+        {total > 0 && (
+          <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${pct === 100 ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}
+            title={`${withRu}/${total} ta savolda RU tarjima bor`}>
+            🇷🇺 {pct}%
+          </span>
+        )}
       </div>
 
       {questions.length === 0 && (
@@ -1140,20 +1333,16 @@ function QuestionsPanel({
   );
 }
 
-/* ─── Category Panel (wraps QuestionsPanel + system Q toggles) ────── */
+/* ─── Category Panel ─────────────────────────────────────────────── */
 function CategoryPanel({
-  cat, onChange,
-  commonQuestions,
+  cat, onChange, commonQuestions,
 }: {
-  cat: CategoryConfig;
-  onChange: (c: CategoryConfig) => void;
-  commonQuestions: Question[];
+  cat: CategoryConfig; onChange: (c: CategoryConfig) => void; commonQuestions: Question[];
 }) {
   const allQuestionsForCond = [...cat.questions, ...commonQuestions];
 
   return (
     <div>
-      {/* Base cost field */}
       <div className="mb-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
         <TangaCoin size="lg" />
         <div className="flex-1 min-w-0">
@@ -1161,10 +1350,7 @@ function CategoryPanel({
           <p className="text-[11px] text-amber-600 mt-0.5">Har qanday taklif yuborishda qo'shiladigan Tanga miqdori</p>
         </div>
         <div className="flex items-center gap-1.5 bg-white border border-amber-300 rounded-xl px-3 py-1.5 flex-shrink-0">
-          <input
-            type="number"
-            min="0"
-            value={cat.baseCost ?? 0}
+          <input type="number" min="0" value={cat.baseCost ?? 0}
             onChange={(e) => {
               const v = parseInt(e.target.value, 10);
               onChange({ ...cat, baseCost: isNaN(v) ? 0 : Math.max(0, v) });
@@ -1219,6 +1405,12 @@ export function QuestionsEmbedded() {
     ? categories.filter((c) => c.id === activeTab)
     : categories;
 
+  /* Global translation completeness */
+  const allQs = [...commonQuestions, ...categories.flatMap(c => c.questions)];
+  const ruCount = allQs.filter(q => q.labelLocalized?.ru?.trim()).length;
+  const totalQs = allQs.length;
+  const globalPct = totalQs > 0 ? Math.round((ruCount / totalQs) * 100) : 100;
+
   return (
     <div className="space-y-4">
       {/* ── Toolbar ── */}
@@ -1227,13 +1419,17 @@ export function QuestionsEmbedded() {
           <p className="font-extrabold text-sm text-gray-900">Savol muharriri</p>
           <p className="text-xs text-gray-400">{categories.length} ta kategoriya · {commonQuestions.length} ta umumiy savol</p>
         </div>
+        {/* Global RU completeness */}
+        <span className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg flex-shrink-0 ${globalPct === 100 ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}
+          title={`${ruCount}/${totalQs} savol RU tarjimaga ega`}>
+          <Languages className="w-3.5 h-3.5" /> РУС {globalPct}%
+        </span>
         {dirty && (
           <span className="flex items-center gap-1 text-xs text-amber-600 font-semibold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg flex-shrink-0">
             <AlertTriangle className="w-3 h-3" /> Saqlanmagan
           </span>
         )}
-        <button
-          onClick={() => setShowResetConfirm(true)}
+        <button onClick={() => setShowResetConfirm(true)}
           className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
           title="Asl holatga qaytarish">
           <RefreshCw className="w-4 h-4" />
@@ -1280,10 +1476,8 @@ export function QuestionsEmbedded() {
         <AnimatePresence mode="popLayout">
           {displayed.map((cat) => (
             <motion.div key={cat.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.2 }}>
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.2 }}>
               <CategoryPanel cat={cat} onChange={updateCategory} commonQuestions={commonQuestions} />
             </motion.div>
           ))}
@@ -1294,7 +1488,7 @@ export function QuestionsEmbedded() {
         O'zgarishlar faqat "Saqlash" tugmasini bosganingizda qo'llanadi
       </p>
 
-      {/* ── Reset confirm modal ── */}
+      {/* ── Reset confirm ── */}
       <AnimatePresence>
         {showResetConfirm && (
           <>
@@ -1320,7 +1514,7 @@ export function QuestionsEmbedded() {
   );
 }
 
-/* ─── Main Admin Page ─────────────────────────────────────────────── */
+/* ─── Main Admin Page (standalone /admin/questions route) ────────── */
 export default function AdminQuestionsPage() {
   const [authed, setAuthed] = useState(false);
   const [categories, setCategories] = useState<CategoryConfig[]>(getCategories);
@@ -1332,32 +1526,21 @@ export default function AdminQuestionsPage() {
 
   function updateCategory(updated: CategoryConfig) {
     setCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-    setDirty(true);
-    setSaved(false);
+    setDirty(true); setSaved(false);
   }
-
   function updateCommon(qs: Question[]) {
-    setCommonQuestions(qs);
-    setDirty(true);
-    setSaved(false);
+    setCommonQuestions(qs); setDirty(true); setSaved(false);
   }
-
   function handleSave() {
     saveCategories(categories);
     saveCommonQuestions(commonQuestions);
-    setSaved(true);
-    setDirty(false);
+    setSaved(true); setDirty(false);
     setTimeout(() => setSaved(false), 2500);
   }
-
   function handleReset() {
-    resetCategories();
-    resetCommonQuestions();
-    setCategories(getCategories());
-    setCommonQuestions(getCommonQuestions());
-    setDirty(false);
-    setSaved(false);
-    setShowResetConfirm(false);
+    resetCategories(); resetCommonQuestions();
+    setCategories(getCategories()); setCommonQuestions(getCommonQuestions());
+    setDirty(false); setSaved(false); setShowResetConfirm(false);
   }
 
   const displayed = activeTab && activeTab !== "common"
@@ -1368,8 +1551,6 @@ export default function AdminQuestionsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-
-      {/* ── Sticky Header ── */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
           <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain flex-shrink-0" />
@@ -1382,10 +1563,8 @@ export default function AdminQuestionsPage() {
               <AlertTriangle className="w-3 h-3" /> Saqlanmagan
             </span>
           )}
-          <button
-            onClick={() => setShowResetConfirm(true)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
-            title="Asl holatga qaytarish">
+          <button onClick={() => setShowResetConfirm(true)}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0">
             <RefreshCw className="w-4 h-4" />
           </button>
           <Button onClick={handleSave}
@@ -1394,7 +1573,6 @@ export default function AdminQuestionsPage() {
           </Button>
         </div>
 
-        {/* Category tabs */}
         <div className="max-w-3xl mx-auto px-4 pb-3 flex gap-1.5 overflow-x-auto scrollbar-hide">
           <button onClick={() => setActiveTab(null)}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${activeTab === null ? "bg-blue-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
@@ -1413,10 +1591,7 @@ export default function AdminQuestionsPage() {
         </div>
       </div>
 
-      {/* ── Body ── */}
       <div className="max-w-3xl mx-auto px-4 py-6">
-
-        {/* Common questions tab */}
         {(activeTab === null || activeTab === "common") && (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
             <QuestionsPanel
@@ -1430,28 +1605,22 @@ export default function AdminQuestionsPage() {
             />
           </motion.div>
         )}
-
-        {/* Category panels */}
         {activeTab !== "common" && (
           <AnimatePresence mode="popLayout">
             {displayed.map((cat) => (
               <motion.div key={cat.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.2 }}>
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.2 }}>
                 <CategoryPanel cat={cat} onChange={updateCategory} commonQuestions={commonQuestions} />
               </motion.div>
             ))}
           </AnimatePresence>
         )}
-
         <p className="text-center text-xs text-gray-400 mt-4 pb-8">
           O'zgarishlar faqat "Saqlash" tugmasini bosganingizda qo'llanadi
         </p>
       </div>
 
-      {/* ── Reset confirm modal ── */}
       <AnimatePresence>
         {showResetConfirm && (
           <>
