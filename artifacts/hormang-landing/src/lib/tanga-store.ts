@@ -1,4 +1,5 @@
 import { emitStoreChange } from "./store-events";
+import type { LocalizedText } from "./localization";
 
 export const TANGA_BALANCE_PREFIX      = "provider_tokens";
 export const PRICING_TIERS_KEY         = "hormang_pricing_tiers";
@@ -6,7 +7,10 @@ export const PLAN_USER_PURCHASES_KEY   = "hormang_plan_user_purchases";
 
 export interface PricingTier {
   id: string;
+  /** Primary display name (Uzbek). Use nameLocalized when available. */
   name: string;
+  /** Multilingual plan name. Use getLocalizedText(nameLocalized ?? name, locale). */
+  nameLocalized?: LocalizedText;
   credits: number;
   price: number;
 
@@ -35,6 +39,8 @@ export interface PricingTier {
 
   /* ── Meta ───────────────────────────────────────────────────────── */
   desc: string;
+  /** Multilingual description. Use getLocalizedText(descLocalized ?? desc, locale). */
+  descLocalized?: LocalizedText;
   color: string;
   active: boolean;
 }

@@ -6,16 +6,24 @@
  * Key: hormang_announcement_seen_<userId> — string[] (announcement IDs)
  */
 import { emitStoreChange } from "./store-events";
+import type { LocalizedText } from "./localization";
 
 export const ANNOUNCEMENTS_KEY = "hormang_announcements";
 
 export interface Announcement {
   id: string;
   type: "news" | "event";
+  /** Primary display title (Uzbek). Used as fallback when titleLocalized is absent. */
   title: string;
+  /** Multilingual title. When present, use getLocalizedText(titleLocalized ?? title, locale). */
+  titleLocalized?: LocalizedText;
+  /** Primary display content (Uzbek). Used as fallback when contentLocalized is absent. */
   content: string;
+  /** Multilingual content body. */
+  contentLocalized?: LocalizedText;
   image?: string;
   ctaText?: string;
+  ctaTextLocalized?: LocalizedText;
   ctaLink?: string;
   target: "all" | "providers" | "customers";
   isPinned?: boolean;

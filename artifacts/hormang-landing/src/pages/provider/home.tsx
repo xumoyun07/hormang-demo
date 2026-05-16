@@ -21,6 +21,7 @@ import { OfferForm } from "@/components/offer-form";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
+import { getLocalizedText } from "@/lib/localization";
 import type { Dict } from "@/lib/i18n/locales/uz";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -948,7 +949,12 @@ function AnnouncementModal({
   ann: Announcement;
   onClose: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const annTitle   = getLocalizedText(ann.titleLocalized   ?? ann.title,   locale);
+  const annContent = getLocalizedText(ann.contentLocalized ?? ann.content, locale);
+  const annCtaText = ann.ctaTextLocalized
+    ? getLocalizedText(ann.ctaTextLocalized, locale)
+    : ann.ctaText ?? "";
   const [, setLocation] = useLocation();
   return (
     <>
@@ -983,8 +989,8 @@ function AnnouncementModal({
             </span>
             {ann.isPinned && <span className="text-base">📌</span>}
           </div>
-          <h2 className="font-extrabold text-gray-900 text-lg leading-snug">{ann.title}</h2>
-          <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{ann.content}</p>
+          <h2 className="font-extrabold text-gray-900 text-lg leading-snug">{annTitle}</h2>
+          <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">{annContent}</p>
           {ann.expiresAt && (
             <p className="text-[10px] text-gray-400">
               {tFormat(t.providerHome.events.deadlineTpl, { date: new Date(ann.expiresAt).toLocaleDateString("uz-UZ") })}
@@ -992,13 +998,13 @@ function AnnouncementModal({
           )}
         </div>
         <div className="px-5 pb-5 space-y-2 flex-shrink-0">
-          {ann.ctaText && ann.ctaLink && (
+          {annCtaText && ann.ctaLink && (
             <button
               onClick={() => { onClose(); setLocation(ann.ctaLink!); }}
               className="w-full py-3 rounded-2xl font-bold text-sm text-white shadow-sm active:scale-95 transition-all"
               style={{ background: VIOLET }}
             >
-              {ann.ctaText}
+              {annCtaText}
             </button>
           )}
           <button onClick={onClose}
@@ -1015,7 +1021,7 @@ function AnnouncementModal({
 function EventsSection() {
   useStoreRefresh();
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [selected, setSelected] = useState<Announcement | null>(null);
 
   const items = getPublishedAnnouncements("providers");
@@ -1082,20 +1088,22 @@ function EventsSection() {
                             </span>
                           )}
                         </div>
-                        <p className="font-bold text-gray-900 text-sm leading-snug truncate">{ann.title}</p>
+                        <p className="font-bold text-gray-900 text-sm leading-snug truncate">
+                          {getLocalizedText(ann.titleLocalized ?? ann.title, locale)}
+                        </p>
                         <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-snug">
-                          {ann.content}
+                          {getLocalizedText(ann.contentLocalized ?? ann.content, locale)}
                         </p>
                       </div>
                       <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0 mt-1" />
                     </div>
-                    {ann.ctaText && (
+                    {(ann.ctaTextLocalized ? getLocalizedText(ann.ctaTextLocalized, locale) : ann.ctaText) && (
                       <div className="mt-3">
                         <span
                           className="inline-block px-3 py-1.5 rounded-xl text-xs font-bold text-white"
                           style={{ background: VIOLET }}
                         >
-                          {ann.ctaText}
+                          {ann.ctaTextLocalized ? getLocalizedText(ann.ctaTextLocalized, locale) : ann.ctaText}
                         </span>
                       </div>
                     )}

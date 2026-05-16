@@ -47,7 +47,10 @@ export interface Question {
 
 export interface CategoryConfig {
   id: string;
+  /** Primary display name (Uzbek). Use nameLocalized when available. */
   name: string;
+  /** Multilingual name. Use getCategoryDisplayName(cat, locale) from data/categories.ts. */
+  nameLocalized?: import("./localization").LocalizedText;
   emoji: string;
   questions: Question[];
   /** Base Tanga cost for any offer in this category (default 0) */

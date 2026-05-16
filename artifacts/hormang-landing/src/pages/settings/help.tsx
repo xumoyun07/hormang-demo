@@ -9,9 +9,11 @@ import { useI18n } from "@/contexts/i18n-context";
 import { SettingsPageShell } from "@/components/settings/page-shell";
 import { Section } from "@/components/settings/section";
 import { SettingsRow } from "@/components/settings/settings-row";
+import { faqItems, guidelineItems } from "@/data/faq";
+import { getLocalizedText } from "@/lib/localization";
 
 export default function HelpSettingsPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [, setLocation] = useLocation();
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
@@ -41,12 +43,14 @@ export default function HelpSettingsPage() {
       </Section>
 
       <Section title={t.help.sectionFAQ}>
-        {t.faq.items.map((item, i) => {
+        {faqItems.map((item, i) => {
           const open = openIdx === i;
           const panelId = `faq-panel-${i}`;
           const buttonId = `faq-button-${i}`;
+          const question = getLocalizedText(item.question, locale);
+          const answer = getLocalizedText(item.answer, locale);
           return (
-            <div key={i}>
+            <div key={item.id}>
               <button
                 id={buttonId}
                 type="button"
@@ -57,7 +61,7 @@ export default function HelpSettingsPage() {
               >
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm text-gray-900 dark:text-[hsl(var(--text-primary))]">
-                    {item.q}
+                    {question}
                   </p>
                 </div>
                 <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
@@ -77,7 +81,7 @@ export default function HelpSettingsPage() {
                     className="overflow-hidden"
                   >
                     <p className="px-4 pb-4 -mt-1 text-xs text-gray-600 dark:text-[hsl(var(--text-secondary))] leading-relaxed">
-                      {item.a}
+                      {answer}
                     </p>
                   </motion.div>
                 )}
@@ -123,14 +127,18 @@ export default function HelpSettingsPage() {
       </Section>
 
       <Section title={t.help.sectionGuidelines}>
-        {t.guidelines.items.map((item, i) => (
-          <div key={i} className="px-4 py-3 flex items-start gap-3">
+        {guidelineItems.map((item) => (
+          <div key={item.id} className="px-4 py-3 flex items-start gap-3">
             <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5">
               <Users className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-gray-900 dark:text-[hsl(var(--text-primary))]">{item.title}</p>
-              <p className="text-xs text-gray-500 dark:text-[hsl(var(--text-tertiary))] mt-0.5 leading-snug">{item.desc}</p>
+              <p className="font-semibold text-sm text-gray-900 dark:text-[hsl(var(--text-primary))]">
+                {getLocalizedText(item.title, locale)}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-[hsl(var(--text-tertiary))] mt-0.5 leading-snug">
+                {getLocalizedText(item.desc, locale)}
+              </p>
             </div>
           </div>
         ))}

@@ -5,6 +5,7 @@ import { ChevronLeft, Timer, Sparkles, Check, Zap } from "lucide-react";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { BottomNav } from "@/components/bottom-nav";
 import { useAuth } from "@/contexts/auth-context";
+import { getLocalizedText } from "@/lib/localization";
 import { useToast } from "@/hooks/use-toast";
 import logoImg from "/hormang-logo.png";
 import {
@@ -97,9 +98,11 @@ function PlanCard({
   onBuy: () => void;
   userId: string;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.plansPage;
   const countdown  = useCountdown(tier.validUntil);
+  const tierName = getLocalizedText(tier.nameLocalized ?? tier.name, locale);
+  const tierDesc = getLocalizedText(tier.descLocalized ?? tier.desc, locale);
   const isExpired  = tier.validUntil ? new Date(tier.validUntil) <= new Date() : false;
   const saleActive = isSaleActive(tier);
   const effectivePrice = saleActive ? tier.salePrice! : tier.price;
@@ -151,8 +154,8 @@ function PlanCard({
         {/* Header */}
         <div className="flex items-start justify-between gap-2 mb-3">
           <div>
-            <p className="font-extrabold text-sm text-gray-900">{tier.name}</p>
-            {tier.desc && <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">{tier.desc}</p>}
+            <p className="font-extrabold text-sm text-gray-900">{tierName}</p>
+            {tierDesc && <p className="text-[11px] text-gray-400 mt-0.5 leading-relaxed">{tierDesc}</p>}
           </div>
           {(tier.bonusTokens ?? 0) > 0 && (
             <span className="flex-shrink-0 flex items-center gap-0.5 text-[10px] font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full whitespace-nowrap">
