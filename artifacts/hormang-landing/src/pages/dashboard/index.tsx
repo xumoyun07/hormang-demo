@@ -407,6 +407,9 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
     setCompletionDismissed(localStorage.getItem(completionDismissKey) === "1");
   }, [completionDismissKey]);
 
+  const rawCategories = providerProfile?.categories?.length ? providerProfile.categories : (local.categories ?? []);
+  const selectedCategories = [...new Set(rawCategories)];
+
   const completionLocal = {
     photoUrl:       local.photoUrl,
     region:         local.region,
@@ -416,7 +419,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
     experience:     local.experience,
     portfolioItems: local.portfolioItems ?? [],
     bio:            local.bio,
-    categories:     local.categories ?? [],
+    categories:     selectedCategories,
   };
   const checks  = getCompletionChecks(user ?? null, providerProfile ?? null, completionLocal);
   const pct     = getCompletionPct(checks);
@@ -431,7 +434,6 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
 
   const serviceAreas = local.serviceAreas ?? (local.region ? [local.region] : []);
   const serviceAreaV2 = local.serviceAreaV2;
-  const selectedCategories = providerProfile?.categories?.length ? providerProfile.categories : (local.categories ?? []);
   const requests = getMatchingRequests(selectedCategories, serviceAreas, user?.id ?? "", serviceAreaV2);
   const seen = getSeenIds(user?.id ?? "");
   const unseenCount = requests.filter((r) => !seen.includes(r.id) && r.status === "open").length;
