@@ -11,6 +11,7 @@ export interface SafeUser {
   emailVerified?: boolean;
   twoFactorEnabled?: boolean;
   twoFactorMethod?: TwoFactorMethod | null;
+  twoFactorHint?: string | null;
   pendingEmail?: string | null;
   pendingPhone?: string | null;
   pendingDeleteRequest?: boolean;
@@ -37,9 +38,7 @@ export interface AuthResponse {
 export interface LoginChallenge {
   needs2FA: true;
   challengeId: string;
-  method: TwoFactorMethod;
-  destination: string;
-  devCode?: string;
+  hint?: string;
 }
 
 /* ─── Storage Keys ──────────────────────────────────────────────────────── */
@@ -50,6 +49,7 @@ const PROFILES_KEY = "hormang_auth_provider_profiles";
 const OTP_KEY = "hormang_auth_otp_store";
 const PWD_KEY = "hormang_auth_password_hashes";
 const CHALLENGE_KEY = "hormang_auth_2fa_challenges";
+const TWOFA_CODE_KEY = "hormang_2fa_codes";
 
 /* ─── Token helpers (centralized, exported) ─────────────────────────────── */
 
@@ -411,6 +411,27 @@ export async function saveProviderProfile(body: {
   return { profile };
 }
 
+/* ─── 2FA code store (user-defined static code + hint) ────────────────── */
+
+interface TwoFAEntry { hash: PasswordHash; hint: string; }
+
+function readTwoFACodes(): Record<string, TwoFAEntry> {
+  return readLS<Record<string, TwoFAEntry>>(TWOFA_CODE_KEY, {});
+}
+function getTwoFAEntry(userId: string): TwoFAEntry | null {
+  return readTwoFACodes()[userId] ?? null;
+}
+function setTwoFAEntry(userId: string, entry: TwoFAEntry): void {
+  const all = readTwoFACodes();
+  all[userId] = entry;
+  writeLS(TWOFA_CODE_KEY, all);
+}
+function deleteTwoFAEntry(userId: string): void {
+  const all = readTwoFACodes();
+  delete all[userId];
+  writeLS(TWOFA_CODE_KEY, all);
+}
+
 /* ─── 2FA challenge store ──────────────────────────────────────────────── */
 
 interface ChallengeEntry {
@@ -501,27 +522,13 @@ export async function loginWithEmail(body: {
 }
 
 async function issue2FAChallenge(user: SafeUser): Promise<LoginChallenge> {
-  const method: TwoFactorMethod = user.twoFactorMethod ?? "sms";
-  if (method === "sms") {
-    if (!user.phone) throw new Error("2FA uchun telefon raqami kerak");
-    const code = storeOtp("sms", user.phone, "login-2fa");
-    const challengeId = storeChallenge({
-      userId: user.id,
-      method: "sms",
-      destination: user.phone,
-      expiresAt: Date.now() + 10 * 60 * 1_000,
-    });
-    return { needs2FA: true, challengeId, method: "sms", destination: user.phone, devCode: code };
-  }
-  if (!user.email) throw new Error("2FA uchun email kerak");
-  const code = storeOtp("email", user.email, "login-email-2fa");
   const challengeId = storeChallenge({
     userId: user.id,
-    method: "email",
-    destination: user.email,
-    expiresAt: Date.now() + 10 * 60 * 1_000,
+    method: "sms",
+    destination: "",
+    expiresAt: Date.now() + 30 * 60 * 1_000,
   });
-  return { needs2FA: true, challengeId, method: "email", destination: user.email, devCode: code };
+  return { needs2FA: true, challengeId, hint: user.twoFactorHint ?? undefined };
 }
 
 export async function verifyLogin2FA(body: {
@@ -530,24 +537,20 @@ export async function verifyLogin2FA(body: {
 }): Promise<AuthResponse> {
   const ch = consumeChallenge(body.challengeId);
   if (!ch) throw new Error("Sessiya muddati tugadi. Qayta kiring.");
-  const purpose = ch.method === "sms" ? "login-2fa" : "login-email-2fa";
-  const ok = verifyOtpEntry(ch.method, ch.destination, body.otp, purpose);
-  if (!ok) throw new Error("Tasdiqlash kodi noto'g'ri yoki muddati o'tgan");
 
   const user = findById(ch.userId);
   if (!user) throw new Error("Foydalanuvchi topilmadi");
+
+  const entry = getTwoFAEntry(user.id);
+  if (!entry) throw new Error("2FA kodi topilmadi. Qayta sozlang.");
+
+  const ok = await verifyPasswordHash(body.otp, entry.hash);
+  if (!ok) throw new Error("2FA kodi noto'g'ri");
+
   dropChallenge(body.challengeId);
   setToken(user.id);
   const providerProfile = user.role === "provider" ? findProfile(user.id) : null;
   return { user, accessToken: user.id, providerProfile };
-}
-
-export async function resendLogin2FA(challengeId: string): Promise<{ devCode?: string }> {
-  const ch = consumeChallenge(challengeId);
-  if (!ch) throw new Error("Sessiya muddati tugadi. Qayta kiring.");
-  const purpose = ch.method === "sms" ? "login-2fa" : "login-email-2fa";
-  const code = storeOtp(ch.method, ch.destination, purpose);
-  return { devCode: code };
 }
 
 /* ─── Account Migration ─────────────────────────────────────────────────── */
@@ -794,56 +797,31 @@ export async function verifyChangePhone(otp: string): Promise<{ user: SafeUser }
   return { user: updated };
 }
 
-/* ─── 2FA enable / disable (SMS-based) ─────────────────────────────────── */
+/* ─── 2FA setup / disable (user-defined code + hint) ───────────────────── */
 
-export async function startEnable2FA(body: {
-  currentPassword: string;
-  method?: TwoFactorMethod;
-}): Promise<{ devCode?: string; method: TwoFactorMethod; destination: string }> {
-  const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
-  const user = findById(token);
-  if (!user) throw new Error("Foydalanuvchi topilmadi");
-  if (!user.emailVerified) throw new Error("2FA uchun avval email tasdiqlang");
-
-  const ok = await verifyMyPassword(body.currentPassword);
-  if (!ok) throw new Error("Parol noto'g'ri");
-
-  const method: TwoFactorMethod = body.method ?? "sms";
-  if (method === "sms") {
-    if (!user.phone) throw new Error("Telefon raqami topilmadi");
-    const res = await sendSmsCode(user.phone, "enable-2fa");
-    return { devCode: res.devCode, method, destination: user.phone };
-  }
-  if (!user.email) throw new Error("Email topilmadi");
-  const res = await sendEmailCode(user.email, "register-email");
-  return { devCode: res.devCode, method, destination: user.email };
-}
-
-export async function verifyEnable2FA(body: {
-  otp: string;
-  method?: TwoFactorMethod;
+export async function setup2FA(body: {
+  currentPassword?: string;
+  code: string;
+  hint: string;
 }): Promise<{ user: SafeUser }> {
   const token = getToken();
   if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
   const user = findById(token);
   if (!user) throw new Error("Foydalanuvchi topilmadi");
 
-  const method: TwoFactorMethod = body.method ?? "sms";
-  if (method === "sms") {
-    if (!user.phone) throw new Error("Telefon raqami topilmadi");
-    const ok = verifyOtpEntry("sms", user.phone, body.otp, "enable-2fa");
-    if (!ok) throw new Error("Tasdiqlash kodi noto'g'ri yoki muddati o'tgan");
-  } else {
-    if (!user.email) throw new Error("Email topilmadi");
-    const ok = verifyOtpEntry("email", user.email, body.otp, "register-email");
-    if (!ok) throw new Error("Tasdiqlash kodi noto'g'ri yoki muddati o'tgan");
+  if (user.emailVerified) {
+    if (!body.currentPassword) throw new Error("Identifikatsiya uchun parol talab qilinadi");
+    const ok = await verifyMyPassword(body.currentPassword);
+    if (!ok) throw new Error("Parol noto'g'ri");
   }
+
+  const hash = await hashPassword(body.code);
+  setTwoFAEntry(user.id, { hash, hint: body.hint });
 
   const updated: SafeUser = {
     ...user,
     twoFactorEnabled: true,
-    twoFactorMethod: method,
+    twoFactorHint: body.hint || null,
   };
   upsertUser(updated);
   return { user: updated };
@@ -855,13 +833,17 @@ export async function disable2FA(currentPassword: string): Promise<{ user: SafeU
   const user = findById(token);
   if (!user) throw new Error("Foydalanuvchi topilmadi");
 
-  const ok = await verifyMyPassword(currentPassword);
-  if (!ok) throw new Error("Parol noto'g'ri");
+  if (user.emailVerified) {
+    const ok = await verifyMyPassword(currentPassword);
+    if (!ok) throw new Error("Parol noto'g'ri");
+  }
 
+  deleteTwoFAEntry(user.id);
   const updated: SafeUser = {
     ...user,
     twoFactorEnabled: false,
     twoFactorMethod: null,
+    twoFactorHint: null,
   };
   upsertUser(updated);
   return { user: updated };

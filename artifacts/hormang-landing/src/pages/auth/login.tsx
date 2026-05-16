@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
-import { Phone, Mail, ArrowRight, Loader2, LogIn, ChevronLeft, RefreshCw, Lock } from "lucide-react";
+import { Phone, Mail, ArrowRight, Loader2, LogIn, ChevronLeft, RefreshCw, Lock, ShieldCheck, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
-import { sendSmsCode, loginUser, loginWithEmail, verifyLogin2FA, resendLogin2FA, type LoginChallenge } from "@/lib/auth-client";
+import { sendSmsCode, loginUser, loginWithEmail, verifyLogin2FA, type LoginChallenge } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
 import logoImg from "/hormang-logo.png";
 
@@ -39,6 +39,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
   const [challenge, setChallenge] = useState<LoginChallenge | null>(null);
+  const [twoFACode, setTwoFACode] = useState("");
 
   function getFullPhone() {
     return "+998" + phone.replace(/\D/g, "");
@@ -87,10 +88,10 @@ export default function LoginPage() {
       const res = await loginUser({ phone: getFullPhone(), otp });
       if ("needs2FA" in res) {
         setChallenge(res);
-        setDevCode(res.devCode ?? null);
+        setDevCode(null);
+        setTwoFACode("");
         setOtp("");
         setStep("twofa");
-        startResendTimer();
       } else {
         setAuth(res.user, res.providerProfile ?? null);
         toast({ title: tFormat(t.auth.login.welcomeTpl, { name: res.user.firstName }) });
@@ -115,10 +116,10 @@ export default function LoginPage() {
       const res = await loginWithEmail({ email: emailValue, password });
       if ("needs2FA" in res) {
         setChallenge(res);
-        setDevCode(res.devCode ?? null);
+        setDevCode(null);
+        setTwoFACode("");
         setOtp("");
         setStep("twofa");
-        startResendTimer();
       } else {
         setAuth(res.user, res.providerProfile ?? null);
         toast({ title: tFormat(t.auth.login.welcomeTpl, { name: res.user.firstName }) });
@@ -130,29 +131,16 @@ export default function LoginPage() {
   }
 
   async function handleVerify2FA() {
-    if (!challenge || otp.length < 6) return;
+    if (!challenge || !twoFACode.trim()) return;
     setError(""); setLoading(true);
     try {
-      const res = await verifyLogin2FA({ challengeId: challenge.challengeId, otp });
+      const res = await verifyLogin2FA({ challengeId: challenge.challengeId, otp: twoFACode });
       setAuth(res.user, res.providerProfile ?? null);
       toast({ title: tFormat(t.auth.login.welcomeTpl, { name: res.user.firstName }) });
       setLocation("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : t.common.errorGeneric);
     } finally { setLoading(false); }
-  }
-
-  async function handleResend2FA() {
-    if (!challenge || resendTimer > 0) return;
-    setError("");
-    try {
-      const res = await resendLogin2FA(challenge.challengeId);
-      setDevCode(res.devCode ?? null);
-      startResendTimer();
-      toast({ title: t.common.newCodeSent });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t.common.errorGeneric);
-    }
   }
 
   async function handleResend() {
@@ -193,7 +181,7 @@ export default function LoginPage() {
           <p className="text-muted-foreground text-sm">
             {step === "phone" ? t.auth.login.enterPhone
               : step === "email" ? t.auth.login.title
-              : step === "twofa" ? tFormat(t.auth.shared.sentToTpl, { phone: challenge?.destination ?? "" })
+              : step === "twofa" ? t.auth.twoFA.codeLabel
               : tFormat(t.auth.shared.sentToTpl, { phone })}
           </p>
         </div>
@@ -327,49 +315,49 @@ export default function LoginPage() {
               transition={{ duration: 0.25 }}
               className="space-y-4"
             >
-              {devCode && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                  <p className="text-xs text-amber-700 font-semibold mb-0.5">{t.common.demoSmsTitle}</p>
-                  <p className="text-amber-900 font-bold text-lg tracking-[0.3em]">{devCode}</p>
+              <div className="flex items-center gap-3 bg-primary/8 border border-primary/15 rounded-xl px-4 py-3">
+                <ShieldCheck className="w-5 h-5 text-primary flex-shrink-0" />
+                <p className="text-sm text-foreground font-medium">{t.security.rows.twoFA.title}</p>
+              </div>
+
+              {challenge?.hint && (
+                <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/30 rounded-xl px-3.5 py-3">
+                  <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide mb-0.5">{t.auth.twoFA.hintLabel}</p>
+                    <p className="text-sm text-amber-900 dark:text-amber-100">{challenge.hint}</p>
+                  </div>
                 </div>
               )}
+
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-1.5">
                   <Lock className="w-3.5 h-3.5 inline mr-1.5 text-primary" />
-                  {t.security.rows.twoFA.title}
+                  {t.auth.twoFA.codeLabel}
                 </label>
                 <input
-                  type="text"
-                  inputMode="numeric"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  type="password"
+                  value={twoFACode}
+                  onChange={(e) => setTwoFACode(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleVerify2FA()}
-                  placeholder="000000"
-                  maxLength={6}
-                  className="w-full h-14 px-4 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-2xl font-bold tracking-[0.4em] text-center"
+                  placeholder={t.auth.twoFA.codePlaceholder}
+                  className="w-full h-11 px-4 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-sm"
                   autoFocus
                 />
               </div>
-              <Button onClick={handleVerify2FA} disabled={loading || otp.length < 6} className="w-full h-11 font-bold text-sm gap-2">
+
+              <Button onClick={handleVerify2FA} disabled={loading || !twoFACode.trim()} className="w-full h-11 font-bold text-sm gap-2">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
                 {loading ? t.common.checking : t.auth.login.submit}
               </Button>
-              <div className="flex items-center justify-between">
+
+              <div className="flex items-center justify-start">
                 <button
                   type="button"
-                  onClick={() => { setStep(mode === "phone" ? "phone" : "email"); setOtp(""); setDevCode(null); setChallenge(null); setError(""); }}
+                  onClick={() => { setStep(mode === "phone" ? "phone" : "email"); setTwoFACode(""); setOtp(""); setChallenge(null); setError(""); }}
                   className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" /> {t.common.back}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleResend2FA}
-                  disabled={resendTimer > 0}
-                  className="text-sm text-primary hover:underline flex items-center gap-1.5 disabled:opacity-50 disabled:no-underline transition-all"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  {resendTimer > 0 ? `${resendTimer}s` : t.common.resend}
                 </button>
               </div>
             </motion.div>

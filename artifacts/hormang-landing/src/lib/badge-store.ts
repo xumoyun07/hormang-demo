@@ -155,7 +155,7 @@ export const BADGE_META: Record<BadgeType, BadgeMeta> = {
       borderColor: "#D97706",
       boxShadow: "0 0 0 1px rgba(217,119,6,0.20), inset 0 1px 0 rgba(255,255,255,0.55)",
     },
-    icon: "UserStar",
+    icon: "Crown",
     order: 6,
   },
   strong_portfolio: {

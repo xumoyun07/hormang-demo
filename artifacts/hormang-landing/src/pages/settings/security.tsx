@@ -16,8 +16,7 @@ import {
   verifyChangeEmail,
   startChangePhone,
   verifyChangePhone,
-  startEnable2FA,
-  verifyEnable2FA,
+  setup2FA,
   disable2FA,
   startDeleteAccount,
   confirmDeleteAccount,
@@ -119,9 +118,8 @@ export default function SecuritySettingsPage() {
           iconBg="hsl(262, 80%, 96%)"
           iconColor="hsl(262, 80%, 54%)"
           title={t.security.rows.twoFA.title}
-          desc={!emailVerified ? t.security.rows.twoFA.needsEmail : twoFAEnabled ? t.common.enabled : t.security.rows.twoFA.desc}
-          onClick={emailVerified ? () => setFlow(twoFAEnabled ? "disable-2fa" : "enable-2fa") : undefined}
-          disabled={!emailVerified}
+          desc={twoFAEnabled ? t.common.enabled : t.security.rows.twoFA.desc}
+          onClick={() => setFlow(twoFAEnabled ? "disable-2fa" : "enable-2fa")}
         />
       </Section>
 
@@ -485,55 +483,66 @@ function Enable2FAFlow({ onDone }: { onDone: () => Promise<void> }) {
   const { t } = useI18n();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [step, setStep] = useState<"form" | "verify">("form");
+  const [step, setStep] = useState<"password" | "create">(user?.emailVerified ? "password" : "create");
   const [currentPassword, setCurrentPassword] = useState("");
-  const [otp, setOtp] = useState("");
-  const [devCode, setDevCode] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [confirmCode, setConfirmCode] = useState("");
+  const [hint, setHint] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function send() {
-    setError(""); setLoading(true);
-    try {
-      const res = await startEnable2FA({ currentPassword, method: "sms" });
-      setDevCode(res.devCode ?? null);
-      setStep("verify");
-    } catch (e) { setError(e instanceof Error ? e.message : t.common.errorGeneric); }
-    finally { setLoading(false); }
+  async function goToCreate() {
+    if (!user?.emailVerified) { setStep("create"); return; }
+    setError("");
+    if (!currentPassword) { setError(t.security.flows.enable2FA.currentPasswordLabel); return; }
+    setStep("create");
   }
-  async function verify() {
-    setError(""); setLoading(true);
+
+  async function submit() {
+    setError("");
+    if (code.length < 4) { setError(t.security.flows.enable2FA.codeTooShort); return; }
+    if (code !== confirmCode) { setError(t.security.flows.enable2FA.codeMismatch); return; }
+    setLoading(true);
     try {
-      await verifyEnable2FA({ otp, method: "sms" });
+      await setup2FA({ currentPassword: user?.emailVerified ? currentPassword : undefined, code, hint });
       toast({ title: t.security.flows.enable2FA.success });
       await onDone();
     } catch (e) { setError(e instanceof Error ? e.message : t.common.errorGeneric); }
     finally { setLoading(false); }
   }
-  async function resend() {
-    try { const res = await startEnable2FA({ currentPassword, method: "sms" }); setDevCode(res.devCode ?? null); toast({ title: t.common.newCodeSent }); }
-    catch (e) { setError(e instanceof Error ? e.message : t.common.errorGeneric); }
-  }
 
-  if (step === "form") {
+  if (step === "password") {
     return (
       <div className="space-y-3">
         <ErrorBanner msg={error} />
         <Field label={t.security.flows.enable2FA.currentPasswordLabel}>
           <PasswordInput value={currentPassword} onChange={setCurrentPassword} autoFocus />
         </Field>
-        <PrimaryButton loading={loading} onClick={send}>{t.security.flows.enable2FA.sendCode}</PrimaryButton>
+        <PrimaryButton loading={false} onClick={goToCreate}>{t.common.next ?? "Next"}</PrimaryButton>
       </div>
     );
   }
+
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">{tFormat(t.security.flows.enable2FA.verifySubtitleTpl, { phone: user?.phone ?? "" })}</p>
-      <DevCodeBanner code={devCode} />
       <ErrorBanner msg={error} />
-      <OtpInput value={otp} onChange={setOtp} onEnter={verify} />
-      <PrimaryButton loading={loading} disabled={otp.length < 6} onClick={verify}>{t.security.flows.enable2FA.confirm}</PrimaryButton>
-      <div className="flex justify-end"><ResendButton onResend={resend} /></div>
+      <Field label={t.security.flows.enable2FA.codeLabel} hint={t.security.flows.enable2FA.codeHint}>
+        <PasswordInput value={code} onChange={setCode} placeholder={t.security.flows.enable2FA.codePlaceholder} autoFocus />
+      </Field>
+      <Field label={t.security.flows.enable2FA.confirmCodeLabel}>
+        <PasswordInput value={confirmCode} onChange={setConfirmCode} placeholder={t.security.flows.enable2FA.codePlaceholder} />
+      </Field>
+      <Field label={t.security.flows.enable2FA.hintLabel} hint={t.security.flows.enable2FA.hintInfo}>
+        <input
+          type="text"
+          value={hint}
+          onChange={(e) => setHint(e.target.value)}
+          placeholder={t.security.flows.enable2FA.hintPlaceholder}
+          maxLength={80}
+          className="w-full h-11 px-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
+        />
+      </Field>
+      <PrimaryButton loading={loading} disabled={code.length < 4 || confirmCode.length < 4} onClick={submit}>{t.security.flows.enable2FA.confirm}</PrimaryButton>
     </div>
   );
 }
