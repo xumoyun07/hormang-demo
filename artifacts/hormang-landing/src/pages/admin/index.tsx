@@ -4145,8 +4145,8 @@ function MonoPlans({ tiers, setTiers, reload }: { tiers: PricingTier[]; setTiers
       bonusPlan: draft.bonusPlan || undefined,
       badge: draft.badge.trim() || undefined,
       desc: draft.desc,
-      nameLocalized: (draft.nameLocalized.uz || draft.nameLocalized.ru || draft.nameLocalized.en) ? draft.nameLocalized : undefined,
-      descLocalized: (draft.descLocalized.uz || draft.descLocalized.ru || draft.descLocalized.en) ? draft.descLocalized : undefined,
+      nameLocalized: (draft.nameLocalized.uz || draft.nameLocalized.ru) ? draft.nameLocalized : undefined,
+      descLocalized: (draft.descLocalized.uz || draft.descLocalized.ru) ? draft.descLocalized : undefined,
       color: "bg-amber-50 text-amber-700",
       active: draft.status === "active",
     };
@@ -4328,39 +4328,29 @@ function MonoPlans({ tiers, setTiers, reload }: { tiers: PricingTier[]; setTiers
                     </Field>
                   </div>
 
-                  {/* ── Multilingual translations ─────────────────── */}
+                  {/* ── Russian translation ─────────────────────── */}
                   <div className="col-span-2">
-                    <Field label="🌐 Tarjimalar (ixtiyoriy)">
-                      <div className="space-y-2 mt-1">
-                        {(["ru", "en"] as const).map((lang) => {
-                          const flag = lang === "ru" ? "🇷🇺" : "🇬🇧";
-                          const nameVal = draft.nameLocalized[lang] ?? "";
-                          const descVal = draft.descLocalized[lang] ?? "";
-                          const filled = nameVal.trim().length > 0;
-                          return (
-                            <div key={lang} className={`rounded-xl border p-3 space-y-2 ${filled ? "border-emerald-200 bg-emerald-50/40" : "border-gray-200 bg-gray-50/60"}`}>
-                              <div className="flex items-center gap-1.5 mb-1">
-                                <span className="text-sm">{flag}</span>
-                                <span className="text-[10px] font-bold text-gray-500 uppercase">{lang === "ru" ? "Русский" : "English"}</span>
-                                <span className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full ${filled ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-400"}`}>
-                                  {filled ? "✅ To'ldirilgan" : "○ Ixtiyoriy"}
-                                </span>
-                              </div>
-                              <input
-                                value={nameVal}
-                                onChange={(e) => setDraft({ ...draft, nameLocalized: { ...draft.nameLocalized, [lang]: e.target.value } })}
-                                placeholder={`Reja nomi (${lang})`}
-                                className={`${inputCls} w-full text-xs`}
-                              />
-                              <input
-                                value={descVal}
-                                onChange={(e) => setDraft({ ...draft, descLocalized: { ...draft.descLocalized, [lang]: e.target.value } })}
-                                placeholder={`Tavsif (${lang})`}
-                                className={`${inputCls} w-full text-xs`}
-                              />
-                            </div>
-                          );
-                        })}
+                    <Field label="🇷🇺 Rus tilidagi tarjima (tavsiya)">
+                      <div className={`rounded-xl border p-3 space-y-2 mt-1 ${(draft.nameLocalized.ru ?? "").trim() ? "border-emerald-200 bg-emerald-50/40" : "border-gray-200 bg-gray-50/60"}`}>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-sm">🇷🇺</span>
+                          <span className="text-[10px] font-bold text-gray-500 uppercase">Русский</span>
+                          <span className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full ${(draft.nameLocalized.ru ?? "").trim() ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-400"}`}>
+                            {(draft.nameLocalized.ru ?? "").trim() ? "✅ To'ldirilgan" : "○ Ixtiyoriy"}
+                          </span>
+                        </div>
+                        <input
+                          value={draft.nameLocalized.ru ?? ""}
+                          onChange={(e) => setDraft({ ...draft, nameLocalized: { ...draft.nameLocalized, ru: e.target.value } })}
+                          placeholder="Reja nomi (ru)"
+                          className={`${inputCls} w-full text-xs`}
+                        />
+                        <input
+                          value={draft.descLocalized.ru ?? ""}
+                          onChange={(e) => setDraft({ ...draft, descLocalized: { ...draft.descLocalized, ru: e.target.value } })}
+                          placeholder="Tavsif (ru)"
+                          className={`${inputCls} w-full text-xs`}
+                        />
                       </div>
                     </Field>
                   </div>
@@ -5286,9 +5276,9 @@ function AnnouncementsSection({ refreshKey }: { refreshKey: number }) {
   function handleSave() {
     if (!validate()) return;
     setSaving(true);
-    const hasTitleLoc = !!(form.titleLocalized?.ru?.trim() || form.titleLocalized?.en?.trim());
-    const hasContentLoc = !!(form.contentLocalized?.ru?.trim() || form.contentLocalized?.en?.trim());
-    const hasCtaLoc = !!(form.ctaTextLocalized?.ru?.trim() || form.ctaTextLocalized?.en?.trim());
+    const hasTitleLoc = !!(form.titleLocalized?.ru?.trim());
+    const hasContentLoc = !!(form.contentLocalized?.ru?.trim());
+    const hasCtaLoc = !!(form.ctaTextLocalized?.ru?.trim());
     const payload = {
       ...form,
       id: editing?.id,
@@ -5504,30 +5494,21 @@ function AnnouncementsSection({ refreshKey }: { refreshKey: number }) {
                         {errors.title && <p className="text-[10px] text-red-500 mt-0.5">⚠ {errors.title}</p>}
                       </div>
 
-                      {/* ── Title translations ───────────────────── */}
+                      {/* ── Russian title translation ────────────── */}
                       <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">🌐 Sarlavha tarjimalari (ixtiyoriy)</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {(["ru", "en"] as const).map((lang) => {
-                            const flag = lang === "ru" ? "🇷🇺" : "🇬🇧";
-                            const val = f.titleLocalized?.[lang] ?? "";
-                            const filled = val.trim().length > 0;
-                            return (
-                              <div key={lang} className={`rounded-xl border p-2.5 ${filled ? "border-emerald-200 bg-emerald-50/40" : "border-gray-200"}`}>
-                                <div className="flex items-center gap-1 mb-1.5">
-                                  <span className="text-xs">{flag}</span>
-                                  <span className="text-[9px] font-bold text-gray-500 uppercase flex-1">{lang === "ru" ? "Рус" : "Eng"}</span>
-                                  {filled && <span className="text-[9px] text-emerald-600 font-bold">✅</span>}
-                                </div>
-                                <input
-                                  value={val}
-                                  onChange={(e) => set("titleLocalized", { ...(f.titleLocalized ?? {}), [lang]: e.target.value.slice(0, 120) })}
-                                  placeholder={`Sarlavha (${lang})`}
-                                  className={`${inputCls} w-full text-xs`}
-                                />
-                              </div>
-                            );
-                          })}
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">🇷🇺 Sarlavha (Русский, tavsiya)</p>
+                        <div className={`rounded-xl border p-2.5 ${(f.titleLocalized?.ru ?? "").trim() ? "border-emerald-200 bg-emerald-50/40" : "border-gray-200"}`}>
+                          <div className="flex items-center gap-1 mb-1.5">
+                            <span className="text-xs">🇷🇺</span>
+                            <span className="text-[9px] font-bold text-gray-500 uppercase flex-1">Русский</span>
+                            {(f.titleLocalized?.ru ?? "").trim() && <span className="text-[9px] text-emerald-600 font-bold">✅</span>}
+                          </div>
+                          <input
+                            value={f.titleLocalized?.ru ?? ""}
+                            onChange={(e) => set("titleLocalized", { ...(f.titleLocalized ?? {}), ru: e.target.value.slice(0, 120) })}
+                            placeholder="Sarlavha (ru)"
+                            className={`${inputCls} w-full text-xs`}
+                          />
                         </div>
                       </div>
 
@@ -5622,31 +5603,22 @@ function AnnouncementsSection({ refreshKey }: { refreshKey: number }) {
                     )}
                     {errors.content && <p className="text-[10px] text-red-500 mt-0.5">⚠ {errors.content}</p>}
 
-                    {/* ── Content translations ─────────────────── */}
+                    {/* ── Russian content translation ──────────── */}
                     <div className="mt-3">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">🌐 Kontent tarjimalari (ixtiyoriy)</p>
-                      <div className="space-y-2">
-                        {(["ru", "en"] as const).map((lang) => {
-                          const flag = lang === "ru" ? "🇷🇺" : "🇬🇧";
-                          const val = f.contentLocalized?.[lang] ?? "";
-                          const filled = val.trim().length > 0;
-                          return (
-                            <div key={lang} className={`rounded-xl border p-2.5 ${filled ? "border-emerald-200 bg-emerald-50/40" : "border-gray-200"}`}>
-                              <div className="flex items-center gap-1 mb-1.5">
-                                <span className="text-xs">{flag}</span>
-                                <span className="text-[9px] font-bold text-gray-500 uppercase flex-1">{lang === "ru" ? "Русский" : "English"}</span>
-                                {filled && <span className="text-[9px] text-emerald-600 font-bold">✅</span>}
-                              </div>
-                              <textarea
-                                value={val}
-                                onChange={(e) => set("contentLocalized", { ...(f.contentLocalized ?? {}), [lang]: e.target.value })}
-                                rows={4}
-                                placeholder={`Kontent (${lang}) — Markdown qo'llab-quvvatlanadi`}
-                                className={`${inputCls} w-full resize-y min-h-[80px] font-mono text-xs`}
-                              />
-                            </div>
-                          );
-                        })}
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">🇷🇺 Kontent (Русский, tavsiya)</p>
+                      <div className={`rounded-xl border p-2.5 ${(f.contentLocalized?.ru ?? "").trim() ? "border-emerald-200 bg-emerald-50/40" : "border-gray-200"}`}>
+                        <div className="flex items-center gap-1 mb-1.5">
+                          <span className="text-xs">🇷🇺</span>
+                          <span className="text-[9px] font-bold text-gray-500 uppercase flex-1">Русский</span>
+                          {(f.contentLocalized?.ru ?? "").trim() && <span className="text-[9px] text-emerald-600 font-bold">✅</span>}
+                        </div>
+                        <textarea
+                          value={f.contentLocalized?.ru ?? ""}
+                          onChange={(e) => set("contentLocalized", { ...(f.contentLocalized ?? {}), ru: e.target.value })}
+                          rows={4}
+                          placeholder="Kontent (ru) — Markdown qo'llab-quvvatlanadi"
+                          className={`${inputCls} w-full resize-y min-h-[80px] font-mono text-xs`}
+                        />
                       </div>
                     </div>
                   </section>

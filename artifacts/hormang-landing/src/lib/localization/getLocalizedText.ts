@@ -4,8 +4,7 @@ import type { LocalizedText, Translatable, TranslationCompleteness } from "./loc
 /**
  * Resolves a Translatable field to a plain string for the given locale.
  *
- * Fallback chain:
- *   requested language → uz → ru → en → ""
+ * Fallback chain: requested language → uz → ru → ""
  *
  * Backward-compatible: if `field` is already a plain string (legacy data)
  * it is returned as-is regardless of `lang`.
@@ -23,8 +22,7 @@ export function getLocalizedText(
   if (field === undefined || field === null) return "";
   if (typeof field === "string") return field;
 
-  // Apply fallback chain
-  return field[lang] || field.uz || field.ru || field.en || "";
+  return field[lang] || field.uz || field.ru || "";
 }
 
 /**
@@ -33,20 +31,18 @@ export function getLocalizedText(
  *
  * @example
  *   const s = getTranslationCompleteness(tier.nameLocalized);
- *   // { uz: "filled", ru: "empty", en: "empty", pct: 33 }
+ *   // { uz: "filled", ru: "empty", pct: 50 }
  */
 export function getTranslationCompleteness(
   field: LocalizedText | undefined | null,
 ): TranslationCompleteness {
   const uz = !!field?.uz?.trim();
   const ru = !!field?.ru?.trim();
-  const en = !!field?.en?.trim();
-  const filled = [uz, ru, en].filter(Boolean).length;
+  const filled = [uz, ru].filter(Boolean).length;
   return {
     uz: uz ? "filled" : "empty",
     ru: ru ? "filled" : "empty",
-    en: en ? "filled" : "empty",
-    pct: Math.round((filled / 3) * 100),
+    pct: Math.round((filled / 2) * 100),
   };
 }
 

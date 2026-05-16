@@ -8,7 +8,7 @@ interface LanguageSelectorProps {
   onClose: () => void;
 }
 
-const FLAGS: Record<Locale, string> = { uz: "🇺🇿", ru: "🇷🇺", en: "🇬🇧" };
+const FLAGS: Record<Locale, string> = { uz: "🇺🇿", ru: "🇷🇺" };
 
 export function LanguageSelector({ open, onClose }: LanguageSelectorProps) {
   const { locale, setLocale, t } = useI18n();
