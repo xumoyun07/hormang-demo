@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
 import { getLocalProfile } from "@/lib/local-profile";
+import { getLocalizedText } from "@/lib/localization";
 import { compressImage } from "@/lib/image-utils";
 import { regionsList, TOSHKENT_DISTRICTS } from "@/lib/regions";
 import logoImg from "/hormang-logo.png";
@@ -157,7 +158,7 @@ function ConditionalInlineBlock({
   answers: Answers;
   onChange: (id: string, val: unknown) => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   if (questions.length === 0) return null;
 
   const pillBase = "px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-150 cursor-pointer select-none";
@@ -181,10 +182,10 @@ function ConditionalInlineBlock({
             <div className="mb-3">
               <span className="text-[10px] font-extrabold text-blue-400 uppercase tracking-widest">{t.questionnaire.followUpLabel}</span>
               <h3 className="text-base font-bold text-gray-800 mt-0.5 leading-snug">
-                {bq.label}
+                {getLocalizedText(bq.labelLocalized ?? bq.label, locale)}
                 {bq.required && <span className="text-red-500 ml-1" title={t.questionnaire.requiredTitle}>*</span>}
               </h3>
-              {bq.helpText && <p className="text-xs text-gray-400 mt-0.5">{bq.helpText}</p>}
+              {bq.helpText && <p className="text-xs text-gray-400 mt-0.5">{getLocalizedText(bq.helpTextLocalized ?? bq.helpText, locale)}</p>}
             </div>
 
             {/* Inline QuestionInput — only for common types to keep it concise */}
@@ -194,7 +195,7 @@ function ConditionalInlineBlock({
                   {bq.options?.map((opt) => (
                     <button key={opt.value} onClick={() => { onChange(bq.id, bVal === opt.value ? null : opt.value); if (opt.type !== "other") onChange(bq.id + "_other", ""); }}
                       className={bVal === opt.value ? pillOn : pillOff}>
-                      {bVal === opt.value && <Check className="w-3.5 h-3.5 inline mr-1.5" />}{opt.label}
+                      {bVal === opt.value && <Check className="w-3.5 h-3.5 inline mr-1.5" />}{getLocalizedText(opt.labelLocalized ?? opt.label, locale)}
                     </button>
                   ))}
                 </div>
@@ -213,7 +214,7 @@ function ConditionalInlineBlock({
                       return (
                         <button key={opt.value} onClick={() => { const next = on ? sel.filter(x => x !== opt.value) : [...sel, opt.value]; onChange(bq.id, next); if (opt.type === "other" && on) onChange(bq.id + "_other", ""); }}
                           className={on ? pillOn : pillOff}>
-                          {on && <Check className="w-3.5 h-3.5 inline mr-1.5" />}{opt.label}
+                          {on && <Check className="w-3.5 h-3.5 inline mr-1.5" />}{getLocalizedText(opt.labelLocalized ?? opt.label, locale)}
                         </button>
                       );
                     })}
@@ -228,7 +229,7 @@ function ConditionalInlineBlock({
               const bExamples = (bq.autofillExamples ?? []).filter(Boolean);
               return (
                 <div className="space-y-2">
-                  <input type="text" value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder || t.misc.textPlaceholder}
+                  <input type="text" value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={getLocalizedText(bq.placeholderLocalized ?? bq.placeholder, locale) || t.misc.textPlaceholder}
                     className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all" />
                   {bExamples.length > 0 && (
                     <div className="flex flex-wrap gap-2">
@@ -245,7 +246,7 @@ function ConditionalInlineBlock({
               const bExamples = (bq.autofillExamples ?? []).filter(Boolean);
               return (
                 <div className="space-y-2">
-                  <textarea rows={3} value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={bq.placeholder || t.misc.textPlaceholder}
+                  <textarea rows={3} value={(bVal as string) ?? ""} onChange={(e) => onChange(bq.id, e.target.value)} placeholder={getLocalizedText(bq.placeholderLocalized ?? bq.placeholder, locale) || t.misc.textPlaceholder}
                     className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none transition-all" />
                   {bExamples.length > 0 && (
                     <div className="flex flex-wrap gap-2">
@@ -559,7 +560,7 @@ function QuestionInput({
 
   const otherInputClass = "w-full px-4 py-3.5 rounded-2xl border border-blue-300 bg-blue-50/60 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all";
 
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   if (question.type === "location") {
     return <LocationQuestionInput value={value} onChange={onChange} userId={userId} />;
@@ -582,7 +583,7 @@ function QuestionInput({
               className={value === opt.value ? pillOn : pillOff}
             >
               {value === opt.value && <Check className="w-3.5 h-3.5 inline mr-1.5" />}
-              {opt.label}
+              {getLocalizedText(opt.labelLocalized ?? opt.label, locale)}
             </button>
           ))}
         </div>
@@ -616,7 +617,7 @@ function QuestionInput({
             return (
               <button key={opt.value} onClick={() => toggle(opt.value)} className={on ? pillOn : pillOff}>
                 {on && <Check className="w-3.5 h-3.5 inline mr-1.5" />}
-                {opt.label}
+                {getLocalizedText(opt.labelLocalized ?? opt.label, locale)}
               </button>
             );
           })}
@@ -663,7 +664,7 @@ function QuestionInput({
           rows={4}
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={question.placeholder || t.misc.textPlaceholder}
+          placeholder={getLocalizedText(question.placeholderLocalized ?? question.placeholder, locale) || t.misc.textPlaceholder}
           className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 resize-none transition-all"
         />
         {examples.length > 0 && (
@@ -692,7 +693,7 @@ function QuestionInput({
           type="text"
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={question.placeholder || t.misc.textPlaceholder}
+          placeholder={getLocalizedText(question.placeholderLocalized ?? question.placeholder, locale) || t.misc.textPlaceholder}
           className="w-full px-4 py-3.5 rounded-2xl border border-gray-200 bg-gray-50 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
         />
         {examples.length > 0 && (
@@ -1006,7 +1007,7 @@ function QuestionsScreen({
   onBack: () => void;
 }) {
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const cat = getCategoryById(categoryId);
   const allQuestions = getAllQuestionsForCategory(categoryId);
   const [step, setStep] = useState(0);
@@ -1104,14 +1105,14 @@ function QuestionsScreen({
                 {tFormat(t.questionnaire.questionNumLabel, { n: step + 1 })}
               </span>
               <h2 className="text-xl font-extrabold text-gray-900 leading-snug">
-                {q.label}
+                {getLocalizedText(q.labelLocalized ?? q.label, locale)}
                 {q.required && <span className="text-red-500 ml-1" title={t.questionnaire.requiredTitle}>*</span>}
               </h2>
               {currentValue != null && currentValue !== "" && (
                 <p className="text-sm text-gray-400 mt-1 leading-relaxed">{formatAnswer(q, currentValue, { yes: t.questionnaire.yes, no: t.questionnaire.no, fileUploaded: t.questionnaire.fileUploaded, soum: t.misc.soum, budgetTpl: t.questionnaire.budgetTpl })}</p>
               )}
               {q.helpText && (
-                <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{q.helpText}</p>
+                <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{getLocalizedText(q.helpTextLocalized ?? q.helpText, locale)}</p>
               )}
             </div>
 
@@ -1171,7 +1172,7 @@ function SummaryScreen({
   onSeeProviders: (photos: string[]) => void;
   onBack: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.misc;
   const tq = t.questionnaire;
   const cat = getCategoryById(categoryId);
@@ -1234,7 +1235,7 @@ function SummaryScreen({
             const hasOtherText = !!otherText?.trim();
             return (
               <div key={q.id} className="px-5 py-4">
-                <p className="text-xs text-gray-400 font-semibold mb-1">{q.label}</p>
+                <p className="text-xs text-gray-400 font-semibold mb-1">{getLocalizedText(q.labelLocalized ?? q.label, locale)}</p>
                 <p className="text-sm font-semibold text-gray-900">{formatted}</p>
                 {hasOtherText && (
                   <p className="text-xs text-blue-600 mt-0.5 font-medium">↳ {otherText}</p>

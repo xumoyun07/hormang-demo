@@ -1196,7 +1196,7 @@ export const ru: Dict = {
     emptyOffersTitle: "Нет предложений",
     emptyOffersDesc: "После отправки запроса исполнители пришлют предложения.",
     emptyChatsTitle: "Нет чатов",
-    emptyChatsDesc: "Примите предложение и начните чат с мастером.",
+    emptyChatsDesc: "Примите предложение и начните чат с исполнителем.",
   },
   misc: {
     textPlaceholder: "Введите текст…",
