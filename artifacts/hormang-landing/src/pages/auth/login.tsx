@@ -320,16 +320,6 @@ export default function LoginPage() {
                 <p className="text-sm text-foreground font-medium">{t.security.rows.twoFA.title}</p>
               </div>
 
-              {challenge?.hint && (
-                <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/30 rounded-xl px-3.5 py-3">
-                  <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wide mb-0.5">{t.auth.twoFA.hintLabel}</p>
-                    <p className="text-sm text-amber-900 dark:text-amber-100">{challenge.hint}</p>
-                  </div>
-                </div>
-              )}
-
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-1.5">
                   <Lock className="w-3.5 h-3.5 inline mr-1.5 text-primary" />
@@ -344,6 +334,12 @@ export default function LoginPage() {
                   className="w-full h-11 px-4 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary text-sm"
                   autoFocus
                 />
+                {challenge?.hint && (
+                  <p className="mt-1.5 text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Lightbulb className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span><span className="font-semibold">{t.auth.twoFA.hintLabel}:</span> {challenge.hint}</span>
+                  </p>
+                )}
               </div>
 
               <Button onClick={handleVerify2FA} disabled={loading || !twoFACode.trim()} className="w-full h-11 font-bold text-sm gap-2">
