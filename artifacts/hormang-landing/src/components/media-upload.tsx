@@ -13,6 +13,8 @@
 import { useRef, useState, useCallback, DragEvent } from "react";
 import { Upload, X, GripVertical, ImageIcon, Loader2 } from "lucide-react";
 import { compressImage } from "@/lib/image-utils";
+import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 
 /* ─── Props ────────────────────────────────────────────────────── */
 
@@ -41,6 +43,8 @@ export function MediaUploadZone({
   maxDim = 960,
   quality = 0.72,
 }: MediaUploadZoneProps) {
+  const { t } = useI18n();
+  const tm = t.mediaUpload;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [compressing, setCompressing] = useState(false);
@@ -161,7 +165,7 @@ export function MediaUploadZone({
             >
               <img
                 src={url}
-                alt={`Rasm ${idx + 1}`}
+                alt={tFormat(tm.imageAltTpl, { n: idx + 1 })}
                 className="w-full h-full object-cover"
               />
               {/* Drag handle */}
@@ -207,12 +211,12 @@ export function MediaUploadZone({
           <div>
             <p className="text-sm font-semibold">
               {compressing
-                ? "Rasmlar siqilmoqda…"
+                ? tm.compressing
                 : isDragOver
-                ? "Tashlang!"
+                ? tm.dragOver
                 : urls.length === 0
-                ? "Rasm qo'shish uchun bosing"
-                : `Yana rasm qo'shish (${remaining} ta qoldi)`}
+                ? tm.addFirst
+                : tFormat(tm.addMoreTpl, { n: remaining })}
             </p>
             {!compressing && hint && (
               <p className="text-xs mt-0.5 opacity-70">{hint}</p>
@@ -225,7 +229,7 @@ export function MediaUploadZone({
       {!canAdd && (
         <div className="text-center py-2">
           <p className="text-xs text-amber-600 font-semibold">
-            Maksimal {max} ta rasm yuklandi
+            {tFormat(tm.limitReachedTpl, { max })}
           </p>
         </div>
       )}
@@ -251,6 +255,8 @@ interface CompactMediaUploadProps {
 }
 
 export function CompactMediaUpload({ urls, onChange, max = 3 }: CompactMediaUploadProps) {
+  const { t } = useI18n();
+  const tm = t.mediaUpload;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [compressing, setCompressing] = useState(false);
   const canAdd = urls.length < max;
@@ -293,7 +299,7 @@ export function CompactMediaUpload({ urls, onChange, max = 3 }: CompactMediaUplo
         <div className="flex gap-2 flex-wrap">
           {urls.map((url, idx) => (
             <div key={idx} className="relative group w-16 h-16 rounded-xl overflow-hidden border border-gray-200 bg-gray-100 flex-shrink-0">
-              <img src={url} alt={`Rasm ${idx + 1}`} className="w-full h-full object-cover" />
+              <img src={url} alt={tFormat(tm.imageAltTpl, { n: idx + 1 })} className="w-full h-full object-cover" />
               <button
                 type="button"
                 onClick={() => remove(idx)}
@@ -323,7 +329,7 @@ export function CompactMediaUpload({ urls, onChange, max = 3 }: CompactMediaUplo
           ) : (
             <Upload className="w-4 h-4" />
           )}
-          {compressing ? "Siqilmoqda…" : canAdd ? "Rasm yuklash" : "To'ldi"}
+          {compressing ? tm.compressingShort : canAdd ? tm.upload : tm.full}
         </button>
         <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${
           urls.length >= max ? "bg-amber-50 text-amber-600 border border-amber-100" : "bg-gray-100 text-gray-500"

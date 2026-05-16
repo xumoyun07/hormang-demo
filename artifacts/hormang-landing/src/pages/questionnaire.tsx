@@ -19,6 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
+import { tFormat } from "@/lib/i18n";
 import { getLocalProfile } from "@/lib/local-profile";
 import { compressImage } from "@/lib/image-utils";
 import { regionsList, TOSHKENT_DISTRICTS } from "@/lib/regions";
@@ -34,16 +35,17 @@ export interface LocationAnswer {
 }
 type Answers = Record<string, string | string[] | boolean | number | null | LocationAnswer>;
 
-const URGENCY_LABELS: Record<string, { label: string; color: string }> = {
-  today_tomorrow: { label: "Bugun yoki ertaga kerak", color: "text-red-600 bg-red-50 border-red-200" },
-  "3_7_days": { label: "3–7 kun ichida", color: "text-orange-600 bg-orange-50 border-orange-200" },
-  "1_2_weeks": { label: "1–2 hafta ichida", color: "text-yellow-700 bg-yellow-50 border-yellow-200" },
-  "1_month": { label: "1 oy ichida", color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
-  flexible: { label: "Shoshilinch emas", color: "text-gray-600 bg-gray-50 border-gray-200" },
+const URGENCY_COLORS: Record<string, string> = {
+  today_tomorrow: "text-red-600 bg-red-50 border-red-200",
+  "3_7_days": "text-orange-600 bg-orange-50 border-orange-200",
+  "1_2_weeks": "text-yellow-700 bg-yellow-50 border-yellow-200",
+  "1_month": "text-emerald-600 bg-emerald-50 border-emerald-200",
+  flexible: "text-gray-600 bg-gray-50 border-gray-200",
 };
 
 /* ─── Answer formatting helpers ─────────────────────────────────── */
-function formatAnswer(question: Question, value: unknown): string {
+interface FormatLabels { yes: string; no: string; fileUploaded: string; soum: string; budgetTpl: string }
+function formatAnswer(question: Question, value: unknown, labels?: FormatLabels): string {
   if (value === null || value === undefined || value === "") return "—";
   if (question.type === "location") {
     if (typeof value !== "object" || !value) return "—";
@@ -60,12 +62,14 @@ function formatAnswer(question: Question, value: unknown): string {
     const opt = question.options?.find((o) => o.value === value);
     return opt?.label ?? String(value);
   }
-  if (question.type === "yes-no") return value ? "Ha" : "Yo'q";
-  if (question.type === "file") return value ? "Rasm yuklandi ✓" : "—";
+  if (question.type === "yes-no") return value ? (labels?.yes ?? "Ha") : (labels?.no ?? "Yo'q");
+  if (question.type === "file") return value ? (labels?.fileUploaded ?? "Rasm yuklandi ✓") : "—";
   if (question.type === "number") {
     const n = Number(value);
     if (!n) return "—";
-    if (question.id === "budget") return `${n.toLocaleString()} so'm`;
+    if (question.id === "budget") return labels?.budgetTpl
+      ? tFormat(labels.budgetTpl, { n: n.toLocaleString() })
+      : `${n.toLocaleString()} so'm`;
     return String(n);
   }
   return String(value);
@@ -175,10 +179,10 @@ function ConditionalInlineBlock({
         return (
           <div key={bq.id}>
             <div className="mb-3">
-              <span className="text-[10px] font-extrabold text-blue-400 uppercase tracking-widest">↳ Qo'shimcha savol</span>
+              <span className="text-[10px] font-extrabold text-blue-400 uppercase tracking-widest">{t.questionnaire.followUpLabel}</span>
               <h3 className="text-base font-bold text-gray-800 mt-0.5 leading-snug">
                 {bq.label}
-                {bq.required && <span className="text-red-500 ml-1" title="Majburiy maydon">*</span>}
+                {bq.required && <span className="text-red-500 ml-1" title={t.questionnaire.requiredTitle}>*</span>}
               </h3>
               {bq.helpText && <p className="text-xs text-gray-400 mt-0.5">{bq.helpText}</p>}
             </div>
@@ -195,7 +199,7 @@ function ConditionalInlineBlock({
                   ))}
                 </div>
                 {bq.options?.find((o) => o.value === bVal && o.type === "other") && (
-                  <input autoFocus value={(answers[bq.id + "_other"] as string) ?? ""} onChange={(e) => onChange(bq.id + "_other", e.target.value)} placeholder="Boshqasini yozing..." className={otherInputClass} />
+                  <input autoFocus value={(answers[bq.id + "_other"] as string) ?? ""} onChange={(e) => onChange(bq.id + "_other", e.target.value)} placeholder={t.questionnaire.otherPlaceholder} className={otherInputClass} />
                 )}
               </div>
             )}
@@ -215,7 +219,7 @@ function ConditionalInlineBlock({
                     })}
                   </div>
                   {bq.options?.find((o) => o.type === "other" && sel.includes(o.value)) && (
-                    <input autoFocus value={(answers[bq.id + "_other"] as string) ?? ""} onChange={(e) => onChange(bq.id + "_other", e.target.value)} placeholder="Boshqasini yozing..." className={otherInputClass} />
+                    <input autoFocus value={(answers[bq.id + "_other"] as string) ?? ""} onChange={(e) => onChange(bq.id + "_other", e.target.value)} placeholder={t.questionnaire.otherPlaceholder} className={otherInputClass} />
                   )}
                 </div>
               );
@@ -338,6 +342,8 @@ function LocationQuestionInput({
   onChange: (v: unknown) => void;
   userId?: string;
 }) {
+  const { t } = useI18n();
+  const tq = t.questionnaire;
   const profile = userId ? getLocalProfile(userId) : {};
   const profileRegion = profile.region;
   const profileDistrict = profile.district;
@@ -412,12 +418,12 @@ function LocationQuestionInput({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5">
             <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0" />
-            <p className="text-sm font-semibold text-gray-900">Mening manzilim</p>
+            <p className="text-sm font-semibold text-gray-900">{tq.myAddress}</p>
           </div>
           {hasProfileAddress ? (
             <p className="text-sm text-gray-500 truncate">{profileDisplay}</p>
           ) : (
-            <p className="text-xs text-gray-400">Profilingizda manzil ko'rsatilmagan</p>
+            <p className="text-xs text-gray-400">{tq.noAddress}</p>
           )}
         </div>
       </button>
@@ -435,7 +441,7 @@ function LocationQuestionInput({
           {currentMode === "custom" && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
         </div>
         <div className="flex-1">
-          <p className="text-sm font-semibold text-gray-900">Boshqa manzil</p>
+          <p className="text-sm font-semibold text-gray-900">{tq.customAddress}</p>
           {currentMode === "custom" && customRegion && (
             <p className="text-sm text-gray-500 mt-0.5">
               {customDistrict ? `${customDistrict}, ${customRegion}` : customRegion}
@@ -457,7 +463,7 @@ function LocationQuestionInput({
             <div className="pl-2 pt-1 space-y-4">
               {/* Level 1 — city / viloyat chooser */}
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Hudud tanlang</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">{tq.selectRegion}</p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => pickRegionType("shahri")}
@@ -467,7 +473,7 @@ function LocationQuestionInput({
                         : "border-gray-200 bg-white text-gray-700 hover:border-blue-300"
                     }`}
                   >
-                    🏙 Toshkent shahri
+                    {tq.toshkentCity}
                   </button>
                   <button
                     onClick={() => pickRegionType("viloyati")}
@@ -477,7 +483,7 @@ function LocationQuestionInput({
                         : "border-gray-200 bg-white text-gray-700 hover:border-blue-300"
                     }`}
                   >
-                    🗺 Toshkent viloyati
+                    {tq.toshkentRegion}
                   </button>
                 </div>
               </div>
@@ -485,7 +491,7 @@ function LocationQuestionInput({
               {/* Level 2A — Toshkent districts */}
               {customRegionType === "shahri" && (
                 <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Tumanni tanlang</p>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">{tq.selectDistrict}</p>
                   <div className="flex flex-wrap gap-2">
                     {TOSHKENT_DISTRICTS.map((d) => (
                       <button
@@ -503,7 +509,7 @@ function LocationQuestionInput({
               {/* Level 2B — viloyat cities */}
               {customRegionType === "viloyati" && (
                 <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Shahар/tuman tanlang</p>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">{tq.selectCity}</p>
                   <div className="flex flex-wrap gap-2">
                     {VILOYAT_CITIES.map((city) => (
                       <button
@@ -585,7 +591,7 @@ function QuestionInput({
             autoFocus
             value={otherValue ?? ""}
             onChange={(e) => onOtherChange?.(e.target.value)}
-            placeholder="Boshqasini yozing..."
+            placeholder={t.questionnaire.otherPlaceholder}
             className={otherInputClass}
           />
         )}
@@ -620,7 +626,7 @@ function QuestionInput({
             autoFocus
             value={otherValue ?? ""}
             onChange={(e) => onOtherChange?.(e.target.value)}
-            placeholder="Boshqasini yozing..."
+            placeholder={t.questionnaire.otherPlaceholder}
             className={otherInputClass}
           />
         )}
@@ -631,7 +637,7 @@ function QuestionInput({
   if (question.type === "yes-no") {
     return (
       <div className="flex gap-3">
-        {[{ label: "Ha", v: true }, { label: "Yo'q", v: false }].map(({ label, v }) => (
+        {[{ label: t.questionnaire.yes, v: true }, { label: t.questionnaire.no, v: false }].map(({ label, v }) => (
           <button
             key={label}
             onClick={() => onChange(v)}
@@ -731,7 +737,7 @@ function QuestionInput({
       <div className="space-y-3">
         {isBudget && openToOffers ? (
           <div className="w-full px-4 py-3.5 rounded-2xl border border-emerald-300 bg-emerald-50 text-sm font-semibold text-emerald-700">
-            Byudjet moslashuvchan / Taklifga ochiq
+            {t.questionnaire.budgetFlexible}
           </div>
         ) : (
           <div className="space-y-1.5">
@@ -756,19 +762,19 @@ function QuestionInput({
             {(hasMin || hasMax) && !outOfRange && (
               <p className="text-xs text-gray-400 px-1">
                 {hasMin && hasMax
-                  ? `${question.min} dan ${question.max} gacha`
+                  ? tFormat(t.questionnaire.numberRangeTpl, { min: question.min!, max: question.max! })
                   : hasMin
-                  ? `Minimal: ${question.min}`
-                  : `Maksimal: ${question.max}`}
+                  ? tFormat(t.questionnaire.numberMinTpl, { min: question.min! })
+                  : tFormat(t.questionnaire.numberMaxTpl, { max: question.max! })}
               </p>
             )}
             {outOfRange && (
               <p className="text-xs text-red-500 font-semibold px-1">
-                Qiymat {hasMin && hasMax
-                  ? `${question.min} dan ${question.max} gacha`
+                {hasMin && hasMax
+                  ? tFormat(t.questionnaire.numberRangeErr, { min: question.min!, max: question.max! })
                   : hasMin
-                  ? `${question.min} dan katta yoki teng`
-                  : `${question.max} dan kichik yoki teng`} bo'lishi kerak
+                  ? tFormat(t.questionnaire.numberMinErr, { min: question.min! })
+                  : tFormat(t.questionnaire.numberMaxErr, { max: question.max! })}
               </p>
             )}
           </div>
@@ -781,7 +787,7 @@ function QuestionInput({
               onChange={(e) => onOpenToOffersChange?.(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            <span className="text-sm text-gray-600 font-medium">Taklifga ochiq (byudjet moslashuvchan)</span>
+            <span className="text-sm text-gray-600 font-medium">{t.questionnaire.openToOffers}</span>
           </label>
         )}
       </div>
@@ -868,12 +874,12 @@ function QuestionInput({
                 </button>
                 <div className="px-4 py-2 flex items-center gap-2">
                   <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                  <span className="text-xs font-semibold text-emerald-700">Rasm yuklandi</span>
+                  <span className="text-xs font-semibold text-emerald-700">{t.questionnaire.fileUploaded}</span>
                   <button
                     onClick={() => fileRef.current?.click()}
                     className="ml-auto text-xs text-blue-600 font-semibold hover:text-blue-700"
                   >
-                    Almashtirish
+                    {t.questionnaire.fileReplace}
                   </button>
                 </div>
               </div>
@@ -895,8 +901,8 @@ function QuestionInput({
             className="w-full py-8 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center gap-3 text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-all duration-200"
           >
             <Upload className="w-6 h-6" />
-            <span className="text-sm font-medium">Rasm tanlash uchun bosing</span>
-            <span className="text-xs opacity-70">JPEG, PNG, HEIC — maksimal 10 MB</span>
+            <span className="text-sm font-medium">{t.questionnaire.fileSelectCta}</span>
+            <span className="text-xs opacity-70">{t.questionnaire.fileSelectSub}</span>
           </button>
         )}
       </div>
@@ -958,13 +964,14 @@ function QuizHeader({
 function CategorySelectScreen({ onSelect }: { onSelect: (id: string) => void }) {
   const categories = getCategories();
   const [, setLocation] = useLocation();
+  const { t } = useI18n();
   return (
     <div className="min-h-screen bg-gray-50">
       <QuizHeader onBack={() => setLocation("/customer-home")} />
       <div className="max-w-lg mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-extrabold text-gray-900 mb-1">Qaysi xizmat kerak?</h1>
-          <p className="text-gray-500 text-sm">Kategoriya tanlang, so'rovingizni aniqlaymiz</p>
+          <h1 className="text-2xl font-extrabold text-gray-900 mb-1">{t.questionnaire.categoryTitle}</h1>
+          <p className="text-gray-500 text-sm">{t.questionnaire.categorySub}</p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           {categories.map((cat, i) => (
@@ -999,6 +1006,7 @@ function QuestionsScreen({
   onBack: () => void;
 }) {
   const { user } = useAuth();
+  const { t } = useI18n();
   const cat = getCategoryById(categoryId);
   const allQuestions = getAllQuestionsForCategory(categoryId);
   const [step, setStep] = useState(0);
@@ -1093,14 +1101,14 @@ function QuestionsScreen({
           >
             <div className="mb-6">
               <span className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-2 block">
-                Savol {step + 1}
+                {tFormat(t.questionnaire.questionNumLabel, { n: step + 1 })}
               </span>
               <h2 className="text-xl font-extrabold text-gray-900 leading-snug">
                 {q.label}
-                {q.required && <span className="text-red-500 ml-1" title="Majburiy maydon">*</span>}
+                {q.required && <span className="text-red-500 ml-1" title={t.questionnaire.requiredTitle}>*</span>}
               </h2>
               {currentValue != null && currentValue !== "" && (
-                <p className="text-sm text-gray-400 mt-1 leading-relaxed">{formatAnswer(q, currentValue)}</p>
+                <p className="text-sm text-gray-400 mt-1 leading-relaxed">{formatAnswer(q, currentValue, { yes: t.questionnaire.yes, no: t.questionnaire.no, fileUploaded: t.questionnaire.fileUploaded, soum: t.misc.soum, budgetTpl: t.questionnaire.budgetTpl })}</p>
               )}
               {q.helpText && (
                 <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{q.helpText}</p>
@@ -1134,7 +1142,7 @@ function QuestionsScreen({
         <div className="flex gap-3 mt-10">
           {canSkip && step > 0 && (
             <Button variant="outline" onClick={goNext} className="flex-1 font-semibold border-gray-200">
-              O'tkazib yuborish
+              {t.questionnaire.skip}
             </Button>
           )}
           <Button
@@ -1142,7 +1150,7 @@ function QuestionsScreen({
             disabled={!isAnswered()}
             className="flex-1 font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-40 gap-2"
           >
-            {isLast ? "Yakunlash" : "Keyingisi"}
+            {isLast ? t.questionnaire.finish : t.questionnaire.next}
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
@@ -1165,12 +1173,21 @@ function SummaryScreen({
 }) {
   const { t } = useI18n();
   const tt = t.misc;
+  const tq = t.questionnaire;
   const cat = getCategoryById(categoryId);
   const allQuestions = getAllQuestionsForCategory(categoryId);
   const urgency = answers["urgency"] as string | undefined;
   const openToOffers = answers["budget_open"] as boolean | undefined;
   const budget = answers["budget"] as number | undefined;
-  const urgencyInfo = urgency ? URGENCY_LABELS[urgency] : null;
+  const urgencyLabelMap: Record<string, string> = {
+    today_tomorrow: tq.urgencyTodayTomorrow,
+    "3_7_days": tq.urgency3to7Days,
+    "1_2_weeks": tq.urgency1to2Weeks,
+    "1_month": tq.urgency1Month,
+    flexible: tq.urgencyFlexible,
+  };
+  const urgencyLabel = urgency ? urgencyLabelMap[urgency] ?? urgency : null;
+  const urgencyColor = urgency ? URGENCY_COLORS[urgency] ?? "" : "";
 
   const [requestPhotos, setRequestPhotos] = useState<string[]>([]);
 
@@ -1185,23 +1202,23 @@ function SummaryScreen({
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-5 h-5 text-blue-600" />
-            <h1 className="text-xl font-extrabold text-gray-900">Sizning so'rovingiz</h1>
+            <h1 className="text-xl font-extrabold text-gray-900">{tq.summaryTitle}</h1>
           </div>
-          <p className="text-gray-500 text-sm">Barcha ma'lumotlarni tekshiring va ustalarni ko'ring</p>
+          <p className="text-gray-500 text-sm">{tq.summarySub}</p>
         </div>
 
         {/* Urgency + Budget highlights */}
         <div className="flex gap-3 mb-5">
-          {urgencyInfo && (
-            <div className={`flex-1 rounded-2xl border px-4 py-3 ${urgencyInfo.color}`}>
+          {urgencyLabel && (
+            <div className={`flex-1 rounded-2xl border px-4 py-3 ${urgencyColor}`}>
               <p className="text-xs font-bold uppercase tracking-wide mb-0.5 opacity-70">{tt.urgency}</p>
-              <p className="text-sm font-bold">{urgencyInfo.label}</p>
+              <p className="text-sm font-bold">{urgencyLabel}</p>
             </div>
           )}
           <div className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-3">
             <p className="text-xs font-bold uppercase tracking-wide mb-0.5 text-gray-400">{tt.budget}</p>
             <p className="text-sm font-bold text-gray-900">
-              {openToOffers ? tt.openToOffers : budget ? `${Number(budget).toLocaleString()} ${tt.soum}` : tt.notSpecified}
+              {openToOffers ? tq.openToOffers : budget ? tFormat(tq.budgetTpl, { n: Number(budget).toLocaleString() }) : tt.notSpecified}
             </p>
           </div>
         </div>
@@ -1211,7 +1228,7 @@ function SummaryScreen({
           {specificQs.map((q) => {
             const val = answers[q.id];
             if (q.type === "file") return null;
-            const formatted = formatAnswer(q, val);
+            const formatted = formatAnswer(q, val, { yes: tq.yes, no: tq.no, fileUploaded: tq.fileUploaded, soum: tt.soum, budgetTpl: tq.budgetTpl });
             if (formatted === "—") return null;
             const otherText = answers[q.id + "_other"] as string | undefined;
             const hasOtherText = !!otherText?.trim();
@@ -1234,15 +1251,15 @@ function SummaryScreen({
               <Camera className="w-4 h-4 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-bold text-gray-900">Rasmlar <span className="text-gray-400 font-normal">(ixtiyoriy)</span></p>
-              <p className="text-xs text-gray-500">Muammoni ko'rsatuvchi rasmlar qo'shing</p>
+              <p className="text-sm font-bold text-gray-900">{tq.photosLabel} <span className="text-gray-400 font-normal">{tq.photosOptional}</span></p>
+              <p className="text-xs text-gray-500">{tq.photosSub}</p>
             </div>
           </div>
           <MediaUploadZone
             urls={requestPhotos}
             onChange={setRequestPhotos}
             max={10}
-            hint="JPEG, PNG — har biri maks 5 MB"
+            hint={tq.photosHint}
           />
         </div>
 
@@ -1250,7 +1267,7 @@ function SummaryScreen({
           onClick={() => onSeeProviders(requestPhotos)}
           className="w-full py-4 text-base font-bold bg-blue-600 hover:bg-blue-700 rounded-2xl gap-2"
         >
-          So`rov yuborish
+          {tq.submitBtn}
           <ChevronRight className="w-5 h-5" />
         </Button>
       </div>
@@ -1270,6 +1287,8 @@ function RecommendationsScreen({
 }) {
   const cat = getCategoryById(categoryId);
   const [, setLocation] = useLocation();
+  const { t } = useI18n();
+  const tq = t.questionnaire;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -1289,13 +1308,12 @@ function RecommendationsScreen({
           transition={{ delay: 0.15 }}
         >
           <div className="text-2xl mb-2">{cat?.emoji ?? "📋"}</div>
-          <h1 className="text-xl font-extrabold text-gray-900 mb-2">So'rovingiz yuborildi!</h1>
+          <h1 className="text-xl font-extrabold text-gray-900 mb-2">{tq.successTitle}</h1>
           <p className="text-gray-500 text-sm max-w-xs mx-auto mb-1">
-            <span className="font-semibold text-gray-700">{cat?.name}</span> bo'yicha so'rovingiz
-            platformaga yuborildi.
+            {tFormat(tq.successDescTpl, { cat: cat?.name ?? categoryId })}
           </p>
           <p className="text-gray-400 text-xs max-w-xs mx-auto mb-8">
-            Mutaxassislar takliflarini yuborishgach, siz bildirishnoma olasiz.
+            {tq.successNote}
           </p>
         </motion.div>
 
@@ -1311,7 +1329,7 @@ function RecommendationsScreen({
                 className="w-full py-4 font-bold bg-blue-600 hover:bg-blue-700 rounded-2xl gap-2"
                 onClick={() => setLocation("/my-requests")}
               >
-                Mening so'rovlarimga o'tish
+                {tq.myRequestsBtn}
                 <ChevronRight className="w-4 h-4" />
               </Button>
               <Button
@@ -1319,16 +1337,16 @@ function RecommendationsScreen({
                 className="w-full font-semibold border-gray-200 rounded-2xl"
                 onClick={() => setLocation("/")}
               >
-                Bosh sahifaga qaytish
+                {tq.homeBtn}
               </Button>
             </>
           ) : (
             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
               <p className="text-sm font-semibold text-blue-800 mb-3">
-                Takliflarni qabul qilish uchun ro'yxatdan o'ting — bepul!
+                {tq.registerNote}
               </p>
               <Button className="w-full font-bold bg-blue-600 hover:bg-blue-700" onClick={() => setLocation("/auth/role")}>
-                Bepul ro'yxatdan o'tish
+                {tq.registerBtn}
               </Button>
             </div>
           )}

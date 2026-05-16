@@ -240,12 +240,12 @@ function AddPhoneModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
                   className="flex-1 h-11 px-4 rounded-r-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20" />
               </div>
               <div className="flex gap-3">
-                <button onClick={onClose} className="flex-1 h-10 rounded-xl border-2 border-gray-200 font-semibold text-sm text-gray-600 hover:bg-gray-50">Bekor</button>
+                <button onClick={onClose} className="flex-1 h-10 rounded-xl border-2 border-gray-200 font-semibold text-sm text-gray-600 hover:bg-gray-50">{t.misc.cancel}</button>
                 <button onClick={sendCode} disabled={loading}
                   className="flex-1 h-10 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-1"
                   style={{ background: VIOLET }}>
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                  Yuborish
+                  {t.misc.send}
                 </button>
               </div>
             </motion.div>
@@ -267,17 +267,17 @@ function AddPhoneModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
                 className="w-full h-10 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-1 disabled:opacity-60"
                 style={{ background: VIOLET }}>
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                Tasdiqlash
+                {t.misc.confirm}
               </button>
               <div className="flex justify-between">
                 <button onClick={() => { setStep("phone"); setOtp(""); setDevCode(null); }}
                   className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1">
-                  <ChevronLeft className="w-3.5 h-3.5" /> Raqamni o'zgartirish
+                  <ChevronLeft className="w-3.5 h-3.5" /> {t.misc.changeNumber}
                 </button>
                 <button onClick={() => { if (resendTimer > 0) return; sendCode(); }} disabled={resendTimer > 0}
                   className="text-xs text-violet-600 hover:underline flex items-center gap-1 disabled:opacity-50">
                   <RefreshCw className="w-3 h-3" />
-                  {resendTimer > 0 ? `${resendTimer}s` : "Qayta yuborish"}
+                  {resendTimer > 0 ? `${resendTimer}s` : t.misc.resend}
                 </button>
               </div>
             </motion.div>
@@ -569,8 +569,8 @@ export default function ProfileSettingsPage() {
     }
 
     const errs: Record<string, string> = {};
-    if (!firstName.trim() || firstName.trim().length < 2) errs.firstName = "Ism kamida 2 harf";
-    if (!lastName.trim() || lastName.trim().length < 2) errs.lastName = "Familiya kamida 2 harf";
+    if (!firstName.trim() || firstName.trim().length < 2) errs.firstName = t.profileSettings.firstNameMinErr;
+    if (!lastName.trim() || lastName.trim().length < 2) errs.lastName = t.profileSettings.lastNameMinErr;
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
@@ -617,13 +617,13 @@ export default function ProfileSettingsPage() {
       setAuth(userRes.user, profileRes ? profileRes.profile : providerProfile);
 
       setSaved(true);
-      toast({ title: "Profil muvaffaqiyatli saqlandi!" });
+      toast({ title: t.profileSettings.saveSuccessToast });
       setTimeout(() => setSaved(false), 3000);
 
     } catch (err: unknown) {
       console.error("[Hormang] ❌ handleSave failed:", err);
       toast({
-        title: err instanceof Error ? err.message : "Xatolik yuz berdi",
+        title: err instanceof Error ? err.message : t.profileSettings.saveErrorToast,
         variant: "destructive",
       });
     } finally {
@@ -649,11 +649,12 @@ export default function ProfileSettingsPage() {
   const fullName   = `${firstName} ${lastName}`.trim();
 
   /* ── Customer completion (used when !isProvider) ── */
+  const ps = t.profileSettings;
   const customerChecks = [
-    { key: "photo",    label: "Profil surati",         weight: 30, done: !!photoUrl },
-    { key: "name",     label: "Ism va Familiya",        weight: 30, done: !!(firstName.trim().length >= 2 && lastName.trim().length >= 2) },
-    { key: "phone",    label: "Telefon raqami",         weight: 20, done: !!user.phone },
-    { key: "region",   label: "Asosiy manzil",          weight: 20, done: !!region },
+    { key: "photo",    label: ps.photoCheckLabel,   weight: 30, done: !!photoUrl },
+    { key: "name",     label: ps.nameCheckLabel,    weight: 30, done: !!(firstName.trim().length >= 2 && lastName.trim().length >= 2) },
+    { key: "phone",    label: ps.phoneCheckLabel,   weight: 20, done: !!user.phone },
+    { key: "region",   label: ps.addressCheckLabel, weight: 20, done: !!region },
   ];
   const customerPct     = customerChecks.reduce((acc, c) => acc + (c.done ? c.weight : 0), 0);
   const customerMissing = customerChecks.filter((c) => !c.done);
@@ -670,15 +671,15 @@ export default function ProfileSettingsPage() {
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1">
-            <h1 className="font-extrabold text-sm text-gray-900">Profil sozlamalari</h1>
-            <p className="text-xs text-gray-400">{isProvider ? "Ijrochi profili" : "Mijoz profili"}</p>
+            <h1 className="font-extrabold text-sm text-gray-900">{ps.title}</h1>
+            <p className="text-xs text-gray-400">{isProvider ? ps.providerProfile : ps.customerProfile}</p>
           </div>
           <button
             onClick={() => isProvider ? setShowPreview(true) : setShowCustomerPreview(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-sm transition-all active:scale-95"
             style={{ background: VIOLET }}
           >
-            <Eye className="w-3.5 h-3.5" /> Ko'rish
+            <Eye className="w-3.5 h-3.5" /> {ps.view}
           </button>
           <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
         </div>
@@ -709,10 +710,10 @@ export default function ProfileSettingsPage() {
                 </div>
                 <div>
                   <p className="font-extrabold text-sm leading-tight mb-1">
-                    Tabriklaymiz! Siz endi ijrochi sifatida ro'yxatdan o'tdingiz.
+                    {ps.welcomeTitle}
                   </p>
                   <p className="text-white/75 text-xs leading-relaxed">
-                    Profilingizni to'liq to'ldiring — bu mijozlar sizning xizmatinggizni tanlash ehtimolini oshiradi.
+                    {ps.welcomeDesc}
                   </p>
                 </div>
               </div>
@@ -750,7 +751,7 @@ export default function ProfileSettingsPage() {
                   )}
                   {displayPct === 100 && (
                     <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Barcha maydonlar to'ldirilgan
+                      <CheckCircle2 className="w-3.5 h-3.5" /> {ps.allFieldsFilled}
                     </div>
                   )}
                 </div>
@@ -759,7 +760,7 @@ export default function ProfileSettingsPage() {
               {/* Missing items with add-now buttons */}
               {displayMissing.length > 0 && (
                 <div className="border-t border-gray-50 pt-3 space-y-2">
-                  <p className="text-[10px] font-bold text-gray-400">Profilni to'ldiring - bu sizning so`rovlaringgizga keladigan takliflar sonini oshiradi</p>
+                  <p className="text-[10px] font-bold text-gray-400">{ps.fillProfileHint}</p>
                   {displayMissing.slice(0, 4).map((m) => (
                     <div key={m.key} className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
@@ -772,7 +773,7 @@ export default function ProfileSettingsPage() {
                         onClick={() => scrollTo(m.key)}
                         className="flex items-center gap-1 text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-100 px-2 py-1 rounded-lg hover:bg-violet-100 transition-colors flex-shrink-0"
                       >
-                        <TrendingUp className="w-2.5 h-2.5" /> Qo'shish
+                        <TrendingUp className="w-2.5 h-2.5" /> {ps.add}
                       </button>
                     </div>
                   ))}
@@ -788,13 +789,13 @@ export default function ProfileSettingsPage() {
             className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
             <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-bold text-amber-800 text-sm mb-1">Telefon raqamini bog'lang</p>
+              <p className="font-bold text-amber-800 text-sm mb-1">{ps.linkPhoneTitle}</p>
               <p className="text-amber-700 text-xs leading-relaxed mb-3">
-                Keyingi kirish uchun telefon raqamini bog'lang.
+                {ps.linkPhoneDesc}
               </p>
               <button onClick={() => setShowAddPhone(true)}
                 className="flex items-center gap-1.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 px-3 py-1.5 rounded-xl transition-colors">
-                <Phone className="w-3.5 h-3.5" /> Telefon qo'shish
+                <Phone className="w-3.5 h-3.5" /> {ps.addPhoneBtn}
               </button>
             </div>
           </motion.div>
@@ -804,7 +805,7 @@ export default function ProfileSettingsPage() {
         <motion.div ref={refPhoto}
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
           className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <SectionHeader icon={User} title="Asosiy ma'lumotlar" />
+          <SectionHeader icon={User} title={ps.basicInfo} />
 
           <div ref={refName} className="flex items-center gap-4 mb-5">
             <div className="relative flex-shrink-0">
@@ -813,7 +814,7 @@ export default function ProfileSettingsPage() {
                   <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
                 </div>
               ) : photoUrl ? (
-                <img src={photoUrl} alt="Profil" className="w-20 h-20 rounded-2xl object-cover border-2 border-violet-100" />
+                <img src={photoUrl} alt={ps.title} className="w-20 h-20 rounded-2xl object-cover border-2 border-violet-100" />
               ) : (
                 <div className="w-20 h-20 rounded-2xl bg-violet-50 border-2 border-violet-100 flex items-center justify-center">
                   <span className="text-2xl font-black text-violet-400">
@@ -830,19 +831,19 @@ export default function ProfileSettingsPage() {
             </div>
             <div>
               <p className="font-bold text-sm text-gray-900">{fullName || "—"}</p>
-              <p className="text-xs text-gray-400 mb-2">{isProvider ? "Ijrochi" : "Mijoz"}</p>
+              <p className="text-xs text-gray-400 mb-2">{isProvider ? ps.providerLabel : ps.customerLabel}</p>
               <button onClick={() => photoInputRef.current?.click()}
                 className="text-xs font-bold text-violet-600 hover:text-violet-700 transition-colors">
-                {photoUrl ? "Suratni o'zgartirish" : "+ Profil suratini yuklash"}
+                {photoUrl ? ps.changePhoto : ps.addPhoto}
               </button>
               {!photoUrl && (
-                <p className="text-[10px] text-violet-400 mt-0.5">Surat bilan ko'proq ishonch qozonasiz</p>
+                <p className="text-[10px] text-violet-400 mt-0.5">{ps.photoBoost}</p>
               )}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <Field label="Ism" required error={errors.firstName}>
+            <Field label={ps.firstName} required error={errors.firstName}>
               <input value={firstName}
                 onChange={(e) => { setFirstName(e.target.value); setErrors((p) => ({ ...p, firstName: "" })); }}
                 placeholder="Ism" className={inputCls()} />
@@ -858,7 +859,7 @@ export default function ProfileSettingsPage() {
             <div className="w-full h-11 px-4 rounded-2xl border-2 border-gray-100 bg-gray-50 text-sm text-gray-500 flex items-center gap-2">
               <Lock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
               <span>{user.phone ?? "—"}</span>
-              <span className="ml-auto text-[10px] text-gray-400 bg-gray-200 px-2 py-0.5 rounded-lg">O'zgartirib bo'lmaydi</span>
+              <span className="ml-auto text-[10px] text-gray-400 bg-gray-200 px-2 py-0.5 rounded-lg">{ps.cantChange}</span>
             </div>
           </Field>
         </motion.div>
@@ -906,7 +907,7 @@ export default function ProfileSettingsPage() {
                           <MapPin className="w-3.5 h-3.5 text-violet-600" />
                         </div>
                         <p className="text-xs text-gray-600 leading-relaxed">
-                          Qaysi hududlarda xizmat ko'rsatasiz? Bir nechta tuman yoki shaharni tanlashingiz mumkin.
+                          {ps.areaInfoTooltip}
                         </p>
                       </div>
                     </motion.div>
@@ -917,8 +918,8 @@ export default function ProfileSettingsPage() {
           )}
 
           <SectionHeader icon={MapPin}
-            title={isProvider ? "Xizmat hududlarim" : "Asosiy manzilim"}
-            sub={isProvider ? "Bir nechta hududni tanlashingiz mumkin" : "Yaqin atrofdagi xizmatlar ko'rsatiladi"} />
+            title={isProvider ? ps.serviceAreas : ps.mainAddress}
+            sub={isProvider ? ps.serviceAreasSub : ps.mainAddressSub} />
 
           {isProvider ? (
             <div className="space-y-3">
@@ -926,12 +927,12 @@ export default function ProfileSettingsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              <Field label="Shahar / tuman" required
-                boost="Manzilingiz asosida yaqin xizmatchilar taklif etiladi">
+              <Field label={ps.cityField} required
+                boost={ps.cityBoost}>
                 <div className="relative">
                   <select value={region} onChange={(e) => handleRegionChange(e.target.value)}
                     className="w-full h-11 px-4 pr-9 rounded-2xl border-2 border-gray-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 appearance-none">
-                    <option value="">Hudud tanlang...</option>
+                    <option value="">{ps.selectRegion}</option>
                     {regionsList.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -942,11 +943,11 @@ export default function ProfileSettingsPage() {
                 {hasDistricts && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                    <Field label="Toshkent shahri tumani">
+                    <Field label={ps.toshkentDistrictLabel}>
                       <div className="relative">
                         <select value={district} onChange={(e) => setDistrict(e.target.value)}
                           className="w-full h-11 px-4 pr-9 rounded-2xl border-2 border-violet-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 appearance-none">
-                          <option value="">Tuman tanlang...</option>
+                          <option value="">{ps.selectDistrict}</option>
                           {selectedRegionObj?.districts?.map((d) => <option key={d} value={d}>{d}</option>)}
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -988,7 +989,7 @@ export default function ProfileSettingsPage() {
               })}
             </div>
             <p className="text-[11px] text-violet-500 flex items-center gap-1 font-semibold">
-              <Zap className="w-3 h-3" /> Har bir xizmat uchun alohida buyurtmalar keladi
+              <Zap className="w-3 h-3" /> {ps.servicesBoost}
             </p>
           </motion.div>
         )}
@@ -997,8 +998,8 @@ export default function ProfileSettingsPage() {
         {isProvider && (
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
             className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <SectionHeader icon={Star} title="Tajriba va ma'lumot"
-              sub="To'liq profil — ko'proq ishonch va buyurtma" />
+            <SectionHeader icon={Star} title={ps.experienceSection}
+              sub={ps.experienceSub} />
 
             <div className="space-y-4">
               {/* Experience */}
@@ -1012,16 +1013,16 @@ export default function ProfileSettingsPage() {
 
               {/* Bio */}
               <div ref={refBio}>
-                <Field label="Bio — o'zingiz haqida"
-                  boost={bio.length < 50 ? `${50 - bio.length} ta belgi yozsangiz +15% ball` : "Ajoyib! Bio to'liq hisoblanadi"}
+                <Field label={ps.bioLabel}
+                  boost={bio.length < 50 ? tFormat(ps.bioBoostShortTpl, { n: 50 - bio.length }) : ps.bioBoostFull}
                   hint={bio.length >= 50 ? undefined : undefined}>
                   <textarea value={bio} onChange={(e) => setBio(e.target.value.slice(0, 500))}
-                    placeholder="Tajribangiz, ko'nikmalaringiz va afzalliklaringiz haqida yozing..."
+                    placeholder={ps.bioPlaceholder}
                     rows={4}
                     className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 resize-none transition-colors placeholder:text-gray-300" />
                   <div className="flex justify-between items-center -mt-0.5">
                     <span className={`text-[11px] font-semibold ${bio.length >= 50 ? "text-emerald-500" : "text-gray-400"}`}>
-                      {bio.length >= 50 ? "✓ Minimum bajarildi" : `Min. 50 belgi (${bio.length}/50)`}
+                      {bio.length >= 50 ? ps.bioMinDone : tFormat(ps.bioMinLeftTpl, { n: bio.length })}
                     </span>
                     <span className="text-[11px] text-gray-400">{bio.length}/500</span>
                   </div>
@@ -1032,7 +1033,7 @@ export default function ProfileSettingsPage() {
             {/* Auto-save indicator */}
             {autoSaveAt && (
               <p className="text-[10px] text-gray-300 mt-3 text-right">
-                Saqlandi {autoSaveAt.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
+                {tFormat(ps.savedChanges.replace("✓ ", ""), {})} {autoSaveAt.toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
               </p>
             )}
             </div>
@@ -1052,8 +1053,8 @@ export default function ProfileSettingsPage() {
                   <ImagePlus className="w-4 h-4 text-violet-600" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-gray-900 text-sm">Portfolio albomlar</h2>
-                  <p className="text-[11px] text-gray-400">Ishlaringizni albomlar bo'yicha saqlang</p>
+                  <h2 className="font-bold text-gray-900 text-sm">{ps.portfolioSection}</h2>
+                  <p className="text-[11px] text-gray-400">{ps.portfolioSub}</p>
                 </div>
               </div>
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${albums.length > 0 ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-violet-50 text-violet-600 border border-violet-100"}`}>
@@ -1065,7 +1066,7 @@ export default function ProfileSettingsPage() {
               <div className="bg-violet-50 border border-violet-100 rounded-xl px-3 py-2 mb-3 flex items-center gap-2">
                 <Zap className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" />
                 <p className="text-xs text-violet-600 font-semibold">
-                  Portfolio albom qo'shing — buyurtma olish ehtimoli 3x oshadi
+                  {ps.portfolioBoost}
                 </p>
               </div>
             )}
@@ -1096,7 +1097,7 @@ export default function ProfileSettingsPage() {
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-sm text-gray-900 truncate">{album.title}</p>
                         <p className="text-xs text-gray-400">
-                          {album.photos.length === 0 ? "Bo'sh albom" : `${album.photos.length} ta rasm`}
+                          {album.photos.length === 0 ? ps.emptyAlbum : tFormat(ps.albumPhotosTpl, { n: album.photos.length })}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1126,7 +1127,7 @@ export default function ProfileSettingsPage() {
                             value={album.title}
                             onChange={(e) => renameAlbum(album.id, e.target.value)}
                             onBlur={() => persistAlbums(albums)}
-                            placeholder="Albom nomi"
+                            placeholder={ps.albumNamePlaceholder}
                             className="w-full text-sm px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400/20 transition-colors font-semibold"
                           />
 
@@ -1157,7 +1158,7 @@ export default function ProfileSettingsPage() {
                 className="w-full mt-3 h-12 rounded-2xl border-2 border-dashed border-violet-200 flex items-center justify-center gap-2 text-violet-500 hover:border-violet-400 hover:bg-violet-50/50 transition-colors"
               >
                 <ImagePlus className="w-4 h-4" />
-                <span className="text-sm font-semibold">Yangi albom qo'shish ({10 - albums.length} ta qoldi)</span>
+                <span className="text-sm font-semibold">{tFormat(ps.addAlbumTpl, { n: 10 - albums.length })}</span>
               </button>
             )}
           </motion.div>
@@ -1177,12 +1178,12 @@ export default function ProfileSettingsPage() {
           {saved && (
             <motion.p initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
               className="text-center text-xs text-emerald-600 font-semibold mt-2">
-              ✓ O'zgarishlar muvaffaqiyatli saqlandi
+              {ps.savedChanges}
             </motion.p>
           )}
 
           <p className="text-center text-[11px] text-gray-300 mt-3">
-            Profil ma'lumotlari avtomatik ravishda saqlanib boradi
+            {ps.autoSaveNote}
           </p>
         </motion.div>
       </div>
