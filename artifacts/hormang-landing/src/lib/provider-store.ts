@@ -19,6 +19,7 @@ import {
   getChats, getRequestById, markOfferInProgress,
 } from "./requests-store";
 import { doesCategoryMatch, doesLocationMatchV2, type ProviderServiceArea } from "./matching";
+import { migrateCategoryValuesSafe, migrateLegacyCategoryValue } from "./categories";
 import {
   getAllQuestionsForCategory, collectActiveQuestions,
   type Question,
@@ -342,7 +343,13 @@ export function getMatchingRequests(
     .filter((r) => {
       if (r.status !== "open") return false;
       // Match by canonical category ID (preferred), falling back to legacy name.
-      if (!doesCategoryMatch(r.categoryId || r.categoryName, selectedCategories)) return false;
+      // Explicit migration boundary: normalize both the request side
+       // (categoryId is preferred; legacy categoryName tolerated) and the
+       // provider's selected categories to canonical IDs where possible
+       // before delegating to the matcher.
+       const reqCat = migrateLegacyCategoryValue(r.categoryId || r.categoryName) ?? (r.categoryId || r.categoryName);
+       const normalizedSelected = migrateCategoryValuesSafe(selectedCategories);
+       if (!doesCategoryMatch(reqCat, normalizedSelected)) return false;
       if (!doesLocationMatchV2(r.region, r.district, serviceAreaV2 ?? null, serviceAreas)) return false;
       // If another provider's offer was accepted, only show to this provider if they also offered
       if (acceptedByOtherRequestIds.has(r.id) && !providerOfferRequestIds.has(r.id)) return false;

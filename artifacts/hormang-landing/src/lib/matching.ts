@@ -62,11 +62,16 @@ export function doesCategoryMatch(
   // Primary path: ID-based match when both sides resolve.
   if (reqId && providerIds.includes(reqId)) return true;
 
-  // Legacy / mixed fallback — also runs when the provider list mixes
-  // resolvable IDs with unresolved legacy labels, so a provider with one
-  // unmapped value isn't excluded from an otherwise-matching request.
-  const norm = normalizeCategory(requestCategory);
-  return providerCategories.some((c) => normalizeCategory(c) === norm);
+  // Legacy fallback — only when at least one side could not be resolved to a
+  // canonical ID. This narrowly preserves matching for un-migrated data
+  // without masking ID-level mismatches once everything is canonical.
+  const someProviderUnresolved =
+    providerIds.length < providerCategories.length;
+  if (!reqId || someProviderUnresolved) {
+    const norm = normalizeCategory(requestCategory);
+    return providerCategories.some((c) => normalizeCategory(c) === norm);
+  }
+  return false;
 }
 
 /* ─── Location matching ─────────────────────────────────────────── */
