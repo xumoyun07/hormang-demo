@@ -28,6 +28,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { useToast } from "@/hooks/use-toast";
 import { updateProfile, updateProviderProfile, sendSmsCode, addPhone } from "@/lib/auth-client";
 import { regionsList, getRegionLabel, getDistrictLabel } from "@/lib/regions";
+import { getActiveCategories, getCategoryDisplayName, resolveCategoryIds } from "@/lib/categories";
 import {
   getLocalProfile, saveLocalProfile,
   getCompletionChecks, getCompletionPct,
@@ -371,10 +372,8 @@ export default function ProfileSettingsPage() {
     setAlbums(loaded.albums ?? []);
 
     /* Categories: server wins, local is authoritative fallback.
-     * Categories are normalized to the active locale so a value stored in one
-     * language (e.g. "Moving / delivery" from English modal) is converted to
-     * the matching entry in the current locale ("Ko'chirish / yuk yetkazish"). */
-    const currentCategories = t.dashboard.modal.categories;
+     * Stored values may be legacy translated names — resolveCategoryIds maps
+     * them to canonical IDs (idempotent for new ID-based profiles). */
     const raw = providerProfile?.categories?.length
       ? providerProfile.categories
       : (loaded.categories ?? []);
@@ -382,7 +381,7 @@ export default function ProfileSettingsPage() {
       if (!providerProfile?.categories?.length) {
         console.log(`[Hormang] 📦 categories — local fallback: ${raw.join(", ")}`);
       }
-      setSelectedServices(normalizeCategories(raw, currentCategories));
+      setSelectedServices(resolveCategoryIds(raw));
     } else {
       setSelectedServices([]);
     }
@@ -969,13 +968,14 @@ export default function ProfileSettingsPage() {
               sub={tt.myServicesSub} />
 
             <div className="flex flex-wrap gap-2 mb-3">
-              {t.dashboard.modal.categories.map((cat) => {
-                const active = selectedServices.includes(cat);
+              {getActiveCategories().map((cat) => {
+                const active = selectedServices.includes(cat.id);
+                const displayName = getCategoryDisplayName(cat.id, locale);
                 return (
-                  <button key={cat} type="button"
+                  <button key={cat.id} type="button"
                     onClick={() =>
                       setSelectedServices((prev) =>
-                        prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+                        prev.includes(cat.id) ? prev.filter((c) => c !== cat.id) : [...prev, cat.id]
                       )
                     }
                     className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl font-semibold border-2 transition-all duration-150 ${
@@ -983,7 +983,8 @@ export default function ProfileSettingsPage() {
                     }`}
                     style={active ? { background: VIOLET } : {}}>
                     {active && <CheckCircle2 className="w-3 h-3" />}
-                    {cat}
+                    <span className="leading-none">{cat.emoji}</span>
+                    {displayName}
                   </button>
                 );
               })}

@@ -16,6 +16,7 @@ import type { SafeUser, ProviderProfile } from "./auth-client";
 import { emitStoreChange } from "./store-events";
 import { type ProviderServiceArea, emptyProviderServiceArea, isServiceAreaEmpty } from "./matching";
 import { TOSHKENT_DISTRICTS, regionsList } from "./regions";
+import { resolveCategoryIds } from "./categories";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
 
@@ -122,6 +123,16 @@ export function getLocalProfile(userId: string): LocalProfile {
       }
       if (!isServiceAreaEmpty(v2)) p.serviceAreaV2 = v2;
     }
+    /* Migrate legacy translated category names → canonical IDs.
+     * Old profiles stored UZ/RU strings ("Tozalash", "Уборка"); the matching
+     * layer now expects canonical IDs. We rewrite at read-time so callers
+     * always see IDs, with a one-time write-back on next save. */
+    if (p.categories && p.categories.length > 0) {
+      const ids = resolveCategoryIds(p.categories);
+      if (ids.length > 0 && ids.join("|") !== p.categories.join("|")) {
+        p.categories = ids;
+      }
+    }
     /* Migrate legacy portfolioItems → albums (create a default "Ishlarim" album) */
     if (!p.albums && p.portfolioItems && p.portfolioItems.length > 0) {
       p.albums = [{
@@ -145,7 +156,11 @@ export function saveLocalProfile(userId: string, data: LocalProfile): void {
   }
 
   /* Strip the legacy `portfolioImages` field before saving */
-  const { portfolioImages: _dropped, ...clean } = data;
+  const { portfolioImages: _dropped, ...rest } = data;
+  /* Normalize category values to canonical IDs at save time (idempotent). */
+  const clean: LocalProfile = rest.categories?.length
+    ? { ...rest, categories: resolveCategoryIds(rest.categories) }
+    : rest;
 
   console.log(
     `[Hormang] 💾 saveLocalProfile: user=${userId.slice(0, 8)} photo=${!!clean.photoUrl} portfolio=${clean.portfolioItems?.length ?? 0} cats=${clean.categories?.length ?? 0} bio=${!!clean.bio} region=${clean.region ?? "—"}`,

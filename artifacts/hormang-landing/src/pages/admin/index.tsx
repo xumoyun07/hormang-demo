@@ -35,9 +35,9 @@ import {
 import {
   getAllCategories as getAllCategoriesFromStore,
   setCategoryActive as setAdminCategoryActive,
-  deleteCategory as deleteAdminCategory,
   upsertCategory as upsertAdminCategory,
 } from "@/lib/categories";
+import { getAllQuestionsForCategory as getQsForCat } from "@/lib/questionnaire-store";
 import { Button } from "@/components/ui/button";
 import { TangaCoin } from "@/components/tanga-coin";
 import { onStoreChange, emitStoreChange } from "@/lib/store-events";
@@ -5907,26 +5907,6 @@ function CategoryManagementPanel() {
     reload();
   }
 
-  function handleDelete(row: AdminCategoryRow) {
-    if (row.builtIn) {
-      alert("Asosiy kategoriyalarni butunlay o'chirib bo'lmaydi. O'chirish uchun \"Faol\" tugmasini bosing.");
-      return;
-    }
-    if (!confirm(`«${row.nameUz}» kategoriyasi butunlay o'chiriladi. Davom etasizmi?`)) return;
-    const res = deleteAdminCategory(row.id);
-    if (!res.ok) {
-      alert("O'chirishda xatolik: " + (res.reason ?? "noma'lum"));
-      return;
-    }
-    logAction({
-      actorId: ADMIN_USER, actorRole: "admin",
-      action: "CATEGORY_DELETED",
-      category: "admin", targetId: row.id, targetType: "platform",
-      description: `Kategoriya o'chirildi: ${row.id}`,
-    });
-    reload();
-  }
-
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3 bg-gradient-to-r from-rose-50 to-orange-50">
@@ -5973,9 +5953,16 @@ function CategoryManagementPanel() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-0.5 truncate">
-                <span className="font-semibold">RU:</span> {row.nameRu || <span className="text-amber-600">tarjima yo'q ⚠️</span>}
-                {row.baseCost > 0 && <span className="ml-2 text-amber-700 font-semibold">· {row.baseCost} Tanga</span>}
+              <p className="text-xs text-gray-500 mt-0.5 truncate flex items-center gap-2 flex-wrap">
+                <span><span className="font-semibold">RU:</span> {row.nameRu || <span className="text-amber-600">tarjima yo'q ⚠️</span>}</span>
+                <span className="text-gray-300">·</span>
+                <span className="font-semibold text-violet-600">{row.questionCount} savol</span>
+                {row.baseCost > 0 && (
+                  <>
+                    <span className="text-gray-300">·</span>
+                    <span className="text-amber-700 font-semibold">{row.baseCost} Tanga</span>
+                  </>
+                )}
               </p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -5989,12 +5976,6 @@ function CategoryManagementPanel() {
               <button onClick={() => setEditing(row)}
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
                 <Edit3 className="w-3.5 h-3.5" />
-              </button>
-              <button onClick={() => handleDelete(row)}
-                disabled={row.builtIn}
-                title={row.builtIn ? "Asosiy kategoriyalar o'chirilmaydi" : "O'chirish"}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400 transition-colors">
-                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -6027,6 +6008,25 @@ function CategoryManagementPanel() {
 const CAT_COLOR_PRESETS = ["#3B82F6","#10B981","#F59E0B","#8B5CF6","#EC4899","#F43F5E","#EAB308","#06B6D4","#64748B","#0EA5E9","#22C55E","#A855F7"];
 const CAT_EMOJI_PRESETS = ["🔧","🧹","🚗","🚚","📚","🎉","💄","👶","🏗️","🧰","🍳","💆","🎨","🐾","💻","🏥","🌱","🚿"];
 
+/** Slugify a UZ name into a canonical category ID (a-z, 0-9, _). */
+function slugifyCategoryId(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/['ʻʼ’`]/g, "")
+    .replace(/ў/g, "u").replace(/ғ/g, "g").replace(/ҳ/g, "h").replace(/қ/g, "q")
+    .replace(/ё/g, "yo").replace(/ю/g, "yu").replace(/я/g, "ya").replace(/ч/g, "ch")
+    .replace(/ш/g, "sh").replace(/ж/g, "j").replace(/ц/g, "ts")
+    .replace(/[аэ]/g, "a").replace(/[еэ]/g, "e").replace(/и/g, "i").replace(/о/g, "o")
+    .replace(/у/g, "u").replace(/ы/g, "y").replace(/б/g, "b").replace(/в/g, "v")
+    .replace(/г/g, "g").replace(/д/g, "d").replace(/з/g, "z").replace(/к/g, "k")
+    .replace(/л/g, "l").replace(/м/g, "m").replace(/н/g, "n").replace(/п/g, "p")
+    .replace(/р/g, "r").replace(/с/g, "s").replace(/т/g, "t").replace(/ф/g, "f")
+    .replace(/х/g, "x").replace(/[ьъ]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40);
+}
+
 function CategoryEditorModal({
   initial, onClose, onSaved,
 }: {
@@ -6035,7 +6035,6 @@ function CategoryEditorModal({
   onSaved: (id: string, isNew: boolean) => void;
 }) {
   const isNew = !initial;
-  const [id, setId] = useState(initial?.id ?? "");
   const [nameUz, setNameUz] = useState(initial?.nameUz ?? "");
   const [nameRu, setNameRu] = useState(initial?.nameRu ?? "");
   const [emoji, setEmoji] = useState(initial?.emoji ?? "📋");
@@ -6044,17 +6043,29 @@ function CategoryEditorModal({
   const [active, setActive] = useState(initial?.active !== false);
   const [error, setError] = useState("");
 
+  // Auto-generated preview ID (new categories only). On save we ensure uniqueness.
+  const previewId = isNew ? slugifyCategoryId(nameUz) : initial!.id;
+
   function handleSave() {
     setError("");
-    const cleanId = id.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
-    if (!cleanId) { setError("ID kiriting (faqat a-z, 0-9 va _)"); return; }
     if (!nameUz.trim()) { setError("O'zbekcha nomini kiriting"); return; }
-    if (isNew && getAllAdminCategories().some((c) => c.id === cleanId)) {
-      setError("Bu ID allaqachon mavjud"); return;
+
+    let finalId = initial?.id ?? slugifyCategoryId(nameUz);
+    if (!finalId) { setError("Nomdan ID yaratib bo'lmadi — boshqa nom kiriting"); return; }
+
+    // Ensure uniqueness for new categories by appending a numeric suffix.
+    if (isNew) {
+      const existing = new Set(getAllAdminCategories().map((c) => c.id));
+      if (existing.has(finalId)) {
+        let n = 2;
+        while (existing.has(`${finalId}_${n}`)) n++;
+        finalId = `${finalId}_${n}`;
+      }
     }
+
     const cost = parseInt(baseCost, 10);
     upsertAdminCategory({
-      id: cleanId,
+      id: finalId,
       nameLocalized: {
         uz: nameUz.trim(),
         ...(nameRu.trim() ? { ru: nameRu.trim() } : {}),
@@ -6064,7 +6075,7 @@ function CategoryEditorModal({
       baseCost: isNaN(cost) ? 0 : Math.max(0, cost),
       active,
     });
-    onSaved(cleanId, isNew);
+    onSaved(finalId, isNew);
   }
 
   return (
@@ -6086,9 +6097,10 @@ function CategoryEditorModal({
               <p className="font-extrabold text-gray-900 text-base">
                 {isNew ? "Yangi kategoriya" : "Kategoriyani tahrirlash"}
               </p>
-              {!isNew && (
-                <p className="text-xs text-gray-400 truncate">ID: <span className="font-mono">{id}</span></p>
-              )}
+              <p className="text-xs text-gray-400 truncate">
+                ID: <span className="font-mono">{previewId || "—"}</span>
+                {isNew && <span className="ml-1 text-gray-400">(nomdan yaratiladi)</span>}
+              </p>
             </div>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500">
               <X className="w-4 h-4" />
@@ -6096,18 +6108,6 @@ function CategoryEditorModal({
           </div>
 
           <div className="p-5 space-y-4">
-            {isNew && (
-              <div>
-                <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
-                  ID <span className="text-rose-500">*</span>
-                  <span className="ml-2 text-gray-400 font-normal normal-case">(immutable — keyin o'zgartirib bo'lmaydi)</span>
-                </label>
-                <input value={id} onChange={(e) => setId(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                  placeholder="masalan: dizayn"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400" />
-              </div>
-            )}
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
@@ -6202,19 +6202,25 @@ interface AdminCategoryRow {
   baseCost: number;
   active: boolean;
   builtIn: boolean;
+  questionCount: number;
 }
 
 function getAllAdminCategories(): AdminCategoryRow[] {
-  return getAllCategoriesFromStore().map((c) => ({
-    id: c.id,
-    nameUz: c.nameLocalized.uz ?? "",
-    nameRu: c.nameLocalized.ru ?? "",
-    emoji: c.emoji,
-    color: c.color,
-    baseCost: c.baseCost,
-    active: c.active,
-    builtIn: c.builtIn,
-  }));
+  return getAllCategoriesFromStore().map((c) => {
+    let qCount = 0;
+    try { qCount = getQsForCat(c.id).length; } catch { /* noop */ }
+    return {
+      id: c.id,
+      nameUz: c.nameLocalized.uz ?? "",
+      nameRu: c.nameLocalized.ru ?? "",
+      emoji: c.emoji,
+      color: c.color,
+      baseCost: c.baseCost,
+      active: c.active,
+      builtIn: c.builtIn,
+      questionCount: qCount,
+    };
+  });
 }
 
 /* ════════════════════════════════════════════════════════════════════
