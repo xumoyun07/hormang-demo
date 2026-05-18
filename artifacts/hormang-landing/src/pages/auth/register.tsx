@@ -8,6 +8,7 @@ import { Phone, Loader2, CheckCircle2, XCircle, ChevronLeft, ChevronRight, Arrow
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
+import { getActiveCategories, getCategoryDisplayName } from "@/lib/categories";
 import { tFormat } from "@/lib/i18n";
 import { sendSmsCode, registerUser, saveProviderProfile } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
@@ -86,20 +87,22 @@ function InfoForm({ onDone }: { role: "buyer" | "provider"; onDone: (d: InfoData
 }
 
 function ProviderForm({ onDone, onBack, loading }: { onDone: (d: ProviderData) => void; onBack: () => void; loading: boolean }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<ProviderData>({
     resolver: zodResolver(makeProviderSchema(t)),
     defaultValues: { categories: [] },
   });
 
   const selected = watch("categories") ?? [];
-  const SERVICE_CATEGORIES = t.auth.register.serviceCategories;
+  // Canonical service categories (ID-based). Display name is resolved from the
+  // active locale so renames in admin propagate instantly.
+  const SERVICE_CATEGORIES = getActiveCategories();
 
-  function toggleCat(cat: string) {
-    if (selected.includes(cat)) {
-      setValue("categories", selected.filter(c => c !== cat));
+  function toggleCat(id: string) {
+    if (selected.includes(id)) {
+      setValue("categories", selected.filter(c => c !== id));
     } else {
-      setValue("categories", [...selected, cat]);
+      setValue("categories", [...selected, id]);
     }
   }
 
@@ -111,21 +114,23 @@ function ProviderForm({ onDone, onBack, loading }: { onDone: (d: ProviderData) =
         </label>
         <div className="flex flex-wrap gap-2">
           {SERVICE_CATEGORIES.map(cat => {
-            const active = selected.includes(cat);
+            const active = selected.includes(cat.id);
+            const displayName = getCategoryDisplayName(cat.id, locale);
             return (
               <motion.button
-                key={cat}
+                key={cat.id}
                 type="button"
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => toggleCat(cat)}
-                className={`text-xs px-3 py-2 rounded-xl font-semibold border-2 transition-all duration-200 flex items-center gap-1 ${active
+                onClick={() => toggleCat(cat.id)}
+                className={`text-xs px-3 py-2 rounded-xl font-semibold border-2 transition-all duration-200 flex items-center gap-1.5 ${active
                   ? "text-white border-transparent shadow-md"
                   : "bg-muted border-transparent text-muted-foreground hover:border-primary/30"}`}
                 style={active ? { background: "var(--brand-gradient)" } : {}}
               >
                 {active && <CheckCircle2 className="w-3 h-3" />}
-                {cat}
+                <span className="leading-none">{cat.emoji}</span>
+                {displayName}
               </motion.button>
             );
           })}

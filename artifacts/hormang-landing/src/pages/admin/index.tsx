@@ -30,8 +30,15 @@ import {
   Bell, Menu, ChevronLeft, Plus, MapPin, Clock, Wallet,
   Store, LayoutGrid, TriangleAlert, ChevronDown, ChevronUp,
   Flag, Tag, Star, UserCheck, Zap, Activity, StickyNote, Download, Gift,
-  BadgeCheck,
+  BadgeCheck, Edit3, Save,
 } from "lucide-react";
+import {
+  getAllCategories as getAllCategoriesFromStore,
+  setCategoryActive as setAdminCategoryActive,
+  deleteCategory as deleteAdminCategory,
+  upsertCategory as upsertAdminCategory,
+} from "@/lib/categories";
+import { Button } from "@/components/ui/button";
 import { TangaCoin } from "@/components/tanga-coin";
 import { onStoreChange, emitStoreChange } from "@/lib/store-events";
 import { ProviderBadges, AdminBadgeManager } from "@/components/provider-badges";
@@ -5862,14 +5869,352 @@ function AnnouncementsSection({ refreshKey }: { refreshKey: number }) {
 
 function CategoriesSection() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <h2 className="text-lg font-extrabold text-gray-900">Toifalar va Savollar</h2>
-        <p className="text-sm text-gray-500">Savol va variantlarni qo'shish, tahrirlash yoki o'chirish</p>
+        <p className="text-sm text-gray-500">Kategoriyalarni boshqaring, savol va variantlarni tahrirlang</p>
       </div>
+      <CategoryManagementPanel />
       <QuestionsEmbedded />
     </div>
   );
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   CATEGORY MANAGEMENT PANEL — ID-based CRUD
+   ════════════════════════════════════════════════════════════════════ */
+function CategoryManagementPanel() {
+  const [cats, setCats] = useState<AdminCategoryRow[]>([]);
+  const [editing, setEditing] = useState<AdminCategoryRow | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  function reload() {
+    setCats(getAllAdminCategories());
+  }
+  useEffect(() => {
+    reload();
+    return onStoreChange(reload);
+  }, []);
+
+  function handleToggleActive(id: string, active: boolean) {
+    setAdminCategoryActive(id, active);
+    logAction({
+      actorId: ADMIN_USER, actorRole: "admin",
+      action: active ? "CATEGORY_ENABLED" : "CATEGORY_DISABLED",
+      category: "admin", targetId: id, targetType: "platform",
+      description: `Kategoriya ${active ? "yoqildi" : "o'chirildi"}: ${id}`,
+    });
+    reload();
+  }
+
+  function handleDelete(row: AdminCategoryRow) {
+    if (row.builtIn) {
+      alert("Asosiy kategoriyalarni butunlay o'chirib bo'lmaydi. O'chirish uchun \"Faol\" tugmasini bosing.");
+      return;
+    }
+    if (!confirm(`«${row.nameUz}» kategoriyasi butunlay o'chiriladi. Davom etasizmi?`)) return;
+    const res = deleteAdminCategory(row.id);
+    if (!res.ok) {
+      alert("O'chirishda xatolik: " + (res.reason ?? "noma'lum"));
+      return;
+    }
+    logAction({
+      actorId: ADMIN_USER, actorRole: "admin",
+      action: "CATEGORY_DELETED",
+      category: "admin", targetId: row.id, targetType: "platform",
+      description: `Kategoriya o'chirildi: ${row.id}`,
+    });
+    reload();
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3 bg-gradient-to-r from-rose-50 to-orange-50">
+        <div className="w-9 h-9 rounded-xl bg-white border border-rose-100 flex items-center justify-center flex-shrink-0">
+          <Tag className="w-4 h-4 text-rose-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-extrabold text-sm text-gray-900">Kategoriyalar boshqaruvi</p>
+          <p className="text-xs text-gray-500">
+            Kategoriyalar ID orqali bog'lanadi — ismni o'zgartirish ijrochi profillariga ta'sir qilmaydi.
+            Asosiy kategoriyalarni faqat o'chirish (deaktivatsiya) mumkin.
+          </p>
+        </div>
+        <Button onClick={() => setCreating(true)}
+          className="h-9 px-4 font-bold text-sm gap-2 bg-rose-600 hover:bg-rose-700 flex-shrink-0">
+          <Plus className="w-4 h-4" /> Yangi kategoriya
+        </Button>
+      </div>
+
+      <div className="divide-y divide-gray-50">
+        {cats.length === 0 && (
+          <div className="px-5 py-8 text-center text-sm text-gray-400">Hali kategoriya yo'q</div>
+        )}
+        {cats.map((row) => (
+          <div key={row.id} className={`px-5 py-3 flex items-center gap-3 ${!row.active ? "opacity-60" : ""}`}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+              style={{ background: row.color + "22", border: `1px solid ${row.color}55` }}>
+              {row.emoji}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-bold text-sm text-gray-900 truncate">{row.nameUz}</p>
+                <span className="text-xs text-gray-400 font-mono bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 flex-shrink-0">
+                  {row.id}
+                </span>
+                {row.builtIn && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-700 border border-blue-100 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                    Asosiy
+                  </span>
+                )}
+                {!row.active && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide bg-gray-100 text-gray-600 border border-gray-200 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                    O'chirilgan
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5 truncate">
+                <span className="font-semibold">RU:</span> {row.nameRu || <span className="text-amber-600">tarjima yo'q ⚠️</span>}
+                {row.baseCost > 0 && <span className="ml-2 text-amber-700 font-semibold">· {row.baseCost} Tanga</span>}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => handleToggleActive(row.id, !row.active)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${row.active ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100" : "bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200"}`}
+                title={row.active ? "Bosib o'chirish" : "Bosib yoqish"}
+              >
+                {row.active ? "Faol" : "O'chirilgan"}
+              </button>
+              <button onClick={() => setEditing(row)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                <Edit3 className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => handleDelete(row)}
+                disabled={row.builtIn}
+                title={row.builtIn ? "Asosiy kategoriyalar o'chirilmaydi" : "O'chirish"}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {(editing || creating) && (
+          <CategoryEditorModal
+            initial={editing}
+            onClose={() => { setEditing(null); setCreating(false); }}
+            onSaved={(id, isNew) => {
+              logAction({
+                actorId: ADMIN_USER, actorRole: "admin",
+                action: isNew ? "CATEGORY_CREATED" : "CATEGORY_UPDATED",
+                category: "admin", targetId: id, targetType: "platform",
+                description: `Kategoriya ${isNew ? "yaratildi" : "yangilandi"}: ${id}`,
+              });
+              setEditing(null); setCreating(false);
+              reload();
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ─── Category editor modal ──────────────────────────────────────── */
+const CAT_COLOR_PRESETS = ["#3B82F6","#10B981","#F59E0B","#8B5CF6","#EC4899","#F43F5E","#EAB308","#06B6D4","#64748B","#0EA5E9","#22C55E","#A855F7"];
+const CAT_EMOJI_PRESETS = ["🔧","🧹","🚗","🚚","📚","🎉","💄","👶","🏗️","🧰","🍳","💆","🎨","🐾","💻","🏥","🌱","🚿"];
+
+function CategoryEditorModal({
+  initial, onClose, onSaved,
+}: {
+  initial: AdminCategoryRow | null;
+  onClose: () => void;
+  onSaved: (id: string, isNew: boolean) => void;
+}) {
+  const isNew = !initial;
+  const [id, setId] = useState(initial?.id ?? "");
+  const [nameUz, setNameUz] = useState(initial?.nameUz ?? "");
+  const [nameRu, setNameRu] = useState(initial?.nameRu ?? "");
+  const [emoji, setEmoji] = useState(initial?.emoji ?? "📋");
+  const [color, setColor] = useState(initial?.color ?? CAT_COLOR_PRESETS[0]);
+  const [baseCost, setBaseCost] = useState(String(initial?.baseCost ?? 0));
+  const [active, setActive] = useState(initial?.active !== false);
+  const [error, setError] = useState("");
+
+  function handleSave() {
+    setError("");
+    const cleanId = id.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+    if (!cleanId) { setError("ID kiriting (faqat a-z, 0-9 va _)"); return; }
+    if (!nameUz.trim()) { setError("O'zbekcha nomini kiriting"); return; }
+    if (isNew && getAllAdminCategories().some((c) => c.id === cleanId)) {
+      setError("Bu ID allaqachon mavjud"); return;
+    }
+    const cost = parseInt(baseCost, 10);
+    upsertAdminCategory({
+      id: cleanId,
+      nameLocalized: {
+        uz: nameUz.trim(),
+        ...(nameRu.trim() ? { ru: nameRu.trim() } : {}),
+      },
+      emoji,
+      color,
+      baseCost: isNaN(cost) ? 0 : Math.max(0, cost),
+      active,
+    });
+    onSaved(cleanId, isNew);
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="fixed inset-0 z-[71] flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none"
+      >
+        <div className="bg-white w-full sm:rounded-3xl sm:max-w-lg max-h-[95vh] overflow-y-auto shadow-2xl pointer-events-auto">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3 sticky top-0 bg-white z-10">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+              style={{ background: color + "22", border: `1px solid ${color}55` }}>
+              {emoji}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-extrabold text-gray-900 text-base">
+                {isNew ? "Yangi kategoriya" : "Kategoriyani tahrirlash"}
+              </p>
+              {!isNew && (
+                <p className="text-xs text-gray-400 truncate">ID: <span className="font-mono">{id}</span></p>
+              )}
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="p-5 space-y-4">
+            {isNew && (
+              <div>
+                <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                  ID <span className="text-rose-500">*</span>
+                  <span className="ml-2 text-gray-400 font-normal normal-case">(immutable — keyin o'zgartirib bo'lmaydi)</span>
+                </label>
+                <input value={id} onChange={(e) => setId(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                  placeholder="masalan: dizayn"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400" />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                  O'zbekcha nom <span className="text-rose-500">*</span>
+                </label>
+                <input value={nameUz} onChange={(e) => setNameUz(e.target.value)}
+                  placeholder="Tozalash"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                  Ruscha nom
+                </label>
+                <input value={nameRu} onChange={(e) => setNameRu(e.target.value)}
+                  placeholder="Уборка"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">Emoji</label>
+              <div className="flex items-center gap-2">
+                <input value={emoji} onChange={(e) => setEmoji(e.target.value)}
+                  maxLength={4}
+                  className="w-16 h-12 px-2 rounded-xl border border-gray-200 bg-gray-50 text-2xl text-center focus:outline-none focus:ring-2 focus:ring-rose-300" />
+                <div className="flex flex-wrap gap-1.5 flex-1">
+                  {CAT_EMOJI_PRESETS.map((e) => (
+                    <button key={e} type="button" onClick={() => setEmoji(e)}
+                      className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all ${emoji === e ? "bg-rose-100 border-2 border-rose-400" : "bg-gray-50 border border-gray-200 hover:bg-gray-100"}`}>
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">Rang</label>
+              <div className="flex items-center gap-2 flex-wrap">
+                <input type="color" value={color} onChange={(e) => setColor(e.target.value)}
+                  className="w-12 h-10 rounded-lg border border-gray-200 cursor-pointer" />
+                {CAT_COLOR_PRESETS.map((c) => (
+                  <button key={c} type="button" onClick={() => setColor(c)}
+                    className={`w-8 h-8 rounded-lg transition-all ${color === c ? "ring-2 ring-offset-2 ring-gray-900" : ""}`}
+                    style={{ background: c }} title={c} />
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                  Asosiy narx (Tanga)
+                </label>
+                <input type="number" min="0" value={baseCost} onChange={(e) => setBaseCost(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">Holat</label>
+                <button type="button" onClick={() => setActive(!active)}
+                  className={`w-full h-12 rounded-xl border-2 text-sm font-bold transition-all ${active ? "bg-emerald-50 border-emerald-300 text-emerald-700" : "bg-gray-50 border-gray-300 text-gray-500"}`}>
+                  {active ? "✓ Faol" : "○ O'chirilgan"}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-xl px-3 py-2">
+                {error}
+              </div>
+            )}
+          </div>
+
+          <div className="px-5 py-4 border-t border-gray-100 flex gap-3 sticky bottom-0 bg-white">
+            <Button variant="outline" onClick={onClose} className="flex-1 font-semibold border-gray-200">Bekor qilish</Button>
+            <Button onClick={handleSave} className="flex-1 font-bold bg-rose-600 hover:bg-rose-700 gap-2">
+              <Save className="w-4 h-4" /> {isNew ? "Yaratish" : "Saqlash"}
+            </Button>
+          </div>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
+interface AdminCategoryRow {
+  id: string;
+  nameUz: string;
+  nameRu: string;
+  emoji: string;
+  color: string;
+  baseCost: number;
+  active: boolean;
+  builtIn: boolean;
+}
+
+function getAllAdminCategories(): AdminCategoryRow[] {
+  return getAllCategoriesFromStore().map((c) => ({
+    id: c.id,
+    nameUz: c.nameLocalized.uz ?? "",
+    nameRu: c.nameLocalized.ru ?? "",
+    emoji: c.emoji,
+    color: c.color,
+    baseCost: c.baseCost,
+    active: c.active,
+    builtIn: c.builtIn,
+  }));
 }
 
 /* ════════════════════════════════════════════════════════════════════

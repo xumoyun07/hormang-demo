@@ -3,6 +3,7 @@
  * Central configuration for all category questions + localStorage persistence.
  * Key: hormang_questions_v1 / hormang_common_questions_v1
  */
+import { getActiveCategories } from "./categories";
 
 export type QuestionType =
   | "single-select"
@@ -472,12 +473,47 @@ const INITIAL_CATEGORIES: CategoryConfig[] = [
 const LS_KEY = "hormang_questions_v1";
 const COMMON_LS_KEY = "hormang_common_questions_v1";
 
+/**
+ * Returns the list of categories for the questionnaire flow.
+ *
+ * The canonical list of categories lives in `lib/categories` (admin-managed,
+ * ID-based). This store holds only per-category *questions*. We merge the two:
+ *
+ *  - Only active canonical categories are returned (admin can hide one).
+ *  - Display name / emoji / baseCost are sourced from the canonical store, so
+ *    admin edits propagate instantly to customer-facing screens.
+ *  - Categories created via the admin panel that have no questions yet are
+ *    auto-included with an empty question list.
+ *  - Categories without a canonical entry fall back to the stored value
+ *    (defensive: keeps old data visible until cleanup).
+ */
 export function getCategories(): CategoryConfig[] {
+  let stored: CategoryConfig[] = INITIAL_CATEGORIES;
   try {
-    const stored = localStorage.getItem(LS_KEY);
-    if (stored) return JSON.parse(stored) as CategoryConfig[];
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) stored = JSON.parse(raw) as CategoryConfig[];
   } catch (_) { /* ignore */ }
-  return INITIAL_CATEGORIES;
+
+  let canonical: ReturnType<typeof getActiveCategories> = [];
+  try {
+    canonical = getActiveCategories();
+  } catch {
+    return stored;
+  }
+  if (canonical.length === 0) return stored;
+
+  const storedById = new Map(stored.map((c) => [c.id, c]));
+  const merged: CategoryConfig[] = canonical.map((cn) => {
+    const base = storedById.get(cn.id);
+    return {
+      id: cn.id,
+      name: cn.nameLocalized.uz ?? base?.name ?? cn.id,
+      emoji: cn.emoji,
+      baseCost: cn.baseCost ?? base?.baseCost ?? 0,
+      questions: base?.questions ?? [],
+    };
+  });
+  return merged;
 }
 
 export function saveCategories(cats: CategoryConfig[]): void {

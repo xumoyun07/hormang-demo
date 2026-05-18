@@ -21,6 +21,7 @@ import {
   resetCategories, resetCommonQuestions,
   type CategoryConfig, type Question, type QuestionType, type QuestionOption,
 } from "@/lib/questionnaire-store";
+import { getCategory, getCategoryDisplayName } from "@/lib/categories";
 import logoImg from "/hormang-logo.png";
 
 const ADMIN_PASSWORD = "hormang2024";
@@ -1450,12 +1451,17 @@ export function QuestionsEmbedded() {
           className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-colors ${activeTab === "common" ? "bg-amber-500 text-white shadow-sm" : "bg-amber-50 text-amber-700 hover:bg-amber-100"}`}>
           <Star className="w-3 h-3 fill-current" /> Umumiy
         </button>
-        {categories.map((c) => (
-          <button key={c.id} onClick={() => setActiveTab(activeTab === c.id ? null : c.id)}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${activeTab === c.id ? "bg-blue-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-            {c.emoji} {c.name}
-          </button>
-        ))}
+        {categories.map((c) => {
+          const meta = getCategory(c.id);
+          const name = meta ? getCategoryDisplayName(c.id, "uz") : c.name;
+          const emoji = meta?.emoji ?? c.emoji;
+          return (
+            <button key={c.id} onClick={() => setActiveTab(activeTab === c.id ? null : c.id)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${activeTab === c.id ? "bg-blue-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+              {emoji} {name}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Content ── */}
@@ -1474,13 +1480,19 @@ export function QuestionsEmbedded() {
       )}
       {activeTab !== "common" && (
         <AnimatePresence mode="popLayout">
-          {displayed.map((cat) => (
-            <motion.div key={cat.id}
-              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.2 }}>
-              <CategoryPanel cat={cat} onChange={updateCategory} commonQuestions={commonQuestions} />
-            </motion.div>
-          ))}
+          {displayed.map((cat) => {
+            const meta = getCategory(cat.id);
+            const merged: CategoryConfig = meta
+              ? { ...cat, name: getCategoryDisplayName(cat.id, "uz"), emoji: meta.emoji }
+              : cat;
+            return (
+              <motion.div key={cat.id}
+                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.2 }}>
+                <CategoryPanel cat={merged} onChange={updateCategory} commonQuestions={commonQuestions} />
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
       )}
 
@@ -1582,12 +1594,17 @@ export default function AdminQuestionsPage() {
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-colors ${activeTab === "common" ? "bg-amber-500 text-white shadow-sm" : "bg-amber-50 text-amber-700 hover:bg-amber-100"}`}>
             <Star className="w-3 h-3 fill-current" /> Umumiy
           </button>
-          {categories.map((c) => (
-            <button key={c.id} onClick={() => setActiveTab(activeTab === c.id ? null : c.id)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${activeTab === c.id ? "bg-blue-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
-              {c.emoji} {c.name}
-            </button>
-          ))}
+          {categories.map((c) => {
+            const meta = getCategory(c.id);
+            const name = meta ? getCategoryDisplayName(c.id, "uz") : c.name;
+            const emoji = meta?.emoji ?? c.emoji;
+            return (
+              <button key={c.id} onClick={() => setActiveTab(activeTab === c.id ? null : c.id)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${activeTab === c.id ? "bg-blue-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                {emoji} {name}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -1607,13 +1624,19 @@ export default function AdminQuestionsPage() {
         )}
         {activeTab !== "common" && (
           <AnimatePresence mode="popLayout">
-            {displayed.map((cat) => (
-              <motion.div key={cat.id}
-                initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.2 }}>
-                <CategoryPanel cat={cat} onChange={updateCategory} commonQuestions={commonQuestions} />
-              </motion.div>
-            ))}
+            {displayed.map((cat) => {
+              const meta = getCategory(cat.id);
+              const merged: CategoryConfig = meta
+                ? { ...cat, name: getCategoryDisplayName(cat.id, "uz"), emoji: meta.emoji }
+                : cat;
+              return (
+                <motion.div key={cat.id}
+                  initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.2 }}>
+                  <CategoryPanel cat={merged} onChange={updateCategory} commonQuestions={commonQuestions} />
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         )}
         <p className="text-center text-xs text-gray-400 mt-4 pb-8">

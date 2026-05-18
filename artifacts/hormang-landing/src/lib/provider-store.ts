@@ -341,7 +341,8 @@ export function getMatchingRequests(
   return buyerReqs
     .filter((r) => {
       if (r.status !== "open") return false;
-      if (!doesCategoryMatch(r.categoryName, selectedCategories)) return false;
+      // Match by canonical category ID (preferred), falling back to legacy name.
+      if (!doesCategoryMatch(r.categoryId || r.categoryName, selectedCategories)) return false;
       if (!doesLocationMatchV2(r.region, r.district, serviceAreaV2 ?? null, serviceAreas)) return false;
       // If another provider's offer was accepted, only show to this provider if they also offered
       if (acceptedByOtherRequestIds.has(r.id) && !providerOfferRequestIds.has(r.id)) return false;

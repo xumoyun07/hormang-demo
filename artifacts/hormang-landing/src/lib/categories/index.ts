@@ -1,0 +1,291 @@
+/**
+ * lib/categories
+ * Single source of truth for service categories.
+ *
+ * - Identifies categories by immutable string IDs (e.g. "tozalash").
+ * - Stores multilingual display name (UZ + RU) + emoji + color + active flag.
+ * - Persists to localStorage key `hormang_categories_v1`; seeds from
+ *   CATEGORY_META in data/categories.ts on first load.
+ * - Built-in categories are protected from hard delete (only deactivation).
+ *
+ * Provides a migration layer that maps legacy translated category names
+ * stored on provider profiles / requests to canonical IDs.
+ */
+import type { LocalizedText, Locale } from "@/lib/localization";
+import { getLocalizedText } from "@/lib/localization";
+import { CATEGORY_META } from "@/data/categories";
+import { emitStoreChange } from "@/lib/store-events";
+
+export interface Category {
+  id: string;
+  /** Multilingual display name (UZ + RU). */
+  nameLocalized: LocalizedText;
+  emoji: string;
+  /** Hex color used in admin UI / chips. */
+  color: string;
+  /** Base Tanga cost for any offer in this category. */
+  baseCost: number;
+  /** When false, hidden from selectors / new requests but kept for history. */
+  active: boolean;
+  /** Original built-in categories cannot be hard-deleted (only deactivated). */
+  builtIn: boolean;
+  createdAt: string;
+}
+
+export const CATEGORIES_STORAGE_KEY = "hormang_categories_v1";
+
+/** Default hex colors for built-in categories. */
+const DEFAULT_COLORS: Record<string, string> = {
+  tamirlash:  "#3B82F6",
+  tozalash:   "#10B981",
+  avto:       "#F59E0B",
+  kochirish:  "#8B5CF6",
+  repetitor:  "#EC4899",
+  tadbir:     "#F43F5E",
+  gozallik:   "#EAB308",
+  enaga:      "#06B6D4",
+  ustachilik: "#64748B",
+};
+
+const FALLBACK_COLOR = "#3B82F6";
+
+function seedCategories(): Category[] {
+  return CATEGORY_META.map((m) => ({
+    id: m.id,
+    nameLocalized: m.name,
+    emoji: m.emoji,
+    color: DEFAULT_COLORS[m.id] ?? FALLBACK_COLOR,
+    baseCost: 0,
+    active: true,
+    builtIn: true,
+    createdAt: new Date(0).toISOString(),
+  }));
+}
+
+/* ─── Storage ────────────────────────────────────────────────────── */
+
+function readStore(): Category[] | null {
+  try {
+    const raw = localStorage.getItem(CATEGORIES_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Category[];
+    if (!Array.isArray(parsed)) return null;
+    return parsed.map((c) => ({
+      id: c.id,
+      nameLocalized: c.nameLocalized ?? { uz: c.id },
+      emoji: c.emoji ?? "📋",
+      color: c.color ?? DEFAULT_COLORS[c.id] ?? FALLBACK_COLOR,
+      baseCost: typeof c.baseCost === "number" ? c.baseCost : 0,
+      active: c.active !== false,
+      builtIn: !!c.builtIn,
+      createdAt: c.createdAt ?? new Date().toISOString(),
+    }));
+  } catch {
+    return null;
+  }
+}
+
+function writeStore(cats: Category[]): void {
+  try {
+    localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(cats));
+    emitStoreChange();
+  } catch (e) {
+    console.warn("[Hormang] categories saqlanmadi:", e);
+  }
+}
+
+/* ─── Public API ─────────────────────────────────────────────────── */
+
+export function getAllCategories(): Category[] {
+  const stored = readStore();
+  if (stored && stored.length) {
+    // Ensure built-in seeds are always present (admin should not be able to
+    // accidentally lose them by clearing the array).
+    const haveIds = new Set(stored.map((c) => c.id));
+    const missingSeeds = seedCategories().filter((s) => !haveIds.has(s.id));
+    if (missingSeeds.length > 0) {
+      const merged = [...stored, ...missingSeeds];
+      writeStore(merged);
+      return merged;
+    }
+    return stored;
+  }
+  const seed = seedCategories();
+  writeStore(seed);
+  return seed;
+}
+
+export function getActiveCategories(): Category[] {
+  return getAllCategories().filter((c) => c.active);
+}
+
+export function getCategory(id: string): Category | undefined {
+  return getAllCategories().find((c) => c.id === id);
+}
+
+export function saveCategories(cats: Category[]): void {
+  writeStore(cats);
+}
+
+export function upsertCategory(input: Partial<Category> & { id: string }): Category {
+  const all = getAllCategories();
+  const idx = all.findIndex((c) => c.id === input.id);
+  if (idx >= 0) {
+    const next: Category = {
+      ...all[idx],
+      ...input,
+      // builtIn flag is immutable
+      builtIn: all[idx].builtIn,
+      nameLocalized: input.nameLocalized ?? all[idx].nameLocalized,
+    };
+    all[idx] = next;
+    writeStore(all);
+    return next;
+  }
+  const created: Category = {
+    id: input.id,
+    nameLocalized: input.nameLocalized ?? { uz: input.id },
+    emoji: input.emoji ?? "📋",
+    color: input.color ?? FALLBACK_COLOR,
+    baseCost: input.baseCost ?? 0,
+    active: input.active !== false,
+    builtIn: false,
+    createdAt: new Date().toISOString(),
+  };
+  all.push(created);
+  writeStore(all);
+  return created;
+}
+
+export function setCategoryActive(id: string, active: boolean): void {
+  const all = getAllCategories();
+  const idx = all.findIndex((c) => c.id === id);
+  if (idx < 0) return;
+  all[idx] = { ...all[idx], active };
+  writeStore(all);
+}
+
+/** Hard delete — only allowed for non-built-in categories. Built-ins must be deactivated instead. */
+export function deleteCategory(id: string): { ok: boolean; reason?: string } {
+  const all = getAllCategories();
+  const cat = all.find((c) => c.id === id);
+  if (!cat) return { ok: false, reason: "not_found" };
+  if (cat.builtIn) return { ok: false, reason: "builtin_protected" };
+  writeStore(all.filter((c) => c.id !== id));
+  return { ok: true };
+}
+
+export function resetCategoriesToSeed(): void {
+  writeStore(seedCategories());
+}
+
+/* ─── Display helpers ────────────────────────────────────────────── */
+
+export function getCategoryDisplayName(id: string, locale: Locale, fallback?: string): string {
+  const cat = getCategory(id);
+  if (cat) return getLocalizedText(cat.nameLocalized, locale);
+  return fallback ?? id;
+}
+
+export function getCategoryEmoji(id: string): string {
+  return getCategory(id)?.emoji ?? "📋";
+}
+
+export function getCategoryColor(id: string): string {
+  return getCategory(id)?.color ?? FALLBACK_COLOR;
+}
+
+/* ─── Migration: legacy translated names → canonical IDs ─────────── */
+
+function normalize(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/['ʻʼ’`]/g, "")
+    .replace(/[\s/]+/g, "")
+    .trim();
+}
+
+/**
+ * Hardcoded map of legacy translated names that appeared in old provider
+ * profiles & locale files. Keys are normalized (lowercased, no spaces / quotes).
+ */
+const LEGACY_NAME_MAP: Record<string, string> = {
+  // Variants of "Tozalash"
+  "tozalash":             "tozalash",
+  "tozalik":              "tozalash",
+  "уборка":               "tozalash",
+  // Variants of "Ta'mirlash"
+  "tamirlash":            "tamirlash",
+  "tamirlashusta":        "tamirlash",
+  "tamirlashustachilik":  "tamirlash",
+  "ремонт":               "tamirlash",
+  // Variants of "Enagalik"
+  "enagalik":             "enaga",
+  "enaga":                "enaga",
+  "enagabolaparvarishi":  "enaga",
+  "няня":                 "enaga",
+  // Variants of "Tadbir"
+  "tadbir":               "tadbir",
+  "tadbirlar":            "tadbir",
+  "tadbirxizmatlari":     "tadbir",
+  "ovqatpishirish":       "tadbir",
+  "dizaynyaratuvchanlik": "tadbir",
+  "ивентуслуги":          "tadbir",
+  // Variants of "Ko'chirish"
+  "kochirish":            "kochirish",
+  "kochirishyukyetkazish":"kochirish",
+  "kochirishtransport":   "kochirish",
+  "kochirishyuk":         "kochirish",
+  "переезддоставка":      "kochirish",
+  // Variants of "Go'zallik"
+  "gozallik":             "gozallik",
+  "gozalliksartaroshlik": "gozallik",
+  "красота":              "gozallik",
+  // Variants of "Avto"
+  "avto":                 "avto",
+  "avtoxizmat":           "avto",
+  "автоуслуги":           "avto",
+  // Variants of "Repetitor"
+  "repetitor":            "repetitor",
+  "repetitorlar":         "repetitor",
+  "repetitoroqituvchi":   "repetitor",
+  "репетиторы":           "repetitor",
+  // Variants of "Ustachilik"
+  "ustachilik":           "ustachilik",
+  "elektrishlari":        "ustachilik",
+  "santexnika":           "ustachilik",
+  "строительство":        "ustachilik",
+};
+
+/**
+ * Resolve a single legacy value (id or translated name) to a canonical id.
+ * Returns null when no mapping exists (caller decides whether to drop or keep as legacy).
+ */
+export function migrateLegacyCategoryValue(value: string): string | null {
+  if (!value) return null;
+  // 1. Exact id match against current store
+  const all = getAllCategories();
+  if (all.some((c) => c.id === value)) return value;
+  const norm = normalize(value);
+  // 2. Match against localized names on the current store
+  for (const c of all) {
+    if (normalize(c.nameLocalized.uz ?? "") === norm) return c.id;
+    if (normalize(c.nameLocalized.ru ?? "") === norm) return c.id;
+  }
+  // 3. Legacy hardcoded map
+  return LEGACY_NAME_MAP[norm] ?? null;
+}
+
+/**
+ * Resolve an array of legacy/id values to a unique list of canonical IDs.
+ * Unknown values are silently dropped.
+ */
+export function resolveCategoryIds(values: string[] | undefined | null): string[] {
+  if (!values || values.length === 0) return [];
+  const out: string[] = [];
+  for (const v of values) {
+    const id = migrateLegacyCategoryValue(v);
+    if (id && !out.includes(id)) out.push(id);
+  }
+  return out;
+}

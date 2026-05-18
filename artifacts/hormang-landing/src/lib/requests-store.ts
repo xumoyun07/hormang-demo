@@ -174,11 +174,7 @@ export function getPhoneRegistry(): Record<string, string> {
   return readJSON<Record<string, string>>(PHONE_REGISTRY_KEY, {});
 }
 
-/** Category emoji map */
-const CATEGORY_EMOJIS: Record<string, string> = {
-  tamirlash: "🔧", tozalash: "🧹", avto: "🚗", kochirish: "🚚",
-  repetitor: "📚", tadbir: "🎉", gozallik: "💄", enaga: "👶", ustachilik: "🏗️",
-};
+import { getCategoryEmoji } from "@/lib/categories";
 
 /* ─── Storage helpers ─────────────────────────────────────────────── */
 
@@ -256,7 +252,7 @@ export function saveNewRequest(
     customerName: customerName || undefined,
     categoryId,
     categoryName,
-    emoji: CATEGORY_EMOJIS[categoryId] ?? "📋",
+    emoji: getCategoryEmoji(categoryId),
     answers,
     requestPhotos: requestPhotos?.length ? requestPhotos : undefined,
     status: "open",

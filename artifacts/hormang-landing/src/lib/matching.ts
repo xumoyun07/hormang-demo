@@ -29,15 +29,35 @@ export function isServiceAreaEmpty(area: ProviderServiceArea): boolean {
 
 /* ─── Category matching ─────────────────────────────────────────── */
 
+import { migrateLegacyCategoryValue, resolveCategoryIds } from "./categories";
+
 function normalizeCategory(name: string): string {
   return name.toLowerCase().replace(/[\s/]+/g, "").trim();
 }
 
+/**
+ * ID-first category match. Accepts either canonical category IDs or legacy
+ * translated names on both sides. Falls back to a normalized string compare
+ * for values that cannot be resolved to an ID.
+ *
+ * @param requestCategory  The request's category ID (preferred) or name.
+ * @param providerCategories  The provider's stored category values (ids or legacy names).
+ */
 export function doesCategoryMatch(
-  requestCategory: string,
+  requestCategory: string | undefined | null,
   providerCategories: string[],
 ): boolean {
   if (providerCategories.length === 0) return true;
+  if (!requestCategory) return true;
+
+  const reqId = migrateLegacyCategoryValue(requestCategory);
+  const providerIds = resolveCategoryIds(providerCategories);
+
+  if (reqId && providerIds.length > 0) {
+    return providerIds.includes(reqId);
+  }
+
+  // Legacy fallback — at least one side could not be resolved to a canonical ID.
   const norm = normalizeCategory(requestCategory);
   return providerCategories.some((c) => normalizeCategory(c) === norm);
 }
