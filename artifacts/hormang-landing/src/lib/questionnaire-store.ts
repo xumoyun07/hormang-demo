@@ -487,12 +487,24 @@ const COMMON_LS_KEY = "hormang_common_questions_v1";
  *  - Categories without a canonical entry fall back to the stored value
  *    (defensive: keeps old data visible until cleanup).
  */
-export function getCategories(): CategoryConfig[] {
-  let stored: CategoryConfig[] = INITIAL_CATEGORIES;
+function readStoredCategoryConfigs(): CategoryConfig[] {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw) stored = JSON.parse(raw) as CategoryConfig[];
+    if (raw) return JSON.parse(raw) as CategoryConfig[];
   } catch (_) { /* ignore */ }
+  return INITIAL_CATEGORIES;
+}
+
+/**
+ * Customer-facing + admin-facing category list. Returns ONLY canonical
+ * active categories, sourced from `lib/categories` for display metadata and
+ * augmented with question configs from this store. Deactivated categories
+ * are intentionally excluded so they cannot appear in selectors or new
+ * request flows. Their question configs are still preserved in storage and
+ * merged back on save (see {@link saveCategories}).
+ */
+export function getCategories(): CategoryConfig[] {
+  const stored = readStoredCategoryConfigs();
 
   let canonical: ReturnType<typeof getActiveCategories> = [];
   try {
@@ -503,9 +515,7 @@ export function getCategories(): CategoryConfig[] {
   if (canonical.length === 0) return stored;
 
   const storedById = new Map(stored.map((c) => [c.id, c]));
-  const canonicalIds = new Set(canonical.map((c) => c.id));
-
-  const merged: CategoryConfig[] = canonical.map((cn) => {
+  return canonical.map((cn) => {
     const base = storedById.get(cn.id);
     return {
       id: cn.id,
@@ -515,19 +525,20 @@ export function getCategories(): CategoryConfig[] {
       questions: base?.questions ?? [],
     };
   });
-
-  /* Preserve question configs for stored categories that are currently
-   * inactive or no longer in the canonical store. They are appended at the
-   * end so admin save round-trips don't accidentally drop their questions.
-   * Customer-facing screens should keep filtering by canonical active set. */
-  for (const s of stored) {
-    if (!canonicalIds.has(s.id)) merged.push(s);
-  }
-  return merged;
 }
 
+/**
+ * Save category question configs from the admin editor. Preserves the
+ * question configs of any stored category whose ID is not in `cats` (e.g.
+ * a deactivated category) so toggling active/inactive never drops the
+ * admin's work.
+ */
 export function saveCategories(cats: CategoryConfig[]): void {
-  localStorage.setItem(LS_KEY, JSON.stringify(cats));
+  const prevStored = readStoredCategoryConfigs();
+  const incomingIds = new Set(cats.map((c) => c.id));
+  const preserved = prevStored.filter((c) => !incomingIds.has(c.id));
+  const next = [...cats, ...preserved];
+  localStorage.setItem(LS_KEY, JSON.stringify(next));
 }
 
 export function getCategoryById(id: string): CategoryConfig | undefined {
