@@ -36,6 +36,8 @@ export interface PricingTier {
   hotOffer?: boolean;
   bonusPlan?: boolean;
   badge?: string;
+  /** Multilingual badge label. Use getLocalizedText(badgeLocalized ?? badge, locale). */
+  badgeLocalized?: LocalizedText;
 
   /* ── Meta ───────────────────────────────────────────────────────── */
   desc: string;

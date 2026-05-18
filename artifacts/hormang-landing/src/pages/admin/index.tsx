@@ -157,6 +157,7 @@ interface PricingTier {
   status?: "draft" | "active" | "scheduled" | "expired" | "archived";
   visibilityTarget?: "all" | "new" | "active" | "referral";
   featured?: boolean; hotOffer?: boolean; bonusPlan?: boolean; badge?: string;
+  badgeLocalized?: LocalizedText;
   desc: string; color: string; active: boolean;
   nameLocalized?: LocalizedText;
   descLocalized?: LocalizedText;
@@ -4029,13 +4030,14 @@ type PlanDraft = {
   badge: string; desc: string;
   nameLocalized: LocalizedText;
   descLocalized: LocalizedText;
+  badgeLocalized: LocalizedText;
 };
 const BLANK_DRAFT: PlanDraft = {
   name: "", credits: "", price: "", salePrice: "", saleLimit: "", perUserLimit: "",
   bonusTokens: "", startsAt: "", validUntil: "", status: "active",
   visibilityTarget: "all", featured: false, hotOffer: false, bonusPlan: false,
   badge: "", desc: "",
-  nameLocalized: {}, descLocalized: {},
+  nameLocalized: {}, descLocalized: {}, badgeLocalized: {},
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -4106,6 +4108,7 @@ function MonoPlans({ tiers, setTiers, reload }: { tiers: PricingTier[]; setTiers
       featured: t.featured ?? false, hotOffer: t.hotOffer ?? false, bonusPlan: t.bonusPlan ?? false,
       badge: t.badge ?? "", desc: t.desc,
       nameLocalized: t.nameLocalized ?? {}, descLocalized: t.descLocalized ?? {},
+      badgeLocalized: t.badgeLocalized ?? {},
     });
     setErrors([]); setShowForm(true);
   }
@@ -4144,6 +4147,7 @@ function MonoPlans({ tiers, setTiers, reload }: { tiers: PricingTier[]; setTiers
       hotOffer: draft.hotOffer || undefined,
       bonusPlan: draft.bonusPlan || undefined,
       badge: draft.badge.trim() || undefined,
+      badgeLocalized: (draft.badgeLocalized.ru ?? "").trim() ? draft.badgeLocalized : undefined,
       desc: draft.desc,
       nameLocalized: (draft.nameLocalized.uz || draft.nameLocalized.ru) ? draft.nameLocalized : undefined,
       descLocalized: (draft.descLocalized.uz || draft.descLocalized.ru) ? draft.descLocalized : undefined,
@@ -4349,6 +4353,12 @@ function MonoPlans({ tiers, setTiers, reload }: { tiers: PricingTier[]; setTiers
                           value={draft.descLocalized.ru ?? ""}
                           onChange={(e) => setDraft({ ...draft, descLocalized: { ...draft.descLocalized, ru: e.target.value } })}
                           placeholder="Tavsif (ru)"
+                          className={`${inputCls} w-full text-xs`}
+                        />
+                        <input
+                          value={draft.badgeLocalized.ru ?? ""}
+                          onChange={(e) => setDraft({ ...draft, badgeLocalized: { ...draft.badgeLocalized, ru: e.target.value } })}
+                          placeholder="Nishon (ru) — ixtiyoriy"
                           className={`${inputCls} w-full text-xs`}
                         />
                       </div>

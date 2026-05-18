@@ -144,7 +144,7 @@ function PlanCard({
         {/* Highlighting badges */}
         {(tier.featured || tier.hotOffer || tier.bonusPlan || tier.badge) && (
           <div className="flex flex-wrap gap-1.5 mb-2.5">
-            {tier.badge && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">{tier.badge}</span>}
+            {tier.badge && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">{getLocalizedText(tier.badgeLocalized ?? tier.badge, locale)}</span>}
             {tier.featured && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{tt.badgeFeatured}</span>}
             {tier.hotOffer && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600">{tt.badgeHot}</span>}
             {tier.bonusPlan && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{tt.badgeBonus}</span>}
