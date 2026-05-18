@@ -5897,6 +5897,17 @@ function CategoryManagementPanel() {
   }, []);
 
   function handleToggleActive(id: string, active: boolean) {
+    if (!active) {
+      const row = cats.find((c) => c.id === id);
+      const consequences =
+        `«${row?.nameUz ?? id}» kategoriyasini o'chirasizmi?\n\n` +
+        `• Yangi mijozlar bu kategoriya bo'yicha so'rov yarata olmaydi.\n` +
+        `• Mavjud so'rovlar va profillar saqlanib qoladi (faqat yashiriladi).\n` +
+        `• Provayder shu kategoriyani tanlay olmaydi.\n` +
+        `• Istalgan vaqtda qayta yoqishingiz mumkin.\n\n` +
+        `Davom etamizmi?`;
+      if (!confirm(consequences)) return;
+    }
     setAdminCategoryActive(id, active);
     logAction({
       actorId: ADMIN_USER, actorRole: "admin",
@@ -6037,6 +6048,9 @@ function CategoryEditorModal({
   const isNew = !initial;
   const [nameUz, setNameUz] = useState(initial?.nameUz ?? "");
   const [nameRu, setNameRu] = useState(initial?.nameRu ?? "");
+  const [descUz, setDescUz] = useState(initial?.descriptionUz ?? "");
+  const [descRu, setDescRu] = useState(initial?.descriptionRu ?? "");
+  const [parentCategoryId, setParentCategoryId] = useState<string>(initial?.parentCategoryId ?? "");
   const [emoji, setEmoji] = useState(initial?.emoji ?? "📋");
   const [color, setColor] = useState(initial?.color ?? CAT_COLOR_PRESETS[0]);
   const [baseCost, setBaseCost] = useState(String(initial?.baseCost ?? 0));
@@ -6064,16 +6078,24 @@ function CategoryEditorModal({
     }
 
     const cost = parseInt(baseCost, 10);
+    const descriptionLocalized = (descUz.trim() || descRu.trim())
+      ? {
+          ...(descUz.trim() ? { uz: descUz.trim() } : {}),
+          ...(descRu.trim() ? { ru: descRu.trim() } : {}),
+        }
+      : undefined;
     upsertAdminCategory({
       id: finalId,
       nameLocalized: {
         uz: nameUz.trim(),
         ...(nameRu.trim() ? { ru: nameRu.trim() } : {}),
       },
+      ...(descriptionLocalized ? { descriptionLocalized } : {}),
       emoji,
       color,
       baseCost: isNaN(cost) ? 0 : Math.max(0, cost),
       active,
+      parentCategoryId: parentCategoryId.trim() || null,
     });
     onSaved(finalId, isNew);
   }
@@ -6125,6 +6147,43 @@ function CategoryEditorModal({
                   placeholder="Уборка"
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400" />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                  O'zbekcha tavsif
+                </label>
+                <textarea value={descUz} onChange={(e) => setDescUz(e.target.value)}
+                  rows={2}
+                  placeholder="Qisqacha izoh (ixtiyoriy)"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400 resize-none" />
+              </div>
+              <div>
+                <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                  Ruscha tavsif
+                </label>
+                <textarea value={descRu} onChange={(e) => setDescRu(e.target.value)}
+                  rows={2}
+                  placeholder="Краткое описание (необязательно)"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400 resize-none" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                Ota-kategoriya
+                <span className="ml-2 text-gray-400 font-normal normal-case">(ixtiyoriy — quyi kategoriya uchun)</span>
+              </label>
+              <select value={parentCategoryId} onChange={(e) => setParentCategoryId(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400">
+                <option value="">— yo'q (asosiy kategoriya) —</option>
+                {getAllAdminCategories()
+                  .filter((c) => c.id !== initial?.id)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>{c.emoji} {c.nameUz} ({c.id})</option>
+                  ))}
+              </select>
             </div>
 
             <div>
@@ -6197,6 +6256,9 @@ interface AdminCategoryRow {
   id: string;
   nameUz: string;
   nameRu: string;
+  descriptionUz: string;
+  descriptionRu: string;
+  parentCategoryId: string | null;
   emoji: string;
   color: string;
   baseCost: number;
@@ -6213,6 +6275,9 @@ function getAllAdminCategories(): AdminCategoryRow[] {
       id: c.id,
       nameUz: c.nameLocalized.uz ?? "",
       nameRu: c.nameLocalized.ru ?? "",
+      descriptionUz: c.descriptionLocalized?.uz ?? "",
+      descriptionRu: c.descriptionLocalized?.ru ?? "",
+      parentCategoryId: c.parentCategoryId ?? null,
       emoji: c.emoji,
       color: c.color,
       baseCost: c.baseCost,

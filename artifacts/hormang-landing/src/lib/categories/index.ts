@@ -16,10 +16,18 @@ import { getLocalizedText } from "@/lib/localization";
 import { CATEGORY_META } from "@/data/categories";
 import { emitStoreChange } from "@/lib/store-events";
 
+/**
+ * Canonical category model (CategoryModel).
+ * Identified by an immutable string ID; carries multilingual display name and
+ * optional description, taxonomy (parentCategoryId, future-proof), pricing
+ * (baseCost in Tanga), and lifecycle (active, builtIn).
+ */
 export interface Category {
   id: string;
   /** Multilingual display name (UZ + RU). */
   nameLocalized: LocalizedText;
+  /** Optional multilingual short description (UZ + RU). */
+  descriptionLocalized?: LocalizedText;
   emoji: string;
   /** Hex color used in admin UI / chips. */
   color: string;
@@ -29,8 +37,13 @@ export interface Category {
   active: boolean;
   /** Original built-in categories cannot be hard-deleted (only deactivated). */
   builtIn: boolean;
+  /** Optional parent category ID (reserved for future subcategory support; flat for now). */
+  parentCategoryId?: string | null;
   createdAt: string;
 }
+
+/** Backwards-compatible alias. */
+export type CategoryModel = Category;
 
 export const CATEGORIES_STORAGE_KEY = "hormang_categories_v1";
 
@@ -73,11 +86,13 @@ function readStore(): Category[] | null {
     return parsed.map((c) => ({
       id: c.id,
       nameLocalized: c.nameLocalized ?? { uz: c.id },
+      descriptionLocalized: c.descriptionLocalized,
       emoji: c.emoji ?? "📋",
       color: c.color ?? DEFAULT_COLORS[c.id] ?? FALLBACK_COLOR,
       baseCost: typeof c.baseCost === "number" ? c.baseCost : 0,
       active: c.active !== false,
       builtIn: !!c.builtIn,
+      parentCategoryId: c.parentCategoryId ?? null,
       createdAt: c.createdAt ?? new Date().toISOString(),
     }));
   } catch {
@@ -145,11 +160,13 @@ export function upsertCategory(input: Partial<Category> & { id: string }): Categ
   const created: Category = {
     id: input.id,
     nameLocalized: input.nameLocalized ?? { uz: input.id },
+    descriptionLocalized: input.descriptionLocalized,
     emoji: input.emoji ?? "📋",
     color: input.color ?? FALLBACK_COLOR,
     baseCost: input.baseCost ?? 0,
     active: input.active !== false,
     builtIn: false,
+    parentCategoryId: input.parentCategoryId ?? null,
     createdAt: new Date().toISOString(),
   };
   all.push(created);
@@ -278,7 +295,9 @@ export function migrateLegacyCategoryValue(value: string): string | null {
 
 /**
  * Resolve an array of legacy/id values to a unique list of canonical IDs.
- * Unknown values are silently dropped.
+ * Unknown values are silently dropped — use only for display / matching where
+ * unrecognized values would be meaningless. For data persistence prefer
+ * `migrateCategoryValuesSafe` which preserves unknowns.
  */
 export function resolveCategoryIds(values: string[] | undefined | null): string[] {
   if (!values || values.length === 0) return [];
@@ -286,6 +305,23 @@ export function resolveCategoryIds(values: string[] | undefined | null): string[
   for (const v of values) {
     const id = migrateLegacyCategoryValue(v);
     if (id && !out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
+/**
+ * Safer migration for persistence: maps known values to canonical IDs and
+ * **preserves unknown values verbatim**. Guarantees no provider data is lost
+ * if a legacy label is missing from the migration map. Dedupes the result.
+ */
+export function migrateCategoryValuesSafe(values: string[] | undefined | null): string[] {
+  if (!values || values.length === 0) return [];
+  const out: string[] = [];
+  for (const v of values) {
+    if (!v) continue;
+    const id = migrateLegacyCategoryValue(v);
+    const resolved = id ?? v;
+    if (!out.includes(resolved)) out.push(resolved);
   }
   return out;
 }

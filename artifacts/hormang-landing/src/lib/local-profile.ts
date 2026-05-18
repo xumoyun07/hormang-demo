@@ -16,7 +16,7 @@ import type { SafeUser, ProviderProfile } from "./auth-client";
 import { emitStoreChange } from "./store-events";
 import { type ProviderServiceArea, emptyProviderServiceArea, isServiceAreaEmpty } from "./matching";
 import { TOSHKENT_DISTRICTS, regionsList } from "./regions";
-import { resolveCategoryIds } from "./categories";
+import { migrateCategoryValuesSafe } from "./categories";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
 
@@ -128,9 +128,9 @@ export function getLocalProfile(userId: string): LocalProfile {
      * layer now expects canonical IDs. We rewrite at read-time so callers
      * always see IDs, with a one-time write-back on next save. */
     if (p.categories && p.categories.length > 0) {
-      const ids = resolveCategoryIds(p.categories);
-      if (ids.length > 0 && ids.join("|") !== p.categories.join("|")) {
-        p.categories = ids;
+      const migrated = migrateCategoryValuesSafe(p.categories);
+      if (migrated.join("|") !== p.categories.join("|")) {
+        p.categories = migrated;
       }
     }
     /* Migrate legacy portfolioItems → albums (create a default "Ishlarim" album) */
@@ -157,9 +157,11 @@ export function saveLocalProfile(userId: string, data: LocalProfile): void {
 
   /* Strip the legacy `portfolioImages` field before saving */
   const { portfolioImages: _dropped, ...rest } = data;
-  /* Normalize category values to canonical IDs at save time (idempotent). */
+  /* Normalize category values to canonical IDs at save time, preserving any
+   * unknown legacy strings verbatim so historical provider data is never lost
+   * if the migration map doesn't cover a value. Idempotent. */
   const clean: LocalProfile = rest.categories?.length
-    ? { ...rest, categories: resolveCategoryIds(rest.categories) }
+    ? { ...rest, categories: migrateCategoryValuesSafe(rest.categories) }
     : rest;
 
   console.log(
