@@ -549,6 +549,20 @@ export function getCategoryById(id: string): CategoryConfig | undefined {
   return getCategories().find((c) => c.id === id);
 }
 
+/**
+ * Read a stored category config by ID **regardless of active status**.
+ * Use this in admin/back-office paths where you must surface configs for
+ * deactivated categories (which `getCategoryById` intentionally hides).
+ */
+export function getStoredCategoryConfigById(id: string): CategoryConfig | undefined {
+  return readStoredCategoryConfigs().find((c) => c.id === id);
+}
+
+/** Count of questions linked specifically to a category (excludes common ones). */
+export function getCategorySpecificQuestionCount(id: string): number {
+  return getStoredCategoryConfigById(id)?.questions.length ?? 0;
+}
+
 /** Migrate old region+district questions to single location question */
 function migrateCommonQuestions(qs: Question[]): Question[] {
   const hasLocation = qs.some((q) => q.id === "location");

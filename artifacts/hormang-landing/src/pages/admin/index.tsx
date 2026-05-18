@@ -37,7 +37,7 @@ import {
   setCategoryActive as setAdminCategoryActive,
   upsertCategory as upsertAdminCategory,
 } from "@/lib/categories";
-import { getAllQuestionsForCategory as getQsForCat } from "@/lib/questionnaire-store";
+import { getCategorySpecificQuestionCount } from "@/lib/questionnaire-store";
 import { Button } from "@/components/ui/button";
 import { TangaCoin } from "@/components/tanga-coin";
 import { onStoreChange, emitStoreChange } from "@/lib/store-events";
@@ -477,7 +477,7 @@ const NAV_ITEMS: { id: Section; label: string; icon: React.FC<{ className?: stri
   { id: "announcements",  label: "E'lonlar",           icon: Bell            },
   { id: "reports",        label: "Shikoyatlar",        icon: Flag            },
   { id: "audit",          label: "Audit log",          icon: FileText        },
-  { id: "categories",     label: "Toifalar",           icon: Settings        },
+  { id: "categories",     label: "Kategoriyalar",      icon: Settings        },
   { id: "feedback",       label: "Fikrlar",            icon: MessageSquare   },
 ];
 
@@ -1608,7 +1608,7 @@ function AdvancedUserDetailModal({
                 {/* Categories */}
                 {u.categories && u.categories.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Toifalar</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Kategoriyalar</p>
                     <div className="flex flex-wrap gap-1.5">
                       {u.categories.map((c) => (
                         <span key={c} className="px-2.5 py-1 bg-violet-50 text-violet-700 text-xs font-semibold rounded-lg border border-violet-100">{c}</span>
@@ -5871,7 +5871,7 @@ function CategoriesSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-extrabold text-gray-900">Toifalar va Savollar</h2>
+        <h2 className="text-lg font-extrabold text-gray-900">Kategoriyalar va Savollar</h2>
         <p className="text-sm text-gray-500">Kategoriyalarni boshqaring, savol va variantlarni tahrirlang</p>
       </div>
       <CategoryManagementPanel />
@@ -6270,7 +6270,7 @@ interface AdminCategoryRow {
 function getAllAdminCategories(): AdminCategoryRow[] {
   return getAllCategoriesFromStore().map((c) => {
     let qCount = 0;
-    try { qCount = getQsForCat(c.id).length; } catch { /* noop */ }
+    try { qCount = getCategorySpecificQuestionCount(c.id); } catch { /* noop */ }
     return {
       id: c.id,
       nameUz: c.nameLocalized.uz ?? "",
