@@ -59,11 +59,12 @@ export function doesCategoryMatch(
   const reqId = migrateLegacyCategoryValue(requestCategory);
   const providerIds = resolveCategoryIds(providerCategories);
 
-  if (reqId && providerIds.length > 0) {
-    return providerIds.includes(reqId);
-  }
+  // Primary path: ID-based match when both sides resolve.
+  if (reqId && providerIds.includes(reqId)) return true;
 
-  // Legacy fallback — at least one side could not be resolved to a canonical ID.
+  // Legacy / mixed fallback — also runs when the provider list mixes
+  // resolvable IDs with unresolved legacy labels, so a provider with one
+  // unmapped value isn't excluded from an otherwise-matching request.
   const norm = normalizeCategory(requestCategory);
   return providerCategories.some((c) => normalizeCategory(c) === norm);
 }
