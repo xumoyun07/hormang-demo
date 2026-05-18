@@ -42,26 +42,6 @@ import { MediaUploadZone } from "@/components/media-upload";
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 const VIOLET_SOLID = "hsl(262,80%,54%)";
 
-/* All known category strings across every supported locale, grouped by position.
- * Used to normalize categories stored in a different locale to the active one. */
-const ALL_LOCALE_CATEGORIES: string[][] = [
-  /* Uzbek  */ ["Tozalash", "Ta'mirlash", "Enagalik", "Tadbir xizmatlari", "Ko'chirish / yuk yetkazish", "Go'zallik", "Avto xizmat", "Repetitorlar", "Ustachilik"],
-  /* English */ ["Cleaning", "Repair", "Nanny", "Event services", "Moving / delivery", "Beauty", "Auto services", "Tutors", "Handyman"],
-];
-
-/** Map stored category strings to the current locale's equivalent by position.
- *  Handles the case where the user stored categories in a different language. */
-function normalizeCategories(stored: string[], current: string[]): string[] {
-  return [...new Set(stored.map(cat => {
-    if (current.includes(cat)) return cat; // already in current locale
-    for (const locale of ALL_LOCALE_CATEGORIES) {
-      const idx = locale.indexOf(cat);
-      if (idx >= 0 && idx < current.length) return current[idx];
-    }
-    return cat; // unknown: keep as-is
-  }))];
-}
-
 /* ─── Image compression ──────────────────────────────────────────── */
 function compressDataUrl(dataUrl: string, maxWidth = 1024, quality = 0.75): Promise<string> {
   return new Promise((resolve) => {

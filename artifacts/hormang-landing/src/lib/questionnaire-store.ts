@@ -510,9 +510,13 @@ export function getCategories(): CategoryConfig[] {
   try {
     canonical = getActiveCategories();
   } catch {
+    // Canonical store unavailable (test/SSR) — fall back to raw configs.
     return stored;
   }
-  if (canonical.length === 0) return stored;
+  // Empty canonical list = every category is deactivated. Respect that and
+  // return an empty list rather than leaking deactivated category configs
+  // to customer-facing selectors.
+  if (canonical.length === 0) return [];
 
   const storedById = new Map(stored.map((c) => [c.id, c]));
   return canonical.map((cn) => {
