@@ -80,6 +80,7 @@ export interface ProviderChat {
   customerName: string;
   customerInitials: string;
   customerColor: string;
+  categoryId?: string;
   categoryName: string;
   categoryEmoji: string;
   avgResponseTime: number;
@@ -183,6 +184,7 @@ function chatToProviderChat(c: Chat): ProviderChat {
     customerName,
     customerInitials,
     customerColor: c.customerColor || "#7C3AED",
+    categoryId: req?.categoryId,
     categoryName: c.categoryName,
     categoryEmoji: c.categoryEmoji || "📋",
     avgResponseTime: c.avgResponseTime ?? 14,

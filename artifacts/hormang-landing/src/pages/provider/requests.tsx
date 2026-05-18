@@ -23,6 +23,7 @@ import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questi
 import logoImg from "/hormang-logo.png";
 import { TangaChip } from "@/pages/plans";
 import { useI18n } from "@/contexts/i18n-context";
+import { getCategoryDisplayName } from "@/lib/categories";
 import { tFormat } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n/locales/uz";
 
@@ -90,7 +91,7 @@ function FullscreenSlider({
   onOpenOffer: (req: ProviderRequest) => void;
   onIgnore: (id: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [index, setIndex] = useState(startIndex);
   const current = requests[index];
   const { user: sliderUser } = useAuth();
@@ -173,7 +174,7 @@ function FullscreenSlider({
                   {current.emoji}
                 </div>
                 <div>
-                  <p className="font-extrabold text-base text-gray-900">{current.categoryName}</p>
+                  <p className="font-extrabold text-base text-gray-900">{getCategoryDisplayName(current.categoryId, locale, current.categoryName)}</p>
                   <p className="text-xs text-gray-400">{current.customerName} · {timeAgo(current.createdAt, t)}</p>
                 </div>
               </div>
@@ -249,7 +250,7 @@ function OfferDetailModal({
   offer: ProviderOffer;
   onClose: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [showCustomerProfile, setShowCustomerProfile] = useState(false);
 
   const urg = urgencyLabel(request.urgency, t);
@@ -320,7 +321,7 @@ function OfferDetailModal({
                     {request.emoji}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-extrabold text-sm text-gray-900">{request.categoryName}</p>
+                    <p className="font-extrabold text-sm text-gray-900">{getCategoryDisplayName(request.categoryId, locale, request.categoryName)}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{request.customerName} · {timeAgo(request.createdAt, t)}</p>
                   </div>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${urg.color}`}>
@@ -485,7 +486,7 @@ function OfferDetailModal({
 
 export default function ProviderRequestsPage() {
   useStoreRefresh();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const { providerProfile } = useAuth();
@@ -667,7 +668,7 @@ export default function ProviderRequestsPage() {
                     onClick={() => openOfferForm(r)}
                     className="px-4 pt-3 pb-2 border-b border-gray-50 flex items-center gap-2">
                     <span className="text-sm">{r.emoji}</span>
-                    <p className="text-xs font-semibold text-gray-500 flex-1">{r.categoryName}</p>
+                    <p className="text-xs font-semibold text-gray-500 flex-1">{getCategoryDisplayName(r.categoryId, locale, r.categoryName)}</p>
                     {isUnseen && <span className="w-2 h-2 rounded-full bg-violet-500 flex-shrink-0" />}
                     <span className="text-[10px] text-gray-400">{timeAgo(r.createdAt, t)}</span>
                   </div>
@@ -753,7 +754,7 @@ export default function ProviderRequestsPage() {
                         {r.emoji}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-gray-800 truncate">{r.categoryName}</p>
+                        <p className="text-xs font-bold text-gray-800 truncate">{getCategoryDisplayName(r.categoryId, locale, r.categoryName)}</p>
                         <p className="text-[11px] text-gray-400 truncate">{r.customerName} · {r.location}</p>
                       </div>
                       <div className="flex flex-col items-end gap-1">
@@ -793,7 +794,7 @@ export default function ProviderRequestsPage() {
                       {r.emoji}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-gray-500 truncate">{r.categoryName}</p>
+                      <p className="text-xs font-bold text-gray-500 truncate">{getCategoryDisplayName(r.categoryId, locale, r.categoryName)}</p>
                       <p className="text-[11px] text-gray-300 truncate">{r.customerName} · {timeAgo(r.createdAt, t)}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1">

@@ -19,6 +19,7 @@ import { formatDate } from "@/lib/date-utils";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n/locales/uz";
+import { getCategoryDisplayName } from "@/lib/categories";
 
 const URGENCY_CLS: Record<string, string> = {
   today_tomorrow: "bg-red-50 text-red-600 border-red-200",
@@ -44,7 +45,7 @@ function BriefcaseIcon({ className }: { className?: string }) {
 }
 
 function CompletedRequestCard({ req, index }: { req: CustomerRequest; index: number }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [, setLocation] = useLocation();
   const [previewOpen, setPreviewOpen] = useState(false);
   const offers = getOffersByRequestId(req.id);
@@ -88,7 +89,7 @@ function CompletedRequestCard({ req, index }: { req: CustomerRequest; index: num
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-bold text-sm text-gray-900 leading-snug">{req.categoryName}</p>
+            <p className="font-bold text-sm text-gray-900 leading-snug">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
             <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
               <CheckCircle2 className="w-3 h-3" />
               {t.requestHistory.card.completed}

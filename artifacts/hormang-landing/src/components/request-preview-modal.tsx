@@ -14,6 +14,7 @@ import { formatDate } from "@/lib/date-utils";
 import type { CustomerRequest } from "@/lib/requests-store";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
+import { getCategoryDisplayName } from "@/lib/categories";
 import { getLocalizedText } from "@/lib/localization";
 import type { Locale } from "@/lib/i18n";
 import { getDistrictLabel, getRegionLabel } from "@/lib/regions";
@@ -173,7 +174,7 @@ export function RequestPreviewModal({ req, onClose }: Props) {
                   {req.emoji}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-extrabold text-sm text-gray-900">{req.categoryName}</p>
+                  <p className="font-extrabold text-sm text-gray-900">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{formatDate(req.createdAt)}</p>
                 </div>
                 {urgInfo && (

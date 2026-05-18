@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n/locales/uz";
+import { getCategoryDisplayName } from "@/lib/categories";
 import logoImg from "/hormang-logo.png";
 import { formatDate } from "@/lib/date-utils";
 
@@ -56,7 +57,7 @@ function RequestCard({
   onReopen: (id: string) => void;
 }) {
   const [, setLocation] = useLocation();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [previewOpen, setPreviewOpen] = useState(false);
   const offers = getOffersByRequestId(req.id);
   const counts = getRequestCounts(req.id);
@@ -109,7 +110,7 @@ function RequestCard({
           {req.emoji}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm text-gray-900 leading-snug">{req.categoryName}</p>
+          <p className="font-bold text-sm text-gray-900 leading-snug">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
           <p className="text-xs text-gray-400 mt-0.5">{formatDate(req.createdAt)}</p>
         </div>
         {offers.length > 0 && (

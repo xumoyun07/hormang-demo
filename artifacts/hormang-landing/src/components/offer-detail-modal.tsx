@@ -27,6 +27,7 @@ import { AcceptConfirmModal } from "@/components/accept-confirm-modal";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
+import { getCategoryDisplayName } from "@/lib/categories";
 import { getLocalizedText } from "@/lib/localization";
 import type { Locale } from "@/lib/i18n";
 import { getDistrictLabel, getRegionLabel } from "@/lib/regions";
@@ -393,7 +394,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                         {req.emoji}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-extrabold text-sm text-gray-900">{req.categoryName}</p>
+                        <p className="font-extrabold text-sm text-gray-900">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
                         <p className="text-xs text-gray-400 mt-0.5">{timeAgo(req.createdAt, tt.minutesAgoTpl, tt.hoursAgoTpl, tt.daysAgoTpl)}</p>
                       </div>
                       {urgency && (
@@ -509,7 +510,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                     <div className="flex items-center justify-between">
                       <p className="text-[10px] text-amber-500 font-semibold">{tt.txCategory}</p>
                       <p className="text-[11px] font-bold text-amber-700">
-                        {tangaTx.categoryEmoji} {tangaTx.categoryName}
+                        {tangaTx.categoryEmoji} {getCategoryDisplayName(getRequestById(tangaTx.requestId)?.categoryId ?? "", locale, tangaTx.categoryName)}
                       </p>
                     </div>
                     {/* Date + time */}

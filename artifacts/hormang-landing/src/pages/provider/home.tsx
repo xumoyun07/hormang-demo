@@ -22,6 +22,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
 import { getLocalizedText } from "@/lib/localization";
+import { getCategoryDisplayName } from "@/lib/categories";
+import { getRequestById } from "@/lib/requests-store";
 import type { Dict } from "@/lib/i18n/locales/uz";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -335,7 +337,7 @@ function ProfileCompletion() {
 function UpcomingServices() {
   useStoreRefresh();
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const masterId = user?.id ?? "";
   const services = getUpcomingServices(masterId).filter((s) => s.status === "upcoming");
   const [selectedService, setSelectedService] = useState<UpcomingService | null>(null);
@@ -420,7 +422,11 @@ function UpcomingServices() {
                 <span className="text-lg leading-none">{s.categoryEmoji}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm text-gray-900 truncate">{s.title}</p>
+                <p className="font-bold text-sm text-gray-900 truncate">
+                  {s.requestId
+                    ? getCategoryDisplayName(getRequestById(s.requestId)?.categoryId ?? "", locale, s.title)
+                    : s.title}
+                </p>
                 <p className="text-xs text-gray-500 mb-1">{s.customerName}</p>
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="flex items-center gap-1 text-[11px] text-violet-600 font-semibold">
@@ -506,7 +512,7 @@ function RequestSlideCard({
   index: number;
   total: number;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const urg = urgencyLabel(request.urgency, t);
 
   return (
@@ -522,7 +528,7 @@ function RequestSlideCard({
       <div className="px-5 pt-4 pb-3 border-b border-gray-50 flex items-center gap-3">
         <span className="text-2xl">{request.emoji}</span>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm text-gray-900">{request.categoryName}</p>
+          <p className="font-bold text-sm text-gray-900">{getCategoryDisplayName(request.categoryId, locale, request.categoryName)}</p>
           <p className="text-xs text-gray-400">{request.customerName} · {timeAgo(request.createdAt, t)}</p>
         </div>
         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${urg.color}`}>
@@ -608,7 +614,7 @@ function RequestsModal({
   onMarkAllSeen: () => void;
   isNewModal: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
     <AnimatePresence>
       <motion.div
@@ -675,7 +681,7 @@ function RequestsModal({
                     <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-gray-50">
                       <span className="text-2xl">{r.emoji}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-gray-900">{r.categoryName}</p>
+                        <p className="font-bold text-sm text-gray-900">{getCategoryDisplayName(r.categoryId, locale, r.categoryName)}</p>
                         <p className="text-xs text-gray-400">{r.customerName} · {timeAgo(r.createdAt, t)}</p>
                       </div>
                       {isResponded ? (

@@ -22,6 +22,7 @@ import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
 import { getLocalProfile } from "@/lib/local-profile";
 import { getLocalizedText } from "@/lib/localization";
+import { getCategoryDisplayName } from "@/lib/categories";
 import { compressImage } from "@/lib/image-utils";
 import { regionsList, TOSHKENT_DISTRICTS, getDistrictLabel, getRegionLabel } from "@/lib/regions";
 import logoImg from "/hormang-logo.png";
@@ -967,7 +968,7 @@ function QuizHeader({
 function CategorySelectScreen({ onSelect }: { onSelect: (id: string) => void }) {
   const categories = getCategories();
   const [, setLocation] = useLocation();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
     <div className="min-h-screen bg-gray-50">
       <QuizHeader onBack={() => setLocation("/customer-home")} />
@@ -988,7 +989,7 @@ function CategorySelectScreen({ onSelect }: { onSelect: (id: string) => void }) 
             >
               <div className="text-2xl mb-3">{cat.emoji}</div>
               <p className="font-bold text-sm text-gray-900 group-hover:text-blue-600 transition-colors leading-snug">
-                {cat.name}
+                {getCategoryDisplayName(cat.id, locale, cat.name)}
               </p>
             </motion.button>
           ))}
@@ -1011,6 +1012,7 @@ function QuestionsScreen({
   const { user } = useAuth();
   const { t, locale } = useI18n();
   const cat = getCategoryById(categoryId);
+  const catDisplayName = getCategoryDisplayName(categoryId, locale, cat?.name);
   const allQuestions = getAllQuestionsForCategory(categoryId);
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
@@ -1089,7 +1091,7 @@ function QuestionsScreen({
         onBack={goBack}
         step={step}
         total={allQuestions.length}
-        categoryName={cat?.name}
+        categoryName={catDisplayName}
         emoji={cat?.emoji}
       />
       <div className="max-w-lg mx-auto px-4 py-8">
@@ -1178,6 +1180,7 @@ function SummaryScreen({
   const tt = t.misc;
   const tq = t.questionnaire;
   const cat = getCategoryById(categoryId);
+  const catDisplayName = getCategoryDisplayName(categoryId, locale, cat?.name);
   const allQuestions = getAllQuestionsForCategory(categoryId);
   const urgency = answers["urgency"] as string | undefined;
   const openToOffers = answers["budget_open"] as boolean | undefined;
@@ -1200,7 +1203,7 @@ function SummaryScreen({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <QuizHeader onBack={onBack} categoryName={cat?.name} emoji={cat?.emoji} />
+      <QuizHeader onBack={onBack} categoryName={catDisplayName} emoji={cat?.emoji} />
       <div className="max-w-lg mx-auto px-4 py-8">
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-1">
@@ -1290,8 +1293,9 @@ function RecommendationsScreen({
 }) {
   const cat = getCategoryById(categoryId);
   const [, setLocation] = useLocation();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tq = t.questionnaire;
+  const catDisplayName = getCategoryDisplayName(categoryId, locale, cat?.name);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -1313,7 +1317,7 @@ function RecommendationsScreen({
           <div className="text-2xl mb-2">{cat?.emoji ?? "📋"}</div>
           <h1 className="text-xl font-extrabold text-gray-900 mb-2">{tq.successTitle}</h1>
           <p className="text-gray-500 text-sm max-w-xs mx-auto mb-1">
-            {tFormat(tq.successDescTpl, { cat: cat?.name ?? categoryId })}
+            {tFormat(tq.successDescTpl, { cat: catDisplayName })}
           </p>
           <p className="text-gray-400 text-xs max-w-xs mx-auto mb-8">
             {tq.successNote}

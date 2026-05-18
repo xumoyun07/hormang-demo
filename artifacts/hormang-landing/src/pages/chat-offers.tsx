@@ -26,6 +26,7 @@ import logoImg from "/hormang-logo.png";
 import { formatDate as uzDate } from "@/lib/date-utils";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
+import { getCategoryDisplayName } from "@/lib/categories";
 
 /* ─── Tab type ───────────────────────────────────────────────────── */
 type Tab = "offers" | "chats";
@@ -46,7 +47,7 @@ function OfferCard({ offer, index, anyAccepted }: {
   index: number;
   anyAccepted: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.chatOffersPage;
   const [showDetail, setShowDetail] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -95,7 +96,7 @@ function OfferCard({ offer, index, anyAccepted }: {
         {req && (
           <div className="px-4 pt-3 pb-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
             <span className="text-sm">{req.emoji}</span>
-            <p className="text-xs font-semibold text-gray-500 flex-1 truncate">{req.categoryName}</p>
+            <p className="text-xs font-semibold text-gray-500 flex-1 truncate">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
             <span className="text-[10px] text-gray-400">{formatDate(offer.createdAt)}</span>
           </div>
         )}
@@ -255,7 +256,7 @@ function OfferCard({ offer, index, anyAccepted }: {
 
 /* ─── Chat Row ───────────────────────────────────────────────────── */
 function ChatRow({ chat, index }: { chat: Chat; index: number }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.chatOffersPage;
   const [, setLocation] = useLocation();
   const lastMsg = chat.messages[chat.messages.length - 1];
@@ -316,7 +317,7 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
             {formatDate(lastMsg?.timestamp ?? chat.createdAt)}
           </span>
         </div>
-        <p className="text-xs text-gray-500 font-medium truncate mb-1">{chat.categoryName}</p>
+        <p className="text-xs text-gray-500 font-medium truncate mb-1">{getCategoryDisplayName(getRequestById(chat.requestId)?.categoryId ?? "", locale, chat.categoryName)}</p>
         {offer && (
           <span className={`inline-flex items-center gap-1 text-[10px] font-bold border px-1.5 py-0.5 rounded-full ${badge.cls}`}>
             {badge.icon}
@@ -337,7 +338,7 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function ChatOffersPage() {
   useStoreRefresh();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.chatOffersPage;
   const [, setLocation] = useLocation();
   const { user } = useAuth();
@@ -394,7 +395,7 @@ export default function ChatOffersPage() {
           <div className="flex-1 min-w-0">
             <h1 className="font-extrabold text-sm text-gray-900 truncate">
               {filteredReq
-                ? `${filteredReq.emoji} ${filteredReq.categoryName}`
+                ? `${filteredReq.emoji} ${getCategoryDisplayName(filteredReq.categoryId, locale, filteredReq.categoryName)}`
                 : tt.headerTitle}
             </h1>
             <p className="text-xs text-gray-400">

@@ -24,12 +24,13 @@ import logoImg from "/hormang-logo.png";
 import { formatDate } from "@/lib/date-utils";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
+import { getCategoryDisplayName } from "@/lib/categories";
 
 /* ─── Offer Card ─────────────────────────────────────────────────── */
 function OfferCard({ offer, index, anyAccepted }: { offer: Offer; index: number; anyAccepted: boolean }) {
   const [showDetail, setShowDetail] = useState(false);
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.offersPage;
 
   const req = getRequestById(offer.requestId);
@@ -68,7 +69,7 @@ function OfferCard({ offer, index, anyAccepted }: { offer: Offer; index: number;
         {req && (
           <div className="px-4 pt-3 pb-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
             <span className="text-base">{req.emoji}</span>
-            <p className="text-xs font-semibold text-gray-500 truncate">{req.categoryName}</p>
+            <p className="text-xs font-semibold text-gray-500 truncate">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
             <span className="ml-auto text-[10px] text-gray-400">{formatDate(offer.createdAt)}</span>
           </div>
         )}
@@ -209,7 +210,7 @@ function OfferCard({ offer, index, anyAccepted }: { offer: Offer; index: number;
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function OffersPage() {
   useStoreRefresh();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.offersPage;
   const [, setLocation] = useLocation();
   const { user } = useAuth();
@@ -247,7 +248,7 @@ export default function OffersPage() {
           )}
           <div className="flex-1 min-w-0">
             <h1 className="font-extrabold text-sm text-gray-900 truncate">
-              {filteredReq ? `${filteredReq.emoji} ${filteredReq.categoryName}` : tt.headerTitle}
+              {filteredReq ? `${filteredReq.emoji} ${getCategoryDisplayName(filteredReq.categoryId, locale, filteredReq.categoryName)}` : tt.headerTitle}
             </h1>
             <p className="text-xs text-gray-400">
               {tFormat(tt.countTpl, { n: offers.length })}

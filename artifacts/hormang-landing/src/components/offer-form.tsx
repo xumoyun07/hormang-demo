@@ -36,6 +36,7 @@ import { useLocation } from "wouter";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n/locales/uz";
+import { getCategoryDisplayName } from "@/lib/categories";
 
 function formatPrice(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -102,7 +103,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const COMPLETION_OPTIONS = t.offerForm.completionOptions;
 
   /* Tanga cost calculation */
@@ -369,7 +370,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                     {request.emoji}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-extrabold text-sm text-gray-900">{request.categoryName}</p>
+                    <p className="font-extrabold text-sm text-gray-900">{getCategoryDisplayName(request.categoryId, locale, request.categoryName)}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{request.customerName} · {timeAgo(request.createdAt, t)}</p>
                   </div>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${urg.color}`}>

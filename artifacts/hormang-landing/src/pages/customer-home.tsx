@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
+import { getCategoryDisplayName } from "@/lib/categories";
 import { tFormat } from "@/lib/i18n";
 import {
   getLocalProfile, hasProviderAccess,
@@ -17,7 +18,7 @@ import {
 } from "@/lib/local-profile";
 import {
   getRequestsByCustomer, getOffersByCustomer, getChatsByCustomer,
-  getRequestCooldown, formatCooldownRemaining,
+  getRequestById, getRequestCooldown, formatCooldownRemaining,
 } from "@/lib/requests-store";
 import { getCompletedCount } from "@/lib/completion-store";
 import { RollingCategories } from "@/components/ui/RollingCategories";
@@ -27,7 +28,7 @@ const BLUE_GRAD = "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%)
 
 export default function CustomerHomePage() {
   const { user, providerProfile, logout } = useAuth();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [, setLocation] = useLocation();
   const [local, setLocal] = useState<LocalProfile>({});
   const [cooldown, setCooldown] = useState(() => getRequestCooldown(user?.id ?? ""));
@@ -245,7 +246,7 @@ export default function CustomerHomePage() {
                         {req.emoji}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-gray-900 text-sm truncate">{req.categoryName}</p>
+                        <p className="font-bold text-gray-900 text-sm truncate">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
                           {fmtDate(req.createdAt, true)}{req.region ? ` · ${req.region}` : ""}
                         </p>
@@ -303,7 +304,7 @@ export default function CustomerHomePage() {
                         {offer.masterInitials}
                       </div>
                       <p className="font-bold text-gray-900 text-sm leading-snug truncate">{offer.masterName}</p>
-                      <p className="text-xs text-gray-400 truncate mt-0.5">{req?.categoryName}</p>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">{getCategoryDisplayName(req?.categoryId ?? "", locale, req?.categoryName)}</p>
                       <p className="text-sm font-extrabold text-blue-600 mt-1.5">
                         {offer.price.toLocaleString()} {t.shared.sumSuffix}
                       </p>
@@ -368,7 +369,7 @@ export default function CustomerHomePage() {
                           <p className="text-xs text-gray-400 truncate mt-0.5">
                             {lastMsg
                               ? lastMsg.attachment ? t.shared.fileAttachment : lastMsg.text
-                              : chat.categoryName}
+                              : getCategoryDisplayName(getRequestById(chat.requestId)?.categoryId ?? "", locale, chat.categoryName)}
                           </p>
                         </div>
                         {hasNewMsg && (

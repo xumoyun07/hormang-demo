@@ -27,6 +27,7 @@ import { PublicProfilePreviewModal } from "@/components/public-profile-preview-m
 import { getLocalProfile } from "@/lib/local-profile";
 import { formatDate } from "@/lib/date-utils";
 import { useI18n } from "@/contexts/i18n-context";
+import { getCategoryDisplayName } from "@/lib/categories";
 import { tFormat } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n/locales/uz";
 
@@ -664,6 +665,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 }
 
 function ChatRow({ chat, index, onClick, t }: { chat: ProviderChat; index: number; onClick: () => void; t: Dict }) {
+  const { locale } = useI18n();
   const lastMsg = chat.messages[chat.messages.length - 1];
   const offer = getOfferForChat(chat.requestId, chat.masterId);
   const customerLocal = chat.customerId ? getLocalProfile(chat.customerId) : null;
@@ -699,7 +701,7 @@ function ChatRow({ chat, index, onClick, t }: { chat: ProviderChat; index: numbe
             {formatTime(lastMsg?.timestamp ?? chat.createdAt)}
           </span>
         </div>
-        <p className="text-xs text-gray-500 font-medium mb-1">{chat.categoryEmoji} {chat.categoryName}</p>
+        <p className="text-xs text-gray-500 font-medium mb-1">{chat.categoryEmoji} {getCategoryDisplayName(chat.categoryId ?? "", locale, chat.categoryName)}</p>
         {offer && (
           offer.providerConfirmedCompleted && !offer.customerConfirmedCompleted && offer.status !== "completed"
             ? (
@@ -736,7 +738,7 @@ type SortTab = "all" | "unread" | "by-service";
 
 export default function ProviderChatsPage() {
   useStoreRefresh();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [, setLocation] = useLocation();
   const [tab, setTab] = useState<SortTab>("all");
   const [query, setQuery] = useState("");
@@ -748,15 +750,25 @@ export default function ProviderChatsPage() {
 
   const chats = getProviderChats(masterId);
   const totalUnread = chats.reduce((s, c) => s + c.unread, 0);
-  const services = t.providerChats.serviceCategories;
+  const services = Array.from(
+    new Map(
+      chats.map((c) => [
+        c.categoryId ?? c.categoryName,
+        getCategoryDisplayName(c.categoryId ?? "", locale, c.categoryName),
+      ])
+    ).values()
+  ).sort((a, b) => a.localeCompare(b));
 
   let displayed = chats;
   if (tab === "unread") displayed = chats.filter((c) => c.unread > 0);
   if (tab === "by-service") {
     const source = selectedService
-      ? chats.filter((c) => c.categoryName === selectedService)
+      ? chats.filter((c) => getCategoryDisplayName(c.categoryId ?? "", locale, c.categoryName) === selectedService)
       : chats;
-    displayed = [...source].sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+    displayed = [...source].sort((a, b) =>
+      getCategoryDisplayName(a.categoryId ?? "", locale, a.categoryName)
+        .localeCompare(getCategoryDisplayName(b.categoryId ?? "", locale, b.categoryName))
+    );
   }
 
   if (query.trim()) {
@@ -764,7 +776,7 @@ export default function ProviderChatsPage() {
     displayed = displayed.filter(
       (c) =>
         c.customerName.toLowerCase().includes(q) ||
-        c.categoryName.toLowerCase().includes(q)
+        getCategoryDisplayName(c.categoryId ?? "", locale, c.categoryName).toLowerCase().includes(q)
     );
   }
 

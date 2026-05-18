@@ -11,7 +11,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { getTangaTransactions, type TangaTransaction } from "@/lib/tanga-history-store";
 import { getTangaBalance } from "@/lib/tanga-store";
-import { getOffers, type Offer } from "@/lib/requests-store";
+import { getOffers, getRequestById, type Offer } from "@/lib/requests-store";
+import { getCategoryDisplayName } from "@/lib/categories";
 import { TangaChip } from "@/pages/plans";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
 import { BottomNav } from "@/components/bottom-nav";
@@ -50,7 +51,7 @@ function TxRow({
   balanceAfter: number;
   onView: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.tangaHistoryPage;
   const signed = signedAmount(tx);
   const isIn   = signed >= 0;
@@ -72,7 +73,7 @@ function TxRow({
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-gray-900 text-sm leading-tight truncate">
-            {tx.categoryName}
+            {getCategoryDisplayName(getRequestById(tx.requestId)?.categoryId ?? "", locale, tx.categoryName)}
           </p>
           <p className="text-[11px] text-gray-400 mt-0.5">
             {formatDate(tx.createdAt)}
