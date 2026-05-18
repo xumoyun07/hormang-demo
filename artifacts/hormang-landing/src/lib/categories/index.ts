@@ -216,83 +216,16 @@ export function getCategoryColor(id: string): string {
 
 /* ─── Migration: legacy translated names → canonical IDs ─────────── */
 
-function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/['ʻʼ’`]/g, "")
-    .replace(/[\s/]+/g, "")
-    .trim();
-}
+import { migrateLegacyCategoryValueWith, LEGACY_NAME_MAP } from "./categoryMigration";
 
-/**
- * Hardcoded map of legacy translated names that appeared in old provider
- * profiles & locale files. Keys are normalized (lowercased, no spaces / quotes).
- */
-const LEGACY_NAME_MAP: Record<string, string> = {
-  // Variants of "Tozalash"
-  "tozalash":             "tozalash",
-  "tozalik":              "tozalash",
-  "уборка":               "tozalash",
-  // Variants of "Ta'mirlash"
-  "tamirlash":            "tamirlash",
-  "tamirlashusta":        "tamirlash",
-  "tamirlashustachilik":  "tamirlash",
-  "ремонт":               "tamirlash",
-  // Variants of "Enagalik"
-  "enagalik":             "enaga",
-  "enaga":                "enaga",
-  "enagabolaparvarishi":  "enaga",
-  "няня":                 "enaga",
-  // Variants of "Tadbir"
-  "tadbir":               "tadbir",
-  "tadbirlar":            "tadbir",
-  "tadbirxizmatlari":     "tadbir",
-  "ovqatpishirish":       "tadbir",
-  "dizaynyaratuvchanlik": "tadbir",
-  "ивентуслуги":          "tadbir",
-  // Variants of "Ko'chirish"
-  "kochirish":            "kochirish",
-  "kochirishyukyetkazish":"kochirish",
-  "kochirishtransport":   "kochirish",
-  "kochirishyuk":         "kochirish",
-  "переезддоставка":      "kochirish",
-  // Variants of "Go'zallik"
-  "gozallik":             "gozallik",
-  "gozalliksartaroshlik": "gozallik",
-  "красота":              "gozallik",
-  // Variants of "Avto"
-  "avto":                 "avto",
-  "avtoxizmat":           "avto",
-  "автоуслуги":           "avto",
-  // Variants of "Repetitor"
-  "repetitor":            "repetitor",
-  "repetitorlar":         "repetitor",
-  "repetitoroqituvchi":   "repetitor",
-  "репетиторы":           "repetitor",
-  // Variants of "Ustachilik"
-  "ustachilik":           "ustachilik",
-  "elektrishlari":        "ustachilik",
-  "santexnika":           "ustachilik",
-  "строительство":        "ustachilik",
-};
+export { LEGACY_NAME_MAP } from "./categoryMigration";
 
 /**
  * Resolve a single legacy value (id or translated name) to a canonical id.
  * Returns null when no mapping exists (caller decides whether to drop or keep as legacy).
  */
 export function migrateLegacyCategoryValue(value: string): string | null {
-  if (!value) return null;
-  // 1. Exact id match against current store
-  const all = getAllCategories();
-  if (all.some((c) => c.id === value)) return value;
-  const norm = normalize(value);
-  // 2. Match against localized names on the current store
-  for (const c of all) {
-    if (normalize(c.nameLocalized.uz ?? "") === norm) return c.id;
-    if (normalize(c.nameLocalized.ru ?? "") === norm) return c.id;
-  }
-  // 3. Legacy hardcoded map
-  return LEGACY_NAME_MAP[norm] ?? null;
+  return migrateLegacyCategoryValueWith(value, getAllCategories());
 }
 
 /**
