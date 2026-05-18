@@ -50,7 +50,7 @@ Connects users with verified local service providers through AI-powered search, 
 
 ## User preferences
 
-_Populate as you build_
+- **Languages:** Only Uzbek (UZ) and Russian (RU) are supported. Do NOT translate UI text into English — `en.ts` exists solely for TypeScript type compliance and does not need to be kept up to date with new keys.
 
 ## Gotchas
 
