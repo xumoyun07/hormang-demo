@@ -4,7 +4,7 @@
  * Supports UZ (primary) + RU (recommended) translations.
  * Changes are only persisted when the "Saqlash" button is clicked.
  */
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { TangaCoin } from "@/components/tanga-coin";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -22,6 +22,7 @@ import {
   type CategoryConfig, type Question, type QuestionType, type QuestionOption,
 } from "@/lib/questionnaire-store";
 import { getCategory, getCategoryDisplayName } from "@/lib/categories";
+import { onStoreChange } from "@/lib/store-events";
 import logoImg from "/hormang-logo.png";
 
 const ADMIN_PASSWORD = "hormang2024";
@@ -1382,6 +1383,14 @@ export function QuestionsEmbedded() {
   const [dirty, setDirty] = useState(false);
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // Re-sync category list whenever the category store changes (e.g. after
+  // admin creates/deactivates a category in CategoryManagementPanel).
+  useEffect(() => {
+    return onStoreChange(() => {
+      setCategories(getCategories());
+    });
+  }, []);
 
   function updateCategory(updated: CategoryConfig) {
     setCategories((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));

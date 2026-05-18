@@ -6130,6 +6130,20 @@ function CategoryEditorModal({
           </div>
 
           <div className="p-5 space-y-4">
+            {/* Read-only internal ID field */}
+            <div>
+              <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                Ichki ID
+                {isNew && <span className="ml-1.5 text-gray-400 font-normal normal-case">(o'zbek nomidan yaratiladi)</span>}
+                {!isNew && <span className="ml-1.5 text-gray-400 font-normal normal-case">(o'zgartirib bo'lmaydi)</span>}
+              </label>
+              <input
+                readOnly
+                value={previewId || "—"}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-sm font-mono text-gray-500 cursor-not-allowed select-all"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
