@@ -15,6 +15,9 @@ import type { LocalizedText, Locale } from "@/lib/localization";
 import { getLocalizedText } from "@/lib/localization";
 import { CATEGORY_META } from "@/data/categories";
 import { emitStoreChange } from "@/lib/store-events";
+import { migrateLegacyCategoryValueWith } from "./categoryMigration";
+
+export { LEGACY_NAME_MAP } from "./categoryMigration";
 
 /**
  * Canonical category model (CategoryModel).
@@ -215,10 +218,6 @@ export function getCategoryColor(id: string): string {
 }
 
 /* ─── Migration: legacy translated names → canonical IDs ─────────── */
-
-import { migrateLegacyCategoryValueWith, LEGACY_NAME_MAP } from "./categoryMigration";
-
-export { LEGACY_NAME_MAP } from "./categoryMigration";
 
 /**
  * Resolve a single legacy value (id or translated name) to a canonical id.
