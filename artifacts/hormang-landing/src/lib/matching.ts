@@ -31,6 +31,12 @@ export function isServiceAreaEmpty(area: ProviderServiceArea): boolean {
 
 import { migrateLegacyCategoryValue, resolveCategoryIds } from "./categories";
 
+/**
+ * @deprecated Legacy normalization used by the string-compare fallback below.
+ * Prefer ID-based matching via canonical category IDs from `lib/categories`.
+ * Kept only so historical provider data (translated names) keeps matching
+ * until profiles are fully migrated.
+ */
 function normalizeCategory(name: string): string {
   return name.toLowerCase().replace(/[\s/]+/g, "").trim();
 }

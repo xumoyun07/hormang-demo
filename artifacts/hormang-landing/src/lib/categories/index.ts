@@ -182,14 +182,16 @@ export function setCategoryActive(id: string, active: boolean): void {
   writeStore(all);
 }
 
-/** Hard delete — only allowed for non-built-in categories. Built-ins must be deactivated instead. */
-export function deleteCategory(id: string): { ok: boolean; reason?: string } {
-  const all = getAllCategories();
-  const cat = all.find((c) => c.id === id);
-  if (!cat) return { ok: false, reason: "not_found" };
-  if (cat.builtIn) return { ok: false, reason: "builtin_protected" };
-  writeStore(all.filter((c) => c.id !== id));
-  return { ok: true };
+/**
+ * @deprecated Hard delete is no longer the supported lifecycle path.
+ * Use {@link setCategoryActive}(id, false) instead — deactivation hides the
+ * category from selectors while preserving historical requests, offers, and
+ * provider profiles that reference its ID. This export is kept only to avoid
+ * a breaking API change for older callers and is intentionally unreachable
+ * from the admin UI.
+ */
+export function deleteCategory(_id: string): { ok: boolean; reason?: string } {
+  return { ok: false, reason: "deletion_disabled_use_deactivation" };
 }
 
 export function resetCategoriesToSeed(): void {

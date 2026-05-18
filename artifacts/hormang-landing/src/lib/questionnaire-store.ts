@@ -503,6 +503,8 @@ export function getCategories(): CategoryConfig[] {
   if (canonical.length === 0) return stored;
 
   const storedById = new Map(stored.map((c) => [c.id, c]));
+  const canonicalIds = new Set(canonical.map((c) => c.id));
+
   const merged: CategoryConfig[] = canonical.map((cn) => {
     const base = storedById.get(cn.id);
     return {
@@ -513,6 +515,14 @@ export function getCategories(): CategoryConfig[] {
       questions: base?.questions ?? [],
     };
   });
+
+  /* Preserve question configs for stored categories that are currently
+   * inactive or no longer in the canonical store. They are appended at the
+   * end so admin save round-trips don't accidentally drop their questions.
+   * Customer-facing screens should keep filtering by canonical active set. */
+  for (const s of stored) {
+    if (!canonicalIds.has(s.id)) merged.push(s);
+  }
   return merged;
 }
 
