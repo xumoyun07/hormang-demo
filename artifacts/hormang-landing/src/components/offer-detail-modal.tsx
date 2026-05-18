@@ -27,6 +27,9 @@ import { AcceptConfirmModal } from "@/components/accept-confirm-modal";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
+import { getLocalizedText } from "@/lib/localization";
+import type { Locale } from "@/lib/i18n";
+import { getDistrictLabel, getRegionLabel } from "@/lib/regions";
 
 /* ─── Constants ────────────────────────────────────────────────────── */
 
@@ -36,13 +39,16 @@ const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", 
 
 /* ─── Helpers ──────────────────────────────────────────────────────── */
 
+type OptionItem = { label: string; value: string; type?: string; labelLocalized?: Record<string, string> | string };
+
 function formatAnswerValue(
   value: unknown,
-  options: { label: string; value: string; type?: string }[] | undefined,
+  options: OptionItem[] | undefined,
   otherText: string | undefined,
   yes: string,
   no: string,
   sumSuffix: string,
+  locale: Locale,
 ): string {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "string" && value.startsWith("data:")) return "__IMAGE__";
@@ -51,12 +57,14 @@ function formatAnswerValue(
   const otherOpt = options?.find((o) => o.type === "other");
   if (typeof value === "string") {
     if (otherOpt && value === otherOpt.value && otherText) return otherText;
-    return options?.find((o) => o.value === value)?.label ?? value;
+    const opt = options?.find((o) => o.value === value);
+    return opt ? getLocalizedText(opt.labelLocalized ?? opt.label, locale) : value;
   }
   if (Array.isArray(value)) {
     return (value as string[]).map((v) => {
       if (otherOpt && v === otherOpt.value && otherText) return otherText;
-      return options?.find((o) => o.value === v)?.label ?? v;
+      const opt = options?.find((o) => o.value === v);
+      return opt ? getLocalizedText(opt.labelLocalized ?? opt.label, locale) : v;
     }).join(", ");
   }
   if (typeof value === "object" && value !== null) {
@@ -112,7 +120,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
   const [, setLocation] = useLocation();
   const [showProviderProfile, setShowProviderProfile] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.offerDetailModal;
 
   /* ── Reactive live data ───────────────────────────────────────────
@@ -158,9 +166,13 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
       const raw = req?.answers?.[q.id];
       if (raw === null || raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0)) return null;
       const otherText = req?.answers?.[q.id + "_other"] as string | undefined;
-      const formatted = formatAnswerValue(raw, q.options, otherText, tt.yes, tt.no, tt.sumSuffix);
+      const formatted = formatAnswerValue(raw, q.options as OptionItem[] | undefined, otherText, tt.yes, tt.no, tt.sumSuffix, locale);
       if (formatted === "__IMAGE__") return null;
-      return { label: q.label, value: formatted };
+      const qLabel = getLocalizedText(
+        (q as { labelLocalized?: Record<string, string> | string }).labelLocalized ?? q.label,
+        locale,
+      );
+      return { label: qLabel, value: formatted };
     })
     .filter(Boolean) as { label: string; value: string }[];
 
@@ -178,7 +190,10 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
   /* Derive request metadata */
   const urgency = req?.answers?.["urgency"] as string | undefined;
   const urg = urgencyLabel(urgency, tt.urgencyUrgent, tt.urgencyNormal, tt.urgencyFlexible);
-  const location = [req?.district, req?.region].filter(Boolean).join(", ");
+  const location = [
+    req?.district ? getDistrictLabel(req.district, locale) : "",
+    req?.region ? getRegionLabel(req.region, locale) : "",
+  ].filter(Boolean).join(", ");
   const budgetAnswer = req?.answers?.["budget"];
   const budgetLabel = typeof budgetAnswer === "number"
     ? budgetAnswer.toLocaleString("uz-Latn-UZ") + " " + tt.sumSuffix

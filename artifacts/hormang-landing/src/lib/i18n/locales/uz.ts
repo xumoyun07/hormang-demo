@@ -1037,6 +1037,48 @@ export const uz = {
     alreadyGranted: "Allaqachon berilgan",
     onlyProviders: "Faqat ijrochilarga",
     autoConditions: "Avtomatik nishon shartlari",
+    badges: {
+      recommended_by_hormang: {
+        label: "Hormang tavsiyasi",
+        description: "Hormang jamoasi tomonidan tavsiya etilgan ijrochi",
+        hint: "Hormang jamoasi tomonidan tavsiya etilgan ijrochi",
+      },
+      top_provider: {
+        label: "Top ijrochi",
+        description: "Reyting ≥ 4.7 va 50+ xizmat bajargan ijrochi",
+        hint: "Reyting ≥ 4.7 va 50+ xizmat bajargan ijrochi",
+      },
+      trusted_provider: {
+        label: "Ishonchli ijrochi",
+        description: "Reyting ≥ 4.7 va sharhlarda barcha mezonlar 80%+",
+        hint: "Reyting ≥ 4.7, xizmat sifati, muomala va narx ko'rsatkichlari 80%+",
+      },
+      verified: {
+        label: "Tasdiqlangan",
+        description: "Telefon raqami tasdiqlangan va profil 100% to'ldirilgan",
+        hint: "Telefon raqami tasdiqlangan va profil 100% to'ldirilgan ijrochi",
+      },
+      experienced_provider: {
+        label: "Tajribali",
+        description: "1+ yil hisob va 50+ bajarilgan ish",
+        hint: "Hormangda 1+ yil faoliyat ko'rsatgan va 50+ xizmat bajargan ijrochi",
+      },
+      premium_provider: {
+        label: "Premium",
+        description: "Jami 500+ Tanga to'plagan",
+        hint: "Hormang platformasida 500+ Tanga sarflagan ijrochi",
+      },
+      strong_portfolio: {
+        label: "Kuchli portfolio",
+        description: "5+ albom va har birida 10+ rasm",
+        hint: "Portfoliosida 5+ albom va har birida 10+ rasm bo'lgan ijrochi",
+      },
+      under_review: {
+        label: "Kuzatuvda",
+        description: "Platforma administratorlari tomonidan kuzatuv ostida turgan yoki ogohlantirish olgan ijrochi",
+        hint: "Admin tomonidan vaqtinchalik tekshiruv ostida",
+      },
+    },
   },
   customerReviewsPage: {
     title: "Baholashlarim",

@@ -14,16 +14,23 @@ import { formatDate } from "@/lib/date-utils";
 import type { CustomerRequest } from "@/lib/requests-store";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
+import { getLocalizedText } from "@/lib/localization";
+import type { Locale } from "@/lib/i18n";
+import { getDistrictLabel, getRegionLabel } from "@/lib/regions";
 
 /* ─── Skip keys (shown elsewhere in UI) ──────────────────────────── */
 const SKIP_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district"]);
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
+type OptionItem = { label: string; value: string; type?: string; labelLocalized?: Record<string, string> | string };
+
 function formatAnswerValue(
   value: unknown,
-  options?: { label: string; value: string; type?: string }[],
+  options?: OptionItem[],
   otherText?: string,
+  locale?: Locale,
 ): string {
+  const loc_: Locale = locale ?? "uz";
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "string" && value.startsWith("data:")) return "__IMAGE__";
   if (typeof value === "boolean") return value ? "✓" : "—";
@@ -32,21 +39,23 @@ function formatAnswerValue(
   const otherOpt = options?.find((o) => o.type === "other");
   if (typeof value === "string") {
     if (otherOpt && value === otherOpt.value && otherText) return otherText;
-    return options?.find((o) => o.value === value)?.label ?? value;
+    const opt = options?.find((o) => o.value === value);
+    return opt ? getLocalizedText(opt.labelLocalized ?? opt.label, loc_) : value;
   }
   if (Array.isArray(value)) {
     return (value as string[])
       .map((v) => {
         if (otherOpt && v === otherOpt.value && otherText) return otherText;
-        return options?.find((o) => o.value === v)?.label ?? v;
+        const opt = options?.find((o) => o.value === v);
+        return opt ? getLocalizedText(opt.labelLocalized ?? opt.label, loc_) : v;
       })
       .join(", ");
   }
   if (typeof value === "object" && value !== null) {
-    const loc = value as Record<string, unknown>;
-    const parts = [loc.district, loc.region].filter((p): p is string => typeof p === "string" && p.length > 0);
+    const locVal = value as Record<string, unknown>;
+    const parts = [locVal.district, locVal.region].filter((p): p is string => typeof p === "string" && p.length > 0);
     if (parts.length > 0) return parts.join(", ");
-    const strs = Object.values(loc).filter((v): v is string => typeof v === "string" && v.length > 0);
+    const strs = Object.values(locVal).filter((v): v is string => typeof v === "string" && v.length > 0);
     return strs.join(", ") || "—";
   }
   return String(value);
@@ -67,7 +76,7 @@ interface Props {
 }
 
 export function RequestPreviewModal({ req, onClose }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.requestPreviewModal;
   const allQuestions = getAllQuestionsForCategory(req.categoryId);
   const activeQuestions = collectActiveQuestions(
@@ -82,9 +91,13 @@ export function RequestPreviewModal({ req, onClose }: Props) {
       if (raw === null || raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0))
         return null;
       const otherText = req.answers?.[q.id + "_other"] as string | undefined;
-      const formatted = formatAnswerValue(raw, q.options, otherText);
+      const formatted = formatAnswerValue(raw, q.options as OptionItem[] | undefined, otherText, locale);
       if (formatted === "__IMAGE__") return null;
-      return { label: q.label, value: formatted };
+      const qLabel = getLocalizedText(
+        (q as { labelLocalized?: Record<string, string> | string }).labelLocalized ?? q.label,
+        locale,
+      );
+      return { label: qLabel, value: formatted };
     })
     .filter(Boolean) as { label: string; value: string }[];
 
@@ -96,7 +109,10 @@ export function RequestPreviewModal({ req, onClose }: Props) {
   const urgInfo = urgency
     ? { label: t.requestHistory.urgency[urgency as keyof typeof t.requestHistory.urgency] ?? urgency, color: URGENCY_COLOR[urgency] ?? "text-gray-500 bg-gray-100 border border-gray-200" }
     : null;
-  const location = [req.district, req.region].filter(Boolean).join(", ");
+  const location = [
+    req.district ? getDistrictLabel(req.district, locale) : "",
+    req.region ? getRegionLabel(req.region, locale) : "",
+  ].filter(Boolean).join(", ");
   const budgetAnswer = req.answers?.["budget"];
   const openToOffers = req.answers?.["budget_open"] as boolean | undefined;
   const budgetLabel =

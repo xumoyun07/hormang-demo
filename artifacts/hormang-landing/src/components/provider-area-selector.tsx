@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, MapPin, CheckSquare, Square, Building2, Map } from "lucide-react";
-import { TOSHKENT_DISTRICTS, regionsList } from "@/lib/regions";
+import { TOSHKENT_DISTRICTS, regionsList, getDistrictLabel, getRegionLabel } from "@/lib/regions";
 import { type ProviderServiceArea, emptyProviderServiceArea, isServiceAreaEmpty } from "@/lib/matching";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
@@ -23,6 +23,7 @@ interface GroupProps {
   isAll: boolean;
   selected: string[];
   items: string[];
+  itemLabels?: string[];
   onAllChange: (v: boolean) => void;
   onItemChange: (item: string, checked: boolean) => void;
 }
@@ -48,7 +49,7 @@ function CheckItem({ label, checked, onChange }: { label: string; checked: boole
   );
 }
 
-function Group({ title, icon, colorClass, isAll, selected, items, onAllChange, onItemChange }: GroupProps) {
+function Group({ title, icon, colorClass, isAll, selected, items, itemLabels, onAllChange, onItemChange }: GroupProps) {
   const { t } = useI18n();
   const tt = t.providerAreaSelector;
   const [open, setOpen] = useState(true);
@@ -104,10 +105,10 @@ function Group({ title, icon, colorClass, isAll, selected, items, onAllChange, o
               {/* Individual items — disabled (greyed) when "all" is active */}
               {!isAll && (
                 <div className="grid grid-cols-2 gap-1.5 pt-1">
-                  {items.map((item) => (
+                  {items.map((item, i) => (
                     <CheckItem
                       key={item}
-                      label={item}
+                      label={itemLabels?.[i] ?? item}
                       checked={selected.includes(item)}
                       onChange={(v) => onItemChange(item, v)}
                     />
@@ -136,7 +137,7 @@ interface ProviderAreaSelectorProps {
 }
 
 export function ProviderAreaSelector({ value, onChange }: ProviderAreaSelectorProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.providerAreaSelector;
   const area = value ?? emptyProviderServiceArea();
   const empty = isServiceAreaEmpty(area);
@@ -177,6 +178,7 @@ export function ProviderAreaSelector({ value, onChange }: ProviderAreaSelectorPr
         isAll={area.toshkent_city.all}
         selected={area.toshkent_city.districts}
         items={TOSHKENT_DISTRICTS}
+        itemLabels={TOSHKENT_DISTRICTS.map((d) => getDistrictLabel(d, locale))}
         onAllChange={(v) => setCity({ all: v, districts: [] })}
         onItemChange={toggleCityDistrict}
       />
@@ -188,6 +190,7 @@ export function ProviderAreaSelector({ value, onChange }: ProviderAreaSelectorPr
         isAll={area.toshkent_region.all}
         selected={area.toshkent_region.cities}
         items={VILOYAT_CITIES}
+        itemLabels={VILOYAT_CITIES.map((c) => getRegionLabel(c, locale))}
         onAllChange={(v) => setRegion({ all: v, cities: [] })}
         onItemChange={toggleRegionCity}
       />

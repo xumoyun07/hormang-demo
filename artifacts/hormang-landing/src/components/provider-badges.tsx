@@ -38,7 +38,13 @@ export function BadgePill({
 }) {
   const meta = BADGE_META[type];
   if (!meta) return null;
+  const { t } = useI18n();
   const Icon = ICONS[meta.icon];
+  const badgeI18n = t.providerBadges.badges[type as keyof typeof t.providerBadges.badges] as
+    | { label: string; description: string; hint: string }
+    | undefined;
+  const label = badgeI18n?.label ?? meta.label;
+  const description = badgeI18n?.description ?? meta.description;
 
   const sz = size === "md"
     ? "px-2.5 py-1 text-[11px] gap-1.5"
@@ -49,10 +55,10 @@ export function BadgePill({
     <span
       className={`inline-flex items-center rounded-full font-bold border whitespace-nowrap leading-none ${sz} ${meta.pillBg} ${meta.pillText} ${meta.pillBorder}`}
       style={meta.pillStyle}
-      title={meta.description}
+      title={description}
     >
       <Icon className={iconSz} strokeWidth={2.5} />
-      {meta.label}
+      {label}
     </span>
   );
 }
@@ -96,7 +102,12 @@ export function BadgeEmptyState({
   const hints = (user && user.role === "provider"
     ? explainAutoBadges(user).filter((r) => !r.qualified).slice(0, 3)
     : []
-  ).map((r) => BADGE_META[r.type].hint);
+  ).map((r) => {
+    const bi = tt.badges[r.type as keyof typeof tt.badges] as
+      | { label: string; description: string; hint: string }
+      | undefined;
+    return bi?.hint ?? BADGE_META[r.type].hint;
+  });
 
   const fallbackHints = tt.fallbackHints;
   const showHints = hints.length > 0 ? hints : fallbackHints;
@@ -229,6 +240,9 @@ export function BadgeConditionsSheet({
                 {items.map((type) => {
                   const meta = BADGE_META[type];
                   const Icon = ICONS[meta.icon];
+                  const bi = tt.badges[type as keyof typeof tt.badges] as
+                    | { label: string; description: string; hint: string }
+                    | undefined;
                   return (
                     <div
                       key={type}
@@ -239,10 +253,12 @@ export function BadgeConditionsSheet({
                         style={meta.pillStyle}
                       >
                         <Icon className="w-3 h-3" strokeWidth={2.5} />
-                        {meta.label}
+                        {bi?.label ?? meta.label}
                       </span>
                       <p className="text-[11px] text-gray-500 leading-relaxed">
-                        {type === "under_review" ? meta.description : meta.hint}
+                        {type === "under_review"
+                          ? (bi?.description ?? meta.description)
+                          : (bi?.hint ?? meta.hint)}
                       </p>
                     </div>
                   );
@@ -326,7 +342,9 @@ export function AdminBadgeManager({
                     <button
                       onClick={() => remove(b.type)}
                       className="text-[9px] font-bold text-rose-600 hover:text-rose-800 px-1"
-                      title={tFmt(tt.removeTitleTpl, { label: meta.label })}
+                      title={tFmt(tt.removeTitleTpl, {
+                        label: (tt.badges[b.type as keyof typeof tt.badges] as { label: string } | undefined)?.label ?? meta.label,
+                      })}
                     >
                       ✕
                     </button>
@@ -359,7 +377,9 @@ export function AdminBadgeManager({
               <div key={type} className="flex items-center justify-between gap-2 bg-white rounded-xl border border-gray-100 px-2.5 py-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <BadgePill type={type} size="sm" />
-                  <span className="text-[10px] text-gray-500 truncate">{meta.description}</span>
+                  <span className="text-[10px] text-gray-500 truncate">
+                    {(tt.badges[type as keyof typeof tt.badges] as { description: string } | undefined)?.description ?? meta.description}
+                  </span>
                 </div>
                 <button
                   onClick={() => grant(type)}
@@ -404,7 +424,9 @@ export function AdminBadgeDiagnostics({ user }: { user: SafeUser }) {
           >
             <div className="flex items-center gap-1.5 min-w-0">
               <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${r.qualified ? "bg-emerald-500" : "bg-gray-300"}`} />
-              <span className="font-bold text-gray-700">{meta.label}</span>
+              <span className="font-bold text-gray-700">
+                {(tt.badges[r.type as keyof typeof tt.badges] as { label: string } | undefined)?.label ?? meta.label}
+              </span>
             </div>
             <span className="text-gray-500 truncate">{r.details}</span>
           </div>

@@ -23,7 +23,7 @@ import { tFormat } from "@/lib/i18n";
 import { getLocalProfile } from "@/lib/local-profile";
 import { getLocalizedText } from "@/lib/localization";
 import { compressImage } from "@/lib/image-utils";
-import { regionsList, TOSHKENT_DISTRICTS } from "@/lib/regions";
+import { regionsList, TOSHKENT_DISTRICTS, getDistrictLabel, getRegionLabel } from "@/lib/regions";
 import logoImg from "/hormang-logo.png";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
@@ -343,15 +343,15 @@ function LocationQuestionInput({
   onChange: (v: unknown) => void;
   userId?: string;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tq = t.questionnaire;
   const profile = userId ? getLocalProfile(userId) : {};
   const profileRegion = profile.region;
   const profileDistrict = profile.district;
   const hasProfileAddress = !!profileRegion;
   const profileDisplay = profileDistrict
-    ? `${profileDistrict}, ${profileRegion}`
-    : profileRegion ?? "";
+    ? `${getDistrictLabel(profileDistrict, locale)}, ${getRegionLabel(profileRegion!, locale)}`
+    : profileRegion ? getRegionLabel(profileRegion, locale) : "";
 
   const loc: LocationAnswer | null =
     value && typeof value === "object" && !Array.isArray(value)
@@ -445,7 +445,9 @@ function LocationQuestionInput({
           <p className="text-sm font-semibold text-gray-900">{tq.customAddress}</p>
           {currentMode === "custom" && customRegion && (
             <p className="text-sm text-gray-500 mt-0.5">
-              {customDistrict ? `${customDistrict}, ${customRegion}` : customRegion}
+              {customDistrict
+                ? `${getDistrictLabel(customDistrict, locale)}, ${getRegionLabel(customRegion, locale)}`
+                : getRegionLabel(customRegion, locale)}
             </p>
           )}
         </div>
@@ -500,7 +502,7 @@ function LocationQuestionInput({
                         onClick={() => pickDistrict(d)}
                         className={customDistrict === d ? chipOn : chipOff}
                       >
-                        {d}
+                        {getDistrictLabel(d, locale)}
                       </button>
                     ))}
                   </div>
@@ -518,7 +520,7 @@ function LocationQuestionInput({
                         onClick={() => pickViloyatCity(city)}
                         className={customRegion === city ? chipOn : chipOff}
                       >
-                        {city}
+                        {getRegionLabel(city, locale)}
                       </button>
                     ))}
                   </div>

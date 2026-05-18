@@ -1039,6 +1039,48 @@ export const en: Dict = {
     alreadyGranted: "Already granted",
     onlyProviders: "Providers only",
     autoConditions: "Automatic badge conditions",
+    badges: {
+      recommended_by_hormang: {
+        label: "Hormang Recommended",
+        description: "Provider recommended by the Hormang team",
+        hint: "Provider recommended by the Hormang team",
+      },
+      top_provider: {
+        label: "Top Provider",
+        description: "Rating ≥ 4.7 and 50+ completed services",
+        hint: "Rating ≥ 4.7 and 50+ completed services",
+      },
+      trusted_provider: {
+        label: "Trusted Provider",
+        description: "Rating ≥ 4.7 and all review criteria 80%+",
+        hint: "Rating ≥ 4.7, service quality, communication and price 80%+",
+      },
+      verified: {
+        label: "Verified",
+        description: "Phone confirmed and profile 100% complete",
+        hint: "Provider with confirmed phone and fully completed profile",
+      },
+      experienced_provider: {
+        label: "Experienced",
+        description: "Account 1+ year and 50+ completed jobs",
+        hint: "1+ year on Hormang and 50+ completed services",
+      },
+      premium_provider: {
+        label: "Premium",
+        description: "Accumulated 500+ Tangas",
+        hint: "Spent 500+ Tangas on the Hormang platform",
+      },
+      strong_portfolio: {
+        label: "Strong Portfolio",
+        description: "5+ albums with 10+ photos each",
+        hint: "5+ albums with 10+ photos each in portfolio",
+      },
+      under_review: {
+        label: "Under Review",
+        description: "Provider under observation or warned by platform administrators",
+        hint: "Temporarily under admin review",
+      },
+    },
   },
   customerReviewsPage: {
     title: "My ratings",

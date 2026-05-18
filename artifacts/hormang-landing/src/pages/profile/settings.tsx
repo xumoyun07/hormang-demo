@@ -27,7 +27,7 @@ import { tFormat } from "@/lib/i18n";
 import { BottomNav } from "@/components/bottom-nav";
 import { useToast } from "@/hooks/use-toast";
 import { updateProfile, updateProviderProfile, sendSmsCode, addPhone } from "@/lib/auth-client";
-import { regionsList } from "@/lib/regions";
+import { regionsList, getRegionLabel, getDistrictLabel } from "@/lib/regions";
 import {
   getLocalProfile, saveLocalProfile,
   getCompletionChecks, getCompletionPct,
@@ -294,7 +294,7 @@ function AddPhoneModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
 export default function ProfileSettingsPage() {
   const { user, providerProfile, setAuth, setProviderProfile, activeRole, loading } = useAuth();
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.misc;
   const [, setLocation] = useLocation();
 
@@ -933,7 +933,7 @@ export default function ProfileSettingsPage() {
                   <select value={region} onChange={(e) => handleRegionChange(e.target.value)}
                     className="w-full h-11 px-4 pr-9 rounded-2xl border-2 border-gray-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 appearance-none">
                     <option value="">{ps.selectRegion}</option>
-                    {regionsList.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                    {regionsList.map((r) => <option key={r.value} value={r.value}>{getRegionLabel(r.value, locale)}</option>)}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
@@ -948,7 +948,7 @@ export default function ProfileSettingsPage() {
                         <select value={district} onChange={(e) => setDistrict(e.target.value)}
                           className="w-full h-11 px-4 pr-9 rounded-2xl border-2 border-violet-200 text-sm text-gray-800 bg-white focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 appearance-none">
                           <option value="">{ps.selectDistrict}</option>
-                          {selectedRegionObj?.districts?.map((d) => <option key={d} value={d}>{d}</option>)}
+                          {selectedRegionObj?.districts?.map((d) => <option key={d} value={d}>{getDistrictLabel(d, locale)}</option>)}
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                       </div>
