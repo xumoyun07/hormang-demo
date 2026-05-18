@@ -28,7 +28,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { useToast } from "@/hooks/use-toast";
 import { updateProfile, updateProviderProfile, sendSmsCode, addPhone } from "@/lib/auth-client";
 import { regionsList, getRegionLabel, getDistrictLabel } from "@/lib/regions";
-import { getActiveCategories, getCategoryDisplayName, resolveCategoryIds } from "@/lib/categories";
+import { getActiveCategories, getCategoryDisplayName, migrateCategoryValuesSafe } from "@/lib/categories";
 import {
   getLocalProfile, saveLocalProfile,
   getCompletionChecks, getCompletionPct,
@@ -352,8 +352,9 @@ export default function ProfileSettingsPage() {
     setAlbums(loaded.albums ?? []);
 
     /* Categories: server wins, local is authoritative fallback.
-     * Stored values may be legacy translated names — resolveCategoryIds maps
-     * them to canonical IDs (idempotent for new ID-based profiles). */
+     * Stored values may be legacy translated names — migrateCategoryValuesSafe
+     * maps known ones to canonical IDs and **preserves any unknowns as-is** so
+     * pre-existing provider profiles never silently lose category data on load. */
     const raw = providerProfile?.categories?.length
       ? providerProfile.categories
       : (loaded.categories ?? []);
@@ -361,7 +362,7 @@ export default function ProfileSettingsPage() {
       if (!providerProfile?.categories?.length) {
         console.log(`[Hormang] 📦 categories — local fallback: ${raw.join(", ")}`);
       }
-      setSelectedServices(resolveCategoryIds(raw));
+      setSelectedServices(migrateCategoryValuesSafe(raw));
     } else {
       setSelectedServices([]);
     }

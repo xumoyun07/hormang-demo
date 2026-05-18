@@ -25,51 +25,80 @@ function normalize(s: string): string {
  * profiles & locale files. Keys are normalized (lowercased, no spaces / quotes).
  */
 export const LEGACY_NAME_MAP: Record<string, string> = {
-  // Variants of "Tozalash"
-  "tozalash":             "tozalash",
-  "tozalik":              "tozalash",
-  "уборка":               "tozalash",
-  // Variants of "Ta'mirlash"
-  "tamirlash":            "tamirlash",
-  "tamirlashusta":        "tamirlash",
-  "tamirlashustachilik":  "tamirlash",
-  "ремонт":               "tamirlash",
-  // Variants of "Enagalik"
-  "enagalik":             "enaga",
-  "enaga":                "enaga",
-  "enagabolaparvarishi":  "enaga",
-  "няня":                 "enaga",
-  // Variants of "Tadbir"
-  "tadbir":               "tadbir",
-  "tadbirlar":            "tadbir",
-  "tadbirxizmatlari":     "tadbir",
-  "ovqatpishirish":       "tadbir",
-  "dizaynyaratuvchanlik": "tadbir",
-  "ивентуслуги":          "tadbir",
-  // Variants of "Ko'chirish"
-  "kochirish":            "kochirish",
-  "kochirishyukyetkazish":"kochirish",
-  "kochirishtransport":   "kochirish",
-  "kochirishyuk":         "kochirish",
-  "переезддоставка":      "kochirish",
-  // Variants of "Go'zallik"
-  "gozallik":             "gozallik",
-  "gozalliksartaroshlik": "gozallik",
-  "красота":              "gozallik",
-  // Variants of "Avto"
-  "avto":                 "avto",
-  "avtoxizmat":           "avto",
-  "автоуслуги":           "avto",
-  // Variants of "Repetitor"
-  "repetitor":            "repetitor",
-  "repetitorlar":         "repetitor",
-  "repetitoroqituvchi":   "repetitor",
-  "репетиторы":           "repetitor",
-  // Variants of "Ustachilik"
-  "ustachilik":           "ustachilik",
-  "elektrishlari":        "ustachilik",
-  "santexnika":           "ustachilik",
-  "строительство":        "ustachilik",
+  // ── Tozalash / Уборка ──
+  "tozalash":                 "tozalash",
+  "tozalik":                  "tozalash",
+  "уборка":                   "tozalash",
+  "клининг":                  "tozalash",
+
+  // ── Ta'mirlash / Ремонт ──
+  "tamirlash":                "tamirlash",
+  "tamirlashusta":            "tamirlash",
+  "tamirlashustachilik":      "tamirlash",
+  "ремонт":                   "tamirlash",
+  "ремонтмастер":             "tamirlash",   // "Ремонт / Мастер"
+
+  // ── Enaga / Няня ──
+  "enagalik":                 "enaga",
+  "enaga":                    "enaga",
+  "enagabolaparvarishi":      "enaga",
+  "няня":                     "enaga",
+  "няни":                     "enaga",
+  "нянябоналенка":            "enaga",
+  "няняуходзадетьми":         "enaga",       // "Няня / Уход за детьми"
+
+  // ── Tadbir / Услуги для мероприятий ──
+  "tadbir":                   "tadbir",
+  "tadbirlar":                "tadbir",
+  "tadbirxizmatlari":         "tadbir",
+  "ovqatpishirish":           "tadbir",
+  "dizaynyaratuvchanlik":     "tadbir",
+  "ивентуслуги":              "tadbir",
+  "услугидлямероприятий":     "tadbir",
+  "готовка":                  "tadbir",
+  "мероприятия":              "tadbir",
+
+  // ── Ko'chirish / Переезд ──
+  "kochirish":                "kochirish",
+  "kochirishyukyetkazish":    "kochirish",
+  "kochirishtransport":       "kochirish",
+  "kochirishyuk":             "kochirish",
+  "переезддоставка":          "kochirish",   // "Переезд / доставка"
+  "переездтранспорт":         "kochirish",   // "Переезд / Транспорт"
+  "переезд":                  "kochirish",
+  "доставка":                 "kochirish",
+
+  // ── Go'zallik / Красота ──
+  "gozallik":                 "gozallik",
+  "gozalliksartaroshlik":     "gozallik",
+  "красота":                  "gozallik",
+  "красотапарикмахерская":    "gozallik",    // "Красота / Парикмахерская"
+  "парикмахерская":           "gozallik",
+
+  // ── Avto / Авто услуги ──
+  "avto":                     "avto",
+  "avtoxizmat":               "avto",
+  "автоуслуги":               "avto",
+  "автосервис":               "avto",
+
+  // ── Repetitor / Репетитор ──
+  "repetitor":                "repetitor",
+  "repetitorlar":             "repetitor",
+  "repetitoroqituvchi":       "repetitor",
+  "репетиторы":               "repetitor",
+  "репетитор":                "repetitor",
+  "репетиторучитель":         "repetitor",   // "Репетитор / Учитель"
+  "учитель":                  "repetitor",
+
+  // ── Ustachilik / Мастер / Электрика ──
+  "ustachilik":               "ustachilik",
+  "elektrishlari":            "ustachilik",
+  "santexnika":               "ustachilik",
+  "строительство":            "ustachilik",
+  "электрика":                "ustachilik",
+  "мастер":                   "ustachilik",
+  "мастеровые":               "ustachilik",
+  "сантехника":               "ustachilik",
 };
 
 /**
