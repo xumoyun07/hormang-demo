@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X, MapPin, ShieldCheck, Star,
   Briefcase, Award, ChevronRight, Flag,
+  IdCard,
 } from "lucide-react";
 import { getLocalProfile, getServiceAreaLabels } from "@/lib/local-profile";
 import { getAverageRatingForUser, getReviewsForUser, getCompletedCount } from "@/lib/completion-store";
@@ -36,6 +37,9 @@ const VIOLET       = "hsl(262,80%,54%)";
 const VIOLET_LIGHT = "hsl(262,80%,97%)";
 const BLUE         = "hsl(221,78%,48%)";
 const BLUE_LIGHT   = "hsl(221,78%,97%)";
+const WHITE        = "hsl(0,0%,100%)";
+const TRANSPARENT  = "transparent"
+const BLUR         = "blur(10px)"
 
 /* ─── Helpers ────────────────────────────────────────────────────────── */
 function deriveInitials(name: string): string {
@@ -207,14 +211,23 @@ function ProviderPreviewSheet({
                   </div>
                 )}
                 {/* Verified badge */}
-                <div
-                  className="absolute -bottom-2 -right-1 w-7 h-7 rounded-full flex items-center justify-center"
-                  style={{ background: VIOLET, border: "2.5px solid white" }}
-                  title={tt.verifiedTooltip}
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-white" />
+              <div
+                className="
+                  absolute bottom-0 right-0
+                  w-8 h-8
+                  rounded-full
+                  flex items-center justify-center
+                  bg-white
+                  border-2 border-white
+                  shadow-md
+                "
+                title={tt.verifiedTooltip}
+              >
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-violet-100">
+                  <IdCard className="w-3.5 h-3.5 text-violet-600" />
                 </div>
               </div>
+            </div>
 
               {/* Name */}
               <h2 className="text-2xl font-black text-gray-900 leading-tight mb-2">
