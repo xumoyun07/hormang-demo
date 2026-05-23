@@ -26,6 +26,7 @@ import { getLocalProfile } from "@/lib/local-profile";
 import { formatDate } from "@/lib/date-utils";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
+import { getCategoryDisplayName } from "@/lib/categories";
 
 const BLUE = "hsl(221,78%,48%)";
 
@@ -80,7 +81,7 @@ function ReviewDetailModal({
   review: Review;
   onClose: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.providerReviewsSheet;
   const METRIC_LABELS = useMetricLabels();
   const meta = getReviewerMeta(review, tt.fallbackCustomer);
@@ -147,7 +148,7 @@ function ReviewDetailModal({
                 <StarRating rating={review.rating} size="w-5 h-5" />
                 {review.serviceCategory && (
                   <span className="text-[11px] font-black text-violet-700 bg-violet-50 border border-violet-100 rounded-full px-2.5 py-1">
-                    {review.serviceCategory}
+                    {getCategoryDisplayName(review.serviceCategory, locale)}
                   </span>
                 )}
               </div>

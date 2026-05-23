@@ -204,7 +204,7 @@ export function resetCategoriesToSeed(): void {
 /* ─── Display helpers ────────────────────────────────────────────── */
 
 export function getCategoryDisplayName(id: string, locale: Locale, fallback?: string): string {
-  const cat = getCategory(id);
+  const cat = getCategory(id) ?? getCategory(migrateLegacyCategoryValue(id) ?? "");
   if (cat) return getLocalizedText(cat.nameLocalized, locale);
   return fallback ?? id;
 }

@@ -17,6 +17,7 @@ import { getOfferById } from "@/lib/requests-store";
 import { formatDate } from "@/lib/date-utils";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
+import { getCategoryDisplayName } from "@/lib/categories";
 
 const VIOLET = "hsl(262,80%,54%)";
 
@@ -49,7 +50,7 @@ function ReviewCard({
   review: Review;
   onProfile: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const meta = getReviewerMeta(review, t.customerReviewsPage.fallbackProvider);
 
   return (
@@ -80,7 +81,7 @@ function ReviewCard({
             <span className="text-xs text-gray-400">{formatDate(review.createdAt)}</span>
           </div>
           {review.serviceCategory && (
-            <p className="text-[11px] font-bold text-blue-600 mt-1">{review.serviceCategory}</p>
+            <p className="text-[11px] font-bold text-blue-600 mt-1">{getCategoryDisplayName(review.serviceCategory, locale)}</p>
           )}
         </div>
       </div>
