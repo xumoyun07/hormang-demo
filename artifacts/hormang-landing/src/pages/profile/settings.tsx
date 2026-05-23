@@ -506,13 +506,13 @@ export default function ProfileSettingsPage() {
     albums,
     portfolioItems: albums.flatMap((a) => a.photos).slice(0, 20),
   };
-  const checks = getCompletionChecks(
+  const rawChecks = getCompletionChecks(
     user ?? null,
     { ...providerProfile, categories: selectedServices, bio } as typeof providerProfile,
     completionLocal,
   );
-  const pct     = getCompletionPct(checks);
-  const missing = checks.filter((c) => !c.done);
+  const pct     = getCompletionPct(rawChecks);
+  const missing = rawChecks.filter((c) => !c.done);
 
   /* Section refs for scroll-to */
   const refPhoto      = useRef<HTMLDivElement>(null);
@@ -630,6 +630,21 @@ export default function ProfileSettingsPage() {
 
   /* ── Customer completion (used when !isProvider) ── */
   const ps = t.profileSettings;
+
+  // Remap provider check labels to the active locale so RU users see translated text.
+  const providerCheckLabels: Record<string, string> = {
+    photo:      ps.providerCheckPhoto,
+    name:       ps.providerCheckName,
+    region:     ps.providerCheckRegion,
+    services:   ps.providerCheckServices,
+    bio:        ps.providerCheckBio,
+    experience: ps.providerCheckExperience,
+    portfolio:  ps.providerCheckPortfolio,
+  };
+  const checks = missing.map((c) =>
+    providerCheckLabels[c.key] ? { ...c, label: providerCheckLabels[c.key] } : c,
+  );
+
   const customerChecks = [
     { key: "photo",    label: ps.photoCheckLabel,   weight: 30, done: !!photoUrl },
     { key: "name",     label: ps.nameCheckLabel,    weight: 30, done: !!(firstName.trim().length >= 2 && lastName.trim().length >= 2) },
@@ -704,7 +719,7 @@ export default function ProfileSettingsPage() {
         {/* ── Completion Card ── */}
         {(() => {
           const displayPct     = isProvider ? pct : customerPct;
-          const displayMissing = isProvider ? missing : customerMissing;
+          const displayMissing = isProvider ? checks : customerMissing;
           return (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-2xl border border-violet-100 shadow-sm p-4">
@@ -740,7 +755,9 @@ export default function ProfileSettingsPage() {
               {/* Missing items with add-now buttons */}
               {displayMissing.length > 0 && (
                 <div className="border-t border-gray-50 pt-3 space-y-2">
-                  <p className="text-[10px] font-bold text-gray-400">{ps.fillProfileHint}</p>
+                  <p className="text-[10px] font-bold text-gray-400">
+                    {isProvider ? ps.fillProfileHintProvider : ps.fillProfileHint}
+                  </p>
                   {displayMissing.slice(0, 4).map((m) => (
                     <div key={m.key} className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
