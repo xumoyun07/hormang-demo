@@ -106,9 +106,28 @@ function StatusBanner({ status }: { status: Offer["status"] }) {
 }
 
 /* ─── Message Bubble ─────────────────────────────────────────────── */
+const SYSTEM_MSG_KEYS = [
+  "systemMsgOfferAccepted",
+  "systemMsgOfferRejected",
+  "systemMsgOfferSiblingClosed",
+] as const;
+type SystemMsgKey = (typeof SYSTEM_MSG_KEYS)[number];
+
 function MessageBubble({ msg, isFirst }: { msg: ChatMessage; isFirst: boolean }) {
+  const { t } = useI18n();
+  const tt = t.chatPage;
   // System messages render as centered banners
   if (msg.sender === "system") {
+    const knownTexts: Record<string, SystemMsgKey> = {
+      "Taklif qabul qilindi — Suhbat davom etmoqda": "systemMsgOfferAccepted",
+      "Taklif rad etildi. Suhbat yopildi.": "systemMsgOfferRejected",
+      "Mijoz boshqa ijrochi taklifini qabul qildi": "systemMsgOfferSiblingClosed",
+      "Предложение принято — чат продолжается": "systemMsgOfferAccepted",
+      "Предложение отклонено. Чат закрыт.": "systemMsgOfferRejected",
+      "Клиент принял предложение другого исполнителя": "systemMsgOfferSiblingClosed",
+    };
+    const key = knownTexts[msg.text];
+    const displayText = key ? tt[key] : msg.text;
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -116,7 +135,7 @@ function MessageBubble({ msg, isFirst }: { msg: ChatMessage; isFirst: boolean })
         className="flex justify-center my-2"
       >
         <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
-          {msg.text}
+          {displayText}
         </span>
       </motion.div>
     );
