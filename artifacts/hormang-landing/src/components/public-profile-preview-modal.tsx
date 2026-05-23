@@ -211,23 +211,23 @@ function ProviderPreviewSheet({
                   </div>
                 )}
                 {/* Verified badge */}
-              <div
-                className="
-                  absolute bottom-0 right-0
-                  w-8 h-8
-                  rounded-full
-                  flex items-center justify-center
-                  bg-white
-                  border-2 border-white
-                  shadow-md
-                "
-                title={tt.verifiedTooltip}
-              >
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-violet-100">
-                  <IdCard className="w-3.5 h-3.5 text-violet-600" />
+                <div
+                  className="
+                    absolute bottom-0 right-0
+                    w-8 h-8
+                    rounded-full
+                    flex items-center justify-center
+                    bg-white
+                    border-2 border-white
+                    shadow-md
+                  "
+                  title={tt.verifiedTooltip}
+                >
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100">
+                    <IdCard className="w-4.5 h-4.5 text-gray-400" />
+                  </div>  
                 </div>
               </div>
-            </div>
 
               {/* Name */}
               <h2 className="text-2xl font-black text-gray-900 leading-tight mb-2">

@@ -1551,7 +1551,7 @@ export const uz = {
   },
   publicProfilePreviewModal: {
     reportBtn: "Shikoyat",
-    verifiedTooltip: "Tasdiqlangan ijrochi",
+    verifiedTooltip: "ID tekshiruvi — tez kunda",
     providerBadge: "Ijrochi",
     customerBadge: "Mijoz",
     yearsExpTpl: "{{n}} yil tajriba",
