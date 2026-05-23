@@ -1564,7 +1564,7 @@ export const ru: Dict = {
   },
   publicProfilePreviewModal: {
     reportBtn: "Жалоба",
-    verifiedTooltip: "Подтверждённый исполнитель",
+    verifiedTooltip: "Проверка ID — скоро",
     providerBadge: "Исполнитель",
     customerBadge: "Клиент",
     yearsExpTpl: "{{n}} лет опыта",

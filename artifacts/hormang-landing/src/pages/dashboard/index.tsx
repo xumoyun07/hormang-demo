@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
+import { getCategoryDisplayName } from "@/lib/categories";
 import { saveProviderProfile } from "@/lib/auth-client";
 import { processReferralReward } from "@/lib/referral-store";
 import { useToast } from "@/hooks/use-toast";
@@ -382,7 +383,7 @@ function CircularProgress({ pct }: { pct: number }) {
 function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void }) {
   const { user, providerProfile } = useAuth();
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [local, setLocal] = useState<LocalProfile>({});
   const storeVersion = useStoreRefresh();
   const completionDismissKey = user?.id ? `profile_completion_dismissed_${user.id}` : "";
@@ -606,7 +607,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
             {selectedCategories.slice(0, 4).map(cat => (
               <span key={cat}
                 className="text-[11px] font-semibold px-2.5 py-1 rounded-xl bg-violet-50 text-violet-700 border border-violet-100">
-                {cat}
+                {getCategoryDisplayName(cat, locale)}
               </span>
             ))}
             {selectedCategories.length > 4 && (
