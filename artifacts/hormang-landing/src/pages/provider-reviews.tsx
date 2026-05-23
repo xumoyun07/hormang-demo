@@ -19,6 +19,7 @@ import { getLocalProfile } from "@/lib/local-profile";
 import { formatDate } from "@/lib/date-utils";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
+import { getCategoryDisplayName } from "@/lib/categories";
 
 const BLUE = "hsl(221,78%,48%)";
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
@@ -251,7 +252,7 @@ function ReviewCard({
   onPreview: () => void;
   onProfile: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.providerReviewsPage;
   const META_LABELS = useMetricLabels();
   const meta = getReviewerMeta(review, tt.fallbackCustomer);
@@ -285,7 +286,7 @@ function ReviewCard({
             <span className="text-xs text-gray-400">{formatDate(review.createdAt)}</span>
           </div>
           {review.serviceCategory && (
-            <p className="text-[11px] font-bold text-violet-600 mt-1">{review.serviceCategory}</p>
+            <p className="text-[11px] font-bold text-violet-600 mt-1">{getCategoryDisplayName(review.serviceCategory, locale)}</p>
           )}
         </div>
         {review.photoUrl && (
