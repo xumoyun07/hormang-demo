@@ -510,7 +510,8 @@ export function markOfferCompleted(offerId: string): boolean {
  */
 export function confirmCompletion(
   offerId: string,
-  role: "provider" | "customer"
+  role: "provider" | "customer",
+  systemMsgs?: { providerConfirmed: string; customerConfirmed: string; completed: string }
 ): "completed" | "waiting" {
   const allOffers = getOffers();
   const target = allOffers.find((o) => o.id === offerId);
@@ -538,7 +539,7 @@ export function confirmCompletion(
     incrementCompletedCount(target.masterId, "provider");
     sendSystemMessage(
       `${target.requestId}_${target.masterId}`,
-      "✅ Xizmat yakunlandi! Hamkorlik uchun rahmat."
+      systemMsgs?.completed ?? "✅ Xizmat yakunlandi! Hamkorlik uchun rahmat."
     );
     emitStoreChange();
     return "completed";
@@ -547,8 +548,8 @@ export function confirmCompletion(
   writeJSON(OFFERS_KEY, allOffers.map((o) => (o.id === offerId ? updated : o)));
   const waitingMsg =
     role === "provider"
-      ? "⏳ Ijrochi xizmat yakunlanganligini tasdiqladi. Mijoz tasdig'i kutilmoqda."
-      : "⏳ Mijoz xizmat yakunlanganligini tasdiqladi. Ijrochi tasdig'i kutilmoqda.";
+      ? (systemMsgs?.providerConfirmed ?? "⏳ Ijrochi xizmat yakunlanganligini tasdiqladi. Mijoz tasdig'i kutilmoqda.")
+      : (systemMsgs?.customerConfirmed ?? "⏳ Mijoz xizmat yakunlanganligini tasdiqladi. Ijrochi tasdig'i kutilmoqda.");
   sendSystemMessage(`${target.requestId}_${target.masterId}`, waitingMsg);
   emitStoreChange();
   return "waiting";

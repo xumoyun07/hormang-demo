@@ -110,6 +110,9 @@ const SYSTEM_MSG_KEYS = [
   "systemMsgOfferAccepted",
   "systemMsgOfferRejected",
   "systemMsgOfferSiblingClosed",
+  "systemMsgProviderConfirmed",
+  "systemMsgCustomerConfirmed",
+  "systemMsgCompleted",
 ] as const;
 type SystemMsgKey = (typeof SYSTEM_MSG_KEYS)[number];
 
@@ -122,9 +125,15 @@ function MessageBubble({ msg, isFirst }: { msg: ChatMessage; isFirst: boolean })
       "Taklif qabul qilindi — Suhbat davom etmoqda": "systemMsgOfferAccepted",
       "Taklif rad etildi. Suhbat yopildi.": "systemMsgOfferRejected",
       "Mijoz boshqa ijrochi taklifini qabul qildi": "systemMsgOfferSiblingClosed",
+      "⏳ Ijrochi xizmat yakunlanganligini tasdiqladi. Mijoz tasdig'i kutilmoqda.": "systemMsgProviderConfirmed",
+      "⏳ Mijoz xizmat yakunlanganligini tasdiqladi. Ijrochi tasdig'i kutilmoqda.": "systemMsgCustomerConfirmed",
+      "✅ Xizmat yakunlandi! Hamkorlik uchun rahmat.": "systemMsgCompleted",
       "Предложение принято — чат продолжается": "systemMsgOfferAccepted",
       "Предложение отклонено. Чат закрыт.": "systemMsgOfferRejected",
       "Клиент принял предложение другого исполнителя": "systemMsgOfferSiblingClosed",
+      "⏳ Исполнитель подтвердил завершение. Ожидается подтверждение клиента.": "systemMsgProviderConfirmed",
+      "⏳ Клиент подтвердил завершение. Ожидается подтверждение исполнителя.": "systemMsgCustomerConfirmed",
+      "✅ Услуга завершена! Спасибо за сотрудничество.": "systemMsgCompleted",
     };
     const key = knownTexts[msg.text];
     const displayText = key ? tt[key] : msg.text;
@@ -281,7 +290,11 @@ export default function ChatPage() {
       toast({ title: SUSPENDED_MESSAGE, variant: "destructive" });
       return;
     }
-    const result = confirmCompletion(offer.id, "customer");
+    const result = confirmCompletion(offer.id, "customer", {
+      providerConfirmed: tt.systemMsgProviderConfirmed,
+      customerConfirmed: tt.systemMsgCustomerConfirmed,
+      completed:         tt.systemMsgCompleted,
+    });
     if (result === "completed" && !hasReviewedRequest(chat.requestId, user?.id ?? "")) {
       setShowReview(true);
     }
@@ -443,7 +456,8 @@ export default function ChatPage() {
             !chat.messages.some(
               (m) =>
                 m.sender === "system" &&
-                (m.text.includes("qabul qilindi") || m.text.includes("rad etildi"))
+                (m.text.includes("qabul qilindi") || m.text.includes("rad etildi") ||
+                 m.text.includes("принято") || m.text.includes("отклонено"))
             ) && <StatusBanner status={offer.status} />}
 
           <div ref={messagesEndRef} className="h-1" />

@@ -362,7 +362,11 @@ function UpcomingServices() {
 
   function handleDone(s: UpcomingService) {
     if (s.offerId) {
-      const result = confirmCompletion(s.offerId, "provider");
+      const result = confirmCompletion(s.offerId, "provider", {
+        providerConfirmed: t.chatPage.systemMsgProviderConfirmed,
+        customerConfirmed: t.chatPage.systemMsgCustomerConfirmed,
+        completed:         t.chatPage.systemMsgCompleted,
+      });
       if (result === "completed") {
         const alreadyReviewed = s.requestId ? hasReviewedRequest(s.requestId, masterId) : false;
         if (!alreadyReviewed) {

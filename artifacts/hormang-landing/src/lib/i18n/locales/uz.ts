@@ -1517,6 +1517,9 @@ export const uz = {
     systemMsgOfferAccepted: "Taklif qabul qilindi — Suhbat davom etmoqda",
     systemMsgOfferRejected: "Taklif rad etildi. Suhbat yopildi.",
     systemMsgOfferSiblingClosed: "Mijoz boshqa ijrochi taklifini qabul qildi",
+    systemMsgProviderConfirmed: "⏳ Ijrochi xizmat yakunlanganligini tasdiqladi. Mijoz tasdig'i kutilmoqda.",
+    systemMsgCustomerConfirmed: "⏳ Mijoz xizmat yakunlanganligini tasdiqladi. Ijrochi tasdig'i kutilmoqda.",
+    systemMsgCompleted: "✅ Xizmat yakunlandi! Hamkorlik uchun rahmat.",
   },
   offerDetailModal: {
     title: "Taklif tafsilotlari",

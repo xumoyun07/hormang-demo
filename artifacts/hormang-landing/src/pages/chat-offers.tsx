@@ -334,7 +334,26 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
         )}
         {lastMsg && (
           <p className="text-[11px] text-gray-400 truncate mt-0.5">
-            {lastMsg.sender === "customer" ? tt.youPrefix : ""}{lastMsg.text}
+            {lastMsg.sender === "system"
+              ? (() => {
+                  const sysMsgs = t.chatPage;
+                  const map: Record<string, string> = {
+                    "Taklif qabul qilindi — Suhbat davom etmoqda": sysMsgs.systemMsgOfferAccepted,
+                    "Taklif rad etildi. Suhbat yopildi.": sysMsgs.systemMsgOfferRejected,
+                    "Mijoz boshqa ijrochi taklifini qabul qildi": sysMsgs.systemMsgOfferSiblingClosed,
+                    "⏳ Ijrochi xizmat yakunlanganligini tasdiqladi. Mijoz tasdig'i kutilmoqda.": sysMsgs.systemMsgProviderConfirmed,
+                    "⏳ Mijoz xizmat yakunlanganligini tasdiqladi. Ijrochi tasdig'i kutilmoqda.": sysMsgs.systemMsgCustomerConfirmed,
+                    "✅ Xizmat yakunlandi! Hamkorlik uchun rahmat.": sysMsgs.systemMsgCompleted,
+                    "Предложение принято — чат продолжается": sysMsgs.systemMsgOfferAccepted,
+                    "Предложение отклонено. Чат закрыт.": sysMsgs.systemMsgOfferRejected,
+                    "Клиент принял предложение другого исполнителя": sysMsgs.systemMsgOfferSiblingClosed,
+                    "⏳ Исполнитель подтвердил завершение. Ожидается подтверждение клиента.": sysMsgs.systemMsgProviderConfirmed,
+                    "⏳ Клиент подтвердил завершение. Ожидается подтверждение исполнителя.": sysMsgs.systemMsgCustomerConfirmed,
+                    "✅ Услуга завершена! Спасибо за сотрудничество.": sysMsgs.systemMsgCompleted,
+                  };
+                  return map[lastMsg.text] ?? lastMsg.text;
+                })()
+              : (lastMsg.sender === "customer" ? tt.youPrefix : "") + lastMsg.text}
           </p>
         )}
       </div>

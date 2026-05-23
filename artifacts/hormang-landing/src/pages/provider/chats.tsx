@@ -125,13 +125,20 @@ function MsgBubble({ msg, isFirst }: { msg: ProviderChatMessage; isFirst: boolea
   const { t } = useI18n();
   const tt = t.chatPage;
   if (msg.sender === "system") {
-    const knownTexts: Record<string, "systemMsgOfferAccepted" | "systemMsgOfferRejected" | "systemMsgOfferSiblingClosed"> = {
+    type SysMsgKey = "systemMsgOfferAccepted" | "systemMsgOfferRejected" | "systemMsgOfferSiblingClosed" | "systemMsgProviderConfirmed" | "systemMsgCustomerConfirmed" | "systemMsgCompleted";
+    const knownTexts: Record<string, SysMsgKey> = {
       "Taklif qabul qilindi — Suhbat davom etmoqda": "systemMsgOfferAccepted",
       "Taklif rad etildi. Suhbat yopildi.": "systemMsgOfferRejected",
       "Mijoz boshqa ijrochi taklifini qabul qildi": "systemMsgOfferSiblingClosed",
+      "⏳ Ijrochi xizmat yakunlanganligini tasdiqladi. Mijoz tasdig'i kutilmoqda.": "systemMsgProviderConfirmed",
+      "⏳ Mijoz xizmat yakunlanganligini tasdiqladi. Ijrochi tasdig'i kutilmoqda.": "systemMsgCustomerConfirmed",
+      "✅ Xizmat yakunlandi! Hamkorlik uchun rahmat.": "systemMsgCompleted",
       "Предложение принято — чат продолжается": "systemMsgOfferAccepted",
       "Предложение отклонено. Чат закрыт.": "systemMsgOfferRejected",
       "Клиент принял предложение другого исполнителя": "systemMsgOfferSiblingClosed",
+      "⏳ Исполнитель подтвердил завершение. Ожидается подтверждение клиента.": "systemMsgProviderConfirmed",
+      "⏳ Клиент подтвердил завершение. Ожидается подтверждение исполнителя.": "systemMsgCustomerConfirmed",
+      "✅ Услуга завершена! Спасибо за сотрудничество.": "systemMsgCompleted",
     };
     const key = knownTexts[msg.text];
     const displayText = key ? tt[key] : msg.text;
@@ -367,7 +374,11 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 
   function handleComplete() {
     if (!offer || !chat) return;
-    const result = confirmCompletion(offer.id, "provider");
+    const result = confirmCompletion(offer.id, "provider", {
+      providerConfirmed: t.chatPage.systemMsgProviderConfirmed,
+      customerConfirmed: t.chatPage.systemMsgCustomerConfirmed,
+      completed:         t.chatPage.systemMsgCompleted,
+    });
     if (result === "completed" && !hasReviewedRequest(chat.requestId, masterId)) {
       setShowReview(true);
     }
@@ -533,7 +544,8 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             !chat.messages.some(
               (m) =>
                 m.sender === "system" &&
-                (m.text.includes("qabul qilindi") || m.text.includes("rad etildi"))
+                (m.text.includes("qabul qilindi") || m.text.includes("rad etildi") ||
+                 m.text.includes("принято") || m.text.includes("отклонено"))
             ) && <StatusBanner status={offer.status} t={t} />}
 
           <div ref={bottomRef} className="h-1" />
@@ -726,7 +738,26 @@ function ChatRow({ chat, index, onClick, t }: { chat: ProviderChat; index: numbe
         )}
         {lastMsg && (
           <p className="text-[11px] text-gray-400 truncate mt-0.5">
-            {lastMsg.sender === "provider" ? t.providerChats.row.youPrefix : ""}{lastMsg.text}
+            {lastMsg.sender === "system"
+              ? (() => {
+                  const sysMsgs = t.chatPage;
+                  const map: Record<string, string> = {
+                    "Taklif qabul qilindi — Suhbat davom etmoqda": sysMsgs.systemMsgOfferAccepted,
+                    "Taklif rad etildi. Suhbat yopildi.": sysMsgs.systemMsgOfferRejected,
+                    "Mijoz boshqa ijrochi taklifini qabul qildi": sysMsgs.systemMsgOfferSiblingClosed,
+                    "⏳ Ijrochi xizmat yakunlanganligini tasdiqladi. Mijoz tasdig'i kutilmoqda.": sysMsgs.systemMsgProviderConfirmed,
+                    "⏳ Mijoz xizmat yakunlanganligini tasdiqladi. Ijrochi tasdig'i kutilmoqda.": sysMsgs.systemMsgCustomerConfirmed,
+                    "✅ Xizmat yakunlandi! Hamkorlik uchun rahmat.": sysMsgs.systemMsgCompleted,
+                    "Предложение принято — чат продолжается": sysMsgs.systemMsgOfferAccepted,
+                    "Предложение отклонено. Чат закрыт.": sysMsgs.systemMsgOfferRejected,
+                    "Клиент принял предложение другого исполнителя": sysMsgs.systemMsgOfferSiblingClosed,
+                    "⏳ Исполнитель подтвердил завершение. Ожидается подтверждение клиента.": sysMsgs.systemMsgProviderConfirmed,
+                    "⏳ Клиент подтвердил завершение. Ожидается подтверждение исполнителя.": sysMsgs.systemMsgCustomerConfirmed,
+                    "✅ Услуга завершена! Спасибо за сотрудничество.": sysMsgs.systemMsgCompleted,
+                  };
+                  return map[lastMsg.text] ?? lastMsg.text;
+                })()
+              : (lastMsg.sender === "provider" ? t.providerChats.row.youPrefix : "") + lastMsg.text}
           </p>
         )}
       </div>

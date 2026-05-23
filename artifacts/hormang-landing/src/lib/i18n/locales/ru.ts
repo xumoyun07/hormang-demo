@@ -1519,6 +1519,9 @@ export const ru: Dict = {
     systemMsgOfferAccepted: "Предложение принято — чат продолжается",
     systemMsgOfferRejected: "Предложение отклонено. Чат закрыт.",
     systemMsgOfferSiblingClosed: "Клиент принял предложение другого исполнителя",
+    systemMsgProviderConfirmed: "⏳ Исполнитель подтвердил завершение. Ожидается подтверждение клиента.",
+    systemMsgCustomerConfirmed: "⏳ Клиент подтвердил завершение. Ожидается подтверждение исполнителя.",
+    systemMsgCompleted: "✅ Услуга завершена! Спасибо за сотрудничество.",
   },
   offerDetailModal: {
     title: "Детали предложения",

@@ -1519,6 +1519,9 @@ export const en: Dict = {
     systemMsgOfferAccepted: "Offer accepted — chat continues",
     systemMsgOfferRejected: "Offer rejected. Chat closed.",
     systemMsgOfferSiblingClosed: "Customer accepted another provider's offer",
+    systemMsgProviderConfirmed: "⏳ Provider confirmed completion. Awaiting customer confirmation.",
+    systemMsgCustomerConfirmed: "⏳ Customer confirmed completion. Awaiting provider confirmation.",
+    systemMsgCompleted: "✅ Service completed! Thank you for your cooperation.",
   },
   offerDetailModal: {
     title: "Offer details",
