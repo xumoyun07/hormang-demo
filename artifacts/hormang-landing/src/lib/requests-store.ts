@@ -593,7 +593,11 @@ function refundOfferToProvider(
   console.log(`[Hormang] 💰 Refund: +${cost} Tanga → provider=${offer.masterId.slice(0,8)} offer=${offer.id} (${reason})`);
 }
 
-export function updateOfferStatus(offerId: string, status: "accepted" | "rejected"): void {
+export function updateOfferStatus(
+  offerId: string,
+  status: "accepted" | "rejected",
+  systemMsgs?: { accepted: string; rejected: string; sibling: string },
+): void {
   const allOffers = getOffers();
   const target = allOffers.find((o) => o.id === offerId);
   if (!target) return;
@@ -633,8 +637,8 @@ export function updateOfferStatus(offerId: string, status: "accepted" | "rejecte
     const chatId = `${target.requestId}_${target.masterId}`;
     const text =
       status === "accepted"
-        ? "Taklif qabul qilindi — Suhbat davom etmoqda"
-        : "Taklif rad etildi. Suhbat yopildi.";
+        ? (systemMsgs?.accepted ?? "Taklif qabul qilindi — Suhbat davom etmoqda")
+        : (systemMsgs?.rejected ?? "Taklif rad etildi. Suhbat yopildi.");
     sendSystemMessage(chatId, text);
   }
 
@@ -643,11 +647,9 @@ export function updateOfferStatus(offerId: string, status: "accepted" | "rejecte
     const siblings = allOffers.filter(
       (o) => o.requestId === target.requestId && o.id !== offerId
     );
+    const sibMsg = systemMsgs?.sibling ?? "Mijoz boshqa ijrochi taklifini qabul qildi";
     for (const sib of siblings) {
-      sendSystemMessage(
-        `${sib.requestId}_${sib.masterId}`,
-        "Mijoz boshqa ijrochi taklifini qabul qildi"
-      );
+      sendSystemMessage(`${sib.requestId}_${sib.masterId}`, sibMsg);
     }
   }
 

@@ -307,18 +307,25 @@ export function getCompletionChecks(
 /**
  * Returns a flat list of human-readable service area labels from a LocalProfile.
  * Prefers the new V2 structured format, falls back to legacy serviceAreas[].
+ * Pass `areaLabels` to override the "all city/region" fallback strings with
+ * locale-specific text.
  */
-export function getServiceAreaLabels(local: LocalProfile): string[] {
+export function getServiceAreaLabels(
+  local: LocalProfile,
+  areaLabels?: { allToshkentCity?: string; allToshkentRegion?: string },
+): string[] {
+  const allCity   = areaLabels?.allToshkentCity   ?? "Butun Toshkent shahri";
+  const allRegion = areaLabels?.allToshkentRegion ?? "Butun Toshkent viloyati";
   if (local.serviceAreaV2) {
     const v2 = local.serviceAreaV2;
     const labels: string[] = [];
     if (v2.toshkent_city.all) {
-      labels.push("Butun Toshkent shahri");
+      labels.push(allCity);
     } else {
       labels.push(...v2.toshkent_city.districts);
     }
     if (v2.toshkent_region.all) {
-      labels.push("Butun Toshkent viloyati");
+      labels.push(allRegion);
     } else {
       labels.push(...v2.toshkent_region.cities);
     }

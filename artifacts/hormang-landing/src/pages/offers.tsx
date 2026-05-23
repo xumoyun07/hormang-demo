@@ -43,12 +43,20 @@ function OfferCard({ offer, index, anyAccepted }: { offer: Offer; index: number;
 
   function accept(e: React.MouseEvent) {
     e.stopPropagation();
-    updateOfferStatus(offer.id, "accepted");
+    updateOfferStatus(offer.id, "accepted", {
+      accepted: t.chatPage.systemMsgOfferAccepted,
+      rejected: t.chatPage.systemMsgOfferRejected,
+      sibling:  t.chatPage.systemMsgOfferSiblingClosed,
+    });
   }
 
   function reject(e: React.MouseEvent) {
     e.stopPropagation();
-    updateOfferStatus(offer.id, "rejected");
+    updateOfferStatus(offer.id, "rejected", {
+      accepted: t.chatPage.systemMsgOfferAccepted,
+      rejected: t.chatPage.systemMsgOfferRejected,
+      sibling:  t.chatPage.systemMsgOfferSiblingClosed,
+    });
   }
 
   return (

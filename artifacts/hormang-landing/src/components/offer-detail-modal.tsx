@@ -215,13 +215,21 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
   }
 
   function confirmAccept() {
-    updateOfferStatus(offer.id, "accepted");
+    updateOfferStatus(offer.id, "accepted", {
+      accepted: t.chatPage.systemMsgOfferAccepted,
+      rejected: t.chatPage.systemMsgOfferRejected,
+      sibling:  t.chatPage.systemMsgOfferSiblingClosed,
+    });
     setShowConfirm(false);
     onClose();
   }
 
   function reject() {
-    updateOfferStatus(offer.id, "rejected");
+    updateOfferStatus(offer.id, "rejected", {
+      accepted: t.chatPage.systemMsgOfferAccepted,
+      rejected: t.chatPage.systemMsgOfferRejected,
+      sibling:  t.chatPage.systemMsgOfferSiblingClosed,
+    });
   }
 
   return (

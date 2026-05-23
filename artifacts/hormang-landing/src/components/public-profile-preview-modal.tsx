@@ -15,6 +15,7 @@ import {
   IdCard,
 } from "lucide-react";
 import { getLocalProfile, getServiceAreaLabels } from "@/lib/local-profile";
+import { getCategoryDisplayName } from "@/lib/categories";
 import { getAverageRatingForUser, getReviewsForUser, getCompletedCount } from "@/lib/completion-store";
 import { StarRating } from "@/components/star-rating";
 import { ProviderReviewsSheet } from "@/components/provider-reviews-sheet";
@@ -115,14 +116,17 @@ function ProviderPreviewSheet({
   onClose: () => void;
 }) {
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.publicProfilePreviewModal;
   const local = getLocalProfile(data.masterId);
   const albums = local.albums ?? [];
   const allPhotos = albums.flatMap((a) => a.photos.map((p) => p.url));
   const bio = local.bio;
   const categories = local.categories ?? [];
-  const serviceAreas = getServiceAreaLabels(local);
+  const serviceAreas = getServiceAreaLabels(local, {
+    allToshkentCity:   tt.allToshkentCity,
+    allToshkentRegion: tt.allToshkentRegion,
+  });
 
   const avgRating = getAverageRatingForUser(data.masterId, "provider");
   const reviewCount = getReviewsForUser(data.masterId, "provider").length;
@@ -357,7 +361,7 @@ function ProviderPreviewSheet({
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {categories.map((cat) => (
-                    <CategoryChip key={cat} label={cat} />
+                    <CategoryChip key={cat} label={getCategoryDisplayName(cat, locale)} />
                   ))}
                 </div>
               </div>
@@ -600,7 +604,7 @@ function CustomerPreviewSheet({
                 </div>
                 <div>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mb-0.5">
-                    {tt.serviceAreasLabel}
+                    {tt.homeAddressLabel}
                   </p>
                   <p className="text-sm font-bold text-gray-800">{location}</p>
                 </div>

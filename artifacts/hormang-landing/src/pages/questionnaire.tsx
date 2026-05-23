@@ -19,7 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
-import { tFormat } from "@/lib/i18n";
+import { tFormat, type Locale } from "@/lib/i18n";
 import { getLocalProfile } from "@/lib/local-profile";
 import { getLocalizedText } from "@/lib/localization";
 import { getCategoryDisplayName } from "@/lib/categories";
@@ -46,7 +46,7 @@ const URGENCY_COLORS: Record<string, string> = {
 };
 
 /* ─── Answer formatting helpers ─────────────────────────────────── */
-interface FormatLabels { yes: string; no: string; fileUploaded: string; soum: string; budgetTpl: string }
+interface FormatLabels { yes: string; no: string; fileUploaded: string; soum: string; budgetTpl: string; locale?: Locale }
 function formatAnswer(question: Question, value: unknown, labels?: FormatLabels): string {
   if (value === null || value === undefined || value === "") return "—";
   if (question.type === "location") {
@@ -58,11 +58,16 @@ function formatAnswer(question: Question, value: unknown, labels?: FormatLabels)
   if (question.type === "multi-select" && Array.isArray(value)) {
     if (value.length === 0) return "—";
     const opts = question.options ?? [];
-    return value.map((v) => opts.find((o) => o.value === v)?.label ?? v).join(", ");
+    return value.map((v) => {
+      const opt = opts.find((o) => o.value === v);
+      if (!opt) return String(v);
+      return getLocalizedText(opt.labelLocalized ?? opt.label, labels?.locale ?? "uz");
+    }).join(", ");
   }
   if (question.type === "single-select") {
     const opt = question.options?.find((o) => o.value === value);
-    return opt?.label ?? String(value);
+    if (!opt) return String(value);
+    return getLocalizedText(opt.labelLocalized ?? opt.label, labels?.locale ?? "uz");
   }
   if (question.type === "yes-no") return value ? (labels?.yes ?? "Ha") : (labels?.no ?? "Yo'q");
   if (question.type === "file") return value ? (labels?.fileUploaded ?? "Rasm yuklandi ✓") : "—";
@@ -1234,7 +1239,7 @@ function SummaryScreen({
           {specificQs.map((q) => {
             const val = answers[q.id];
             if (q.type === "file") return null;
-            const formatted = formatAnswer(q, val, { yes: tq.yes, no: tq.no, fileUploaded: tq.fileUploaded, soum: tt.soum, budgetTpl: tq.budgetTpl });
+            const formatted = formatAnswer(q, val, { yes: tq.yes, no: tq.no, fileUploaded: tq.fileUploaded, soum: tt.soum, budgetTpl: tq.budgetTpl, locale });
             if (formatted === "—") return null;
             const otherText = answers[q.id + "_other"] as string | undefined;
             const hasOtherText = !!otherText?.trim();

@@ -66,13 +66,21 @@ function OfferCard({ offer, index, anyAccepted }: {
   }
 
   function confirmAccept() {
-    updateOfferStatus(offer.id, "accepted");
+    updateOfferStatus(offer.id, "accepted", {
+      accepted: t.chatPage.systemMsgOfferAccepted,
+      rejected: t.chatPage.systemMsgOfferRejected,
+      sibling:  t.chatPage.systemMsgOfferSiblingClosed,
+    });
     setShowConfirm(false);
   }
 
   function reject(e: React.MouseEvent) {
     e.stopPropagation();
-    updateOfferStatus(offer.id, "rejected");
+    updateOfferStatus(offer.id, "rejected", {
+      accepted: t.chatPage.systemMsgOfferAccepted,
+      rejected: t.chatPage.systemMsgOfferRejected,
+      sibling:  t.chatPage.systemMsgOfferSiblingClosed,
+    });
   }
 
   // Can accept: offer is pending, and no other offer on this request is already accepted
