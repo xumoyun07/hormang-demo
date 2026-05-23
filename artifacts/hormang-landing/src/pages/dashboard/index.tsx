@@ -422,9 +422,21 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
     bio:            local.bio,
     categories:     selectedCategories,
   };
-  const checks  = getCompletionChecks(user ?? null, providerProfile ?? null, completionLocal);
-  const pct     = getCompletionPct(checks);
-  const missing = checks.filter((c) => !c.done);
+  const rawChecks = getCompletionChecks(user ?? null, providerProfile ?? null, completionLocal);
+  const pct       = getCompletionPct(rawChecks);
+  const ps        = t.profileSettings;
+  const providerCheckLabels: Record<string, string> = {
+    photo:      ps.providerCheckPhoto,
+    name:       ps.providerCheckName,
+    region:     ps.providerCheckRegion,
+    services:   ps.providerCheckServices,
+    bio:        ps.providerCheckBio,
+    experience: ps.providerCheckExperience,
+    portfolio:  ps.providerCheckPortfolio,
+  };
+  const missing = rawChecks
+    .filter((c) => !c.done)
+    .map((c) => providerCheckLabels[c.key] ? { ...c, label: providerCheckLabels[c.key] } : c);
 
   const avgRating      = user?.id ? getAverageRatingForUser(user.id, "provider") : 0;
   const reviewCount    = user?.id ? getReviewsForUser(user.id, "provider").length : 0;

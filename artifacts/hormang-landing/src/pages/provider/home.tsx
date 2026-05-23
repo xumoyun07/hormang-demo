@@ -190,9 +190,20 @@ function ProfileCompletion() {
   const [rewardGranted, setRewardGranted] = useState(false);
   const [showBadgeHint, setShowBadgeHint] = useState(false);
 
-  const local = user ? getLocalProfile(user.id) : {};
-  const checks = getCompletionChecks(user ?? null, providerProfile, local);
-  const pct = getCompletionPct(checks);
+  const local     = user ? getLocalProfile(user.id) : {};
+  const rawChecks = getCompletionChecks(user ?? null, providerProfile, local);
+  const pct       = getCompletionPct(rawChecks);
+  const ps        = t.profileSettings;
+  const providerCheckLabels: Record<string, string> = {
+    photo:      ps.providerCheckPhoto,
+    name:       ps.providerCheckName,
+    region:     ps.providerCheckRegion,
+    services:   ps.providerCheckServices,
+    bio:        ps.providerCheckBio,
+    experience: ps.providerCheckExperience,
+    portfolio:  ps.providerCheckPortfolio,
+  };
+  const checks  = rawChecks.map((c) => providerCheckLabels[c.key] ? { ...c, label: providerCheckLabels[c.key] } : c);
   const missing = checks.filter((c) => !c.done);
 
   useEffect(() => {
