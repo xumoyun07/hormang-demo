@@ -173,7 +173,7 @@ function ReviewPreviewModal({
               )}
               <div className="min-w-0">
                 <p className="font-black text-gray-900 truncate">{meta.name}</p>
-                <p className="text-xs font-semibold text-gray-400">{formatDate(review.createdAt)}</p>
+                <p className="text-xs font-semibold text-gray-400">{formatDate(review.createdAt, { months: t.shared.months })}</p>
               </div>
             </div>
             <button
@@ -283,7 +283,7 @@ function ReviewCard({
           </button>
           <div className="flex items-center gap-2 flex-wrap mt-1">
             <StarRating rating={review.rating} />
-            <span className="text-xs text-gray-400">{formatDate(review.createdAt)}</span>
+            <span className="text-xs text-gray-400">{formatDate(review.createdAt, { months: t.shared.months })}</span>
           </div>
           {review.serviceCategory && (
             <p className="text-[11px] font-bold text-violet-600 mt-1">{getCategoryDisplayName(review.serviceCategory, locale)}</p>

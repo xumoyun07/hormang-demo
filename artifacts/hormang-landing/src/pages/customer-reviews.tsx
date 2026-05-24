@@ -78,7 +78,7 @@ function ReviewCard({
           </button>
           <div className="flex items-center gap-2 flex-wrap mt-1">
             <StarRating rating={review.rating} />
-            <span className="text-xs text-gray-400">{formatDate(review.createdAt)}</span>
+            <span className="text-xs text-gray-400">{formatDate(review.createdAt, { months: t.shared.months })}</span>
           </div>
           {review.serviceCategory && (
             <p className="text-[11px] font-bold text-blue-600 mt-1">{getCategoryDisplayName(review.serviceCategory, locale)}</p>

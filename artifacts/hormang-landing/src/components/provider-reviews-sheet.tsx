@@ -130,7 +130,7 @@ function ReviewDetailModal({
               )}
               <div className="min-w-0">
                 <p className="font-black text-gray-900 truncate">{meta.name}</p>
-                <p className="text-xs font-semibold text-gray-400">{formatDate(review.createdAt)}</p>
+                <p className="text-xs font-semibold text-gray-400">{formatDate(review.createdAt, { months: t.shared.months })}</p>
               </div>
             </div>
             <button
@@ -234,7 +234,7 @@ function ReviewRow({ review, onOpen }: { review: Review; onOpen: () => void }) {
           <p className="font-black text-gray-900 text-sm truncate">{meta.name}</p>
           <div className="flex items-center gap-2 mt-0.5">
             <StarRating rating={review.rating} size="w-3.5 h-3.5" />
-            <span className="text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
+            <span className="text-[11px] text-gray-400">{formatDate(review.createdAt, { months: t.shared.months })}</span>
           </div>
         </div>
         {review.photoUrl && (

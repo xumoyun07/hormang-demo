@@ -36,6 +36,7 @@ function getReviewerMeta(review: Review, fallbackName: string) {
 }
 
 function ReviewRow({ review, fallbackName }: { review: Review; fallbackName: string }) {
+  const { t } = useI18n();
   const meta = getReviewerMeta(review, fallbackName);
 
   return (
@@ -55,7 +56,7 @@ function ReviewRow({ review, fallbackName }: { review: Review; fallbackName: str
           <p className="font-black text-gray-900 text-sm truncate">{meta.name}</p>
           <div className="flex items-center gap-2 mt-0.5">
             <StarRating rating={review.rating} size="w-3.5 h-3.5" />
-            <span className="text-[11px] text-gray-400">{formatDate(review.createdAt)}</span>
+            <span className="text-[11px] text-gray-400">{formatDate(review.createdAt, { months: t.shared.months })}</span>
           </div>
         </div>
       </div>

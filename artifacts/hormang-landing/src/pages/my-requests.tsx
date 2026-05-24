@@ -111,7 +111,7 @@ function RequestCard({
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-sm text-gray-900 leading-snug">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{formatDate(req.createdAt)}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{formatDate(req.createdAt, { months: t.shared.months })}</p>
         </div>
         {offers.length > 0 && (
           <div className={`flex-shrink-0 flex items-center gap-1 text-white text-xs font-bold px-2.5 py-1 rounded-full ${

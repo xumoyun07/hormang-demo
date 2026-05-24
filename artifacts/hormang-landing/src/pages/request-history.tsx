@@ -95,7 +95,7 @@ function CompletedRequestCard({ req, index }: { req: CustomerRequest; index: num
               {t.requestHistory.card.completed}
             </span>
           </div>
-          <p className="text-xs text-gray-400 mt-0.5">{formatDate(req.createdAt)}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{formatDate(req.createdAt, { months: t.shared.months })}</p>
           {completedOffer && (
             <p className="text-xs text-gray-500 mt-1 truncate">
               {t.requestHistory.card.executorPrefix}: <span className="font-semibold text-gray-700">{completedOffer.masterName}</span>

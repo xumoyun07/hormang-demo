@@ -32,13 +32,13 @@ import { getCategoryDisplayName } from "@/lib/categories";
 type Tab = "offers" | "chats";
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
-function formatDate(iso: string): string {
+function formatDate(iso: string, months?: string[]): string {
   const d = new Date(iso);
   const today = new Date();
   if (d.toDateString() === today.toDateString()) {
     return d.toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" });
   }
-  return uzDate(iso);
+  return uzDate(iso, { months });
 }
 
 /* ─── Offer Card ─────────────────────────────────────────────────── */
@@ -105,7 +105,7 @@ function OfferCard({ offer, index, anyAccepted }: {
           <div className="px-4 pt-3 pb-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
             <span className="text-sm">{req.emoji}</span>
             <p className="text-xs font-semibold text-gray-500 flex-1 truncate">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
-            <span className="text-[10px] text-gray-400">{formatDate(offer.createdAt)}</span>
+            <span className="text-[10px] text-gray-400">{formatDate(offer.createdAt, t.shared.months)}</span>
           </div>
         )}
 
@@ -322,7 +322,7 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
         <div className="flex items-center justify-between gap-2 mb-0.5">
           <p className="font-bold text-sm text-gray-900 truncate">{chat.masterName}</p>
           <span className="text-[10px] text-gray-400 flex-shrink-0">
-            {formatDate(lastMsg?.timestamp ?? chat.createdAt)}
+            {formatDate(lastMsg?.timestamp ?? chat.createdAt, t.shared.months)}
           </span>
         </div>
         <p className="text-xs text-gray-500 font-medium truncate mb-1">{getCategoryDisplayName(getRequestById(chat.requestId)?.categoryId ?? "", locale, chat.categoryName)}</p>

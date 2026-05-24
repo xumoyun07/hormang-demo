@@ -52,8 +52,8 @@ import {
 } from "@/lib/announcements-store";
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
-function formatDate(iso: string): string {
-  return formatUzDate(iso);
+function formatDate(iso: string, months?: string[]): string {
+  return formatUzDate(iso, { months });
 }
 
 function timeAgo(iso: string, t: Dict): string {
@@ -446,7 +446,7 @@ function UpcomingServices() {
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="flex items-center gap-1 text-[11px] text-violet-600 font-semibold">
                     <CalendarDays className="w-3 h-3" />
-                    {formatDate(s.date)} · {s.time}
+                    {formatDate(s.date, t.shared.months)} · {s.time}
                   </span>
                   <span className="flex items-center gap-1 text-[11px] text-gray-400">
                     <MapPin className="w-3 h-3" />{s.location}

@@ -175,7 +175,7 @@ export function RequestPreviewModal({ req, onClose }: Props) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-extrabold text-sm text-gray-900">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{formatDate(req.createdAt)}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{formatDate(req.createdAt, { months: t.shared.months })}</p>
                 </div>
                 {urgInfo && (
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${urgInfo.color}`}>

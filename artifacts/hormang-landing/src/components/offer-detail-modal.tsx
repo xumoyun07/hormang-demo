@@ -89,9 +89,6 @@ function urgencyLabel(
   return { label: flexible, color: "text-gray-500 bg-gray-100 border border-gray-200" };
 }
 
-function formatDate(iso: string): string {
-  return formatUzDate(iso);
-}
 
 function timeAgo(
   iso: string,
@@ -385,7 +382,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
 
               {/* Date sent */}
               <div className="px-4 py-2.5">
-                <p className="text-[10px] text-gray-400">{tFormat(tt.sentAtTpl, { date: formatDate(offer.createdAt), ago: timeAgo(offer.createdAt, tt.minutesAgoTpl, tt.hoursAgoTpl, tt.daysAgoTpl) })}</p>
+                <p className="text-[10px] text-gray-400">{tFormat(tt.sentAtTpl, { date: formatUzDate(offer.createdAt, { months: t.shared.months }), ago: timeAgo(offer.createdAt, tt.minutesAgoTpl, tt.hoursAgoTpl, tt.daysAgoTpl) })}</p>
               </div>
             </div>
 
@@ -525,7 +522,7 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                     <div className="flex items-center justify-between">
                       <p className="text-[10px] text-amber-500 font-semibold">{tt.txDateTime}</p>
                       <p className="text-[11px] text-amber-700 font-semibold">
-                        {formatDate(tangaTx.createdAt)}&ensp;
+                        {formatUzDate(tangaTx.createdAt, { months: t.shared.months })}&ensp;
                         {new Date(tangaTx.createdAt).toLocaleTimeString("uz-Latn-UZ", {
                           hour: "2-digit",
                           minute: "2-digit",

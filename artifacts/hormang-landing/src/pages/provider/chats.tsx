@@ -33,23 +33,23 @@ import type { Dict } from "@/lib/i18n/locales/uz";
 
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 
-function formatTime(iso: string): string {
+function formatTime(iso: string, months: string[]): string {
   const d = new Date(iso);
   const today = new Date();
   if (d.toDateString() === today.toDateString()) {
     return d.toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit", hour12: false });
   }
-  return formatDate(iso);
+  return formatDate(iso, { months });
 }
 
-function formatDay(iso: string, t: Dict): string {
+function formatDay(iso: string, t: Dict, months: string[]): string {
   const d = new Date(iso);
   const today = new Date();
   if (d.toDateString() === today.toDateString()) return t.providerChats.separators.today;
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
   if (d.toDateString() === yesterday.toDateString()) return t.providerChats.separators.yesterday;
-  return formatDate(iso);
+  return formatDate(iso, { months });
 }
 
 function OfferStatusBadge({ status, t }: { status: Offer["status"]; t: Dict }) {
@@ -181,7 +181,7 @@ function MsgBubble({ msg, isFirst }: { msg: ProviderChatMessage; isFirst: boolea
         <div className="px-3.5 py-2.5">
           {msg.text && <p style={{ whiteSpace: "pre-wrap" }}>{msg.text}</p>}
           <p className={`text-[10px] mt-1 text-right ${isMe ? "text-violet-200" : "text-gray-400"}`}>
-            {formatTime(msg.timestamp)}
+            {formatTime(msg.timestamp, t.shared.months)}
           </p>
         </div>
       </div>
@@ -434,7 +434,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 
   const grouped: Array<{ day: string; messages: ProviderChatMessage[] }> = [];
   for (const msg of chat.messages) {
-    const day = formatDay(msg.timestamp, t);
+    const day = formatDay(msg.timestamp, t, t.shared.months);
     const last = grouped[grouped.length - 1];
     if (last?.day === day) last.messages.push(msg);
     else grouped.push({ day, messages: [msg] });
@@ -722,7 +722,7 @@ function ChatRow({ chat, index, onClick, t }: { chat: ProviderChat; index: numbe
         <div className="flex items-center justify-between gap-2 mb-0.5">
           <p className="font-bold text-sm text-gray-900 truncate">{chat.customerName}</p>
           <span className="text-[10px] text-gray-400 flex-shrink-0">
-            {formatTime(lastMsg?.timestamp ?? chat.createdAt)}
+            {formatTime(lastMsg?.timestamp ?? chat.createdAt, t.shared.months)}
           </span>
         </div>
         <p className="text-xs text-gray-500 font-medium mb-1">{chat.categoryEmoji} {getCategoryDisplayName(chat.categoryId ?? "", locale, chat.categoryName)}</p>

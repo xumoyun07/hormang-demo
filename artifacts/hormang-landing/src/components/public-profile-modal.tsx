@@ -24,8 +24,8 @@ const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 10
 const BLUE   = "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)";
 
 /* ─── Helpers ──────────────────────────────────────────────────────── */
-function memberSince(iso: string): string {
-  return formatMonthYear(iso);
+function memberSince(iso: string, months: string[]): string {
+  return formatMonthYear(iso, months);
 }
 
 function deriveInitials(name: string): string {
@@ -321,7 +321,7 @@ function CustomerSheet({ data, onClose }: { data: CustomerProfileData; onClose: 
   const location = data.district
     ? `${data.district}, ${data.region}`
     : data.region ?? "";
-  const joined = data.joinedAt ? memberSince(data.joinedAt) : null;
+  const joined = data.joinedAt ? memberSince(data.joinedAt, t.shared.months) : null;
 
   /* Auto-load photo from customer's local profile (same pattern as ProviderSheet).
      Explicit data.photoUrl is the fallback when no customerId is available. */

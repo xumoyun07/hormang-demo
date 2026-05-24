@@ -76,7 +76,7 @@ function TxRow({
             {getCategoryDisplayName(getRequestById(tx.requestId)?.categoryId ?? "", locale, tx.categoryName)}
           </p>
           <p className="text-[11px] text-gray-400 mt-0.5">
-            {formatDate(tx.createdAt)}
+            {formatDate(tx.createdAt, { months: t.shared.months })}
             {" · "}
             {new Date(tx.createdAt).toLocaleTimeString("uz-Latn-UZ", {
               hour: "2-digit",

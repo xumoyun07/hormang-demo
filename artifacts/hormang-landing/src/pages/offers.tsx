@@ -78,7 +78,7 @@ function OfferCard({ offer, index, anyAccepted }: { offer: Offer; index: number;
           <div className="px-4 pt-3 pb-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
             <span className="text-base">{req.emoji}</span>
             <p className="text-xs font-semibold text-gray-500 truncate">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
-            <span className="ml-auto text-[10px] text-gray-400">{formatDate(offer.createdAt)}</span>
+            <span className="ml-auto text-[10px] text-gray-400">{formatDate(offer.createdAt, { months: t.shared.months })}</span>
           </div>
         )}
 

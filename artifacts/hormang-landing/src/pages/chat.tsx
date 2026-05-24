@@ -31,14 +31,14 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("uz-Latn-UZ", { hour: "2-digit", minute: "2-digit" });
 }
 
-function formatDay(iso: string, today: string, yesterday: string): string {
+function formatDay(iso: string, today: string, yesterday: string, months: string[]): string {
   const d = new Date(iso);
   const now = new Date();
   if (d.toDateString() === now.toDateString()) return today;
   const y = new Date(now);
   y.setDate(now.getDate() - 1);
   if (d.toDateString() === y.toDateString()) return yesterday;
-  return formatDate(iso);
+  return formatDate(iso, { months });
 }
 
 /* ─── Offer status badge ─────────────────────────────────────────── */
@@ -327,7 +327,7 @@ export default function ChatPage() {
 
   const grouped: Array<{ day: string; messages: ChatMessage[] }> = [];
   for (const msg of chat.messages) {
-    const day = formatDay(msg.timestamp, tt.today, tt.yesterday);
+    const day = formatDay(msg.timestamp, tt.today, tt.yesterday, t.shared.months);
     const last = grouped[grouped.length - 1];
     if (last?.day === day) last.messages.push(msg);
     else grouped.push({ day, messages: [msg] });
