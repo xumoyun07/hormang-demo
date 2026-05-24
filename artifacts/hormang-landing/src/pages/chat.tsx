@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { formatDate } from "@/lib/date-utils";
 import {
   getChatById, sendMessage, getOfferForChat, confirmCompletion,
+  markCustomerChatRead,
   type Chat, type ChatMessage, type Offer,
 } from "@/lib/requests-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
@@ -225,6 +226,15 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
   }, [chat?.messages.length]);
+
+  /* Mark this chat as read for the customer whenever it's open AND new
+   * messages from the provider arrive while the user is still viewing it.
+   * Runs on mount, on chatId change, and on every new incoming message. */
+  useEffect(() => {
+    if (chatId && (chat?.customerUnread ?? 0) > 0) {
+      markCustomerChatRead(chatId);
+    }
+  }, [chatId, chat?.customerUnread, chat?.messages.length]);
 
   /* Auto-prompt review when the OTHER side marks the offer completed.
    * Only triggers once per visit; user can re-open via the badge button. */

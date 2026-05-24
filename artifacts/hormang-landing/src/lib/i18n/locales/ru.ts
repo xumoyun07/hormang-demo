@@ -466,7 +466,7 @@ export const ru: Dict = {
     minutesAgoTpl: "{{n}} мин назад",
     hoursAgoTpl:   "{{n}} ч назад",
     daysAgoTpl:    "{{n}} дн назад",
-    cooldownTpl:   "{{m}} мин {{s}} с",
+    cooldownTpl:   "{{m}} мин {{s}} сек",
   },
   urgency: {
     urgent:   "Срочно",

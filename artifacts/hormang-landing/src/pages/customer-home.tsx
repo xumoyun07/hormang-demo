@@ -346,7 +346,8 @@ export default function CustomerHomePage() {
               <div className="space-y-2">
                 {recentChats.map((chat) => {
                   const lastMsg = chat.messages[chat.messages.length - 1];
-                  const hasNewMsg = lastMsg?.sender === "master";
+                  const unreadCount = chat.customerUnread ?? 0;
+                  const hasNewMsg = unreadCount > 0;
                   return (
                     <button
                       key={chat.id}
@@ -376,7 +377,9 @@ export default function CustomerHomePage() {
                           </p>
                         </div>
                         {hasNewMsg && (
-                          <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                          <div className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                            {unreadCount > 9 ? "9+" : unreadCount}
+                          </div>
                         )}
                       </div>
                     </button>

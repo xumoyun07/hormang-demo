@@ -317,11 +317,15 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   const { user } = useAuth();
   const masterId = user?.id ?? "";
 
-  useEffect(() => {
-    markChatRead(chatId);
-  }, [chatId]);
-
   const chat = getProviderChatById(chatId) ?? null;
+
+  /* Mark this chat as read for the provider on mount, on chatId change,
+   * and whenever new customer messages arrive while the thread is open. */
+  useEffect(() => {
+    if (chatId && (chat?.unread ?? 0) > 0) {
+      markChatRead(chatId);
+    }
+  }, [chatId, chat?.unread, chat?.messages.length]);
   const offer = chat ? getOfferForChat(chat.requestId, chat.masterId) : undefined;
   const request = chat ? getRequestById(chat.requestId) : undefined;
   const isRejected = offer?.status === "rejected";

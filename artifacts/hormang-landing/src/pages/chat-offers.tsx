@@ -271,6 +271,7 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
   const providerLocal = getLocalProfile(chat.masterId);
   const offer = getOfferForChat(chat.requestId, chat.masterId);
   const st = offer?.status ?? "pending";
+  const unread = chat.customerUnread ?? 0;
 
   const customerWaiting = offer?.customerConfirmedCompleted && !offer?.providerConfirmedCompleted && st !== "completed";
   const needsCustomerConfirm = offer?.providerConfirmedCompleted && !offer?.customerConfirmedCompleted && st !== "completed";
@@ -320,10 +321,17 @@ function ChatRow({ chat, index }: { chat: Chat; index: number }) {
       )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-0.5">
-          <p className="font-bold text-sm text-gray-900 truncate">{chat.masterName}</p>
-          <span className="text-[10px] text-gray-400 flex-shrink-0">
-            {formatDate(lastMsg?.timestamp ?? chat.createdAt, t.shared.months)}
-          </span>
+          <p className={`text-sm truncate ${unread > 0 ? "font-extrabold text-gray-900" : "font-bold text-gray-900"}`}>{chat.masterName}</p>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {unread > 0 && (
+              <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                {unread > 9 ? "9+" : unread}
+              </span>
+            )}
+            <span className="text-[10px] text-gray-400">
+              {formatDate(lastMsg?.timestamp ?? chat.createdAt, t.shared.months)}
+            </span>
+          </div>
         </div>
         <p className="text-xs text-gray-500 font-medium truncate mb-1">{getCategoryDisplayName(getRequestById(chat.requestId)?.categoryId ?? "", locale, chat.categoryName)}</p>
         {offer && (

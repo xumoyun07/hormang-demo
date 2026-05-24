@@ -123,6 +123,7 @@ export interface Chat {
   customerInitials: string;   // shown on provider side
   customerColor: string;      // shown on provider side
   providerUnread: number;     // messages customer sent that provider hasn't read
+  customerUnread?: number;    // messages provider sent that customer hasn't read
   messages: ChatMessage[];
   createdAt: string;
 }
@@ -936,6 +937,7 @@ export function getOrCreateChat(
     customerInitials: customerMeta?.initials ?? "X",
     customerColor: customerMeta?.color ?? "#2563EB",
     providerUnread: 0,
+    customerUnread: 0,
     messages: [],
     createdAt: new Date().toISOString(),
   };
@@ -948,7 +950,8 @@ export function getOrCreateChat(
 /**
  * Send a message and return the updated chat.
  * - "customer" sends → providerUnread++  (provider has unread message)
- * - "master" sends   → providerUnread unchanged (provider just sent, not unread for them)
+ * - "master"   sends → customerUnread++ (customer has unread message)
+ * The sender's own counter is never bumped.
  */
 export function sendMessage(
   chatId: string,
@@ -967,9 +970,16 @@ export function sendMessage(
     timestamp: new Date().toISOString(),
     ...(attachment ? { attachment } : {}),
   };
-  const prevUnread = chats[idx].providerUnread ?? 0;
-  const providerUnread = sender === "customer" ? prevUnread + 1 : prevUnread;
-  chats[idx] = { ...chats[idx], messages: [...chats[idx].messages, msg], providerUnread };
+  const prevProviderUnread = chats[idx].providerUnread ?? 0;
+  const prevCustomerUnread = chats[idx].customerUnread ?? 0;
+  const providerUnread = sender === "customer" ? prevProviderUnread + 1 : prevProviderUnread;
+  const customerUnread = sender === "master"   ? prevCustomerUnread + 1 : prevCustomerUnread;
+  chats[idx] = {
+    ...chats[idx],
+    messages: [...chats[idx].messages, msg],
+    providerUnread,
+    customerUnread,
+  };
   writeJSON(CHATS_KEY, chats);
   console.log(`[Hormang] 💬 Xabar yuborildi`, { chatId, sender, text: text.slice(0, 50), hasAttachment: !!attachment });
   return chats[idx];
@@ -983,7 +993,21 @@ export function markProviderChatRead(chatId: string): void {
   const chats = readJSON<Chat[]>(CHATS_KEY, []);
   const idx = chats.findIndex((c) => c.id === chatId);
   if (idx === -1) return;
+  if ((chats[idx].providerUnread ?? 0) === 0) return;
   chats[idx] = { ...chats[idx], providerUnread: 0 };
+  writeJSON(CHATS_KEY, chats);
+}
+
+/**
+ * Mark all messages in this chat as read by the customer.
+ * Called when customer opens the chat thread.
+ */
+export function markCustomerChatRead(chatId: string): void {
+  const chats = readJSON<Chat[]>(CHATS_KEY, []);
+  const idx = chats.findIndex((c) => c.id === chatId);
+  if (idx === -1) return;
+  if ((chats[idx].customerUnread ?? 0) === 0) return;
+  chats[idx] = { ...chats[idx], customerUnread: 0 };
   writeJSON(CHATS_KEY, chats);
 }
 
@@ -992,6 +1016,17 @@ export function markProviderChatRead(chatId: string): void {
  */
 export function getTotalProviderUnread(): number {
   return readJSON<Chat[]>(CHATS_KEY, []).reduce((s, c) => s + (c.providerUnread ?? 0), 0);
+}
+
+/**
+ * Total unread messages across all chats that belong to this customer's requests.
+ */
+export function getTotalCustomerUnread(customerId: string): number {
+  if (!customerId) return 0;
+  const myRequestIds = new Set(getRequestsByCustomer(customerId).map((r) => r.id));
+  return readJSON<Chat[]>(CHATS_KEY, [])
+    .filter((c) => myRequestIds.has(c.requestId))
+    .reduce((s, c) => s + (c.customerUnread ?? 0), 0);
 }
 
 /** Get the latest chat across all requests (for bottom nav redirect) */

@@ -3,8 +3,9 @@ import { useLocation } from "wouter";
 import { Home, LayoutGrid, ClipboardList, MessageCircle, LayoutDashboard, Wallet, List } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
-import { getOffersByCustomer } from "@/lib/requests-store";
+import { getOffersByCustomer, getTotalCustomerUnread } from "@/lib/requests-store";
 import { getTotalUnread, getUnseenRequests } from "@/lib/provider-store";
+import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { useToast } from "@/hooks/use-toast";
 
 export function BottomNav() {
@@ -12,6 +13,7 @@ export function BottomNav() {
   const { user, activeRole, providerProfile } = useAuth();
   const { t } = useI18n();
   const { toast } = useToast();
+  useStoreRefresh();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -23,6 +25,7 @@ export function BottomNav() {
   const selectedCategories = providerProfile?.categories ?? [];
 
   const pendingOffers = isProvider ? 0 : getOffersByCustomer(user?.id ?? "").filter((o) => o.status === "pending").length;
+  const customerChatUnread = isProvider ? 0 : getTotalCustomerUnread(user?.id ?? "");
   const unseenCount = isProvider ? getUnseenRequests(selectedCategories, [], user?.id ?? "").length : 0;
   const unreadChats = isProvider ? getTotalUnread(user?.id ?? "") : 0;
 
@@ -56,7 +59,7 @@ export function BottomNav() {
   }
 
   function getBadge(href: string): number {
-    if (!isProvider && href === "/chat-offers") return pendingOffers;
+    if (!isProvider && href === "/chat-offers") return pendingOffers + customerChatUnread;
     if (isProvider && href === "/provider/requests") return unseenCount;
     if (isProvider && href === "/provider/chats") return unreadChats;
     return 0;
