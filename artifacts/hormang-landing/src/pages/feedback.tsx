@@ -573,7 +573,7 @@ export default function FeedbackPage() {
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100 shadow-sm">
         <div className="flex items-center gap-3 px-4 py-3.5">
           <button
-            onClick={() => setLocation("/dashboard")}
+            onClick={() => setLocation("/profile/settings")}
             className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center text-gray-600 active:scale-95 transition-all"
           >
             <ChevronLeft className="w-4 h-4" />
