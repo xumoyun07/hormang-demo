@@ -398,9 +398,9 @@ export default function CustomerHomePage() {
                 const emoji = getCategoryEmoji(cat.categoryId);
                 const hasScore = cat.popularityScore > 0;
                 const rankMeta =
-                  hasScore && cat.rank === 1 ? { label: "🥇 #1", style: "linear-gradient(135deg,#F59E0B,#D97706)", shadow: "0 2px 8px rgba(245,158,11,0.5)", ring: "ring-amber-300 border-amber-100" } :
-                  hasScore && cat.rank === 2 ? { label: "🥈 #2", style: "linear-gradient(135deg,#9DB4C0,#607D8B)", shadow: "0 2px 8px rgba(100,116,139,0.45)", ring: "ring-slate-300 border-slate-100"  } :
-                  hasScore && cat.rank === 3 ? { label: "🥉 #3", style: "linear-gradient(135deg,#C97B4B,#7C4A1E)", shadow: "0 2px 8px rgba(180,83,9,0.4)",   ring: "ring-orange-200 border-orange-100" } :
+                  hasScore && cat.rank === 1 ? { label: "#1", style: "linear-gradient(135deg,#F59E0B,#D97706)", shadow: "0 2px 8px rgba(245,158,11,0.5)", ring: "ring-amber-300 border-amber-100" } :
+                  hasScore && cat.rank === 2 ? { label: "#2", style: "linear-gradient(135deg,#9DB4C0,#607D8B)", shadow: "0 2px 8px rgba(100,116,139,0.45)", ring: "ring-slate-300 border-slate-100"  } :
+                  hasScore && cat.rank === 3 ? { label: "#3", style: "linear-gradient(135deg,#C97B4B,#7C4A1E)", shadow: "0 2px 8px rgba(180,83,9,0.4)",   ring: "ring-orange-200 border-orange-100" } :
                   null;
                 return (
                   <button

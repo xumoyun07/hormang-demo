@@ -14,7 +14,6 @@ import {
 import {
   saveNewRequest,
   getRequestCooldown,
-  formatCooldownRemaining,
 } from "@/lib/requests-store";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -1444,7 +1443,7 @@ export default function QuestionnairePage() {
           <div className="rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3 mb-5">
             <p className="text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-1">{tt.cooldownNextLabel}</p>
             <p className="text-2xl font-extrabold text-blue-700 tabular-nums">
-              {formatCooldownRemaining(cooldown.remainingMs)}
+              {tFormat(t.time.cooldownTpl, { m: Math.floor(Math.max(0, Math.ceil(cooldown.remainingMs / 1000)) / 60), s: String(Math.max(0, Math.ceil(cooldown.remainingMs / 1000)) % 60).padStart(2, "0") })}
             </p>
             <p className="text-[10px] text-blue-400 mt-1">{tt.cooldownRemain}</p>
           </div>
