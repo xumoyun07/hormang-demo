@@ -59,7 +59,8 @@ export function BottomNav() {
   }
 
   function getBadge(href: string): number {
-    if (!isProvider && href === "/chat-offers") return pendingOffers + customerChatUnread;
+    if (!isProvider && href === "/my-requests") return pendingOffers;
+    if (!isProvider && href === "/chat-offers") return customerChatUnread;
     if (isProvider && href === "/provider/requests") return unseenCount;
     if (isProvider && href === "/provider/chats") return unreadChats;
     return 0;
