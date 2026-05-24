@@ -392,28 +392,28 @@ export default function CustomerHomePage() {
               <h2 className="font-extrabold text-gray-900 text-sm leading-tight">{t.customerHome.sections.popularServices}</h2>
               <p className="text-[11px] text-gray-400 mt-0.5">{t.customerHome.sections.popularServicesSubtitle}</p>
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto pb-1 pt-3.5 scrollbar-hide">
               {popularCategories.map((cat) => {
                 const name  = getCategoryDisplayName(cat.categoryId, locale);
                 const emoji = getCategoryEmoji(cat.categoryId);
                 const hasScore = cat.popularityScore > 0;
                 const rankMeta =
-                  hasScore && cat.rank === 1 ? { label: "#1", style: "linear-gradient(135deg,#F59E0B,#D97706)", ring: "ring-amber-200" } :
-                  hasScore && cat.rank === 2 ? { label: "#2", style: "linear-gradient(135deg,#94A3B8,#64748B)", ring: "ring-slate-200"  } :
-                  hasScore && cat.rank === 3 ? { label: "#3", style: "linear-gradient(135deg,#CD7C4A,#92400E)", ring: "ring-orange-200" } :
+                  hasScore && cat.rank === 1 ? { label: "🥇 #1", style: "linear-gradient(135deg,#F59E0B,#D97706)", shadow: "0 2px 8px rgba(245,158,11,0.5)", ring: "ring-amber-300 border-amber-100" } :
+                  hasScore && cat.rank === 2 ? { label: "🥈 #2", style: "linear-gradient(135deg,#9DB4C0,#607D8B)", shadow: "0 2px 8px rgba(100,116,139,0.45)", ring: "ring-slate-300 border-slate-100"  } :
+                  hasScore && cat.rank === 3 ? { label: "🥉 #3", style: "linear-gradient(135deg,#C97B4B,#7C4A1E)", shadow: "0 2px 8px rgba(180,83,9,0.4)",   ring: "ring-orange-200 border-orange-100" } :
                   null;
                 return (
                   <button
                     key={cat.categoryId}
                     onClick={() => setLocation("/questionnaire")}
                     className={`relative flex-shrink-0 bg-white rounded-2xl border card-shadow px-3.5 py-2.5 text-center active:scale-[0.97] transition-all ${
-                      rankMeta ? `border-gray-100 hover:border-amber-200 ring-1 ${rankMeta.ring}` : "border-gray-100 hover:border-blue-200"
+                      rankMeta ? `ring-1 ${rankMeta.ring}` : "border-gray-100 hover:border-blue-200"
                     }`}
                   >
                     {rankMeta && (
                       <span
-                        className="absolute -top-2 -right-1.5 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full shadow-sm leading-none"
-                        style={{ background: rankMeta.style }}
+                        className="absolute -top-3 left-1/2 -translate-x-1/2 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap leading-tight"
+                        style={{ background: rankMeta.style, boxShadow: rankMeta.shadow }}
                       >
                         {rankMeta.label}
                       </span>
