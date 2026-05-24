@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { BottomNav } from "@/components/bottom-nav";
 import { useLocation } from "wouter";
@@ -10,7 +10,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
-import { getCategoryDisplayName } from "@/lib/categories";
+import { getCategoryDisplayName, getCategoryEmoji } from "@/lib/categories";
+import { getPopularCategories } from "@/lib/popularity";
 import { tFormat } from "@/lib/i18n";
 import {
   getLocalProfile, hasProviderAccess,
@@ -39,6 +40,8 @@ export default function CustomerHomePage() {
     return () => window.clearInterval(id);
   }, [user?.id]);
   const storeVersion = useStoreRefresh();
+
+  const popularCategories = useMemo(() => getPopularCategories(), [storeVersion]);
 
   useEffect(() => {
     if (user?.id) setLocal(getLocalProfile(user.id));
@@ -385,18 +388,41 @@ export default function CustomerHomePage() {
 
           {/* ── Popular Categories ── */}
           <section>
-            <h2 className="font-extrabold text-gray-900 text-sm mb-2.5">{t.customerHome.sections.popularServices}</h2>
+            <div className="mb-2.5">
+              <h2 className="font-extrabold text-gray-900 text-sm leading-tight">{t.customerHome.sections.popularServices}</h2>
+              <p className="text-[11px] text-gray-400 mt-0.5">{t.customerHome.sections.popularServicesSubtitle}</p>
+            </div>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              {t.customerHome.popularCats.map((cat) => (
-                <button
-                  key={cat.name}
-                  onClick={() => setLocation("/questionnaire")}
-                  className="flex-shrink-0 bg-white rounded-2xl border border-gray-100 card-shadow px-3.5 py-2.5 text-center hover:border-blue-200 active:scale-[0.97] transition-all"
-                >
-                  <div className="text-xl mb-0.5">{cat.emoji}</div>
-                  <p className="text-[10px] font-bold text-gray-700 whitespace-nowrap">{cat.name}</p>
-                </button>
-              ))}
+              {popularCategories.map((cat) => {
+                const name  = getCategoryDisplayName(cat.categoryId, locale);
+                const emoji = getCategoryEmoji(cat.categoryId);
+                const hasScore = cat.popularityScore > 0;
+                const rankMeta =
+                  hasScore && cat.rank === 1 ? { label: "#1", style: "linear-gradient(135deg,#F59E0B,#D97706)", ring: "ring-amber-200" } :
+                  hasScore && cat.rank === 2 ? { label: "#2", style: "linear-gradient(135deg,#94A3B8,#64748B)", ring: "ring-slate-200"  } :
+                  hasScore && cat.rank === 3 ? { label: "#3", style: "linear-gradient(135deg,#CD7C4A,#92400E)", ring: "ring-orange-200" } :
+                  null;
+                return (
+                  <button
+                    key={cat.categoryId}
+                    onClick={() => setLocation("/questionnaire")}
+                    className={`relative flex-shrink-0 bg-white rounded-2xl border card-shadow px-3.5 py-2.5 text-center active:scale-[0.97] transition-all ${
+                      rankMeta ? `border-gray-100 hover:border-amber-200 ring-1 ${rankMeta.ring}` : "border-gray-100 hover:border-blue-200"
+                    }`}
+                  >
+                    {rankMeta && (
+                      <span
+                        className="absolute -top-2 -right-1.5 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-full shadow-sm leading-none"
+                        style={{ background: rankMeta.style }}
+                      >
+                        {rankMeta.label}
+                      </span>
+                    )}
+                    <div className="text-xl mb-0.5">{emoji}</div>
+                    <p className="text-[10px] font-bold text-gray-700 whitespace-nowrap">{name}</p>
+                  </button>
+                );
+              })}
             </div>
           </section>
 

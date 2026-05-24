@@ -432,7 +432,8 @@ export const uz = {
       activeRequests:  "Faol so'rovlarim",
       newOffers:       "Yangi takliflar",
       recentChats:     "Oxirgi suhbatlar",
-      popularServices: "Mashhur xizmatlar",
+      popularServices:         "Eng mashhur xizmatlar",
+      popularServicesSubtitle: "Hormangda eng ko'p so'ralgan xizmatlar",
     },
     emptyStates: {
       noActiveRequests: "Hozircha faol so'rovlar yo'q",

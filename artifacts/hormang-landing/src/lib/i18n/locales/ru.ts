@@ -434,7 +434,8 @@ export const ru: Dict = {
       activeRequests:  "Мои активные заявки",
       newOffers:       "Новые предложения",
       recentChats:     "Последние чаты",
-      popularServices: "Популярные услуги",
+      popularServices:         "Самые популярные услуги",
+      popularServicesSubtitle: "Самые востребованные услуги на Hormang",
     },
     emptyStates: {
       noActiveRequests: "Пока активных заявок нет",

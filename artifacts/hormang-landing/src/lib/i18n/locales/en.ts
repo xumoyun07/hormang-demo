@@ -434,7 +434,8 @@ export const en: Dict = {
       activeRequests:  "My active requests",
       newOffers:       "New offers",
       recentChats:     "Recent chats",
-      popularServices: "Popular services",
+      popularServices:         "Most popular services",
+      popularServicesSubtitle: "Most requested services on Hormang",
     },
     emptyStates: {
       noActiveRequests: "No active requests yet",
