@@ -239,12 +239,6 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
       desc: t.dashboard.buyerItems.settings.desc,
       action: () => onNavigate("/settings"),
     },
-    {
-      icon: MessagesSquare,
-      title: t.dashboard.buyerItems.feedback.title,
-      desc: t.dashboard.buyerItems.feedback.desc,
-      action: () => onNavigate("/feedback"),
-    },
   ];
 
   return (
@@ -484,12 +478,6 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
       title: t.dashboard.providerItems.settings.title,
       desc: t.dashboard.providerItems.settings.desc,
       action: () => onNavigate("/settings"),
-    },
-    {
-      icon: MessagesSquare,
-      title: t.dashboard.providerItems.feedback.title,
-      desc: t.dashboard.providerItems.feedback.desc,
-      action: () => onNavigate("/feedback"),
     },
   ];
 

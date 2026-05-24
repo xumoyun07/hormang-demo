@@ -69,7 +69,7 @@ export const uz = {
     rows: {
       phone:         { title: "Telefon raqam", verified: "Tasdiqlangan", change: "Telefon raqamni o'zgartirish" },
       email:         { title: "Email manzil", notSet: "Ro'yxatdan o'tkazilmagan", register: "Email manzilni ro'yxatdan o'tkazish", change: "Email manzilni o'zgartirish", desc: "Email xavfsizligi va tiklash" },
-      twoFA:         { title: "Ikki bosqichli autentifikatsiya", desc: "Har kirishda o'z kodingiz", needsEmail: "2FA uchun email talab qilinadi" },
+      twoFA:         { title: "Ikki bosqichli autentifikatsiya", desc: "Har kirishda qo'shimcha parol so'raladi", needsEmail: "2FA uchun email talab qilinadi" },
       changePhone:   { needsEmail: "Email manzil ro'yxatdan o'tkazilgandan keyin mavjud" },
       deleteAccount: { title: "Hisobni o'chirish", desc: "Hisobingiz va barcha ma'lumotlaringiz o'chiriladi" },
     },
