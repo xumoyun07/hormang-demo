@@ -13,8 +13,8 @@ import { CompactMediaUpload } from "@/components/media-upload";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  X, ChevronLeft, Send, Clock, MapPin, Calendar,
-  ChevronDown, CheckCircle2, AlertCircle, User,
+  X, ChevronLeft, Send, Clock, MapPin,
+  CheckCircle2, AlertCircle, User,
   DollarSign,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -104,8 +104,6 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { t, locale } = useI18n();
-  const COMPLETION_OPTIONS = t.offerForm.completionOptions;
-
   /* Tanga cost calculation */
   const offerCost = calculateOfferCost({
     categoryId: request.categoryId,
@@ -122,12 +120,6 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
   /* Form state */
   const [priceRaw, setPriceRaw] = useState("");
   const [message, setMessage] = useState("");
-  const [completionTime, setCompletionTime] = useState("");
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().slice(0, 10);
-  });
   const [termsChecked, setTermsChecked] = useState(false);
   const [offerPhotos, setOfferPhotos] = useState<string[]>([]);
 
@@ -165,7 +157,6 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
     const numPrice = parseInt(priceRaw.replace(/\D/g, ""), 10);
     if (!priceRaw || isNaN(numPrice) || numPrice <= 0) e.price = t.offerForm.errors.price;
     if (!message.trim() || message.trim().length < 10) e.message = t.offerForm.errors.message;
-    if (!completionTime) e.completionTime = t.offerForm.errors.completion;
     if (!termsChecked) e.terms = t.offerForm.errors.terms;
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -224,8 +215,6 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
           price: numPrice,
           priceLabel,
           message: message.trim(),
-          completionTime,
-          startDate,
           termsAccepted: termsChecked,
           fileUrls: offerPhotos,
         },
@@ -490,53 +479,6 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                   </p>
                 ) : <span />}
                 <span className="text-[10px] text-gray-400 ml-auto">{tFormat(t.offerForm.charsTpl, { n: message.length })}</span>
-              </div>
-            </div>
-
-            {/* ── Completion time ── */}
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                {t.offerForm.completionLabel} <span className="text-red-500">*</span>
-              </label>
-              <div className={`relative border-2 rounded-2xl bg-white transition-colors ${
-                errors.completionTime ? "border-red-300" : completionTime ? "border-violet-400" : "border-gray-200"
-              }`}>
-                <select
-                  value={completionTime}
-                  onChange={(e) => {
-                    setCompletionTime(e.target.value);
-                    if (errors.completionTime) setErrors((prev) => ({ ...prev, completionTime: "" }));
-                  }}
-                  className="w-full h-12 px-4 pr-10 text-sm font-medium text-gray-800 bg-transparent focus:outline-none appearance-none"
-                >
-                  <option value="">{t.offerForm.completionPlaceholder}</option>
-                  {COMPLETION_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              </div>
-              {errors.completionTime && (
-                <p className="flex items-center gap-1 text-xs text-red-500 mt-1">
-                  <AlertCircle className="w-3.5 h-3.5" />{errors.completionTime}
-                </p>
-              )}
-            </div>
-
-            {/* ── Start date ── */}
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                {t.offerForm.startDateLabel}
-              </label>
-              <div className="flex items-center gap-2 bg-white border-2 border-gray-200 rounded-2xl px-4 h-12 focus-within:border-violet-400 transition-colors">
-                <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  min={new Date().toISOString().slice(0, 10)}
-                  className="flex-1 bg-transparent text-sm font-medium text-gray-800 focus:outline-none"
-                />
               </div>
             </div>
 

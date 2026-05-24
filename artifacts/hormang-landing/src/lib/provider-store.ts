@@ -97,8 +97,6 @@ export interface ProviderOffer {
   price: number;
   priceLabel: string;
   message: string;
-  completionTime: string;
-  startDate: string;
   termsAccepted: boolean;
   fileUrls: string[];
   createdAt: string;
@@ -581,8 +579,6 @@ export function saveOffer(
         price: offer.price,
         priceLabel: offer.priceLabel,
         message: offer.message,
-        completionTime: offer.completionTime,
-        startDate: offer.startDate,
         fileUrls: offer.fileUrls,
         avgResponseTime: getAvgResponseMinutes(),
         createdAt: offer.createdAt,
@@ -683,7 +679,7 @@ export function createChatFromOffer(
   const palette = ["#2563EB", "#7C3AED", "#059669", "#D97706", "#DC2626", "#0891B2"];
   const color = palette[Math.floor(Math.random() * palette.length)];
 
-  const offerText = `Taklif narxi: ${offer.priceLabel}\nBajarish muddati: ${offer.completionTime}\n\n${offer.message}`;
+  const offerText = `Taklif narxi: ${offer.priceLabel}\n\n${offer.message}`;
 
   const newChat: Chat = {
     id: chatId,

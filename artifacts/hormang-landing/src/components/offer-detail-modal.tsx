@@ -7,7 +7,7 @@ import { useState } from "react";
 import { TangaCoin } from "@/components/tanga-coin";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  X, ChevronLeft, Clock, MapPin, Calendar,
+  X, ChevronLeft, Clock, MapPin,
   MessageCircle, Check, User, DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -339,20 +339,14 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                 )}
               </div>
 
-              {/* Price + time grid */}
-              <div className="grid grid-cols-2 divide-x divide-gray-100 border-b border-gray-100">
+              {/* Price */}
+              <div className="border-b border-gray-100">
                 <div className="px-4 py-3">
                   <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">{tt.priceLabel}</p>
                   <p className="font-extrabold text-base text-blue-600">
                     {offer.priceLabel ?? (offer.price.toLocaleString() + " " + tt.sumSuffix)}
                   </p>
                 </div>
-                {offer.completionTime && (
-                  <div className="px-4 py-3">
-                    <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-0.5">{tt.durationLabel}</p>
-                    <p className="font-bold text-sm text-gray-800">{offer.completionTime}</p>
-                  </div>
-                )}
               </div>
 
               {/* Message */}
@@ -360,14 +354,6 @@ export function OfferDetailModal({ offer, onClose, readOnly = false }: OfferDeta
                 <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mb-1.5">{tt.messageLabel}</p>
                 <p className="text-sm text-gray-700 leading-relaxed">{offer.message}</p>
               </div>
-
-              {/* Start date */}
-              {offer.startDate && (
-                <div className="px-4 py-2 flex items-center gap-1.5 text-xs text-gray-500 border-b border-gray-100">
-                  <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                  <span>{tFormat(tt.startDateLabelTpl, { date: offer.startDate })}</span>
-                </div>
-              )}
 
               {/* Provider attached images */}
               {offerImageUrls.length > 0 && (

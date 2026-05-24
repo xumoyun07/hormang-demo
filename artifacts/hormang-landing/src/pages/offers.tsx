@@ -125,9 +125,6 @@ function OfferCard({ offer, index, anyAccepted }: { offer: Offer; index: number;
               <p className="font-extrabold text-base text-blue-600">
                 {offer.priceLabel ?? (offer.price.toLocaleString() + " " + tt.sumSuffix)}
               </p>
-              {offer.completionTime && (
-                <p className="text-[10px] text-gray-400 mt-0.5">{offer.completionTime}</p>
-              )}
             </div>
           </div>
 

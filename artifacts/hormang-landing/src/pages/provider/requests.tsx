@@ -4,7 +4,7 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, Send, Inbox, MapPin, Filter, X, Check, CheckCircle2,
-  Eye, Clock, DollarSign, Calendar, FileText, AlertOctagon, User,
+  Eye, Clock, DollarSign, FileText, AlertOctagon, User,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { OfferForm } from "@/components/offer-form";
@@ -417,24 +417,7 @@ function OfferDetailModal({
                 </div>
                 <p className="text-sm font-extrabold text-violet-800">{offer.priceLabel}</p>
               </div>
-              <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Clock className="w-3.5 h-3.5 text-gray-500" />
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">{t.providerRequests.offerDetail.completionTime}</p>
-                </div>
-                <p className="text-sm font-bold text-gray-800">{offer.completionTime}</p>
-              </div>
             </div>
-
-            {offer.startDate && (
-              <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Calendar className="w-3.5 h-3.5 text-gray-500" />
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">{t.providerRequests.offerDetail.startDate}</p>
-                </div>
-                <p className="text-sm font-bold text-gray-800">{offer.startDate}</p>
-              </div>
-            )}
 
             <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
               <div className="flex items-center gap-1.5 mb-2">
