@@ -415,7 +415,7 @@ export default function ChatOffersPage() {
               <ChevronLeft className="w-4 h-4" />
             </button>
           ) : (
-            <button onClick={() => setLocation("/")} className="flex items-center flex-shrink-0">
+            <button onClick={() => setLocation("/customer-home")} className="flex items-center flex-shrink-0">
               <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
             </button>
           )}

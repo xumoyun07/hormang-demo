@@ -464,6 +464,7 @@ export const uz = {
     minutesAgoTpl: "{{n}} daqiqa oldin",
     hoursAgoTpl:   "{{n}} soat oldin",
     daysAgoTpl:    "{{n}} kun oldin",
+    cooldownTpl:   "{{m}} daqiqa {{s}} soniya",
   },
   urgency: {
     urgent:   "Shoshilinch",

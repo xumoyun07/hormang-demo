@@ -466,6 +466,7 @@ export const en: Dict = {
     minutesAgoTpl: "{{n}} min ago",
     hoursAgoTpl:   "{{n}} h ago",
     daysAgoTpl:    "{{n}} d ago",
+    cooldownTpl:   "{{m}} min {{s}} sec",
   },
   urgency: {
     urgent:   "Urgent",

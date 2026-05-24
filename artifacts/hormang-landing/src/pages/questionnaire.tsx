@@ -1347,7 +1347,7 @@ function RecommendationsScreen({
               <Button
                 variant="outline"
                 className="w-full font-semibold border-gray-200 rounded-2xl"
-                onClick={() => setLocation("/")}
+                onClick={() => setLocation("/customer-home")}
               >
                 {tq.homeBtn}
               </Button>

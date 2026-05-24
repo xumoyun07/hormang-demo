@@ -19,7 +19,7 @@ import {
 } from "@/lib/local-profile";
 import {
   getRequestsByCustomer, getOffersByCustomer, getChatsByCustomer,
-  getRequestById, getRequestCooldown, formatCooldownRemaining,
+  getRequestById, getRequestCooldown,
 } from "@/lib/requests-store";
 import { getCompletedCount } from "@/lib/completion-store";
 import { RollingCategories } from "@/components/ui/RollingCategories";
@@ -165,7 +165,7 @@ export default function CustomerHomePage() {
               <div className="mt-2.5 rounded-xl bg-blue-900/40 border border-blue-300/30 px-3 py-2 flex items-center gap-2">
                 <span className="text-base">⏳</span>
                 <p className="text-[11px] font-bold text-white tabular-nums">
-                  {tFormat(t.customerHome.nextRequestInTpl, { time: formatCooldownRemaining(cooldown.remainingMs) })}
+                  {tFormat(t.customerHome.nextRequestInTpl, { time: tFormat(t.time.cooldownTpl, { m: Math.floor(Math.max(0, Math.ceil(cooldown.remainingMs / 1000)) / 60), s: String(Math.max(0, Math.ceil(cooldown.remainingMs / 1000)) % 60).padStart(2, "0") }) })}
                 </p>
               </div>
             )}
