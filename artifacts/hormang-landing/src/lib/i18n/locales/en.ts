@@ -1119,6 +1119,11 @@ export const en: Dict = {
     referralTxSuffixTpl: " ({{n}} referral rewards)",
     detailsBtn: "Details",
     tangaLabel: "Tanga",
+    txTypeProfileBonus:    "TANGA_TX_PROFILE_BONUS",
+    txTypeReferral:        "TANGA_TX_REFERRAL",
+    txTypePurchase:        "TANGA_TX_PURCHASE",
+    txTypeRefund:          "TANGA_TX_REFUND",
+    txTypeAdminAdjustment: "TANGA_TX_ADMIN_ADJ",
   },
   plansPage: {
     headerTitle: "Tanga Plans",

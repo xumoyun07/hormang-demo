@@ -1118,6 +1118,11 @@ export const uz = {
     referralTxSuffixTpl: " ({{n}} ta referral mukofoti)",
     detailsBtn: "Batafsil",
     tangaLabel: "Tanga",
+    txTypeProfileBonus:    "Profil bonusi",
+    txTypeReferral:        "Referral mukofoti",
+    txTypePurchase:        "Tanga xaridi",
+    txTypeRefund:          "Qaytarish",
+    txTypeAdminAdjustment: "Admin sozlamasi",
   },
   plansPage: {
     headerTitle: "Tanga Rejalari",

@@ -73,7 +73,12 @@ function TxRow({
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-gray-900 text-sm leading-tight truncate">
-            {getCategoryDisplayName(getRequestById(tx.requestId)?.categoryId ?? "", locale, tx.categoryName)}
+            {tx.type === "profile_completion_reward" ? tt.txTypeProfileBonus
+              : tx.type === "referral"          ? tt.txTypeReferral
+              : tx.type === "refund"            ? tt.txTypeRefund
+              : tx.type === "admin_adjustment"  ? tt.txTypeAdminAdjustment
+              : tx.type === "purchase"          ? `${tt.txTypePurchase}${tx.categoryName ? ` · ${tx.categoryName}` : ""}`
+              : getCategoryDisplayName(getRequestById(tx.requestId)?.categoryId ?? "", locale, tx.categoryName)}
           </p>
           <p className="text-[11px] text-gray-400 mt-0.5">
             {formatDate(tx.createdAt, { months: t.shared.months })}

@@ -1121,6 +1121,11 @@ export const ru: Dict = {
     referralTxSuffixTpl: " ({{n}} реферальных бонусов)",
     detailsBtn: "Подробнее",
     tangaLabel: "Tanga",
+    txTypeProfileBonus:    "Бонус за профиль",
+    txTypeReferral:        "Реферальный бонус",
+    txTypePurchase:        "Покупка Tanga",
+    txTypeRefund:          "Возврат Tanga",
+    txTypeAdminAdjustment: "Корректировка",
   },
   plansPage: {
     headerTitle: "Тарифы Tanga",

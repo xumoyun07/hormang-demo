@@ -246,7 +246,7 @@ function PlanCard({
 /* ─── Main Page ──────────────────────────────────────────────────── */
 export default function PlansPage() {
   useStoreRefresh();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.plansPage;
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -283,14 +283,15 @@ export default function PlansPage() {
         return;
       }
       const total = result.total!;
+      const localizedTierName = getLocalizedText(tier.nameLocalized ?? tier.name, locale);
       recordTangaTransaction({
         userId,
         offerId: "",
         requestId: "",
-        categoryName: tier.name,
+        categoryName: localizedTierName,
         categoryEmoji: "💳",
         description: tFormat(tt.purchaseDescTpl, {
-          name: tier.name,
+          name: localizedTierName,
           credits: tier.credits,
           bonus: (tier.bonusTokens ?? 0) > 0 ? tFormat(tt.bonusSuffixTpl, { n: tier.bonusTokens ?? 0 }) : "",
         }),
