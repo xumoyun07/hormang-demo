@@ -5,7 +5,7 @@ import { Mail, Phone, Loader2, ArrowRight, ChevronLeft, RefreshCw, CheckCircle2,
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
-import { tFormat } from "@/lib/i18n";
+import { tFormat, getAuthError } from "@/lib/i18n";
 import { sendSmsCode, migrateAccount } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
 import logoImg from "/hormang-logo.png";
@@ -73,7 +73,7 @@ export default function MigratePage() {
       setStep("otp");
       startResendTimer();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t.common.errorGeneric);
+      setError(getAuthError(err instanceof Error ? err.message : "", t));
     } finally {
       setLoading(false);
     }
@@ -89,7 +89,7 @@ export default function MigratePage() {
       setDevCode(res.devCode ?? null);
       startResendTimer();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t.common.errorGeneric);
+      setError(getAuthError(err instanceof Error ? err.message : "", t));
     } finally {
       setLoading(false);
     }
@@ -110,7 +110,7 @@ export default function MigratePage() {
       toast({ title: tFormat(t.auth.migrate.successTpl, { name: res.user.firstName }) });
       setLocation("/dashboard");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t.common.errorGeneric);
+      setError(getAuthError(err instanceof Error ? err.message : "", t));
     } finally {
       setLoading(false);
     }

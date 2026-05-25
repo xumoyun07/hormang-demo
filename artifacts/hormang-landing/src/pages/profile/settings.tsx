@@ -23,7 +23,7 @@ import { PublicProfilePreviewModal } from "@/components/public-profile-preview-m
 import logoImg from "/hormang-logo.png";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
-import { tFormat } from "@/lib/i18n";
+import { tFormat, getAuthError } from "@/lib/i18n";
 import { BottomNav } from "@/components/bottom-nav";
 import { useToast } from "@/hooks/use-toast";
 import { updateProfile, updateProviderProfile, sendSmsCode, addPhone } from "@/lib/auth-client";
@@ -184,7 +184,7 @@ function AddPhoneModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
       setDevCode(res.devCode ?? null);
       setStep("otp");
       startTimer();
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : tt.error); }
+    } catch (e: unknown) { setError(getAuthError(e instanceof Error ? e.message : "", t)); }
     finally { setLoading(false); }
   }
 
@@ -197,7 +197,7 @@ function AddPhoneModal({ onClose, onSuccess }: { onClose: () => void; onSuccess:
       setAuth(res.user, providerProfile);
       toast({ title: tt.phoneAddedOk });
       onSuccess();
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : tt.error); }
+    } catch (e: unknown) { setError(getAuthError(e instanceof Error ? e.message : "", t)); }
     finally { setLoading(false); }
   }
 
@@ -603,7 +603,7 @@ export default function ProfileSettingsPage() {
     } catch (err: unknown) {
       console.error("[Hormang] ❌ handleSave failed:", err);
       toast({
-        title: err instanceof Error ? err.message : t.profileSettings.saveErrorToast,
+        title: err instanceof Error ? getAuthError(err.message, t) : t.profileSettings.saveErrorToast,
         variant: "destructive",
       });
     } finally {

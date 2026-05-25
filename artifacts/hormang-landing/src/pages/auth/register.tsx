@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { getActiveCategories, getCategoryDisplayName } from "@/lib/categories";
-import { tFormat } from "@/lib/i18n";
+import { tFormat, getAuthError } from "@/lib/i18n";
 import { sendSmsCode, registerUser, saveProviderProfile } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
 import { recordReferralSignup, processReferralReward } from "@/lib/referral-store";
@@ -214,7 +214,7 @@ export default function RegisterPage() {
       setStep("otp");
       startResendTimer();
     } catch (err: unknown) {
-      setServerError(err instanceof Error ? err.message : t.common.errorGeneric);
+      setServerError(getAuthError(err instanceof Error ? err.message : "", t));
     } finally {
       setLoading(false);
     }
@@ -231,7 +231,7 @@ export default function RegisterPage() {
       startResendTimer();
       toast({ title: t.common.newCodeSent });
     } catch (err: unknown) {
-      setServerError(err instanceof Error ? err.message : t.common.errorGeneric);
+      setServerError(getAuthError(err instanceof Error ? err.message : "", t));
     } finally {
       setLoading(false);
     }
@@ -265,7 +265,7 @@ export default function RegisterPage() {
         setStep("provider");
       }
     } catch (err: unknown) {
-      setServerError(err instanceof Error ? err.message : t.common.errorGeneric);
+      setServerError(getAuthError(err instanceof Error ? err.message : "", t));
     } finally {
       setLoading(false);
     }
@@ -285,7 +285,7 @@ export default function RegisterPage() {
       toast({ title: tFormat(t.auth.register.welcomeProviderTpl, { name: user?.firstName ?? "" }) });
       setLocation("/dashboard");
     } catch (err: unknown) {
-      setServerError(err instanceof Error ? err.message : t.common.errorGeneric);
+      setServerError(getAuthError(err instanceof Error ? err.message : "", t));
     } finally {
       setLoading(false);
     }

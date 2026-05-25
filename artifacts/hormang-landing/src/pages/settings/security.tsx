@@ -3,7 +3,7 @@ import { Phone, Mail, Shield, Trash2, Lock, Check, AlertTriangle, Loader2, Refre
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { useToast } from "@/hooks/use-toast";
-import { tFormat } from "@/lib/i18n";
+import { tFormat, getAuthError } from "@/lib/i18n";
 import { SettingsPageShell } from "@/components/settings/page-shell";
 import { Section } from "@/components/settings/section";
 import { SettingsRow } from "@/components/settings/settings-row";
@@ -303,7 +303,7 @@ function RegisterEmailFlow({ onDone }: { onDone: () => Promise<void> }) {
       setDevCode(res.devCode ?? null);
       setStep("verify");
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.common.errorGeneric);
+      setError(getAuthError(e instanceof Error ? e.message : "", t));
     } finally { setLoading(false); }
   }
   async function verify() {
@@ -314,7 +314,7 @@ function RegisterEmailFlow({ onDone }: { onDone: () => Promise<void> }) {
       toast({ title: t.security.flows.registerEmail.success });
       await onDone();
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.common.errorGeneric);
+      setError(getAuthError(e instanceof Error ? e.message : "", t));
     } finally { setLoading(false); }
   }
   async function resend() {
@@ -323,7 +323,7 @@ function RegisterEmailFlow({ onDone }: { onDone: () => Promise<void> }) {
       const res = await startEmailRegistration({ email, password, confirmPassword });
       setDevCode(res.devCode ?? null);
       toast({ title: t.common.newCodeSent });
-    } catch (e) { setError(e instanceof Error ? e.message : t.common.errorGeneric); }
+    } catch (e) { setError(getAuthError(e instanceof Error ? e.message : "", t)); }
   }
 
   if (step === "form") {
@@ -372,7 +372,7 @@ function ChangeEmailFlow({ onDone }: { onDone: () => Promise<void> }) {
       const res = await startChangeEmail({ currentPassword, newEmail });
       setDevCode(res.devCode ?? null);
       setStep("verify");
-    } catch (e) { setError(e instanceof Error ? e.message : t.common.errorGeneric); }
+    } catch (e) { setError(getAuthError(e instanceof Error ? e.message : "", t)); }
     finally { setLoading(false); }
   }
   async function verify() {
@@ -381,12 +381,12 @@ function ChangeEmailFlow({ onDone }: { onDone: () => Promise<void> }) {
       await verifyChangeEmail(otp);
       toast({ title: t.security.flows.changeEmail.success });
       await onDone();
-    } catch (e) { setError(e instanceof Error ? e.message : t.common.errorGeneric); }
+    } catch (e) { setError(getAuthError(e instanceof Error ? e.message : "", t)); }
     finally { setLoading(false); }
   }
   async function resend() {
     try { const res = await startChangeEmail({ currentPassword, newEmail }); setDevCode(res.devCode ?? null); toast({ title: t.common.newCodeSent }); }
-    catch (e) { setError(e instanceof Error ? e.message : t.common.errorGeneric); }
+    catch (e) { setError(getAuthError(e instanceof Error ? e.message : "", t)); }
   }
 
   if (step === "form") {
@@ -433,7 +433,7 @@ function ChangePhoneFlow({ onDone }: { onDone: () => Promise<void> }) {
       const res = await startChangePhone({ currentPassword, newPhone: fullPhone() });
       setDevCode(res.devCode ?? null);
       setStep("verify");
-    } catch (e) { setError(e instanceof Error ? e.message : t.common.errorGeneric); }
+    } catch (e) { setError(getAuthError(e instanceof Error ? e.message : "", t)); }
     finally { setLoading(false); }
   }
   async function verify() {
@@ -442,12 +442,12 @@ function ChangePhoneFlow({ onDone }: { onDone: () => Promise<void> }) {
       await verifyChangePhone(otp);
       toast({ title: t.security.flows.changePhone.success });
       await onDone();
-    } catch (e) { setError(e instanceof Error ? e.message : t.common.errorGeneric); }
+    } catch (e) { setError(getAuthError(e instanceof Error ? e.message : "", t)); }
     finally { setLoading(false); }
   }
   async function resend() {
     try { const res = await startChangePhone({ currentPassword, newPhone: fullPhone() }); setDevCode(res.devCode ?? null); toast({ title: t.common.newCodeSent }); }
-    catch (e) { setError(e instanceof Error ? e.message : t.common.errorGeneric); }
+    catch (e) { setError(getAuthError(e instanceof Error ? e.message : "", t)); }
   }
 
   if (step === "form") {
@@ -507,7 +507,7 @@ function Enable2FAFlow({ onDone }: { onDone: () => Promise<void> }) {
       await setup2FA({ currentPassword: user?.emailVerified ? currentPassword : undefined, code, hint });
       toast({ title: t.security.flows.enable2FA.success });
       await onDone();
-    } catch (e) { setError(e instanceof Error ? e.message : t.common.errorGeneric); }
+    } catch (e) { setError(getAuthError(e instanceof Error ? e.message : "", t)); }
     finally { setLoading(false); }
   }
 
@@ -560,7 +560,7 @@ function Disable2FAFlow({ onDone }: { onDone: () => Promise<void> }) {
       await disable2FA(currentPassword);
       toast({ title: t.security.flows.disable2FA.success });
       await onDone();
-    } catch (e) { setError(e instanceof Error ? e.message : t.common.errorGeneric); }
+    } catch (e) { setError(getAuthError(e instanceof Error ? e.message : "", t)); }
     finally { setLoading(false); }
   }
 
@@ -598,7 +598,7 @@ function DeleteAccountFlow({ onCancel, onDeleted }: { onCancel: () => void; onDe
       setDevCode(res.devCode ?? null);
       setDestination(res.destination);
       setStep("verify");
-    } catch (e) { setError(e instanceof Error ? e.message : t.common.errorGeneric); }
+    } catch (e) { setError(getAuthError(e instanceof Error ? e.message : "", t)); }
     finally { setLoading(false); }
   }
   async function verify() {
@@ -612,7 +612,7 @@ function DeleteAccountFlow({ onCancel, onDeleted }: { onCancel: () => void; onDe
       await confirmDeleteAccount(otp);
       toast({ title: t.security.flows.deleteAccount.success });
       await onDeleted();
-    } catch (e) { setError(e instanceof Error ? e.message : t.common.errorGeneric); }
+    } catch (e) { setError(getAuthError(e instanceof Error ? e.message : "", t)); }
     finally { setLoading(false); }
   }
 

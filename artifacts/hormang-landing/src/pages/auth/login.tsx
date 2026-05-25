@@ -5,7 +5,7 @@ import { Phone, Mail, ArrowRight, Loader2, LogIn, ChevronLeft, RefreshCw, Lock, 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
-import { tFormat } from "@/lib/i18n";
+import { tFormat, getAuthError } from "@/lib/i18n";
 import { sendSmsCode, loginUser, loginWithEmail, verifyLogin2FA, type LoginChallenge } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
 import logoImg from "/hormang-logo.png";
@@ -70,7 +70,7 @@ export default function LoginPage() {
       startResendTimer();
       toast({ title: t.common.codeSent });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t.common.errorGeneric;
+      const msg = getAuthError(err instanceof Error ? err.message : "", t);
       setError(msg);
     } finally {
       setLoading(false);
@@ -98,7 +98,7 @@ export default function LoginPage() {
         setLocation("/dashboard");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t.common.errorGeneric;
+      const msg = getAuthError(err instanceof Error ? err.message : "", t);
       setError(msg);
     } finally {
       setLoading(false);
@@ -126,7 +126,7 @@ export default function LoginPage() {
         setLocation("/dashboard");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.common.errorGeneric);
+      setError(getAuthError(err instanceof Error ? err.message : "", t));
     } finally { setLoading(false); }
   }
 
@@ -139,7 +139,7 @@ export default function LoginPage() {
       toast({ title: tFormat(t.auth.login.welcomeTpl, { name: res.user.firstName }) });
       setLocation("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.common.errorGeneric);
+      setError(getAuthError(err instanceof Error ? err.message : "", t));
     } finally { setLoading(false); }
   }
 
@@ -154,7 +154,7 @@ export default function LoginPage() {
       startResendTimer();
       toast({ title: t.common.newCodeSent });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t.common.errorGeneric;
+      const msg = getAuthError(err instanceof Error ? err.message : "", t);
       setError(msg);
     } finally {
       setLoading(false);

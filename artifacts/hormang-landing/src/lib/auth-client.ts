@@ -300,17 +300,17 @@ export async function sendSmsCode(
 
   if (purpose === "login") {
     const user = findByPhone(normalized);
-    if (!user) throw new Error("Bu raqam ro'yxatdan o'tmagan");
+    if (!user) throw new Error("PHONE_NOT_REGISTERED");
   }
 
   if (purpose === "register") {
     const user = findByPhone(normalized);
-    if (user) throw new Error("Bu raqam allaqachon ro'yxatdan o'tgan");
+    if (user) throw new Error("PHONE_ALREADY_REGISTERED");
   }
 
   if (purpose === "change-phone") {
     const user = findByPhone(normalized);
-    if (user) throw new Error("Bu raqam allaqachon band");
+    if (user) throw new Error("PHONE_TAKEN");
   }
 
   const code = storeOtp("sms", normalized, purpose);
@@ -325,12 +325,12 @@ export async function sendEmailCode(
     | "login-email-2fa",
 ): Promise<{ ok: boolean; devCode?: string }> {
   const normalized = normalizeEmail(email);
-  if (!isValidEmail(normalized)) throw new Error("Noto'g'ri email manzil");
+  if (!isValidEmail(normalized)) throw new Error("INVALID_EMAIL");
 
   if (purpose === "register-email" || purpose === "change-email") {
     const owner = findByEmail(normalized);
     const myId = getToken();
-    if (owner && owner.id !== myId) throw new Error("Bu email allaqachon ro'yxatdan o'tgan");
+    if (owner && owner.id !== myId) throw new Error("EMAIL_ALREADY_REGISTERED");
   }
 
   const code = storeOtp("email", normalized, purpose);
@@ -349,11 +349,11 @@ export async function registerUser(body: {
   const normalized = normalizePhone(body.phone);
 
   if (!verifyOtp(normalized, body.otp, "register")) {
-    throw new Error("Tasdiqlash kodi noto'g'ri yoki muddati o'tgan");
+    throw new Error("OTP_INVALID");
   }
 
   if (findByPhone(normalized)) {
-    throw new Error("Bu raqam allaqachon ro'yxatdan o'tgan");
+    throw new Error("PHONE_ALREADY_REGISTERED");
   }
 
   const user: SafeUser = {
@@ -382,7 +382,7 @@ export async function saveProviderProfile(body: {
   preferredLocation?: string;
 }): Promise<{ profile: ProviderProfile }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
 
   const profiles = readProfiles();
   const existing = profiles.findIndex((p) => p.userId === token);
@@ -477,11 +477,11 @@ export async function loginUser(body: {
   const normalized = normalizePhone(body.phone);
 
   if (!verifyOtp(normalized, body.otp, "login")) {
-    throw new Error("Tasdiqlash kodi noto'g'ri yoki muddati o'tgan");
+    throw new Error("OTP_INVALID");
   }
 
   const user = findByPhone(normalized);
-  if (!user) throw new Error("Foydalanuvchi topilmadi");
+  if (!user) throw new Error("USER_NOT_FOUND");
 
   if (user.twoFactorEnabled) {
     const challenge = await issue2FAChallenge(user);
@@ -500,16 +500,16 @@ export async function loginWithEmail(body: {
   password: string;
 }): Promise<AuthResponse | LoginChallenge> {
   const email = normalizeEmail(body.email);
-  if (!isValidEmail(email)) throw new Error("Noto'g'ri email manzil");
+  if (!isValidEmail(email)) throw new Error("INVALID_EMAIL");
 
   const user = findByEmail(email);
-  if (!user || !user.emailVerified) throw new Error("Email yoki parol noto'g'ri");
+  if (!user || !user.emailVerified) throw new Error("EMAIL_OR_PASSWORD_WRONG");
 
   const stored = getPasswordHash(user.id);
-  if (!stored) throw new Error("Email yoki parol noto'g'ri");
+  if (!stored) throw new Error("EMAIL_OR_PASSWORD_WRONG");
 
   const ok = await verifyPasswordHash(body.password, stored);
-  if (!ok) throw new Error("Email yoki parol noto'g'ri");
+  if (!ok) throw new Error("EMAIL_OR_PASSWORD_WRONG");
 
   if (user.twoFactorEnabled) {
     const challenge = await issue2FAChallenge(user);
@@ -536,16 +536,16 @@ export async function verifyLogin2FA(body: {
   otp: string;
 }): Promise<AuthResponse> {
   const ch = consumeChallenge(body.challengeId);
-  if (!ch) throw new Error("Sessiya muddati tugadi. Qayta kiring.");
+  if (!ch) throw new Error("SESSION_EXPIRED");
 
   const user = findById(ch.userId);
-  if (!user) throw new Error("Foydalanuvchi topilmadi");
+  if (!user) throw new Error("USER_NOT_FOUND");
 
   const entry = getTwoFAEntry(user.id);
-  if (!entry) throw new Error("2FA kodi topilmadi. Qayta sozlang.");
+  if (!entry) throw new Error("TWO_FA_NOT_FOUND");
 
   const ok = await verifyPasswordHash(body.otp, entry.hash);
-  if (!ok) throw new Error("2FA kodi noto'g'ri");
+  if (!ok) throw new Error("TWO_FA_INVALID");
 
   dropChallenge(body.challengeId);
   setToken(user.id);
@@ -564,7 +564,7 @@ export async function migrateAccount(body: {
   const normalized = normalizePhone(body.phone);
 
   if (!verifyOtp(normalized, body.otp, "migrate")) {
-    throw new Error("Tasdiqlash kodi noto'g'ri yoki muddati o'tgan");
+    throw new Error("OTP_INVALID");
   }
 
   const existing = findByPhone(normalized);
@@ -596,20 +596,20 @@ export async function addPhone(body: {
   otp: string;
 }): Promise<{ user: SafeUser }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
 
   const normalized = normalizePhone(body.phone);
 
   if (!verifyOtp(normalized, body.otp, "add-phone")) {
-    throw new Error("Tasdiqlash kodi noto'g'ri yoki muddati o'tgan");
+    throw new Error("OTP_INVALID");
   }
 
   const user = findById(token);
-  if (!user) throw new Error("Foydalanuvchi topilmadi");
+  if (!user) throw new Error("USER_NOT_FOUND");
 
   const conflict = findByPhone(normalized);
   if (conflict && conflict.id !== user.id) {
-    throw new Error("Bu raqam boshqa hisob bilan bog'liq");
+    throw new Error("PHONE_BELONGS_TO_OTHER");
   }
 
   const updated: SafeUser = { ...user, phone: normalized };
@@ -621,9 +621,9 @@ export async function addPhone(body: {
 
 export async function verifyMyPassword(password: string): Promise<boolean> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
   const stored = getPasswordHash(token);
-  if (!stored) throw new Error("Avval parol o'rnating");
+  if (!stored) throw new Error("NO_PASSWORD_SET");
   return verifyPasswordHash(password, stored);
 }
 
@@ -635,24 +635,24 @@ export async function startEmailRegistration(body: {
   confirmPassword: string;
 }): Promise<{ devCode?: string }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
   const user = findById(token);
-  if (!user) throw new Error("Foydalanuvchi topilmadi");
+  if (!user) throw new Error("USER_NOT_FOUND");
 
   if (user.emailVerified) {
-    throw new Error("Email allaqachon biriktirilgan. Email yoki parolni o'zgartirish uchun tegishli bo'limdan foydalaning.");
+    throw new Error("EMAIL_ALREADY_ATTACHED");
   }
   if (readPasswordHashes()[user.id]) {
-    throw new Error("Parol allaqachon o'rnatilgan. Email biriktirish uchun parolingizni qayta kiriting.");
+    throw new Error("PASSWORD_ALREADY_SET");
   }
 
   const email = normalizeEmail(body.email);
-  if (!isValidEmail(email)) throw new Error("Noto'g'ri email manzil");
-  if (!isStrongPassword(body.password)) throw new Error("Parol kamida 8 ta belgidan iborat bo'lsin");
-  if (body.password !== body.confirmPassword) throw new Error("Parollar mos kelmadi");
+  if (!isValidEmail(email)) throw new Error("INVALID_EMAIL");
+  if (!isStrongPassword(body.password)) throw new Error("PASSWORD_TOO_SHORT");
+  if (body.password !== body.confirmPassword) throw new Error("PASSWORDS_DONT_MATCH");
 
   const owner = findByEmail(email);
-  if (owner && owner.id !== user.id) throw new Error("Bu email allaqachon ro'yxatdan o'tgan");
+  if (owner && owner.id !== user.id) throw new Error("EMAIL_ALREADY_REGISTERED");
 
   const pwHash = await hashPassword(body.password);
   const updated: SafeUser = {
@@ -688,15 +688,15 @@ export async function cancelPendingPhone(): Promise<void> {
 
 export async function verifyEmailRegistration(otp: string): Promise<{ user: SafeUser }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
   const user = findById(token);
-  if (!user || !user.pendingEmail) throw new Error("Email tasdiqlash so'rovi topilmadi");
+  if (!user || !user.pendingEmail) throw new Error("EMAIL_VERIFICATION_NOT_FOUND");
 
   const ok = verifyOtpEntry("email", user.pendingEmail, otp, "register-email");
-  if (!ok) throw new Error("Tasdiqlash kodi noto'g'ri yoki muddati o'tgan");
+  if (!ok) throw new Error("OTP_INVALID");
 
   const pendingPwd = readPasswordHashes()[`${user.id}__pending_email`];
-  if (!pendingPwd) throw new Error("Parol topilmadi. Qayta urinib ko'ring.");
+  if (!pendingPwd) throw new Error("PASSWORD_NOT_FOUND");
   writePasswordHash(user.id, pendingPwd);
   deletePasswordHash(`${user.id}__pending_email`);
 
@@ -717,19 +717,19 @@ export async function startChangeEmail(body: {
   newEmail: string;
 }): Promise<{ devCode?: string }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
   const user = findById(token);
-  if (!user) throw new Error("Foydalanuvchi topilmadi");
-  if (!user.emailVerified) throw new Error("Avval email manzilingizni tasdiqlang");
+  if (!user) throw new Error("USER_NOT_FOUND");
+  if (!user.emailVerified) throw new Error("EMAIL_NOT_VERIFIED");
 
   const ok = await verifyMyPassword(body.currentPassword);
-  if (!ok) throw new Error("Parol noto'g'ri");
+  if (!ok) throw new Error("WRONG_PASSWORD");
 
   const newEmail = normalizeEmail(body.newEmail);
-  if (!isValidEmail(newEmail)) throw new Error("Noto'g'ri email manzil");
-  if (newEmail === normalizeEmail(user.email ?? "")) throw new Error("Yangi email avvalgisi bilan bir xil");
+  if (!isValidEmail(newEmail)) throw new Error("INVALID_EMAIL");
+  if (newEmail === normalizeEmail(user.email ?? "")) throw new Error("NEW_EMAIL_SAME_AS_OLD");
   const owner = findByEmail(newEmail);
-  if (owner && owner.id !== user.id) throw new Error("Bu email allaqachon ro'yxatdan o'tgan");
+  if (owner && owner.id !== user.id) throw new Error("EMAIL_ALREADY_REGISTERED");
 
   upsertUser({ ...user, pendingEmail: newEmail });
   return sendEmailCode(newEmail, "change-email");
@@ -737,12 +737,12 @@ export async function startChangeEmail(body: {
 
 export async function verifyChangeEmail(otp: string): Promise<{ user: SafeUser }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
   const user = findById(token);
-  if (!user || !user.pendingEmail) throw new Error("Email o'zgartirish so'rovi topilmadi");
+  if (!user || !user.pendingEmail) throw new Error("EMAIL_CHANGE_NOT_FOUND");
 
   const ok = verifyOtpEntry("email", user.pendingEmail, otp, "change-email");
-  if (!ok) throw new Error("Tasdiqlash kodi noto'g'ri yoki muddati o'tgan");
+  if (!ok) throw new Error("OTP_INVALID");
 
   const updated: SafeUser = {
     ...user,
@@ -761,19 +761,19 @@ export async function startChangePhone(body: {
   newPhone: string;
 }): Promise<{ devCode?: string }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
   const user = findById(token);
-  if (!user) throw new Error("Foydalanuvchi topilmadi");
-  if (!user.emailVerified) throw new Error("Telefon raqamni o'zgartirish uchun avval email tasdiqlang");
+  if (!user) throw new Error("USER_NOT_FOUND");
+  if (!user.emailVerified) throw new Error("EMAIL_REQUIRED_FOR_PHONE_CHANGE");
 
   const ok = await verifyMyPassword(body.currentPassword);
-  if (!ok) throw new Error("Parol noto'g'ri");
+  if (!ok) throw new Error("WRONG_PASSWORD");
 
   const newPhone = normalizePhone(body.newPhone);
-  if (newPhone.replace(/\D/g, "").length < 9) throw new Error("Noto'g'ri telefon raqami");
-  if (newPhone === normalizePhone(user.phone ?? "")) throw new Error("Yangi raqam avvalgisi bilan bir xil");
+  if (newPhone.replace(/\D/g, "").length < 9) throw new Error("INVALID_PHONE");
+  if (newPhone === normalizePhone(user.phone ?? "")) throw new Error("NEW_PHONE_SAME_AS_OLD");
   const owner = findByPhone(newPhone);
-  if (owner && owner.id !== user.id) throw new Error("Bu raqam allaqachon band");
+  if (owner && owner.id !== user.id) throw new Error("PHONE_TAKEN");
 
   upsertUser({ ...user, pendingPhone: newPhone });
   return sendSmsCode(newPhone, "change-phone");
@@ -781,12 +781,12 @@ export async function startChangePhone(body: {
 
 export async function verifyChangePhone(otp: string): Promise<{ user: SafeUser }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
   const user = findById(token);
-  if (!user || !user.pendingPhone) throw new Error("Telefon o'zgartirish so'rovi topilmadi");
+  if (!user || !user.pendingPhone) throw new Error("PHONE_CHANGE_NOT_FOUND");
 
   const ok = verifyOtpEntry("sms", user.pendingPhone, otp, "change-phone");
-  if (!ok) throw new Error("Tasdiqlash kodi noto'g'ri yoki muddati o'tgan");
+  if (!ok) throw new Error("OTP_INVALID");
 
   const updated: SafeUser = {
     ...user,
@@ -805,14 +805,14 @@ export async function setup2FA(body: {
   hint: string;
 }): Promise<{ user: SafeUser }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
   const user = findById(token);
-  if (!user) throw new Error("Foydalanuvchi topilmadi");
+  if (!user) throw new Error("USER_NOT_FOUND");
 
   if (user.emailVerified) {
-    if (!body.currentPassword) throw new Error("Identifikatsiya uchun parol talab qilinadi");
+    if (!body.currentPassword) throw new Error("PASSWORD_REQUIRED_FOR_2FA");
     const ok = await verifyMyPassword(body.currentPassword);
-    if (!ok) throw new Error("Parol noto'g'ri");
+    if (!ok) throw new Error("WRONG_PASSWORD");
   }
 
   const hash = await hashPassword(body.code);
@@ -829,13 +829,13 @@ export async function setup2FA(body: {
 
 export async function disable2FA(currentPassword: string): Promise<{ user: SafeUser }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
   const user = findById(token);
-  if (!user) throw new Error("Foydalanuvchi topilmadi");
+  if (!user) throw new Error("USER_NOT_FOUND");
 
   if (user.emailVerified) {
     const ok = await verifyMyPassword(currentPassword);
-    if (!ok) throw new Error("Parol noto'g'ri");
+    if (!ok) throw new Error("WRONG_PASSWORD");
   }
 
   deleteTwoFAEntry(user.id);
@@ -853,13 +853,13 @@ export async function disable2FA(currentPassword: string): Promise<{ user: SafeU
 
 export async function startDeleteAccount(currentPassword: string): Promise<{ devCode?: string; destination: string }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
   const user = findById(token);
-  if (!user) throw new Error("Foydalanuvchi topilmadi");
+  if (!user) throw new Error("USER_NOT_FOUND");
 
   const ok = await verifyMyPassword(currentPassword);
-  if (!ok) throw new Error("Parol noto'g'ri");
-  if (!user.phone) throw new Error("Tasdiqlash uchun telefon raqami kerak");
+  if (!ok) throw new Error("WRONG_PASSWORD");
+  if (!user.phone) throw new Error("PHONE_REQUIRED");
 
   upsertUser({ ...user, pendingDeleteRequest: true });
   const res = await sendSmsCode(user.phone, "delete-account");
@@ -868,14 +868,14 @@ export async function startDeleteAccount(currentPassword: string): Promise<{ dev
 
 export async function confirmDeleteAccount(otp: string): Promise<{ ok: true }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
   const user = findById(token);
   if (!user || !user.pendingDeleteRequest || !user.phone) {
-    throw new Error("O'chirish so'rovi topilmadi");
+    throw new Error("DELETE_REQUEST_NOT_FOUND");
   }
 
   const ok = verifyOtpEntry("sms", user.phone, otp, "delete-account");
-  if (!ok) throw new Error("Tasdiqlash kodi noto'g'ri yoki muddati o'tgan");
+  if (!ok) throw new Error("OTP_INVALID");
 
   const users = readUsers();
   const idx = users.findIndex((u) => u.id === user.id);
@@ -901,9 +901,9 @@ export async function confirmDeleteAccount(otp: string): Promise<{ ok: true }> {
 
 export async function cancelDeleteAccount(): Promise<{ user: SafeUser }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
   const user = findById(token);
-  if (!user) throw new Error("Foydalanuvchi topilmadi");
+  if (!user) throw new Error("USER_NOT_FOUND");
   const updated: SafeUser = { ...user, pendingDeleteRequest: false };
   upsertUser(updated);
   return { user: updated };
@@ -920,10 +920,10 @@ export async function getMe(): Promise<{
   providerProfile: ProviderProfile | null;
 }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
 
   const user = findById(token);
-  if (!user) throw new Error("Foydalanuvchi topilmadi");
+  if (!user) throw new Error("USER_NOT_FOUND");
 
   const providerProfile = user.role === "provider" ? findProfile(user.id) : null;
   return { user, providerProfile };
@@ -941,10 +941,10 @@ export async function updateProfile(body: {
   email?: string;
 }): Promise<{ user: SafeUser }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
 
   const user = findById(token);
-  if (!user) throw new Error("Foydalanuvchi topilmadi");
+  if (!user) throw new Error("USER_NOT_FOUND");
 
   const updated: SafeUser = {
     ...user,
@@ -962,7 +962,7 @@ export async function updateProviderProfile(body: {
   preferredLocation?: string;
 }): Promise<{ profile: ProviderProfile }> {
   const token = getToken();
-  if (!token) throw new Error("Avtorizatsiya talab qilinadi. Iltimos, qayta kiriting.");
+  if (!token) throw new Error("AUTH_REQUIRED");
 
   const profiles = readProfiles();
   const existing = profiles.findIndex((p) => p.userId === token);
@@ -994,7 +994,7 @@ export async function getProviderPublicProfile(id: string): Promise<{
   providerProfile: ProviderProfile | null;
 }> {
   const user = findById(id);
-  if (!user || user.role !== "provider") throw new Error("Ijrochi topilmadi");
+  if (!user || user.role !== "provider") throw new Error("PROVIDER_NOT_FOUND");
   const providerProfile = findProfile(id);
   return { user, providerProfile };
 }

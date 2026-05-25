@@ -14,4 +14,10 @@ export function tFormat(template: string, vars: Record<string, string | number>)
   return template.replace(/\{\{(\w+)\}\}/g, (_, k) => String(vars[k] ?? ""));
 }
 
+export function getAuthError(code: string, t: Dict): string {
+  if (!code) return t.common.errorGeneric;
+  const errors = t.authErrors as Record<string, string>;
+  return errors[code] ?? t.common.errorGeneric;
+}
+
 export type { Dict };

@@ -17,7 +17,7 @@ import { onStoreChange } from "@/lib/store-events";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
-import { tFormat } from "@/lib/i18n";
+import { tFormat, getAuthError } from "@/lib/i18n";
 import { getCategoryDisplayName } from "@/lib/categories";
 import { getRegionLabel, getDistrictLabel } from "@/lib/regions";
 import { saveProviderProfile } from "@/lib/auth-client";
@@ -785,7 +785,7 @@ export default function UnifiedDashboard() {
       setShowBecomeModal(false);
       setLocation("/profile/settings");
     } catch (err: unknown) {
-      toast({ title: err instanceof Error ? err.message : t.common.errorGeneric, variant: "destructive" });
+      toast({ title: getAuthError(err instanceof Error ? err.message : "", t), variant: "destructive" });
     } finally {
       setBecomingProvider(false);
     }
