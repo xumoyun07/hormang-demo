@@ -28,62 +28,51 @@ export const faqItems: FaqItem[] = [
     },
     answer: {
       uz: "Kategoriyani tanlang, so'rov yuboring va tekshirilgan ijrochilardan takliflar oling.",
-      ru: "Выберите категорию, отправьте запрос и получите предложения от проверенных исполнителей.",
-    },
-  },
-  {
-    id: "payment",
-    question: {
-      uz: "To'lov qanday amalga oshiriladi?",
-      ru: "Как осуществляется оплата?",
-    },
-    answer: {
-      uz: "To'lov ijrochi bilan to'g'ridan-to'g'ri kelishiladi. Hormang ichki to'lov amalga oshirmaydi.",
-      ru: "Оплата согласовывается напрямую с исполнителем. Hormang не обрабатывает платежи.",
-    },
-  },
-  {
-    id: "choose_provider",
-    question: {
-      uz: "Ijrochini qanday tanlash mumkin?",
-      ru: "Как выбрать исполнителя?",
-    },
-    answer: {
-      uz: "Reyting, sharhlar va nishonlarga e'tibor bering. Ijrochi profilini diqqat bilan o'rganib chiqing.",
-      ru: "Обращайте внимание на рейтинг, отзывы и значки. Внимательно изучайте профиль исполнителя.",
-    },
-  },
-  {
-    id: "cancel_offer",
-    question: {
-      uz: "Taklifni bekor qilish mumkinmi?",
-      ru: "Можно ли отменить предложение?",
-    },
-    answer: {
-      uz: "Ha, taklif qabul qilinguniga qadar bekor qilish mumkin. Qabul qilinganidan so'ng faqat ijrochi bilan kelishgan holda bekor qilinadi.",
-      ru: "Да, до принятия предложения его можно отменить. После принятия — только по договорённости с исполнителем.",
-    },
-  },
-  {
-    id: "become_provider",
-    question: {
-      uz: "Ijrochi bo'lish uchun nima qilish kerak?",
-      ru: "Что нужно сделать, чтобы стать исполнителем?",
-    },
-    answer: {
-      uz: "Bosh sahifadan 'Ijrochi' bo'limini tanlang, profilingizni to'ldiring va tasdiqlashni kutib turing.",
-      ru: "На главной странице перейдите в раздел «Исполнитель», заполните профиль и ожидайте подтверждения.",
+      ru: "Выберите категорию, отправьте запрос и получайте предложения от проверенных исполнителей.",
     },
   },
   {
     id: "tanga",
     question: {
-      uz: "Tanga nima va u nima uchun?",
-      ru: "Что такое Tanga и для чего она нужна?",
+      uz: "Tanga tizimi qanday ishlaydi?",
+      ru: "Как работает система Tanga?",
     },
     answer: {
-      uz: "Tanga — platformadagi ichki valyuta. Ijrochilar mijozlarga taklif yuborish uchun Tanga sarflaydi.",
-      ru: "Tanga — внутренняя валюта платформы. Исполнители тратят Tanga, чтобы отправлять предложения клиентам.",
+      uz: "Tanga — bu ijrochilar uchun ichki valyuta bo'lib, takliflar yuborish uchun ishlatiladi.",
+      ru: "Tanga — это внутренняя валюта для исполнителей, используемая для отправки предложений.",
+    },
+  },
+  {
+    id: "cancel",
+    question: {
+      uz: "So'rovni bekor qilish mumkinmi?",
+      ru: "Можно ли отменить запрос?",
+    },
+    answer: {
+      uz: "Ha, ijrochi tomonidan hali qabul qilinmagan bo'lsa, so'rovni bekor qilish mumkin.",
+      ru: "Да, вы можете отменить запрос, пока исполнитель ещё не принял его.",
+    },
+  },
+  {
+    id: "review",
+    question: {
+      uz: "Ijrochiga baho qanday qoldiriladi?",
+      ru: "Как оставить отзыв об исполнителе?",
+    },
+    answer: {
+      uz: "Xizmat tugagandan so'ng siz ijrochiga baho va sharh qoldirishingiz mumkin.",
+      ru: "После завершения услуги вы можете оставить оценку и отзыв об исполнителе.",
+    },
+  },
+  {
+    id: "safety",
+    question: {
+      uz: "Platforma qanchalik xavfsiz?",
+      ru: "Насколько безопасна платформа?",
+    },
+    answer: {
+      uz: "Barcha ijrochilar tekshiriladi. Xavfsizligingiz uchun shaxsiy ma'lumotlaringizni himoya qilamiz.",
+      ru: "Все исполнители проверяются. Мы защищаем ваши личные данные для вашей безопасности.",
     },
   },
 ];
@@ -96,30 +85,30 @@ export const guidelineItems: GuidelineItem[] = [
       ru: "Уважительное общение",
     },
     desc: {
-      uz: "Boshqalarga nisbatan hurmat ko'rsating va muomala qoidalariga rioya qiling.",
-      ru: "Проявляйте уважение к другим и соблюдайте правила общения.",
+      uz: "HORMANG platformasida barcha foydalanuvchilar bir-biriga hurmat bilan munosabatda bo'lishi kerak. Haqorat, tahdid, kamsitish yoki bezovta qiluvchi xatti-harakatlar qat'iyan ta'qiqlanadi.",
+      ru: "Все пользователи платформы HORMANG обязаны относиться друг к другу с уважением. Оскорбления, угрозы, дискриминация или домогательства строго запрещены.",
     },
   },
   {
     id: "no_fraud",
     title: {
-      uz: "Firibgarlik yo'q",
-      ru: "Без мошенничества",
+      uz: "Halollik va soflik",
+      ru: "Честность и правдивость",
     },
     desc: {
-      uz: "Firibgarlik yoki yolg'on ma'lumotlar qat'iyan taqiqlanadi.",
-      ru: "Мошенничество или ложная информация строго запрещены.",
+      uz: "Profilingiz, xizmatlaringiz, narxlaringiz va sharhlaringizda faqat haqiqiy va to'g'ri ma'lumotlardan foydalaning. Firibgarlik yoki yolg'on ma'lumotlar qat'iyan taqiqlanadi.",
+      ru: "Используйте только достоверную и точную информацию в своём профиле, описании услуг, ценах и отзывах. Мошенничество или предоставление ложной информации строго запрещено.",
     },
   },
   {
     id: "no_threats",
     title: {
-      uz: "Tahdid yo'q",
-      ru: "Без угроз",
+      uz: "Platformadan adolatli foydalanish",
+      ru: "Добросовестное использование платформы",
     },
     desc: {
-      uz: "Boshqa foydalanuvchilarni tahqirlash yoki tahdid qilish mumkin emas.",
-      ru: "Оскорбление или угрозы в адрес других пользователей недопустимы.",
+      uz: "Spam, tizimdan noto'g'ri foydalanish, soxta so'rov yoki takliflar yuborish, yoki platforma qoidalarini chetlab o'tishga urinish taqiqlanadi. Hormang barcha foydalanuvchilar uchun xavfsiz va adolatli bo'lishi kerak.",
+      ru: "Спам, злоупотребление системой, отправка поддельных запросов или предложений, а также попытки обойти правила платформы запрещены. Hormang должен быть безопасным и справедливым для всех пользователей.",
     },
   },
 ];

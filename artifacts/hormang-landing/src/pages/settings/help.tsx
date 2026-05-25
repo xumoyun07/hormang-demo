@@ -3,8 +3,10 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageSquareText, ChevronDown, Mail, Send, Copy, Check,
-  FileText, ScrollText, FileCheck2, Users,
+  FileText, ScrollText, FileCheck2,
+  HeartHandshake, ShieldCheck, Scale, AlertTriangle,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useI18n } from "@/contexts/i18n-context";
 import { SettingsPageShell } from "@/components/settings/page-shell";
 import { Section } from "@/components/settings/section";
@@ -127,21 +129,35 @@ export default function HelpSettingsPage() {
       </Section>
 
       <Section title={t.help.sectionGuidelines}>
-        {guidelineItems.map((item) => (
-          <div key={item.id} className="px-4 py-3 flex items-start gap-3">
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Users className="w-4 h-4" />
+        {guidelineItems.map((item) => {
+          const iconMap: Record<string, { Icon: LucideIcon; bg: string; color: string }> = {
+            respect:    { Icon: HeartHandshake, bg: "bg-rose-50 dark:bg-rose-950/40",    color: "text-rose-500 dark:text-rose-400" },
+            no_fraud:   { Icon: ShieldCheck,    bg: "bg-emerald-50 dark:bg-emerald-950/40", color: "text-emerald-600 dark:text-emerald-400" },
+            no_threats: { Icon: Scale,          bg: "bg-violet-50 dark:bg-violet-950/40", color: "text-violet-600 dark:text-violet-400" },
+          };
+          const { Icon, bg, color } = iconMap[item.id] ?? { Icon: HeartHandshake, bg: "bg-gray-50", color: "text-gray-500" };
+          return (
+            <div key={item.id} className="px-4 py-3 flex items-start gap-3">
+              <div className={`w-8 h-8 rounded-xl ${bg} ${color} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                <Icon className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm text-gray-900 dark:text-[hsl(var(--text-primary))]">
+                  {getLocalizedText(item.title, locale)}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-[hsl(var(--text-tertiary))] mt-0.5 leading-snug">
+                  {getLocalizedText(item.desc, locale)}
+                </p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-gray-900 dark:text-[hsl(var(--text-primary))]">
-                {getLocalizedText(item.title, locale)}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-[hsl(var(--text-tertiary))] mt-0.5 leading-snug">
-                {getLocalizedText(item.desc, locale)}
-              </p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
+        <div className="mx-4 mb-3 mt-1 flex items-start gap-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40 px-3 py-2.5">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-snug">
+            {t.help.guidelinesWarning}
+          </p>
+        </div>
       </Section>
 
       <Section title={t.help.sectionLegal}>

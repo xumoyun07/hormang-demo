@@ -161,6 +161,7 @@ export const en: Dict = {
     sectionFAQ: "Frequently asked questions",
     sectionContact: "Contact us",
     sectionGuidelines: "Community guidelines",
+    guidelinesWarning: "GUIDELINES_WARNING",
     sectionLegal: "Legal",
     feedback: { title: "Send feedback", desc: "Suggestion or complaint" },
     contact:  { email: "Email", telegram: "Telegram", copy: "Copy", copied: "Copied" },
