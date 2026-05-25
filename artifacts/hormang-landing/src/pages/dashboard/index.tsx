@@ -515,15 +515,6 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
               </span>
             </div>
 
-            {(local.region || providerProfile?.preferredLocation) && (
-              <p className="flex items-center gap-1 text-xs text-gray-400 mb-2">
-                <MapPin className="w-3 h-3" />
-                {local.region
-                  ? getRegionLabel(local.region, locale)
-                  : getRegionLabel(providerProfile?.preferredLocation ?? "", locale)}
-              </p>
-            )}
-
             {/* Stats row */}
             <div className="flex items-center gap-3">
               <button
