@@ -25,8 +25,10 @@ import {
   type ProviderRequest,
 } from "@/lib/provider-store";
 import { getRequests, getOffers, canSubmitOffer, offerBlockLabel } from "@/lib/requests-store";
-import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questionnaire-store";
+import { getAllQuestionsForCategory, collectActiveQuestions, type QuestionOption } from "@/lib/questionnaire-store";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
+import { getLocalizedText } from "@/lib/localization";
+import { getRequestLocation } from "@/lib/regions";
 import { ImageGrid, getAnswerImageUrls } from "@/components/image-grid";
 import { getTangaBalance, spendTangaBalance, addTangaBalance } from "@/lib/tanga-store";
 import { calculateOfferCost } from "@/lib/offer-cost";
@@ -61,9 +63,11 @@ function timeAgo(iso: string, t: Dict): string {
 function formatAnswerValue(
   value: unknown,
   t: Dict,
-  options?: { label: string; value: string; type?: string }[],
+  options?: QuestionOption[],
   otherText?: string,
+  locale?: string,
 ): string {
+  const optLabel = (o: QuestionOption) => getLocalizedText(o.labelLocalized ?? o.label, (locale ?? "uz") as "uz" | "ru");
   if (value === null || value === undefined || value === "") return t.offerForm.answer.dash;
   if (typeof value === "string" && value.startsWith("data:")) return "__IMAGE__";
   if (typeof value === "boolean") return value ? t.offerForm.answer.yes : t.offerForm.answer.no;
@@ -71,12 +75,14 @@ function formatAnswerValue(
   const otherOpt = options?.find((o) => o.type === "other");
   if (typeof value === "string") {
     if (otherOpt && value === otherOpt.value && otherText) return otherText;
-    return options?.find((o) => o.value === value)?.label ?? value;
+    const match = options?.find((o) => o.value === value);
+    return match ? optLabel(match) : value;
   }
   if (Array.isArray(value)) {
     return (value as string[]).map((v) => {
       if (otherOpt && v === otherOpt.value && otherText) return otherText;
-      return options?.find((o) => o.value === v)?.label ?? v;
+      const match = options?.find((o) => o.value === v);
+      return match ? optLabel(match) : v;
     }).join(", ");
   }
   if (typeof value === "object" && value !== null) {
@@ -141,9 +147,9 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
       const raw = request.answers?.[q.id];
       if (raw === null || raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0)) return null;
       const otherText = request.answers?.[q.id + "_other"] as string | undefined;
-      const formatted = formatAnswerValue(raw, t, q.options, otherText);
+      const formatted = formatAnswerValue(raw, t, q.options, otherText, locale);
       if (formatted === "__IMAGE__") return null;
-      return { label: q.label, value: formatted };
+      return { label: getLocalizedText(q.labelLocalized ?? q.label, locale as "uz" | "ru"), value: formatted };
     })
     .filter(Boolean) as { label: string; value: string }[];
 
@@ -372,7 +378,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                   {request.location && (
                     <div className="flex items-center gap-1.5 text-xs text-gray-500">
                       <MapPin className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
-                      <span>{request.location}</span>
+                      <span>{getRequestLocation(request, locale)}</span>
                     </div>
                   )}
                   {request.budgetLabel && (

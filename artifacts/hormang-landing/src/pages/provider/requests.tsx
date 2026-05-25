@@ -19,7 +19,9 @@ import {
   type ProviderRequest, type ProviderOffer,
 } from "@/lib/provider-store";
 import { canSubmitOffer, offerBlockLabel, MAX_ACTIVE_OFFERS, MAX_LIFETIME_OFFERS } from "@/lib/requests-store";
-import { getAllQuestionsForCategory, collectActiveQuestions } from "@/lib/questionnaire-store";
+import { getAllQuestionsForCategory, collectActiveQuestions, type QuestionOption } from "@/lib/questionnaire-store";
+import { getLocalizedText } from "@/lib/localization";
+import { getRequestLocation } from "@/lib/regions";
 import logoImg from "/hormang-logo.png";
 import { TangaChip } from "@/pages/plans";
 import { useI18n } from "@/contexts/i18n-context";
@@ -49,10 +51,12 @@ const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", 
 
 function formatAnswerValue(
   value: unknown,
-  options: { label: string; value: string; type?: string }[] | undefined,
+  options: QuestionOption[] | undefined,
   otherText: string | undefined,
   t: Dict,
+  locale?: string,
 ): string {
+  const optLabel = (o: QuestionOption) => getLocalizedText(o.labelLocalized ?? o.label, (locale ?? "uz") as "uz" | "ru");
   if (value === null || value === undefined || value === "") return t.providerRequests.formatHelpers.none;
   if (typeof value === "string" && value.startsWith("data:")) return "__IMAGE__";
   if (typeof value === "boolean") return value ? t.providerRequests.formatHelpers.yes : t.providerRequests.formatHelpers.no;
@@ -60,12 +64,14 @@ function formatAnswerValue(
   const otherOpt = options?.find((o) => o.type === "other");
   if (typeof value === "string") {
     if (otherOpt && value === otherOpt.value && otherText) return otherText;
-    return options?.find((o) => o.value === value)?.label ?? value;
+    const match = options?.find((o) => o.value === value);
+    return match ? optLabel(match) : value;
   }
   if (Array.isArray(value)) {
     return (value as string[]).map((v) => {
       if (otherOpt && v === otherOpt.value && otherText) return otherText;
-      return options?.find((o) => o.value === v)?.label ?? v;
+      const match = options?.find((o) => o.value === v);
+      return match ? optLabel(match) : v;
     }).join(", ");
   }
   if (typeof value === "object" && value !== null) {
@@ -197,7 +203,7 @@ function FullscreenSlider({
                 </div>
                 <div className="bg-gray-50 rounded-xl p-3">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">{t.providerRequests.slider.location}</p>
-                  <p className="text-xs font-bold text-gray-800">{current.location}</p>
+                  <p className="text-xs font-bold text-gray-800">{getRequestLocation(current, locale)}</p>
                 </div>
               </div>
             </motion.div>
@@ -263,9 +269,9 @@ function OfferDetailModal({
       const raw = request.answers?.[q.id];
       if (raw === null || raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0)) return null;
       const otherText = request.answers?.[q.id + "_other"] as string | undefined;
-      const formatted = formatAnswerValue(raw, q.options, otherText, t);
+      const formatted = formatAnswerValue(raw, q.options, otherText, t, locale);
       if (formatted === "__IMAGE__") return null;
-      return { label: q.label, value: formatted };
+      return { label: getLocalizedText(q.labelLocalized ?? q.label, locale as "uz" | "ru"), value: formatted };
     })
     .filter(Boolean) as { label: string; value: string }[];
 
@@ -333,7 +339,7 @@ function OfferDetailModal({
                   {request.location && (
                     <div className="flex items-center gap-1.5 text-xs text-gray-500">
                       <MapPin className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" />
-                      <span>{request.location}</span>
+                      <span>{getRequestLocation(request, locale)}</span>
                     </div>
                   )}
                   {request.budgetLabel && (
@@ -665,7 +671,7 @@ export default function ProviderRequestsPage() {
                         {urg.label}
                       </span>
                       <span className="flex items-center gap-0.5 text-[11px] text-gray-400">
-                        <MapPin className="w-3 h-3" />{r.location}
+                        <MapPin className="w-3 h-3" />{getRequestLocation(r, locale)}
                       </span>
                       <span className={`text-[11px] font-bold ${submitCheck.active === 0 ? "text-red-500" : "text-emerald-600"}`}>
                         {tFormat(t.providerRequests.card.activeOffersTpl, { n: submitCheck.active, max: MAX_ACTIVE_OFFERS })}
@@ -738,7 +744,7 @@ export default function ProviderRequestsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-gray-800 truncate">{getCategoryDisplayName(r.categoryId, locale, r.categoryName)}</p>
-                        <p className="text-[11px] text-gray-400 truncate">{r.customerName} · {r.location}</p>
+                        <p className="text-[11px] text-gray-400 truncate">{r.customerName} · {getRequestLocation(r, locale)}</p>
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <span className={`inline-flex items-center gap-1 text-[10px] font-bold border px-2 py-0.5 rounded-full ${badge.cls}`}>

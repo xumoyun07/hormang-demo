@@ -33,6 +33,7 @@ import {
   type ProviderRequest, type UpcomingService,
 } from "@/lib/provider-store";
 import { confirmCompletion, getOfferById } from "@/lib/requests-store";
+import { getRequestLocation } from "@/lib/regions";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 import { ReviewModal, type ReviewSubmitData } from "@/components/review-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
@@ -562,7 +563,7 @@ function RequestSlideCard({
           </div>
           <div className="bg-gray-50 rounded-xl p-3">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">{t.providerHome.card.location}</p>
-            <p className="text-sm font-bold text-gray-800 truncate">{request.location}</p>
+            <p className="text-sm font-bold text-gray-800 truncate">{getRequestLocation(request, locale)}</p>
           </div>
           <div className="bg-gray-50 rounded-xl p-3">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">{t.providerHome.card.offers}</p>
@@ -725,7 +726,7 @@ function RequestsModal({
                         </div>
                         <div className="bg-gray-50 rounded-xl p-2 text-center">
                           <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{t.providerHome.card.location}</p>
-                          <p className="text-xs font-bold text-gray-700 truncate">{r.location}</p>
+                          <p className="text-xs font-bold text-gray-700 truncate">{getRequestLocation(r, locale)}</p>
                         </div>
                         <div className="bg-gray-50 rounded-xl p-2 text-center">
                           <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{t.providerHome.card.offers}</p>

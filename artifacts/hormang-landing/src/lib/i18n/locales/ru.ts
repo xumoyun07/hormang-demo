@@ -1251,7 +1251,7 @@ export const ru: Dict = {
     uploadedImageAlt: "Загруженное изображение",
     urgency: "Срочность",
     budget: "Бюджет",
-    openToOffers: "Открыт к предложениям",
+    openToOffers: "Договорная",
     budgetNegotiable: "Договорная",
     soum: "сум",
     notSpecified: "Не указано",

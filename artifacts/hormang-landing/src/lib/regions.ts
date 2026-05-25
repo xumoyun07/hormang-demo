@@ -48,6 +48,22 @@ export function getDistrictLabel(name: string, locale: string): string {
   return name;
 }
 
+/**
+ * Get a fully-localized location string from a ProviderRequest-like object.
+ * Prefers district + region codes (translated) over the raw stored location string.
+ */
+export function getRequestLocation(
+  r: { location: string; region?: string; district?: string },
+  locale: string,
+): string {
+  if (r.district && r.region) {
+    return `${getDistrictLabel(r.district, locale)}, ${getRegionLabel(r.region, locale)}`;
+  }
+  if (r.district) return getDistrictLabel(r.district, locale);
+  if (r.region)   return getRegionLabel(r.region, locale);
+  return r.location;
+}
+
 /** Get a region's display label in the given locale */
 export function getRegionLabel(value: string, locale: string): string {
   if (locale === "ru") {
