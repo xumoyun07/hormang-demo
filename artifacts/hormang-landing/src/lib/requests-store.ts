@@ -1062,12 +1062,14 @@ export function getTotalProviderUnread(): number {
 
 /**
  * Total unread messages across all chats that belong to this customer's requests.
+ * Excludes chats with blocked providers (mirrors getChatsByCustomer filter).
  */
 export function getTotalCustomerUnread(customerId: string): number {
   if (!customerId) return 0;
   const myRequestIds = new Set(getRequestsByCustomer(customerId).map((r) => r.id));
+  const blocked = new Set(getBlockedUsers(customerId));
   return readJSON<Chat[]>(CHATS_KEY, [])
-    .filter((c) => myRequestIds.has(c.requestId))
+    .filter((c) => myRequestIds.has(c.requestId) && !blocked.has(c.masterId))
     .reduce((s, c) => s + (c.customerUnread ?? 0), 0);
 }
 
