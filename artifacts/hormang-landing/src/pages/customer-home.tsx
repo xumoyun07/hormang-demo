@@ -11,6 +11,7 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { getCategoryDisplayName, getCategoryEmoji } from "@/lib/categories";
+import { getRegionLabel } from "@/lib/regions";
 import { getPopularCategories } from "@/lib/popularity";
 import { tFormat } from "@/lib/i18n";
 import {
@@ -251,7 +252,7 @@ export default function CustomerHomePage() {
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-gray-900 text-sm truncate">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {fmtDate(req.createdAt, true)}{req.region ? ` · ${req.region}` : ""}
+                          {fmtDate(req.createdAt, true)}{req.region ? ` · ${getRegionLabel(req.region, locale)}` : ""}
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">
