@@ -270,6 +270,7 @@ export const ru: Dict = {
       termsLink: "Условиями использования",
       privacyLink: "Политикой конфиденциальности",
       agreementBefore: "Я согласен с ",
+      agreementConnector: " и ",
       agreementAfter: "",
       agreeRequired: "Необходимо согласиться с условиями",
       catsLabel: "Выберите категории услуг",

@@ -73,7 +73,7 @@ function InfoForm({ onDone }: { role: "buyer" | "provider"; onDone: (d: InfoData
         <label htmlFor="terms" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
           {t.auth.register.agreementBefore}
           <span className="text-primary font-semibold hover:underline">{t.auth.register.termsLink}</span>
-          {" "}
+          {t.auth.register.agreementConnector}
           <span className="text-primary font-semibold hover:underline">{t.auth.register.privacyLink}</span>
           {t.auth.register.agreementAfter}
         </label>

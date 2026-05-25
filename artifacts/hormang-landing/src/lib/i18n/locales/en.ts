@@ -270,6 +270,7 @@ export const en: Dict = {
       termsLink: "Terms of Service",
       privacyLink: "Privacy Policy",
       agreementBefore: "I agree to the ",
+      agreementConnector: " and ",
       agreementAfter: "",
       agreeRequired: "You must agree to the terms",
       catsLabel: "Choose service categories",
