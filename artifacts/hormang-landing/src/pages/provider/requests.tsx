@@ -16,6 +16,7 @@ import { getLocalProfile } from "@/lib/local-profile";
 import {
   getMatchingRequests, getUnseenRequests, markSeen, markAllSeen,
   updateProviderRequestStatus, getOfferByRequestId, getRequestOfferCount,
+  getLocalizedDescription,
   type ProviderRequest, type ProviderOffer,
 } from "@/lib/provider-store";
 import { canSubmitOffer, offerBlockLabel, MAX_ACTIVE_OFFERS, MAX_LIFETIME_OFFERS } from "@/lib/requests-store";
@@ -193,7 +194,7 @@ function FullscreenSlider({
               )}
 
               <div className="bg-gray-50 rounded-2xl p-4 mb-4">
-                <p className="text-sm text-gray-700 leading-relaxed">{current.description}</p>
+                <p className="text-sm text-gray-700 leading-relaxed">{getLocalizedDescription(current, locale)}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3 mb-5">
@@ -664,7 +665,7 @@ export default function ProviderRequestsPage() {
                   <div
                     onClick={() => openOfferForm(r)}
                     className="p-4">
-                    <p className="text-sm text-gray-700 mb-2 leading-relaxed">{r.description}</p>
+                    <p className="text-sm text-gray-700 mb-2 leading-relaxed">{getLocalizedDescription(r, locale)}</p>
                     <div className="flex items-center gap-3 mb-3 flex-wrap">
                       <span className="font-extrabold text-sm text-violet-700">{getBudgetLabel(r.budgetLabel, t)}</span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${urg.color}`}>

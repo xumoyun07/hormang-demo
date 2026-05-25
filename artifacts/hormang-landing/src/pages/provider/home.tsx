@@ -29,7 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   getMatchingRequests, getUpcomingServices, markServiceDone,
   updateProviderRequestStatus, getSeenIds, markSeen, markAllSeen,
-  getRequestOfferCount, getRequestsWithZeroOffers,
+  getRequestOfferCount, getRequestsWithZeroOffers, getLocalizedDescription,
   type ProviderRequest, type UpcomingService,
 } from "@/lib/provider-store";
 import { confirmCompletion, getOfferById } from "@/lib/requests-store";
@@ -554,7 +554,7 @@ function RequestSlideCard({
 
       {/* Body */}
       <div className="px-5 py-4">
-        <p className="text-sm text-gray-700 leading-relaxed mb-4">{request.description}</p>
+        <p className="text-sm text-gray-700 leading-relaxed mb-4">{getLocalizedDescription(request, locale)}</p>
 
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="bg-gray-50 rounded-xl p-3">
@@ -715,7 +715,7 @@ function RequestsModal({
                     {/* Card body */}
                     <div className="px-4 py-3">
                       <p className="text-sm text-gray-600 leading-relaxed mb-3 line-clamp-2">
-                        {r.description}
+                        {getLocalizedDescription(r, locale)}
                       </p>
 
                       {/* Info chips */}

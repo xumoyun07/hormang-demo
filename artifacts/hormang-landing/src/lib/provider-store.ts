@@ -24,6 +24,7 @@ import {
   getAllQuestionsForCategory, collectActiveQuestions,
   type Question,
 } from "./questionnaire-store";
+import { getLocalizedText } from "./localization";
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -259,14 +260,14 @@ function formatQValue(q: Question, v: unknown, answers: Record<string, unknown>)
 }
 
 function descriptionFrom(answers: Record<string, unknown>, categoryId: string): string {
-  const skip = new Set(["urgency", "budget", "budget_open", "region", "district"]);
+  const skip = new Set(["urgency", "budget", "budget_open", "region", "district", "location"]);
   const parts: string[] = [];
 
   try {
     const allQs = getAllQuestionsForCategory(categoryId);
     const activeQs = collectActiveQuestions(allQs, answers);
     for (const q of activeQs) {
-      if (skip.has(q.id) || q.type === "file" || q.type === "section-header") continue;
+      if (skip.has(q.id) || q.type === "file" || q.type === "section-header" || q.type === "location") continue;
       const v = answers[q.id];
       const formatted = formatQValue(q, v, answers);
       if (formatted) parts.push(formatted);
@@ -284,6 +285,51 @@ function descriptionFrom(answers: Record<string, unknown>, categoryId: string): 
 
   const desc = parts.join(" · ");
   return desc.length > 130 ? desc.slice(0, 127) + "..." : desc || "—";
+}
+
+/**
+ * Re-computes the request description at render time using the active locale,
+ * so option labels (e.g. "Chuqur" → "Глубокая") are translated correctly.
+ * Falls back to the stored `request.description` when questions are unavailable.
+ */
+export function getLocalizedDescription(request: ProviderRequest, locale: string): string {
+  const skip = new Set(["urgency", "budget", "budget_open", "region", "district", "location"]);
+  const answers = (request.answers ?? {}) as Record<string, unknown>;
+  const parts: string[] = [];
+
+  try {
+    const allQs = getAllQuestionsForCategory(request.categoryId);
+    const activeQs = collectActiveQuestions(allQs, answers);
+    for (const q of activeQs) {
+      if (skip.has(q.id) || q.type === "file" || q.type === "section-header" || q.type === "location") continue;
+      const v = answers[q.id];
+      if (v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) continue;
+      if (typeof v === "string" && v.startsWith("data:")) continue;
+
+      const optLabel = (value: string): string => {
+        const otherOpt = q.options?.find((o) => o.type === "other");
+        if (otherOpt && value === otherOpt.value) {
+          const customText = answers[q.id + "_other"] as string | undefined;
+          return customText?.trim() || getLocalizedText(otherOpt.labelLocalized ?? otherOpt.label, locale as "uz" | "ru");
+        }
+        const opt = q.options?.find((o) => o.value === value);
+        return opt ? getLocalizedText(opt.labelLocalized ?? opt.label, locale as "uz" | "ru") : value;
+      };
+
+      let formatted: string | null = null;
+      if (typeof v === "boolean") formatted = v ? (locale === "ru" ? "Да" : "Ha") : (locale === "ru" ? "Нет" : "Yo'q");
+      else if (typeof v === "number") formatted = String(v);
+      else if (typeof v === "string") formatted = optLabel(v);
+      else if (Array.isArray(v)) formatted = (v as string[]).map(optLabel).join(", ");
+
+      if (formatted) parts.push(formatted);
+    }
+  } catch {
+    return request.description;
+  }
+
+  const desc = parts.join(" · ");
+  return desc.length > 130 ? desc.slice(0, 127) + "..." : desc || request.description;
 }
 
 function adaptBuyerRequest(req: CustomerRequest, actionStatus?: ProviderActionStatus): ProviderRequest {
