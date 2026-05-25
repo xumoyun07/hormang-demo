@@ -993,7 +993,14 @@ export function sendMessage(
   const prevProviderUnread = chats[idx].providerUnread ?? 0;
   const prevCustomerUnread = chats[idx].customerUnread ?? 0;
   const providerUnread = sender === "customer" ? prevProviderUnread + 1 : prevProviderUnread;
-  const customerUnread = sender === "master"   ? prevCustomerUnread + 1 : prevCustomerUnread;
+  // Don't increment customerUnread if the sending provider is blocked by the customer
+  const isBlockedProvider = (() => {
+    if (sender !== "master") return false;
+    const req = getRequestById(chats[idx].requestId);
+    if (!req) return false;
+    return getBlockedUsers(req.customerId).includes(chats[idx].masterId);
+  })();
+  const customerUnread = (sender === "master" && !isBlockedProvider) ? prevCustomerUnread + 1 : prevCustomerUnread;
   chats[idx] = {
     ...chats[idx],
     messages: [...chats[idx].messages, msg],
