@@ -95,7 +95,7 @@ function formatAnswerValue(
   return String(value);
 }
 
-const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district"]);
+const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district", "location"]);
 
 /* ─── Main Form ──────────────────────────────────────────────────── */
 interface Props {

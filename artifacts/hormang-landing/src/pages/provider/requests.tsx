@@ -47,7 +47,7 @@ function urgencyLabel(u: ProviderRequest["urgency"], t: Dict): { label: string; 
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 const BLUE   = "linear-gradient(135deg, hsl(221,78%,48%) 0%, hsl(199,89%,56%) 100%)";
 
-const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district"]);
+const SKIP_ANSWER_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district", "location"]);
 
 function formatAnswerValue(
   value: unknown,
