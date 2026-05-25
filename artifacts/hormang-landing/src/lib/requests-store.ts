@@ -14,6 +14,7 @@ import { incrementCompletedCount } from "./completion-store";
 import { addTangaBalance, spendTangaBalance } from "./tanga-store";
 import { recordTangaTransaction } from "./tanga-history-store";
 import { calculateOfferCost } from "./offer-cost";
+import { getBlockedUsers } from "./report-store";
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -282,21 +283,29 @@ export function getRequestsByCustomer(customerId: string): CustomerRequest[] {
 /**
  * Only offers received on this customer's own requests.
  * Derives the set from their request IDs.
+ * Offers from providers that this customer has blocked are excluded.
  */
 export function getOffersByCustomer(customerId: string): Offer[] {
   if (!customerId) return [];
   const myRequestIds = new Set(getRequestsByCustomer(customerId).map((r) => r.id));
-  return getOffers().filter((o) => myRequestIds.has(o.requestId));
+  const blocked = new Set(getBlockedUsers(customerId));
+  return getOffers().filter(
+    (o) => myRequestIds.has(o.requestId) && !blocked.has(o.masterId),
+  );
 }
 
 /**
  * Only chats that belong to this customer's own requests.
  * Derives the set from their request IDs.
+ * Chats with providers that this customer has blocked are excluded.
  */
 export function getChatsByCustomer(customerId: string): Chat[] {
   if (!customerId) return [];
   const myRequestIds = new Set(getRequestsByCustomer(customerId).map((r) => r.id));
-  return getChats().filter((c) => myRequestIds.has(c.requestId));
+  const blocked = new Set(getBlockedUsers(customerId));
+  return getChats().filter(
+    (c) => myRequestIds.has(c.requestId) && !blocked.has(c.masterId),
+  );
 }
 
 /* ─── Offers ─────────────────────────────────────────────────────── */

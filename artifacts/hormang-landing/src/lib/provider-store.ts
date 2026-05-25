@@ -18,6 +18,7 @@ import {
   getChatById, sendMessage, markProviderChatRead,
   getChats, getRequestById, markOfferInProgress,
 } from "./requests-store";
+import { getBlockedUsers } from "./report-store";
 import { doesCategoryMatch, doesLocationMatchV2, type ProviderServiceArea } from "./matching";
 import { migrateCategoryValuesSafe, migrateLegacyCategoryValue } from "./categories";
 import {
@@ -385,11 +386,15 @@ export function getMatchingRequests(
       .map((o) => o.requestId)
   );
 
+  const blockedByProvider = providerId ? new Set(getBlockedUsers(providerId)) : new Set<string>();
+
   return buyerReqs
     .filter((r) => {
       if (r.status !== "open") return false;
       // Never show a provider their own request in the marketplace feed
       if (providerId && r.customerId === providerId) return false;
+      // Hide requests from customers this provider has blocked
+      if (blockedByProvider.size > 0 && r.customerId && blockedByProvider.has(r.customerId)) return false;
       // Match by canonical category ID (preferred), falling back to legacy name.
       // Explicit migration boundary: normalize both the request side
        // (categoryId is preferred; legacy categoryName tolerated) and the
@@ -500,8 +505,15 @@ export function addUpcomingService(service: Omit<UpcomingService, "id" | "status
 
 export function getProviderChats(masterId: string = ""): ProviderChat[] {
   const all = getChats();
+  const blocked = masterId ? new Set(getBlockedUsers(masterId)) : new Set<string>();
   const filtered = masterId ? all.filter((c) => c.masterId === masterId) : all;
-  return filtered.map(chatToProviderChat);
+  const withoutBlocked = blocked.size === 0
+    ? filtered
+    : filtered.filter((c) => {
+        const req = getRequestById(c.requestId);
+        return !req?.customerId || !blocked.has(req.customerId);
+      });
+  return withoutBlocked.map(chatToProviderChat);
 }
 
 export function getProviderChatById(id: string, masterId: string = ""): ProviderChat | undefined {
