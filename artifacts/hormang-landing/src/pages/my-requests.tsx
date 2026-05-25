@@ -5,13 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ClipboardList, MessageCircle, ChevronRight,
   Clock, Wallet, Plus, RefreshCw, X, CheckCircle2, History,
+  Trash2, XCircle,
 } from "lucide-react";
 import { RequestPreviewModal } from "@/components/request-preview-modal";
 import { Button } from "@/components/ui/button";
 import { BottomNav } from "@/components/bottom-nav";
 import {
   getRequestsByCustomer, getOffersByRequestId, getOrCreateChat,
-  updateRequestStatus, getRequestCounts, MAX_ACTIVE_OFFERS,
+  updateRequestStatus, deleteRequestCascade, getRequestCounts, MAX_ACTIVE_OFFERS,
   type CustomerRequest,
 } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
@@ -45,15 +46,44 @@ function BriefcaseIcon({ className }: { className?: string }) {
   );
 }
 
-type CardMode = "active" | "cancelled";
+type CardMode = "active" | "cancelled" | "inactive";
+
+function ConfirmModal({ title, body, cancelLabel, confirmLabel, danger, onCancel, onConfirm }: {
+  title: string; body: string; cancelLabel: string; confirmLabel: string;
+  danger?: boolean; onCancel: () => void; onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/40" onClick={onCancel}>
+      <motion.div
+        initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}
+        className="w-full max-w-sm bg-white rounded-2xl p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="font-extrabold text-gray-900 text-base mb-2">{title}</h3>
+        <p className="text-sm text-gray-500 mb-5">{body}</p>
+        <div className="flex gap-3">
+          <button onClick={onCancel}
+            className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors">
+            {cancelLabel}
+          </button>
+          <button onClick={onConfirm}
+            className={`flex-1 h-11 rounded-xl text-sm font-bold text-white transition-colors ${danger ? "bg-red-500 hover:bg-red-600" : "bg-amber-500 hover:bg-amber-600"}`}>
+            {confirmLabel}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 function RequestCard({
-  req, index, mode, onClose, onReopen,
+  req, index, mode, onDelete, onDeactivate, onReopen,
 }: {
   req: CustomerRequest;
   index: number;
   mode: CardMode;
-  onClose: (id: string) => void;
+  onDelete: (id: string) => void;
+  onDeactivate: (id: string) => void;
   onReopen: (id: string) => void;
 }) {
   const [, setLocation] = useLocation();

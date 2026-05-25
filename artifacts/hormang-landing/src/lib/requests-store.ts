@@ -28,7 +28,7 @@ export interface CustomerRequest {
   answers: Record<string, unknown>;
   /** Dedicated multi-photo upload (up to 10 images, stored as base64) */
   requestPhotos?: string[];
-  status: "open" | "accepted" | "matched" | "completed" | "cancelled";
+  status: "open" | "accepted" | "matched" | "completed" | "cancelled" | "inactive";
   createdAt: string;
   offerCount: number;
   region?: string;
@@ -775,6 +775,9 @@ export function adminRefundProvider(
  */
 export function deleteRequestCascade(requestId: string): void {
   const req = getRequestById(requestId);
+  if (req && req.offerCount > 0) {
+    throw new Error("Taklif mavjud bo'lgan so'rovni o'chirib bo'lmaydi");
+  }
   const allOffers = getOffers();
   // Only refund unresolved offers. Accepted/in_progress represent committed
   // work and completed offers are already paid for, so we do not over-refund.

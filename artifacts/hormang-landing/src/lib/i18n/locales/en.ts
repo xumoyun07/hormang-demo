@@ -1680,6 +1680,22 @@ export const en: Dict = {
     openChatTitle: "Open chat",
     closeRequestTitle: "Close request",
     reactivateTitle: "Reactivate",
+    deleteTitle: "Delete request",
+    deactivateTitle: "Close request",
+    chipInactive: "Closed",
+    sectionInactive: "Closed requests",
+    deleteConfirm: {
+      title: "Delete this request?",
+      body: "No offers have been received yet. This cannot be undone.",
+      cancel: "Cancel",
+      confirm: "Yes, delete",
+    },
+    deactivateConfirm: {
+      title: "Close this request?",
+      body: "This request has offers and cannot be deleted. It will be closed and no new offers will be accepted.",
+      cancel: "Cancel",
+      confirm: "Close request",
+    },
     empty: {
       title: "No requests",
       desc: "To find a service, choose a category and submit your request.",
