@@ -19,6 +19,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
 import { getCategoryDisplayName } from "@/lib/categories";
+import { getRegionLabel, getDistrictLabel } from "@/lib/regions";
 import { saveProviderProfile } from "@/lib/auth-client";
 import { processReferralReward } from "@/lib/referral-store";
 import { useToast } from "@/hooks/use-toast";
@@ -194,7 +195,7 @@ function BecomeProviderModal({
 
 function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => void; onBecome: () => void }) {
   const { user, providerProfile } = useAuth();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [local, setLocal] = useState<LocalProfile>({});
   const storeVersion = useStoreRefresh();
 
@@ -204,7 +205,9 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
 
   const fullName = `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim();
   const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase();
-  const location = local.district ? `${local.district}, ${local.region}` : local.region;
+  const location = local.district
+    ? `${getDistrictLabel(local.district, locale)}, ${getRegionLabel(local.region ?? "", locale)}`
+    : local.region ? getRegionLabel(local.region, locale) : undefined;
   const hasProviderRole = hasProviderAccess(user ?? null, providerProfile ?? null, local);
 
   const items = [
@@ -523,7 +526,9 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
             {(local.region || providerProfile?.preferredLocation) && (
               <p className="flex items-center gap-1 text-xs text-gray-400 mb-2">
                 <MapPin className="w-3 h-3" />
-                {local.region || providerProfile?.preferredLocation}
+                {local.region
+                  ? getRegionLabel(local.region, locale)
+                  : getRegionLabel(providerProfile?.preferredLocation ?? "", locale)}
               </p>
             )}
 
