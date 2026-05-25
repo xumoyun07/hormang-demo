@@ -440,6 +440,15 @@ export const uz = {
       noChats:          "Suhbatlar hali mavjud emas",
     },
     offersCountTpl: "{{count}} taklif",
+    events: {
+      title:       "Yangiliklar va tadbirlar",
+      typeEvent:   "🎯 Tadbir",
+      typeNews:    "📰 Yangilik",
+      isNew:       "Yangi",
+      countTpl:    "{{n}} ta e'lon",
+      deadlineTpl: "⏳ Muddat: {{date}}",
+      closeBtn:    "Yopish",
+    },
     popularCats: [
       { emoji: "🧹", name: "Tozalash" },
       { emoji: "🔧", name: "Ta'mirlash" },

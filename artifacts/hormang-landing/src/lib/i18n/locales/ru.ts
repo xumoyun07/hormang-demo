@@ -443,6 +443,15 @@ export const ru: Dict = {
       noChats:          "Чатов пока нет",
     },
     offersCountTpl: "Предложения: {{count}} ",
+    events: {
+      title:       "Новости и события",
+      typeEvent:   "🎯 Событие",
+      typeNews:    "📰 Новость",
+      isNew:       "Новое",
+      countTpl:    "{{n}} шт",
+      deadlineTpl: "⏳ Срок: {{date}}",
+      closeBtn:    "Закрыть",
+    },
     popularCats: [
       { emoji: "🧹", name: "Уборка" },
       { emoji: "🔧", name: "Ремонт" },

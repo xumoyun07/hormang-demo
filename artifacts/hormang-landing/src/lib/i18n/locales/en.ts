@@ -441,6 +441,15 @@ export const en: Dict = {
       noChats:          "No chats yet",
     },
     offersCountTpl: "{{count}} offers",
+    events: {
+      title:       "News & Events",
+      typeEvent:   "🎯 Event",
+      typeNews:    "📰 News",
+      isNew:       "New",
+      countTpl:    "{{n}} items",
+      deadlineTpl: "⏳ Deadline: {{date}}",
+      closeBtn:    "Close",
+    },
     popularCats: [
       { emoji: "🧹", name: "Cleaning" },
       { emoji: "🔧", name: "Repair" },
