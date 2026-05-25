@@ -24,7 +24,7 @@ import logoImg from "/hormang-logo.png";
 import { TangaChip } from "@/pages/plans";
 import { useI18n } from "@/contexts/i18n-context";
 import { getCategoryDisplayName } from "@/lib/categories";
-import { tFormat } from "@/lib/i18n";
+import { tFormat, getBudgetLabel } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n/locales/uz";
 
 function timeAgo(iso: string, t: Dict): string {
@@ -99,7 +99,7 @@ function FullscreenSlider({
   const urg = current ? urgencyLabel(current.urgency, t) : null;
   const sliderCheck = current ? canSubmitOffer(current.id, sliderUser?.id ?? "") : { ok: true, reason: undefined as ReturnType<typeof canSubmitOffer>["reason"] };
   const sliderBlocked = !sliderCheck.ok;
-  const sliderBlockedText = sliderBlocked ? offerBlockLabel(sliderCheck.reason) : "";
+  const sliderBlockedText = sliderBlocked ? offerBlockLabel(sliderCheck.reason, t) : "";
 
   useEffect(() => { if (current) markSeen(current.id, sliderUser?.id); }, [current?.id, sliderUser?.id]);
 
@@ -193,7 +193,7 @@ function FullscreenSlider({
               <div className="grid grid-cols-2 gap-3 mb-5">
                 <div className="bg-violet-50 rounded-xl p-3">
                   <p className="text-[10px] font-bold text-violet-400 uppercase tracking-wide mb-1">{t.providerRequests.slider.budget}</p>
-                  <p className="text-sm font-extrabold text-violet-700">{current.budgetLabel}</p>
+                  <p className="text-sm font-extrabold text-violet-700">{getBudgetLabel(current.budgetLabel, t)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-3">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">{t.providerRequests.slider.location}</p>
@@ -339,7 +339,7 @@ function OfferDetailModal({
                   {request.budgetLabel && (
                     <div className="flex items-center gap-1.5 text-xs font-bold text-violet-700">
                       <DollarSign className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span>{request.budgetLabel}</span>
+                      <span>{getBudgetLabel(request.budgetLabel, t)}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-1.5 text-xs text-gray-500">
@@ -636,7 +636,7 @@ export default function ProviderRequestsPage() {
               const isUnseen = unseen.some((u) => u.id === r.id);
               const submitCheck = canSubmitOffer(r.id, providerId);
               const blocked = !submitCheck.ok;
-              const blockedText = blocked ? offerBlockLabel(submitCheck.reason) : "";
+              const blockedText = blocked ? offerBlockLabel(submitCheck.reason, t) : "";
               return (
                 <motion.div
                   key={r.id}
@@ -660,7 +660,7 @@ export default function ProviderRequestsPage() {
                     className="p-4">
                     <p className="text-sm text-gray-700 mb-2 leading-relaxed">{r.description}</p>
                     <div className="flex items-center gap-3 mb-3 flex-wrap">
-                      <span className="font-extrabold text-sm text-violet-700">{r.budgetLabel}</span>
+                      <span className="font-extrabold text-sm text-violet-700">{getBudgetLabel(r.budgetLabel, t)}</span>
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${urg.color}`}>
                         {urg.label}
                       </span>

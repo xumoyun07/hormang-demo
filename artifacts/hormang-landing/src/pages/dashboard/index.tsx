@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ComponentType } from "react";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { BottomNav } from "@/components/bottom-nav";
 import { useLocation } from "wouter";
@@ -210,7 +210,7 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
     : local.region ? getRegionLabel(local.region, locale) : undefined;
   const hasProviderRole = hasProviderAccess(user ?? null, providerProfile ?? null, local);
 
-  const items = [
+  const items: { icon: ComponentType<{ className?: string }>; title: string; desc: string; action?: () => void; highlight?: boolean }[] = [
     {
       icon: Search,
       title: t.dashboard.buyerItems.search.title,
@@ -306,7 +306,7 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
         </div>
       </motion.div>
 
-      {items.map(({ icon: Icon, title, desc, action, highlight, badge }, i) => (
+      {items.map(({ icon: Icon, title, desc, action, highlight }, i) => (
         <motion.button
           key={title}
           initial={{ opacity: 0, y: 10 }}
@@ -332,9 +332,7 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
             <h3 className={`font-bold text-sm ${highlight ? "text-white" : "text-gray-900"}`}>{title}</h3>
             <p className={`text-xs truncate ${highlight ? "text-blue-100" : "text-gray-500"}`}>{desc}</p>
           </div>
-          {badge ? (
-            <span className="text-[10px] font-bold bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">{badge}</span>
-          ) : action ? (
+          {action ? (
             <ChevronRight className={`w-4 h-4 flex-shrink-0 ${highlight ? "text-blue-200" : "text-gray-400 group-hover:text-blue-500"}`} />
           ) : null}
         </motion.button>

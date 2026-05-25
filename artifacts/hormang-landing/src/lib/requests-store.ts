@@ -8,6 +8,7 @@
  *   hormang_chats     — Chat[]             (shared with provider side)
  */
 
+import type { Dict } from "./i18n/locales/uz";
 import { emitStoreChange } from "./store-events";
 import { incrementCompletedCount } from "./completion-store";
 import { addTangaBalance, spendTangaBalance } from "./tanga-store";
@@ -443,16 +444,16 @@ export function formatCooldownRemaining(remainingMs: number): string {
   return `${m} daqiqa ${s.toString().padStart(2, "0")} soniya`;
 }
 
-/** Human-readable Uzbek label for a `canSubmitOffer` failure reason. */
-export function offerBlockLabel(reason: CanSubmitOfferReason | undefined): string {
+/** Localised label for a `canSubmitOffer` failure reason. */
+export function offerBlockLabel(reason: CanSubmitOfferReason | undefined, t: Dict): string {
   switch (reason) {
-    case "matched":          return "Mijoz boshqa ijrochi taklifini qabul qilgan";
-    case "active_limit":     return "5 ta faol taklif mavjud";
-    case "lifetime_limit":   return "Takliflar limiti tugagan";
-    case "request_closed":   return "So'rov yopilgan";
-    case "already_offered":  return "Siz allaqachon taklif yuborgansiz";
-    case "no_request":       return "So'rov topilmadi";
-    default:                 return "Taklif yuborib bo'lmaydi";
+    case "matched":          return t.offerBlock.matched;
+    case "active_limit":     return t.offerBlock.activeLimit;
+    case "lifetime_limit":   return t.offerBlock.lifetimeLimit;
+    case "request_closed":   return t.offerBlock.requestClosed;
+    case "already_offered":  return t.offerBlock.alreadyOffered;
+    case "no_request":       return t.offerBlock.noRequest;
+    default:                 return t.offerBlock.default;
   }
 }
 

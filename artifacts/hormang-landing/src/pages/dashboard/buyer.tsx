@@ -1,10 +1,11 @@
+import { type ComponentType } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Search, ClipboardList, Settings, LogOut, Heart, ChevronRight } from "lucide-react";
+import { Search, ClipboardList, Settings, LogOut, ChevronRight } from "lucide-react";
 
 export default function BuyerDashboard() {
   const { user, logout } = useAuth();
@@ -16,7 +17,7 @@ export default function BuyerDashboard() {
     setLocation("/");
   }
 
-  const menuItems = [
+  const menuItems: { icon: ComponentType<{ className?: string }>; title: string; desc: string; action?: () => void; highlight?: boolean }[] = [
     {
       icon: Search,
       title: t.dashboard.buyerItems.search.title,
@@ -29,13 +30,6 @@ export default function BuyerDashboard() {
       title: t.dashboard.buyerItems.requests.title,
       desc: t.dashboard.buyerItems.requests.desc,
       action: () => { sessionStorage.setItem("request_history_referrer", "/dashboard"); setLocation("/request-history"); },
-    },
-    {
-      icon: Heart,
-      title: t.dashboard.buyerItems.saved.title,
-      desc: t.dashboard.buyerItems.saved.desc,
-      action: undefined,
-      badge: t.dashboard.buyerItems.saved.badge,
     },
     {
       icon: Settings,
@@ -85,7 +79,7 @@ export default function BuyerDashboard() {
           </div>
 
           <div className="space-y-3">
-            {menuItems.map(({ icon: Icon, title, desc, action, highlight, badge }, i) => (
+            {menuItems.map(({ icon: Icon, title, desc, action, highlight }, i) => (
               <motion.button
                 key={title}
                 initial={{ opacity: 0, y: 12 }}
@@ -111,9 +105,7 @@ export default function BuyerDashboard() {
                   <h3 className={`font-bold text-sm ${highlight ? "text-white" : "text-gray-900"}`}>{title}</h3>
                   <p className={`text-xs truncate ${highlight ? "text-blue-100" : "text-gray-500"}`}>{desc}</p>
                 </div>
-                {badge ? (
-                  <span className="text-[10px] font-bold bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">{badge}</span>
-                ) : action ? (
+                {action ? (
                   <ChevronRight className={`w-4 h-4 flex-shrink-0 ${highlight ? "text-blue-200" : "text-gray-400 group-hover:text-blue-500"}`} />
                 ) : null}
               </motion.button>

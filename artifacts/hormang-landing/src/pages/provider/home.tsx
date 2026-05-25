@@ -20,7 +20,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { OfferForm } from "@/components/offer-form";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
-import { tFormat } from "@/lib/i18n";
+import { tFormat, getBudgetLabel } from "@/lib/i18n";
 import { getLocalizedText } from "@/lib/localization";
 import { getCategoryDisplayName } from "@/lib/categories";
 import { getRequestById } from "@/lib/requests-store";
@@ -558,7 +558,7 @@ function RequestSlideCard({
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="bg-gray-50 rounded-xl p-3">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">{t.providerHome.card.budget}</p>
-            <p className="text-sm font-extrabold text-violet-700">{request.budgetLabel}</p>
+            <p className="text-sm font-extrabold text-violet-700">{getBudgetLabel(request.budgetLabel, t)}</p>
           </div>
           <div className="bg-gray-50 rounded-xl p-3">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">{t.providerHome.card.location}</p>
@@ -721,7 +721,7 @@ function RequestsModal({
                       <div className="grid grid-cols-3 gap-2 mb-3">
                         <div className="bg-gray-50 rounded-xl p-2 text-center">
                           <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{t.providerHome.card.budget}</p>
-                          <p className="text-xs font-extrabold text-violet-700">{r.budgetLabel}</p>
+                          <p className="text-xs font-extrabold text-violet-700">{getBudgetLabel(r.budgetLabel, t)}</p>
                         </div>
                         <div className="bg-gray-50 rounded-xl p-2 text-center">
                           <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{t.providerHome.card.location}</p>

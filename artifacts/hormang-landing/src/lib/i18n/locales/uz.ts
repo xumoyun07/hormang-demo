@@ -350,10 +350,9 @@ export const uz = {
     phoneNotVerified: "Telefon tasdiqlanmagan",
     buyerItems: {
       search:    { title: "Xizmat qidirish",          desc: "Mahalliy mutaxassislarni toping" },
-      requests:  { title: "So'rovlarim",              desc: "Barcha so'rovlar tarixi" },
-      saved:     { title: "Saqlanganlar",             desc: "Sevimli ijrochilar", badge: "Tez kunda" },
-      profile:   { title: "Profil sozlamalari",       desc: "Ma'lumotlar, parol va hisobing" },
-      settings:  { title: "Sozlamalar",               desc: "Bildirishnomalar, til va boshqalar" },
+      requests:  { title: "So'rovlarim",              desc: "Barcha so'rovlar tarixi" },     
+      profile:   { title: "Profil sozlamalari",       desc: "Ma'lumotlar, manzil va boshqalar" },
+      settings:  { title: "Sozlamalar",               desc: "Bildirishnomalar, til va xavfsizlik" },
       feedback:  { title: "Takliflar va shikoyatlar", desc: "Muammo, shikoyat yoki taklif yuboring" },
     },
     providerItems: {
@@ -1250,6 +1249,7 @@ export const uz = {
     urgency: "Shoshilinchlik",
     budget: "Byudjet",
     openToOffers: "Taklifga ochiq",
+    budgetNegotiable: "Kelishiladi",
     soum: "so'm",
     notSpecified: "Ko'rsatilmagan",
     cantCreateRequest: "Yangi so'rov yaratib bo'lmaydi",
@@ -1733,6 +1733,15 @@ export const uz = {
     DELETE_REQUEST_NOT_FOUND: "O'chirish so'rovi topilmadi",
     PHONE_BELONGS_TO_OTHER: "Bu raqam boshqa hisob bilan bog'liq",
     PROVIDER_NOT_FOUND: "Ijrochi topilmadi",
+  },
+  offerBlock: {
+    matched:        "Mijoz boshqa ijrochi taklifini qabul qilgan",
+    activeLimit:    "5 ta faol taklif mavjud",
+    lifetimeLimit:  "Takliflar limiti tugagan",
+    requestClosed:  "So'rov yopilgan",
+    alreadyOffered: "Siz allaqachon taklif yuborgansiz",
+    noRequest:      "So'rov topilmadi",
+    default:        "Taklif yuborib bo'lmaydi",
   },
 };
 

@@ -34,7 +34,7 @@ import { recordTangaTransaction } from "@/lib/tanga-history-store";
 import { isUserSuspended, SUSPENDED_MESSAGE } from "@/lib/safety-store";
 import { useLocation } from "wouter";
 import { useI18n } from "@/contexts/i18n-context";
-import { tFormat } from "@/lib/i18n";
+import { tFormat, getBudgetLabel } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n/locales/uz";
 import { getCategoryDisplayName } from "@/lib/categories";
 
@@ -115,7 +115,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
   /* Offer-limit / acceptance-lock validation (must succeed BEFORE Tanga deduction) */
   const submissionCheck = canSubmitOffer(request.id, user?.id ?? "");
   const blockedReason = submissionCheck.ok ? undefined : submissionCheck.reason;
-  const blockedLabel = submissionCheck.ok ? "" : offerBlockLabel(submissionCheck.reason);
+  const blockedLabel = submissionCheck.ok ? "" : offerBlockLabel(submissionCheck.reason, t);
 
   /* Form state */
   const [priceRaw, setPriceRaw] = useState("");
@@ -168,7 +168,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
     if (!recheck.ok) {
       toast({
         title: t.offerForm.toasts.cantSendTitle,
-        description: offerBlockLabel(recheck.reason),
+        description: offerBlockLabel(recheck.reason, t),
         variant: "destructive",
       });
       return;
@@ -378,7 +378,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
                   {request.budgetLabel && (
                     <div className="flex items-center gap-1.5 text-xs font-bold text-violet-700">
                       <DollarSign className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span>{request.budgetLabel}</span>
+                      <span>{getBudgetLabel(request.budgetLabel, t)}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-1.5 text-xs text-gray-500">

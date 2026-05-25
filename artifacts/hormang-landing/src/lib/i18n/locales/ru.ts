@@ -353,9 +353,9 @@ export const ru: Dict = {
     buyerItems: {
       search:    { title: "Поиск услуги",            desc: "Найдите локальных мастеров" },
       requests:  { title: "Мои заявки",              desc: "История всех заявок" },
-      saved:     { title: "Сохранённые",             desc: "Любимые исполнители", badge: "Скоро" },
-      profile:   { title: "Настройки профиля",       desc: "Данные, пароль и аккаунт" },
-      settings:  { title: "Настройки",               desc: "Уведомления, язык и прочее" },
+      
+      profile:   { title: "Настройки профиля",       desc: "Данные, адрес и прочее" },
+      settings:  { title: "Настройки",               desc: "Уведомления, язык и безопасность" },
       feedback:  { title: "Предложения и жалобы",    desc: "Отправьте проблему, жалобу или предложение" },
     },
     providerItems: {
@@ -1252,6 +1252,7 @@ export const ru: Dict = {
     urgency: "Срочность",
     budget: "Бюджет",
     openToOffers: "Открыт к предложениям",
+    budgetNegotiable: "Договорная",
     soum: "сум",
     notSpecified: "Не указано",
     cantCreateRequest: "Невозможно создать новый запрос",
@@ -1735,5 +1736,14 @@ export const ru: Dict = {
     DELETE_REQUEST_NOT_FOUND: "Запрос на удаление не найден",
     PHONE_BELONGS_TO_OTHER: "Этот номер привязан к другому аккаунту",
     PROVIDER_NOT_FOUND: "Исполнитель не найден",
+  },
+  offerBlock: {
+    matched:        "Заказчик уже принял другое предложение",
+    activeLimit:    "У вас уже 5 активных предложений",
+    lifetimeLimit:  "Лимит предложений исчерпан",
+    requestClosed:  "Запрос закрыт",
+    alreadyOffered: "Вы уже отправили предложение на этот запрос",
+    noRequest:      "Запрос не найден",
+    default:        "Невозможно отправить предложение",
   },
 };

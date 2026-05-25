@@ -20,4 +20,11 @@ export function getAuthError(code: string, t: Dict): string {
   return errors[code] ?? t.common.errorGeneric;
 }
 
+export function getBudgetLabel(raw: string | undefined, t: Dict): string {
+  if (!raw) return "";
+  if (raw === "Taklifga ochiq" || raw === "BUDGET_OPEN") return t.misc.openToOffers;
+  if (raw === "Kelishiladi" || raw === "BUDGET_NEGOTIABLE") return t.misc.budgetNegotiable;
+  return raw;
+}
+
 export type { Dict };

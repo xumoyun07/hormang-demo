@@ -353,7 +353,6 @@ export const en: Dict = {
     buyerItems: {
       search:    { title: "Search a service",        desc: "Find local professionals" },
       requests:  { title: "My requests",             desc: "History of all requests" },
-      saved:     { title: "Saved",                   desc: "Favorite providers", badge: "Soon" },
       profile:   { title: "Profile settings",        desc: "Details, password and account" },
       settings:  { title: "Settings",                desc: "Notifications, language and more" },
       feedback:  { title: "Feedback & complaints",   desc: "Send a problem, complaint or suggestion" },
@@ -1252,6 +1251,7 @@ export const en: Dict = {
     urgency: "Urgency",
     budget: "Budget",
     openToOffers: "Open to offers",
+    budgetNegotiable: "Negotiable",
     soum: "soum",
     notSpecified: "Not specified",
     cantCreateRequest: "Cannot create a new request",
@@ -1735,5 +1735,14 @@ export const en: Dict = {
     DELETE_REQUEST_NOT_FOUND: "DELETE_REQUEST_NOT_FOUND",
     PHONE_BELONGS_TO_OTHER: "PHONE_BELONGS_TO_OTHER",
     PROVIDER_NOT_FOUND: "PROVIDER_NOT_FOUND",
+  },
+  offerBlock: {
+    matched:        "OFFER_BLOCK_MATCHED",
+    activeLimit:    "OFFER_BLOCK_ACTIVE_LIMIT",
+    lifetimeLimit:  "OFFER_BLOCK_LIFETIME_LIMIT",
+    requestClosed:  "OFFER_BLOCK_REQUEST_CLOSED",
+    alreadyOffered: "OFFER_BLOCK_ALREADY_OFFERED",
+    noRequest:      "OFFER_BLOCK_NO_REQUEST",
+    default:        "OFFER_BLOCK_DEFAULT",
   },
 };
