@@ -242,11 +242,12 @@ export function ReportModal({
 
             <button
               onClick={() => !alreadyBlocked && setBlockToo((b) => !b)}
+              disabled={alreadyBlocked}
               className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl border transition-all ${
                 blockToo || alreadyBlocked
                   ? "border-rose-200 bg-rose-50"
                   : "border-gray-200 bg-gray-50 hover:border-gray-300"
-              }`}
+              } ${alreadyBlocked ? "cursor-not-allowed opacity-75" : ""}`}
             >
               <div className="text-left">
                 <p
@@ -254,10 +255,10 @@ export function ReportModal({
                     blockToo || alreadyBlocked ? "text-rose-700" : "text-gray-700"
                   }`}
                 >
-                  {alreadyBlocked ? tt.blockedDone : tt.blockUser}
+                  {(blockToo || alreadyBlocked) ? tt.blockedDone : tt.blockUser}
                 </p>
                 <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">
-                  {alreadyBlocked ? tt.blockedDesc : tt.blockDesc}
+                  {(blockToo || alreadyBlocked) ? tt.blockedDesc : tt.blockDesc}
                 </p>
               </div>
               <div
@@ -266,7 +267,7 @@ export function ReportModal({
                 }`}
               >
                 <div
-                  className={`w-4.5 h-4.5 w-[18px] h-[18px] rounded-full bg-white shadow-sm mx-0.5 transition-transform ${
+                  className={`w-[18px] h-[18px] rounded-full bg-white shadow-sm mx-0.5 transition-transform ${
                     blockToo || alreadyBlocked ? "translate-x-5" : "translate-x-0"
                   }`}
                 />
