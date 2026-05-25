@@ -60,7 +60,7 @@ export const faqItems: FaqItem[] = [
       ru: "Можно ли отменить предложение?",
     },
     answer: {
-      uz: "Mijoz bilan kelishgan holda taklifni bekor qilish mumkin, lekin taklif yuborishda sarflangan Tangani qaytarish imkoni mavjud emas. ",
+      uz: "Mijoz bilan kelishgan holda taklifni bekor qilish mumkin, lekin taklif yuborishda sarflangan Tangani qaytarish imkoni mavjud emas.",
       ru: "Предложение может быть отменено по соглашению с клиентом, но возврат Tanga, потраченных на отправку предложения, невозможен.",
     },
   },
@@ -96,8 +96,8 @@ export const guidelineItems: GuidelineItem[] = [
       ru: "Уважительное общение",
     },
     desc: {
-      uz: "HORMANG platformasida barcha foydalanuvchilar bir-biriga hurmat bilan munosabatda bo‘lishi kerak. Haqorat, tahdid, kamsitish yoki bezovta qiluvchi xatti-harakatlar qat'iyan ta'qiqlanadi. Qoidalarga amal qilmagan foydalanuvchilar ogohlantirish olishi va platformadan chetlatilishi mumkin.",
-      ru: "Все пользователи платформы HORMANG обязаны относиться друг к другу с уважением. Оскорбления, угрозы, дискриминация или домогательства строго запрещены. Пользователи, не соблюдающие правила, могут получить предупреждение и быть отстранены от платформы.",
+      uz: "HORMANG platformasida barcha foydalanuvchilar bir-biriga hurmat bilan munosabatda bo'lishi kerak. Haqorat, tahdid, kamsitish yoki bezovta qiluvchi xatti-harakatlar qat'iyan ta'qiqlanadi.",
+      ru: "Все пользователи платформы HORMANG обязаны относиться друг к другу с уважением. Оскорбления, угрозы, дискриминация или домогательства строго запрещены.",
     },
   },
   {
@@ -107,8 +107,8 @@ export const guidelineItems: GuidelineItem[] = [
       ru: "Честность и правдивость",
     },
     desc: {
-      uz: "Profilingiz, xizmatlaringiz, narxlaringiz va sharhlaringizda faqat haqiqiy va to'g'ri ma’lumotlardan foydalaning. Firibgarlik yoki yolg'on ma'lumotlar qat'iyan taqiqlanadi. Qoidalarga amal qilmagan foydalanuvchilar ogohlantirish olishi va platformadan chetlatilishi mumkin.",
-      ru: "Используйте только достоверную и точную информацию в своем профиле, описании услуг, ценах и отзывах. Мошенничество или предоставление ложной информации строго запрещено. Пользователи, не соблюдающие правила, могут получить предупреждение и быть отстранены от платформы.",
+      uz: "Profilingiz, xizmatlaringiz, narxlaringiz va sharhlaringizda faqat haqiqiy va to'g'ri ma'lumotlardan foydalaning. Firibgarlik yoki yolg'on ma'lumotlar qat'iyan taqiqlanadi.",
+      ru: "Используйте только достоверную и точную информацию в своем профиле, описании услуг, ценах и отзывах. Мошенничество или предоставление ложной информации строго запрещено.",
     },
   },
   {
@@ -118,8 +118,8 @@ export const guidelineItems: GuidelineItem[] = [
       ru: "Добросовестное использование платформы",
     },
     desc: {
-      uz: "Spam, tizimdan noto‘g‘ri foydalanish, soxta so‘rov yoki takliflar yuborish, yoki platforma qoidalarini chetlab o‘tishga urinish taqiqlanadi. Hormang barcha foydalanuvchilar uchun xavfsiz va adolatli bo‘lishi kerak. Qoidalarga amal qilmagan foydalanuvchilar ogohlantirish olishi va platformadan chetlatilishi mumkin.",
-      ru: "Спам, злоупотребление системой, отправка поддельных запросов или предложений, а также попытки обойти правила платформы запрещены. Hormang должен быть безопасным и справедливым для всех пользователей. Пользователи, не соблюдающие правила, могут получить предупреждение и быть отстранены от платформы." ,
+      uz: "Spam, tizimdan noto'g'ri foydalanish, soxta so'rov yoki takliflar yuborish, yoki platforma qoidalarini chetlab o'tishga urinish taqiqlanadi. Hormang barcha foydalanuvchilar uchun xavfsiz va adolatli bo'lishi kerak.",
+      ru: "Спам, злоупотребление системой, отправка поддельных запросов или предложений, а также попытки обойти правила платформы запрещены. Hormang должен быть безопасным и справедливым для всех пользователей.",
     },
   },
 ];
