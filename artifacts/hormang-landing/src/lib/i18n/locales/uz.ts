@@ -1740,6 +1740,7 @@ export const uz = {
     requestClosed:  "So'rov yopilgan",
     alreadyOffered: "Siz allaqachon taklif yuborgansiz",
     noRequest:      "So'rov topilmadi",
+    selfRequest:    "Bu sizning o'z so'rovingiz",
     default:        "Taklif yuborib bo'lmaydi",
   },
 };

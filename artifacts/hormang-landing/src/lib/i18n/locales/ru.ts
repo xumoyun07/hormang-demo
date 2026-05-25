@@ -1743,6 +1743,7 @@ export const ru: Dict = {
     requestClosed:  "Запрос закрыт",
     alreadyOffered: "Вы уже отправили предложение на этот запрос",
     noRequest:      "Запрос не найден",
+    selfRequest:    "Это ваш собственный запрос",
     default:        "Невозможно отправить предложение",
   },
 };

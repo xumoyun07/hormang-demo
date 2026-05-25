@@ -337,7 +337,8 @@ export type CanSubmitOfferReason =
   | "matched"
   | "active_limit"
   | "lifetime_limit"
-  | "already_offered";
+  | "already_offered"
+  | "self_request";
 
 /**
  * Single source of truth for "may this provider submit an offer on this request?".
@@ -350,6 +351,9 @@ export function canSubmitOffer(
   const req = getRequestById(requestId);
   const { active, total } = getRequestCounts(requestId);
   if (!req) return { ok: false, reason: "no_request", active, total };
+  // Prevent a provider from sending an offer on their own customer request
+  if (providerId && req.customerId === providerId)
+    return { ok: false, reason: "self_request", active, total };
   if (req.closedForOffers || req.acceptedOfferId || req.status === "matched")
     return { ok: false, reason: "matched", active, total };
   if (req.status !== "open") return { ok: false, reason: "request_closed", active, total };
@@ -453,6 +457,7 @@ export function offerBlockLabel(reason: CanSubmitOfferReason | undefined, t: Dic
     case "request_closed":   return t.offerBlock.requestClosed;
     case "already_offered":  return t.offerBlock.alreadyOffered;
     case "no_request":       return t.offerBlock.noRequest;
+    case "self_request":     return t.offerBlock.selfRequest;
     default:                 return t.offerBlock.default;
   }
 }

@@ -1741,6 +1741,7 @@ export const en: Dict = {
     requestClosed:  "OFFER_BLOCK_REQUEST_CLOSED",
     alreadyOffered: "OFFER_BLOCK_ALREADY_OFFERED",
     noRequest:      "OFFER_BLOCK_NO_REQUEST",
+    selfRequest:    "OFFER_BLOCK_SELF_REQUEST",
     default:        "OFFER_BLOCK_DEFAULT",
   },
 };

@@ -388,6 +388,8 @@ export function getMatchingRequests(
   return buyerReqs
     .filter((r) => {
       if (r.status !== "open") return false;
+      // Never show a provider their own request in the marketplace feed
+      if (providerId && r.customerId === providerId) return false;
       // Match by canonical category ID (preferred), falling back to legacy name.
       // Explicit migration boundary: normalize both the request side
        // (categoryId is preferred; legacy categoryName tolerated) and the
@@ -578,10 +580,14 @@ export function saveOffer(
   try {
     const buyerRaw = localStorage.getItem(BUYER_REQUESTS_KEY_CONST);
     if (buyerRaw) {
-      const buyerReqs = JSON.parse(buyerRaw) as Array<{ id: string; status?: string }>;
+      const buyerReqs = JSON.parse(buyerRaw) as Array<{ id: string; customerId?: string; status?: string }>;
       const br = buyerReqs.find((r) => r.id === data.requestId);
       if (br && br.status && br.status !== "open") {
         throw new Error("REQUEST_CLOSED");
+      }
+      // Block self-offer at the action level — no Tanga is ever deducted
+      if (br && providerMeta && br.customerId === providerMeta.id) {
+        throw new Error("SELF_OFFER");
       }
     }
     const sharedAll = readJSON<Array<{ requestId: string; status?: string; masterId?: string }>>(SHARED_OFFERS_KEY, []);
@@ -594,7 +600,12 @@ export function saveOffer(
       throw new Error("DUPLICATE_OFFER");
     }
   } catch (e) {
-    if (e instanceof Error && (e.message === "REQUEST_CLOSED" || e.message === "REQUEST_ALREADY_ACCEPTED" || e.message === "DUPLICATE_OFFER")) {
+    if (e instanceof Error && (
+      e.message === "REQUEST_CLOSED" ||
+      e.message === "REQUEST_ALREADY_ACCEPTED" ||
+      e.message === "DUPLICATE_OFFER" ||
+      e.message === "SELF_OFFER"
+    )) {
       throw e;
     }
     // Other read errors are non-fatal and we continue
