@@ -355,7 +355,6 @@ export const en: Dict = {
       requests:  { title: "My requests",             desc: "History of all requests" },
       profile:   { title: "Profile settings",        desc: "Details, password and account" },
       settings:  { title: "Settings",                desc: "Notifications, language and more" },
-      feedback:  { title: "Feedback & complaints",   desc: "Send a problem, complaint or suggestion" },
     },
     providerItems: {
       newRequests: { title: "New requests",          desc: "See incoming order requests" },
@@ -363,7 +362,6 @@ export const en: Dict = {
       reviews:     { title: "My reviews",            desc: "Customer feedback" },
       profile:     { title: "Profile settings",      desc: "Services, bio, password and account" },
       settings:    { title: "Settings",              desc: "Notifications, language and more" },
-      feedback:    { title: "Feedback & complaints", desc: "Send a problem, complaint or suggestion" },
     },
     historyToast: "Service history will be added soon",
     historyToastModal: "Service history modal will be added soon",

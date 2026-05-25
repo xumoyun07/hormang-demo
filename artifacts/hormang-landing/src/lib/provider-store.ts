@@ -705,6 +705,7 @@ export function createChatFromOffer(
   offer: ProviderOffer,
   masterId: string,
   providerMeta?: { name: string; initials: string; color: string },
+  offerPriceLabel?: string,
 ): void {
   const chatId = `${request.id}_${masterId}`;
   const CHATS_KEY = "hormang_chats";
@@ -725,7 +726,7 @@ export function createChatFromOffer(
   const palette = ["#2563EB", "#7C3AED", "#059669", "#D97706", "#DC2626", "#0891B2"];
   const color = palette[Math.floor(Math.random() * palette.length)];
 
-  const offerText = `Taklif narxi: ${offer.priceLabel}\n\n${offer.message}`;
+  const offerText = `${offerPriceLabel ?? "Taklif narxi"}: ${offer.priceLabel}\n\n${offer.message}`;
 
   const newChat: Chat = {
     id: chatId,

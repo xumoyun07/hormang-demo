@@ -262,6 +262,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
       offer,
       user?.id ?? "anon",
       user ? { name: fullName, initials, color } : undefined,
+      t.providerRequests.offerDetail.offerPrice,
     );
 
     setTimeout(() => {
