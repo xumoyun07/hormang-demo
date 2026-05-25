@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import logoImg from "/hormang-logo.png";
 import {
   ClipboardList, Inbox, CheckCircle2,
-  Plus, MessageCircle, LayoutGrid, Briefcase, LogOut,
+  Plus, MessageCircle, LayoutGrid, Briefcase, LogOut, MessagesSquare,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
@@ -267,7 +267,13 @@ export default function CustomerHomePage() {
                           {requestStatusLabel(req.status)}
                         </span>
                         {req.offerCount > 0 && (
-                          <span className="text-[10px] font-semibold text-violet-600">{tFormat(t.customerHome.offersCountTpl, { count: req.offerCount })}</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setLocation("/chat-offers"); }}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-violet-600 hover:bg-violet-100 transition-colors"
+                          >
+                            <MessagesSquare className="w-3 h-3 flex-shrink-0" />
+                            <span className="text-[10px] font-bold leading-none">{req.offerCount}</span>
+                          </button>
                         )}
                       </div>
                     </div>

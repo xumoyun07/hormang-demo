@@ -161,7 +161,6 @@ export const ru: Dict = {
     sectionFAQ: "Частые вопросы",
     sectionContact: "Связаться с нами",
     sectionGuidelines: "Правила сообщества HORMANG",
-    guidelinesWarning: "Пользователи, не соблюдающие правила, могут получить предупреждение и быть отстранены от платформы.",
     sectionLegal: "Юридическое",
     feedback: { title: "Отправить отзыв", desc: "Предложение или жалоба" },
     contact:  { email: "Email", telegram: "Telegram", copy: "Копировать", copied: "Скопировано" },
@@ -442,7 +441,7 @@ export const ru: Dict = {
       noOffers:         "Пока предложений нет",
       noChats:          "Чатов пока нет",
     },
-    offersCountTpl: "{{count}} предложений",
+    offersCountTpl: "Предложения: {{count}} ",
     popularCats: [
       { emoji: "🧹", name: "Уборка" },
       { emoji: "🔧", name: "Ремонт" },
