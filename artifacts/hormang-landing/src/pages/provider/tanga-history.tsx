@@ -78,7 +78,7 @@ function TxRow({
           <p className="text-[11px] text-gray-400 mt-0.5">
             {formatDate(tx.createdAt, { months: t.shared.months })}
             {" · "}
-            {new Date(tx.createdAt).toLocaleTimeString("uz-Latn-UZ", {
+            {new Date(tx.createdAt).toLocaleTimeString(locale === "ru" ? "ru-RU" : "uz-Latn-UZ", {
               hour: "2-digit",
               minute: "2-digit",
             })}
