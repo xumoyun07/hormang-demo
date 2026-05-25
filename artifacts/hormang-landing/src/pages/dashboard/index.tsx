@@ -5,7 +5,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import logoImg from "/hormang-logo.png";
 import {
-  Search, ClipboardList, Heart, Settings, UserPen, LogOut, ChevronRight,
+  Search, ClipboardList, Settings, UserPen, LogOut, ChevronRight,
   Inbox, TrendingUp, Star, CheckCircle2, MapPin,
   ShoppingBag, Briefcase, Loader2, ArrowRight, X,
   Phone, ShieldCheck, Plus, MessageCircle, LayoutGrid, MessagesSquare,
@@ -223,12 +223,6 @@ function BuyerContent({ onNavigate, onBecome }: { onNavigate: (path: string) => 
       title: t.dashboard.buyerItems.requests.title,
       desc: t.dashboard.buyerItems.requests.desc,
       action: () => { sessionStorage.setItem("request_history_referrer", "/dashboard"); onNavigate("/request-history"); },
-    },
-    {
-      icon: Heart,
-      title: t.dashboard.buyerItems.saved.title,
-      desc: t.dashboard.buyerItems.saved.desc,
-      badge: t.dashboard.buyerItems.saved.badge,
     },
     {
       icon: UserPen,
