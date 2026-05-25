@@ -102,6 +102,10 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
   attachment?: ChatAttachment;
+  /** ISO timestamp when message arrived in the receiver's chat (set on send). */
+  deliveredAt?: string | null;
+  /** ISO timestamp when receiver actually opened the chat and saw it. */
+  readAt?: string | null;
 }
 
 /**
@@ -976,11 +980,14 @@ export function sendMessage(
   const idx = chats.findIndex((c) => c.id === chatId);
   if (idx === -1) return null;
 
+  const now = new Date().toISOString();
   const msg: ChatMessage = {
     id: uid(),
     sender,
     text,
-    timestamp: new Date().toISOString(),
+    timestamp: now,
+    deliveredAt: now,
+    readAt: null,
     ...(attachment ? { attachment } : {}),
   };
   const prevProviderUnread = chats[idx].providerUnread ?? 0;
@@ -1006,8 +1013,19 @@ export function markProviderChatRead(chatId: string): void {
   const chats = readJSON<Chat[]>(CHATS_KEY, []);
   const idx = chats.findIndex((c) => c.id === chatId);
   if (idx === -1) return;
-  if ((chats[idx].providerUnread ?? 0) === 0) return;
-  chats[idx] = { ...chats[idx], providerUnread: 0 };
+  const chat = chats[idx];
+  const now = new Date().toISOString();
+  let touched = false;
+  const messages = chat.messages.map((m) => {
+    if (m.sender === "customer" && !m.readAt) {
+      touched = true;
+      return { ...m, readAt: now, deliveredAt: m.deliveredAt ?? m.timestamp };
+    }
+    return m;
+  });
+  const hadUnread = (chat.providerUnread ?? 0) > 0;
+  if (!touched && !hadUnread) return;
+  chats[idx] = { ...chat, providerUnread: 0, messages };
   writeJSON(CHATS_KEY, chats);
 }
 
@@ -1019,8 +1037,19 @@ export function markCustomerChatRead(chatId: string): void {
   const chats = readJSON<Chat[]>(CHATS_KEY, []);
   const idx = chats.findIndex((c) => c.id === chatId);
   if (idx === -1) return;
-  if ((chats[idx].customerUnread ?? 0) === 0) return;
-  chats[idx] = { ...chats[idx], customerUnread: 0 };
+  const chat = chats[idx];
+  const now = new Date().toISOString();
+  let touched = false;
+  const messages = chat.messages.map((m) => {
+    if (m.sender === "master" && !m.readAt) {
+      touched = true;
+      return { ...m, readAt: now, deliveredAt: m.deliveredAt ?? m.timestamp };
+    }
+    return m;
+  });
+  const hadUnread = (chat.customerUnread ?? 0) > 0;
+  if (!touched && !hadUnread) return;
+  chats[idx] = { ...chat, customerUnread: 0, messages };
   writeJSON(CHATS_KEY, chats);
 }
 

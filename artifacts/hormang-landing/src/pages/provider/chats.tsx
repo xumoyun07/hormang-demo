@@ -5,7 +5,7 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, MessageCircle, ChevronRight, X, ChevronDown,
-  Circle, Send, CheckCircle2, Clock, Loader2, Flag, CalendarPlus, CalendarCheck2, ImageIcon, Star,
+  Circle, Send, CheckCircle2, Clock, Loader2, Flag, CalendarPlus, CalendarCheck2, ImageIcon, Star, Check, CheckCheck,
 } from "lucide-react";
 import { compressImage } from "@/lib/image-utils";
 import { BottomNav } from "@/components/bottom-nav";
@@ -180,9 +180,16 @@ function MsgBubble({ msg, isFirst }: { msg: ProviderChatMessage; isFirst: boolea
         )}
         <div className="px-3.5 py-2.5">
           {msg.text && <p style={{ whiteSpace: "pre-wrap" }}>{msg.text}</p>}
-          <p className={`text-[10px] mt-1 text-right ${isMe ? "text-violet-200" : "text-gray-400"}`}>
-            {formatTime(msg.timestamp, t.shared.months)}
-          </p>
+          <div className={`flex items-center justify-end gap-1 mt-1 ${isMe ? "text-violet-200" : "text-gray-400"}`}>
+            <span className="text-[10px]">{formatTime(msg.timestamp, t.shared.months)}</span>
+            {isMe && (
+              msg.readAt ? (
+                <CheckCheck className="w-3.5 h-3.5 text-sky-300" strokeWidth={2.5} />
+              ) : (
+                <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+              )
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -320,11 +327,11 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   const chat = getProviderChatById(chatId) ?? null;
 
   /* Mark this chat as read for the provider on mount, on chatId change,
-   * and whenever new customer messages arrive while the thread is open. */
+   * and whenever new customer messages arrive while the thread is open.
+   * The store function is idempotent (no-op when nothing changed), so we
+   * call it unconditionally to also backfill readAt on legacy messages. */
   useEffect(() => {
-    if (chatId && (chat?.unread ?? 0) > 0) {
-      markChatRead(chatId);
-    }
+    if (chatId) markChatRead(chatId);
   }, [chatId, chat?.unread, chat?.messages.length]);
   const offer = chat ? getOfferForChat(chat.requestId, chat.masterId) : undefined;
   const request = chat ? getRequestById(chat.requestId) : undefined;

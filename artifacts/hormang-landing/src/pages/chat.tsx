@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock, Loader2, Flag, ImageIcon, Star } from "lucide-react";
+import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock, Loader2, Flag, ImageIcon, Star, Check, CheckCheck } from "lucide-react";
 import { compressImage } from "@/lib/image-utils";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { ReviewModal, type ReviewSubmitData } from "@/components/review-modal";
@@ -175,9 +175,16 @@ function MessageBubble({ msg, isFirst }: { msg: ChatMessage; isFirst: boolean })
         )}
         <div className="px-3.5 py-2.5">
           {msg.text && <p style={{ whiteSpace: "pre-wrap" }}>{msg.text}</p>}
-          <p className={`text-[10px] mt-1 text-right ${isCustomer ? "text-blue-200" : "text-gray-400"}`}>
-            {formatTime(msg.timestamp)}
-          </p>
+          <div className={`flex items-center justify-end gap-1 mt-1 ${isCustomer ? "text-blue-200" : "text-gray-400"}`}>
+            <span className="text-[10px]">{formatTime(msg.timestamp)}</span>
+            {isCustomer && (
+              msg.readAt ? (
+                <CheckCheck className="w-3.5 h-3.5 text-sky-300" strokeWidth={2.5} />
+              ) : (
+                <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+              )
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -229,11 +236,11 @@ export default function ChatPage() {
 
   /* Mark this chat as read for the customer whenever it's open AND new
    * messages from the provider arrive while the user is still viewing it.
-   * Runs on mount, on chatId change, and on every new incoming message. */
+   * Runs on mount, on chatId change, and on every new incoming message.
+   * The store function is idempotent (no-op when nothing changed), so we
+   * call it unconditionally to also backfill readAt on legacy messages. */
   useEffect(() => {
-    if (chatId && (chat?.customerUnread ?? 0) > 0) {
-      markCustomerChatRead(chatId);
-    }
+    if (chatId) markCustomerChatRead(chatId);
   }, [chatId, chat?.customerUnread, chat?.messages.length]);
 
   /* Auto-prompt review when the OTHER side marks the offer completed.

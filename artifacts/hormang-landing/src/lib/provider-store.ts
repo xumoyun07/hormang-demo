@@ -72,6 +72,8 @@ export interface ProviderChatMessage {
   text: string;
   timestamp: string;
   attachment?: import("./requests-store").ChatAttachment;
+  deliveredAt?: string | null;
+  readAt?: string | null;
 }
 
 export interface ProviderChat {
@@ -195,6 +197,8 @@ function chatToProviderChat(c: Chat): ProviderChat {
       sender: m.sender === "customer" ? "customer" as const : m.sender === "system" ? "system" as const : "provider" as const,
       text: m.text,
       timestamp: m.timestamp,
+      deliveredAt: m.deliveredAt ?? m.timestamp,
+      readAt: m.readAt ?? null,
       ...(m.attachment ? { attachment: m.attachment } : {}),
     })),
     unread: c.providerUnread ?? 0,
