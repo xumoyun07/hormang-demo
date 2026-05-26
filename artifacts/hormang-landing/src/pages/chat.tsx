@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock, Loader2, Flag, ImageIcon, Star, Check, CheckCheck } from "lucide-react";
+import { ChevronLeft, Send, Circle, CheckCircle2, X, Clock, Loader2, Flag, ImageIcon, Star, Check, CheckCheck, Trash2 } from "lucide-react";
 import { compressImage } from "@/lib/image-utils";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
 import { ReviewModal, type ReviewSubmitData } from "@/components/review-modal";
@@ -19,7 +19,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { formatDate } from "@/lib/date-utils";
 import {
   getChatById, sendMessage, getOfferForChat, confirmCompletion,
-  markCustomerChatRead,
+  markCustomerChatRead, deleteChatMessage, clearChatMessages,
   type Chat, type ChatMessage, type Offer,
 } from "@/lib/requests-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
@@ -117,10 +117,19 @@ const SYSTEM_MSG_KEYS = [
 ] as const;
 type SystemMsgKey = (typeof SYSTEM_MSG_KEYS)[number];
 
-function MessageBubble({ msg, isFirst }: { msg: ChatMessage; isFirst: boolean }) {
+function MessageBubble({
+  msg, isFirst, onLongPress, selected, onDelete,
+}: {
+  msg: ChatMessage;
+  isFirst: boolean;
+  onLongPress?: () => void;
+  selected?: boolean;
+  onDelete?: () => void;
+}) {
   const { t } = useI18n();
   const tt = t.chatPage;
-  // System messages render as centered banners
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   if (msg.sender === "system") {
     const knownTexts: Record<string, SystemMsgKey> = {
       "Taklif qabul qilindi — Suhbat davom etmoqda": "systemMsgOfferAccepted",
@@ -139,25 +148,46 @@ function MessageBubble({ msg, isFirst }: { msg: ChatMessage; isFirst: boolean })
     const key = knownTexts[msg.text];
     const displayText = key ? tt[key] : msg.text;
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="flex justify-center my-2"
-      >
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex justify-center my-2">
         <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
           {displayText}
         </span>
       </motion.div>
     );
   }
+
   const isCustomer = msg.sender === "customer";
+
+  function startPress() {
+    if (!isCustomer || !onLongPress) return;
+    pressTimer.current = setTimeout(() => { onLongPress(); }, 400);
+  }
+  function endPress() {
+    if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.2 }}
-      className={`flex ${isCustomer ? "justify-end" : "justify-start"} ${isFirst ? "" : "mt-1"}`}
+      className={`flex ${isCustomer ? "justify-end" : "justify-start"} ${isFirst ? "" : "mt-1"} relative`}
+      onPointerDown={startPress}
+      onPointerUp={endPress}
+      onPointerLeave={endPress}
     >
+      {selected && (
+        <div className="absolute -top-8 right-0 z-30 flex items-center bg-white border border-gray-200 rounded-xl shadow-xl px-2.5 py-1.5 whitespace-nowrap">
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
+            className="flex items-center gap-1.5 text-red-500 text-xs font-semibold"
+          >
+            <Trash2 className="w-3 h-3" />
+            {tt.deleteMessage}
+          </button>
+        </div>
+      )}
       <div
         className={`max-w-[75%] rounded-2xl text-sm leading-relaxed overflow-hidden ${
           isCustomer
@@ -166,23 +196,17 @@ function MessageBubble({ msg, isFirst }: { msg: ChatMessage; isFirst: boolean })
         }`}
       >
         {msg.attachment?.type === "image" && (
-          <img
-            src={msg.attachment.url}
-            alt={msg.attachment.url}
-            className="w-full max-w-[220px] object-cover rounded-t-2xl"
-            style={{ display: "block" }}
-          />
+          <img src={msg.attachment.url} alt={msg.attachment.url}
+            className="w-full max-w-[220px] object-cover rounded-t-2xl" style={{ display: "block" }} />
         )}
         <div className="px-3.5 py-2.5">
           {msg.text && <p style={{ whiteSpace: "pre-wrap" }}>{msg.text}</p>}
           <div className={`flex items-center justify-end gap-1 mt-1 ${isCustomer ? "text-blue-200" : "text-gray-400"}`}>
             <span className="text-[10px]">{formatTime(msg.timestamp)}</span>
             {isCustomer && (
-              msg.readAt ? (
-                <CheckCheck className="w-3.5 h-3.5 text-sky-300" strokeWidth={2.5} />
-              ) : (
-                <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
-              )
+              msg.readAt
+                ? <CheckCheck className="w-3.5 h-3.5 text-sky-300" strokeWidth={2.5} />
+                : <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
             )}
           </div>
         </div>
@@ -220,6 +244,8 @@ export default function ChatPage() {
   const [showReview, setShowReview] = useState(false);
   const [reviewDismissed, setReviewDismissed] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const attachInputRef = useRef<HTMLInputElement>(null);
@@ -441,8 +467,19 @@ export default function ChatPage() {
               <OfferStatusBadge status="completed" />
             </div>
           )}
+          <button
+            onClick={() => setShowClearConfirm(true)}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0"
+            title={tt.clearChat}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
+
+      {selectedMsgId && (
+        <div className="fixed inset-0 z-20" onClick={() => setSelectedMsgId(null)} />
+      )}
 
       {/* Messages area — scrolls internally, fills all remaining space */}
       <div className="flex-1 overflow-y-auto min-h-0">
@@ -462,6 +499,9 @@ export default function ChatPage() {
                     key={msg.id}
                     msg={msg}
                     isFirst={i === 0 || group.messages[i - 1].sender !== msg.sender}
+                    onLongPress={msg.sender === "customer" ? () => setSelectedMsgId(msg.id) : undefined}
+                    selected={selectedMsgId === msg.id}
+                    onDelete={() => { deleteChatMessage(chatId, msg.id); setSelectedMsgId(null); }}
                   />
                 ))}
               </div>
@@ -574,6 +614,19 @@ export default function ChatPage() {
             confirmText={tt.completeConfirmYes}
             onConfirm={handleComplete}
             onClose={() => setShowCompleteConfirm(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showClearConfirm && (
+          <ConfirmModal
+            key="customer-clear-chat-confirm"
+            title={tt.clearChatTitle}
+            message={tt.clearChatMsg}
+            confirmText={tt.clearChatYes}
+            onConfirm={() => { clearChatMessages(chatId); setShowClearConfirm(false); setSelectedMsgId(null); }}
+            onClose={() => setShowClearConfirm(false)}
           />
         )}
       </AnimatePresence>

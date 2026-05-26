@@ -383,6 +383,13 @@ export default function ProfileSettingsPage() {
   const [photoUrl, setPhotoUrl]   = useState<string | undefined>(undefined);
   const [photoLoading, setPhotoLoading] = useState(false);
 
+  function handlePhotoRemove() {
+    if (!user) return;
+    setPhotoUrl(undefined);
+    const currentLocal = getLocalProfile(user.id);
+    saveLocalProfile(user.id, { ...currentLocal, photoUrl: undefined });
+  }
+
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !user) return;
@@ -833,7 +840,14 @@ export default function ProfileSettingsPage() {
                 className="text-xs font-bold text-violet-600 hover:text-violet-700 transition-colors">
                 {photoUrl ? ps.changePhoto : ps.addPhoto}
               </button>
-              {!photoUrl && (
+              {photoUrl ? (
+                <button
+                  onClick={handlePhotoRemove}
+                  className="block text-xs font-medium text-red-400 hover:text-red-500 transition-colors mt-0.5"
+                >
+                  {ps.removePhoto}
+                </button>
+              ) : (
                 <p className="text-[10px] text-violet-400 mt-0.5">{ps.photoBoost}</p>
               )}
             </div>

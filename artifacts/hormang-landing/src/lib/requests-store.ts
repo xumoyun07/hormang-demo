@@ -1106,3 +1106,32 @@ export function getLatestChatId(): string | null {
   const chats = getChats();
   return chats.length > 0 ? chats[0].id : null;
 }
+
+/**
+ * Delete a single non-system message from a chat.
+ * Both parties see the deletion immediately (shared localStorage store).
+ * Returns false if the message doesn't exist or is a system message.
+ */
+export function deleteChatMessage(chatId: string, messageId: string): boolean {
+  const chats = readJSON<Chat[]>(CHATS_KEY, []);
+  const idx = chats.findIndex((c) => c.id === chatId);
+  if (idx === -1) return false;
+  const chat = chats[idx];
+  const msg = chat.messages.find((m) => m.id === messageId);
+  if (!msg || msg.sender === "system") return false;
+  chats[idx] = { ...chat, messages: chat.messages.filter((m) => m.id !== messageId) };
+  writeJSON(CHATS_KEY, chats);
+  return true;
+}
+
+/**
+ * Remove all messages from a chat and reset both unread counters.
+ * The chat metadata (participants, category, etc.) is preserved.
+ */
+export function clearChatMessages(chatId: string): void {
+  const chats = readJSON<Chat[]>(CHATS_KEY, []);
+  const idx = chats.findIndex((c) => c.id === chatId);
+  if (idx === -1) return;
+  chats[idx] = { ...chats[idx], messages: [], providerUnread: 0, customerUnread: 0 };
+  writeJSON(CHATS_KEY, chats);
+}
