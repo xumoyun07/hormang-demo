@@ -616,7 +616,9 @@ export default function ProviderRequestsPage() {
                 }`}
                 style={activeCategory === cat ? { background: VIOLET } : {}}
               >
-                {cat}
+                {cat === t.providerRequests.filterAll
+                  ? cat
+                  : getCategoryDisplayName(cat, locale)}
               </button>
             ))}
           </div>
