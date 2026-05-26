@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { getOffersByCustomer, getTotalCustomerUnread } from "@/lib/requests-store";
 import { getTotalUnread, getUnseenRequests } from "@/lib/provider-store";
+import { getLocalProfile } from "@/lib/local-profile";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { useToast } from "@/hooks/use-toast";
 
@@ -24,9 +25,13 @@ export function BottomNav() {
   const isProvider = activeRole === "provider";
   const selectedCategories = providerProfile?.categories ?? [];
 
+  const localProfile = isProvider && user?.id ? getLocalProfile(user.id) : null;
+  const serviceAreas = localProfile?.serviceAreas ?? [];
+  const serviceAreaV2 = localProfile?.serviceAreaV2;
+
   const pendingOffers = isProvider ? 0 : getOffersByCustomer(user?.id ?? "").filter((o) => o.status === "pending").length;
   const customerChatUnread = isProvider ? 0 : getTotalCustomerUnread(user?.id ?? "");
-  const unseenCount = isProvider ? getUnseenRequests(selectedCategories, [], user?.id ?? "").length : 0;
+  const unseenCount = isProvider ? getUnseenRequests(selectedCategories, serviceAreas, user?.id ?? "", serviceAreaV2).length : 0;
   const unreadChats = isProvider ? getTotalUnread(user?.id ?? "") : 0;
 
   const BUYER_TABS = [
