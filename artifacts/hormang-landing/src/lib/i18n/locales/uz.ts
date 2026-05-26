@@ -561,7 +561,7 @@ export const uz = {
     tabs: {
       all: "Barchasi",
       unread: "O'qilmagan",
-      noOffers: "Taklif yo'q",
+      noOffers: "Taklifsiz",
     },
     banner: {
       titleTpl: "Yangi so'rovlar: {{n}}",
