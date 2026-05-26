@@ -77,13 +77,12 @@ function ConfirmModal({ title, body, cancelLabel, confirmLabel, danger, onCancel
 }
 
 function RequestCard({
-  req, index, mode, onDelete, onDeactivate, onReopen,
+  req, index, mode, onClose, onReopen,
 }: {
   req: CustomerRequest;
   index: number;
   mode: CardMode;
-  onDelete: (id: string) => void;
-  onDeactivate: (id: string) => void;
+  onClose: (id: string) => void;
   onReopen: (id: string) => void;
 }) {
   const [, setLocation] = useLocation();

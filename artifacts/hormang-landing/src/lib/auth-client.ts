@@ -27,6 +27,7 @@ export interface ProviderProfile {
   bio?: string | null;
   preferredLocation?: string | null;
   isVerified: boolean;
+  rating?: number;
 }
 
 export interface AuthResponse {

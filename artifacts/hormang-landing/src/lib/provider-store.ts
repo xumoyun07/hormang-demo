@@ -46,6 +46,7 @@ export interface ProviderRequest {
   answers: Record<string, unknown>;
   region?: string;
   district?: string;
+  requestPhotos?: string[];
 }
 
 export interface UpcomingService {
@@ -80,6 +81,9 @@ export interface ProviderChat {
   id: string;
   requestId: string;
   masterId: string;
+  masterName: string;
+  masterInitials: string;
+  masterColor: string;
   customerId: string;
   customerName: string;
   customerInitials: string;
@@ -182,6 +186,9 @@ function chatToProviderChat(c: Chat): ProviderChat {
     id: c.id,
     requestId: c.requestId,
     masterId: c.masterId,
+    masterName: c.masterName,
+    masterInitials: c.masterInitials,
+    masterColor: c.masterColor,
     customerId: req?.customerId ?? c.requestId,
     customerName,
     customerInitials,

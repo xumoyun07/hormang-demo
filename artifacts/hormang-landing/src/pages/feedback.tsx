@@ -113,7 +113,7 @@ function FeedbackFormDrawer({
   open: boolean;
   userId: string;
   activeRole: string;
-  myRequests: { id: string; categoryName: string; createdAt: number }[];
+  myRequests: { id: string; categoryName: string; createdAt: string }[];
   onClose: () => void;
   onSuccess: () => void;
 }) {

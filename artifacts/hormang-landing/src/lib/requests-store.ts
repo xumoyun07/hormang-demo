@@ -1000,7 +1000,7 @@ export function sendMessage(
   const isBlockedProvider = (() => {
     if (sender !== "master") return false;
     const req = getRequestById(chats[idx].requestId);
-    if (!req) return false;
+    if (!req || !req.customerId) return false;
     return getBlockedUsers(req.customerId).includes(chats[idx].masterId);
   })();
   const customerUnread = (sender === "master" && !isBlockedProvider) ? prevCustomerUnread + 1 : prevCustomerUnread;

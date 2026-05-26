@@ -549,7 +549,6 @@ export default function CustomerHomePage() {
                         offer.status === "accepted"        ? "bg-blue-50 text-blue-700" :
                         offer.status === "completed"       ? "bg-green-50 text-green-700" :
                         offer.status === "rejected"        ? "bg-red-50 text-red-600" :
-                        offer.status === "closed_by_match" ? "bg-gray-100 text-gray-500" :
                                                              "bg-gray-100 text-gray-500"
                       }`}>
                         {offerStatusLabel(offer.status)}

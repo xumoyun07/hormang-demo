@@ -1127,7 +1127,7 @@ function QuestionsScreen({
             <QuestionInput
               question={q}
               value={currentValue}
-              onChange={(v) => setAnswers((prev) => ({ ...prev, [q.id]: v }))}
+              onChange={(v) => setAnswers((prev) => ({ ...prev, [q.id]: v as Answers[string] }))}
               otherValue={(answers[q.id + "_other"] as string) ?? ""}
               onOtherChange={(v) => setAnswers((prev) => ({ ...prev, [q.id + "_other"]: v }))}
               openToOffers={openToOffers}
@@ -1141,7 +1141,7 @@ function QuestionsScreen({
                 <ConditionalInlineBlock
                   questions={getActiveBranches(q, { ...answers, [q.id]: currentValue })}
                   answers={answers}
-                  onChange={(id, val) => setAnswers((prev) => ({ ...prev, [id]: val }))}
+                  onChange={(id, val) => setAnswers((prev) => ({ ...prev, [id]: val as Answers[string] }))}
                 />
               )}
             </AnimatePresence>

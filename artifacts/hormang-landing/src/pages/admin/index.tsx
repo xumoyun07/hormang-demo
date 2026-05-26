@@ -146,6 +146,7 @@ interface CustomerRequest {
   answers: Record<string, unknown>; status: string; createdAt: string; offerCount: number;
   customerId?: string; customerName?: string;
   region?: string; district?: string;
+  requestPhotos?: string[];
 }
 interface BuyerOffer {
   id: string; requestId: string; masterId: string; masterName: string;
