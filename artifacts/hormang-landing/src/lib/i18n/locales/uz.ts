@@ -556,6 +556,8 @@ export const uz = {
     subtitleTpl: "{{open}} ta ochiq · {{responded}} ta javob berilgan",
     markAllSeen: "Barchasi ko'rildi",
     filterAll: "Barchasi",
+    searchPlaceholder: "Tavsif, joylashuv bo'yicha qidiring...",
+    searchNoResults: "Qidiruv bo'yicha natija topilmadi",
     banner: {
       titleTpl: "Yangi so'rovlar: {{n}}",
       subtitle: "Ko'rish uchun bosing",

@@ -559,6 +559,8 @@ export const ru: Dict = {
     subtitleTpl: "{{open}} открытых · {{responded}} с ответом",
     markAllSeen: "Все просмотрены",
     filterAll: "Все",
+    searchPlaceholder: "Поиск по описанию, адресу...",
+    searchNoResults: "По вашему запросу ничего не найдено",
     banner: {
       titleTpl: "Новые заявки: {{n}}",
       subtitle: "Нажмите, чтобы посмотреть",

@@ -4,7 +4,7 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, Send, Inbox, MapPin, Filter, X, Check, CheckCircle2,
-  Eye, Clock, DollarSign, FileText, AlertOctagon, User,
+  Eye, Clock, DollarSign, FileText, AlertOctagon, User, Search,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { OfferForm } from "@/components/offer-form";
@@ -481,6 +481,7 @@ export default function ProviderRequestsPage() {
   const { toast } = useToast();
   const { providerProfile } = useAuth();
   const [activeCategory, setActiveCategory] = useState(t.providerRequests.filterAll);
+  const [searchQuery, setSearchQuery] = useState("");
   const [showSlider, setShowSlider] = useState(false);
   const [sliderStart, setSliderStart] = useState(0);
   const [sliderRequests, setSliderRequests] = useState<ProviderRequest[]>([]);
@@ -526,8 +527,16 @@ export default function ProviderRequestsPage() {
   const allIgnored = requests.filter((r) => r.status === "ignored");
 
   const filtered = requests.filter((r) => {
-    if (activeCategory === t.providerRequests.filterAll) return r.status === "open";
-    return r.status === "open" && r.categoryName.toLowerCase().includes(activeCategory.toLowerCase());
+    if (r.status !== "open") return false;
+    if (activeCategory !== t.providerRequests.filterAll && r.categoryId !== activeCategory) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const desc = getLocalizedDescription(r, locale).toLowerCase();
+      const catName = getCategoryDisplayName(r.categoryId, locale, r.categoryName).toLowerCase();
+      const loc = getRequestLocation(r, locale).toLowerCase();
+      return desc.includes(q) || catName.includes(q) || loc.includes(q);
+    }
+    return true;
   });
 
   function openSlider(startIdx = 0) {
@@ -602,6 +611,27 @@ export default function ProviderRequestsPage() {
           </motion.div>
         )}
 
+        <div className="bg-white rounded-2xl border border-gray-100 flex items-center gap-2.5 px-3.5 mb-4 shadow-sm">
+          <div className="w-8 h-8 rounded-xl bg-violet-50 flex items-center justify-center flex-shrink-0">
+            <Search className="w-3.5 h-3.5 text-violet-500" />
+          </div>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t.providerRequests.searchPlaceholder}
+            className="flex-1 bg-transparent text-sm text-gray-800 placeholder:text-gray-400 outline-none font-medium py-3"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors flex-shrink-0"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
         {filterCategories.length > 0 && (
           <div className="flex items-center gap-1 mb-4 -mx-4 px-4 overflow-x-auto pb-1 no-scrollbar">
             <Filter className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
@@ -628,14 +658,18 @@ export default function ProviderRequestsPage() {
           <div className="text-center py-12">
             <Inbox className="w-12 h-12 text-gray-200 mx-auto mb-3" />
             <p className="font-bold text-gray-400 mb-1">
-              {selectedCategories.length > 0
-                ? t.providerRequests.empty.noMatching
-                : t.providerRequests.empty.none}
+              {searchQuery.trim()
+                ? t.providerRequests.searchNoResults
+                : selectedCategories.length > 0
+                  ? t.providerRequests.empty.noMatching
+                  : t.providerRequests.empty.none}
             </p>
             <p className="text-sm text-gray-300">
-              {selectedCategories.length === 0
-                ? t.providerRequests.empty.pickCategories
-                : t.providerRequests.empty.noneInCategory}
+              {searchQuery.trim()
+                ? ""
+                : selectedCategories.length === 0
+                  ? t.providerRequests.empty.pickCategories
+                  : t.providerRequests.empty.noneInCategory}
             </p>
           </div>
         ) : (

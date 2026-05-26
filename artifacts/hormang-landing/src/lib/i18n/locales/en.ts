@@ -557,6 +557,8 @@ export const en: Dict = {
     subtitleTpl: "{{open}} open · {{responded}} responded",
     markAllSeen: "All seen",
     filterAll: "All",
+    searchPlaceholder: "Search by description, location...",
+    searchNoResults: "No results found for your search",
     banner: {
       titleTpl: "New requests: {{n}}",
       subtitle: "Tap to view",
