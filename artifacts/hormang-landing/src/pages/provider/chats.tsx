@@ -16,7 +16,7 @@ import {
 } from "@/lib/provider-store";
 import {
   getOfferForChat, confirmCompletion, getRequestById, sendSystemMessage,
-  deleteChatMessage, clearChatMessages,
+  deleteChatMessage, clearChatForProvider, getChatClearedAt,
   type Offer,
 } from "@/lib/requests-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
@@ -471,8 +471,11 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 
   const defaultLocation = [request?.district, request?.region].filter(Boolean).join(", ");
 
+  const providerClearedAt = getChatClearedAt(chatId, "provider");
+  const visibleMessages = chat.messages.filter((m) => new Date(m.timestamp).getTime() > providerClearedAt);
+
   const grouped: Array<{ day: string; messages: ProviderChatMessage[] }> = [];
-  for (const msg of chat.messages) {
+  for (const msg of visibleMessages) {
     const day = formatDay(msg.timestamp, t, t.shared.months);
     const last = grouped[grouped.length - 1];
     if (last?.day === day) last.messages.push(msg);
@@ -745,7 +748,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             title={t.chatPage.clearChatTitle}
             message={t.chatPage.clearChatMsg}
             confirmText={t.chatPage.clearChatYes}
-            onConfirm={() => { clearChatMessages(chatId); setShowClearConfirm(false); setSelectedMsgId(null); }}
+            onConfirm={() => { clearChatForProvider(chatId); setShowClearConfirm(false); setSelectedMsgId(null); }}
             onClose={() => setShowClearConfirm(false)}
           />
         )}

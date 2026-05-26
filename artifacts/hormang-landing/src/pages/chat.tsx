@@ -19,7 +19,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { formatDate } from "@/lib/date-utils";
 import {
   getChatById, sendMessage, getOfferForChat, confirmCompletion,
-  markCustomerChatRead, deleteChatMessage, clearChatMessages,
+  markCustomerChatRead, deleteChatMessage, clearChatForCustomer, getChatClearedAt,
   type Chat, type ChatMessage, type Offer,
 } from "@/lib/requests-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
@@ -368,8 +368,11 @@ export default function ChatPage() {
     setReviewDismissed(true);
   }
 
+  const customerClearedAt = getChatClearedAt(chatId, "customer");
+  const visibleMessages = chat.messages.filter((m) => new Date(m.timestamp).getTime() > customerClearedAt);
+
   const grouped: Array<{ day: string; messages: ChatMessage[] }> = [];
-  for (const msg of chat.messages) {
+  for (const msg of visibleMessages) {
     const day = formatDay(msg.timestamp, tt.today, tt.yesterday, t.shared.months);
     const last = grouped[grouped.length - 1];
     if (last?.day === day) last.messages.push(msg);
@@ -625,7 +628,7 @@ export default function ChatPage() {
             title={tt.clearChatTitle}
             message={tt.clearChatMsg}
             confirmText={tt.clearChatYes}
-            onConfirm={() => { clearChatMessages(chatId); setShowClearConfirm(false); setSelectedMsgId(null); }}
+            onConfirm={() => { clearChatForCustomer(chatId); setShowClearConfirm(false); setSelectedMsgId(null); }}
             onClose={() => setShowClearConfirm(false)}
           />
         )}

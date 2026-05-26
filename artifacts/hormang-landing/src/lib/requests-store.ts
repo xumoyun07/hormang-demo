@@ -1108,8 +1108,7 @@ export function getLatestChatId(): string | null {
 }
 
 /**
- * Delete a single non-system message from a chat.
- * Both parties see the deletion immediately (shared localStorage store).
+ * Delete a single non-system message from a chat (shared — both sides lose it).
  * Returns false if the message doesn't exist or is a system message.
  */
 export function deleteChatMessage(chatId: string, messageId: string): boolean {
@@ -1124,14 +1123,33 @@ export function deleteChatMessage(chatId: string, messageId: string): boolean {
   return true;
 }
 
+/* ─── Per-side chat clear ────────────────────────────────────────── */
+const CHAT_CLEARED_KEY = "hormang_chat_cleared";
+
+function readClearedMap(): Record<string, number> {
+  return readJSON<Record<string, number>>(CHAT_CLEARED_KEY, {});
+}
+
 /**
- * Remove all messages from a chat and reset both unread counters.
- * The chat metadata (participants, category, etc.) is preserved.
+ * Record the current timestamp as the "cleared at" marker for one side.
+ * Messages older than (or equal to) this timestamp are hidden for that side only.
+ * The underlying message data is NOT modified.
  */
-export function clearChatMessages(chatId: string): void {
-  const chats = readJSON<Chat[]>(CHATS_KEY, []);
-  const idx = chats.findIndex((c) => c.id === chatId);
-  if (idx === -1) return;
-  chats[idx] = { ...chats[idx], messages: [], providerUnread: 0, customerUnread: 0 };
-  writeJSON(CHATS_KEY, chats);
+export function clearChatForCustomer(chatId: string): void {
+  const map = readClearedMap();
+  map[`${chatId}_customer`] = Date.now();
+  writeJSON(CHAT_CLEARED_KEY, map);
+  emitStoreChange();
+}
+
+export function clearChatForProvider(chatId: string): void {
+  const map = readClearedMap();
+  map[`${chatId}_provider`] = Date.now();
+  writeJSON(CHAT_CLEARED_KEY, map);
+  emitStoreChange();
+}
+
+/** Returns the timestamp after which messages are visible for the given side (0 = show all). */
+export function getChatClearedAt(chatId: string, side: "customer" | "provider"): number {
+  return readClearedMap()[`${chatId}_${side}`] ?? 0;
 }
