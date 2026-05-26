@@ -559,6 +559,11 @@ export const en: Dict = {
     filterAll: "All",
     searchPlaceholder: "Search by description, location...",
     searchNoResults: "No results found for your search",
+    tabs: {
+      all: "All",
+      unread: "Unread",
+      noOffers: "No offers",
+    },
     banner: {
       titleTpl: "New requests: {{n}}",
       subtitle: "Tap to view",

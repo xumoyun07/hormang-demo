@@ -558,6 +558,11 @@ export const uz = {
     filterAll: "Barchasi",
     searchPlaceholder: "Tavsif, joylashuv bo'yicha qidiring...",
     searchNoResults: "Qidiruv bo'yicha natija topilmadi",
+    tabs: {
+      all: "Barchasi",
+      unread: "O'qilmagan",
+      noOffers: "Taklif yo'q",
+    },
     banner: {
       titleTpl: "Yangi so'rovlar: {{n}}",
       subtitle: "Ko'rish uchun bosing",

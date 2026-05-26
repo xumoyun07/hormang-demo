@@ -561,6 +561,11 @@ export const ru: Dict = {
     filterAll: "Все",
     searchPlaceholder: "Поиск по описанию, адресу...",
     searchNoResults: "По вашему запросу ничего не найдено",
+    tabs: {
+      all: "Все",
+      unread: "Непросмотренные",
+      noOffers: "Без предложений",
+    },
     banner: {
       titleTpl: "Новые заявки: {{n}}",
       subtitle: "Нажмите, чтобы посмотреть",
