@@ -13,6 +13,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import {
   getRequestsByCustomer, getOffersByRequestId, getOrCreateChat,
   updateRequestStatus, deleteRequestCascade, getRequestCounts, MAX_ACTIVE_OFFERS,
+  canDeleteRequest, hasEverReceivedOffer,
   type CustomerRequest,
 } from "@/lib/requests-store";
 import { useAuth } from "@/contexts/auth-context";
@@ -99,6 +100,11 @@ function RequestCard({
 
   const isActive = mode === "active";
 
+  // Determine what the X button does based on offer history
+  const hasOffers = hasEverReceivedOffer(req.id);
+  const closeIcon = hasOffers ? <XCircle className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />;
+  const closeTitle = hasOffers ? t.myRequests.deactivateTitle : t.myRequests.deleteTitle;
+
   function openChat() {
     if (offers.length === 0) return;
     const o = offers[0];
@@ -114,7 +120,9 @@ function RequestCard({
       ? { label: t.myRequests.chipMatched, cls: "bg-blue-50 text-blue-600" }
       : mode === "active"
         ? { label: t.myRequests.chipActive, cls: "bg-emerald-50 text-emerald-600" }
-        : { label: t.myRequests.chipCancelled, cls: "bg-gray-100 text-gray-500" };
+        : mode === "inactive"
+          ? { label: t.myRequests.chipInactive, cls: "bg-orange-50 text-orange-600" }
+          : { label: t.myRequests.chipCancelled, cls: "bg-gray-100 text-gray-500" };
 
   return (
     <motion.div
@@ -206,10 +214,14 @@ function RequestCard({
         {mode === "active" && (
           <button
             onClick={() => onClose(req.id)}
-            className="w-9 h-9 rounded-xl border border-red-100 bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-100 transition-colors"
-            title={t.myRequests.closeRequestTitle}
+            className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-colors ${
+              hasOffers
+                ? "border-orange-100 bg-orange-50 text-orange-400 hover:text-orange-600 hover:bg-orange-100"
+                : "border-red-100 bg-red-50 text-red-400 hover:text-red-600 hover:bg-red-100"
+            }`}
+            title={closeTitle}
           >
-            <X className="w-4 h-4" />
+            {closeIcon}
           </button>
         )}
 
@@ -244,25 +256,72 @@ function SectionLabel({ label, count, color }: { label: string; count: number; c
   );
 }
 
+type PendingAction = { id: string; type: "delete" | "deactivate" } | null;
+
 export default function MyRequestsPage() {
   useStoreRefresh();
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { t } = useI18n();
 
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+
   const requests = user ? getRequestsByCustomer(user.id) : [];
 
   function handleClose(id: string) {
-    updateRequestStatus(id, "cancelled");
+    if (canDeleteRequest(id)) {
+      setPendingAction({ id, type: "delete" });
+    } else {
+      setPendingAction({ id, type: "deactivate" });
+    }
+  }
+
+  function handleConfirmAction() {
+    if (!pendingAction) return;
+    try {
+      if (pendingAction.type === "delete") {
+        deleteRequestCascade(pendingAction.id);
+      } else {
+        updateRequestStatus(pendingAction.id, "inactive");
+      }
+    } catch (err) {
+      // Backend guard: if somehow delete was called with offers present,
+      // fall back to deactivation instead of crashing.
+      if (pendingAction.type === "delete") {
+        updateRequestStatus(pendingAction.id, "inactive");
+      }
+    }
+    setPendingAction(null);
+  }
+
+  function handleCancelAction() {
+    setPendingAction(null);
   }
 
   function handleReopen(id: string) {
     updateRequestStatus(id, "open");
   }
 
-  const active = requests.filter((r) => r.status === "open");
+  const active   = requests.filter((r) => r.status === "open");
+  const inactive = requests.filter((r) => r.status === "inactive");
   const cancelled = requests.filter((r) => r.status === "cancelled");
-  const visibleRequests = [...active, ...cancelled];
+  const visibleRequests = [...active, ...inactive, ...cancelled];
+
+  const modalProps = pendingAction?.type === "delete"
+    ? {
+        title: t.myRequests.deleteConfirm.title,
+        body: t.myRequests.deleteConfirm.body,
+        cancelLabel: t.myRequests.deleteConfirm.cancel,
+        confirmLabel: t.myRequests.deleteConfirm.confirm,
+        danger: true,
+      }
+    : {
+        title: t.myRequests.deactivateConfirm.title,
+        body: t.myRequests.deactivateConfirm.body,
+        cancelLabel: t.myRequests.deactivateConfirm.cancel,
+        confirmLabel: t.myRequests.deactivateConfirm.confirm,
+        danger: false,
+      };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -355,6 +414,26 @@ export default function MyRequestsPage() {
               </div>
             )}
 
+            {inactive.length > 0 && (
+              <div className="mb-6">
+                <SectionLabel label={t.myRequests.sectionInactive} count={inactive.length} color="bg-orange-400" />
+                <div className="space-y-3">
+                  <AnimatePresence mode="popLayout">
+                    {inactive.map((req, i) => (
+                      <RequestCard
+                        key={req.id}
+                        req={req}
+                        index={i}
+                        mode="inactive"
+                        onClose={handleClose}
+                        onReopen={handleReopen}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </div>
+            )}
+
             {cancelled.length > 0 && (
               <div>
                 <SectionLabel label={t.myRequests.sectionCancelled} count={cancelled.length} color="bg-gray-400" />
@@ -377,6 +456,16 @@ export default function MyRequestsPage() {
           </>
         )}
       </div>
+
+      <AnimatePresence>
+        {pendingAction && (
+          <ConfirmModal
+            {...modalProps}
+            onCancel={handleCancelAction}
+            onConfirm={handleConfirmAction}
+          />
+        )}
+      </AnimatePresence>
 
       <BottomNav />
     </div>

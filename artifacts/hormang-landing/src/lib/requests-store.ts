@@ -276,6 +276,24 @@ export function updateRequestStatus(requestId: string, status: CustomerRequest["
   writeJSON(REQUESTS_KEY, reqs.map((r) => r.id === requestId ? { ...r, status } : r));
 }
 
+/**
+ * Returns true if the request has no offers and can be permanently deleted.
+ * Uses live offer count from the shared offers store — not the cached offerCount
+ * field on the request — so it is always accurate.
+ */
+export function canDeleteRequest(requestId: string): boolean {
+  return getOffersByRequestId(requestId).length === 0;
+}
+
+/**
+ * Returns true if the request has ever received at least one offer.
+ * Once true, permanent deletion must never be allowed even if the offer
+ * was later rejected/withdrawn, to protect provider Tanga history.
+ */
+export function hasEverReceivedOffer(requestId: string): boolean {
+  return getOffersByRequestId(requestId).length > 0;
+}
+
 /* ─── Customer-scoped helpers ────────────────────────────────────── */
 
 /** Only requests created by this customer (strict isolation). */
