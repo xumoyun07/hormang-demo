@@ -24,6 +24,12 @@ import { getAvgResponseMinutes, formatAvgResponseTime } from "@/lib/response-tim
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 import { ReviewModal, type ReviewSubmitData } from "@/components/review-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
+import { ChatHeaderActionsMenu } from "@/components/chat-header-actions-menu";
+import { ReportModal } from "@/components/report-modal";
+import { OfferDetailModal } from "@/components/offer-detail-modal";
+import { RequestPreviewModal } from "@/components/request-preview-modal";
+import { isBlockedBy } from "@/lib/report-store";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import logoImg from "/hormang-logo.png";
 import { PublicProfilePreviewModal } from "@/components/public-profile-preview-modal";
@@ -402,9 +408,12 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const attachInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
+  const { toast } = useToast();
   const masterId = user?.id ?? "";
 
   const chat = getProviderChatById(chatId) ?? null;
@@ -450,8 +459,16 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
     }
   }, [alreadyCompleted]);
 
+  const isBlocked = !!(user && chat && (
+    isBlockedBy(user.id, chat.customerId) || isBlockedBy(chat.customerId, user.id)
+  ));
+
   function send() {
     if ((!text.trim() && !attachPreview) || isRejected) return;
+    if (isBlocked) {
+      toast({ title: t.chatPage.blockedCannotSend, variant: "destructive" });
+      return;
+    }
     const attachment = attachPreview ? { type: "image" as const, url: attachPreview } : undefined;
     sendProviderMessage(chatId, "provider", text.trim(), attachment, user?.id);
     setText("");
@@ -616,13 +633,14 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
               <OfferStatusBadge status={offer.status} t={t} />
             </div>
           ) : null}
-          <button
-            onClick={() => setShowClearConfirm(true)}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0"
-            title={t.chatPage.clearChat}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          <ChatHeaderActionsMenu
+            otherUserId={chat.customerId}
+            otherUserName={chat.customerName}
+            onViewProfile={() => setShowCustomerProfile(true)}
+            onViewDetails={() => setShowDetails(true)}
+            onReport={() => setShowReport(true)}
+            onClearChat={() => setShowClearConfirm(true)}
+          />
         </div>
       </div>
 
@@ -813,6 +831,41 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             confirmText={t.chatPage.clearChatYes}
             onConfirm={() => { clearChatForProvider(chatId); setShowClearConfirm(false); setSelectedMsgId(null); }}
             onClose={() => setShowClearConfirm(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Report user (from chat) — shares store + admin queue with PPP modal */}
+      <AnimatePresence>
+        {showReport && user && chat && (
+          <ReportModal
+            key="provider-chat-report"
+            reporterUserId={user.id}
+            reportedUserId={chat.customerId}
+            reportedName={chat.customerName}
+            source="chat"
+            chatId={chatId}
+            lastMessageId={chat.messages[chat.messages.length - 1]?.id}
+            onClose={() => setShowReport(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Request / Offer details */}
+      <AnimatePresence>
+        {showDetails && offer && (
+          <OfferDetailModal
+            key="provider-chat-offer-details"
+            offer={offer}
+            readOnly
+            onClose={() => setShowDetails(false)}
+          />
+        )}
+        {showDetails && !offer && request && (
+          <RequestPreviewModal
+            key="provider-chat-request-details"
+            req={request}
+            onClose={() => setShowDetails(false)}
           />
         )}
       </AnimatePresence>

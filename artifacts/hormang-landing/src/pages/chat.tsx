@@ -13,6 +13,10 @@ import { PublicProfilePreviewModal } from "@/components/public-profile-preview-m
 import { ReviewModal, type ReviewSubmitData } from "@/components/review-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { BottomNav } from "@/components/bottom-nav";
+import { ChatHeaderActionsMenu } from "@/components/chat-header-actions-menu";
+import { ReportModal } from "@/components/report-modal";
+import { OfferDetailModal } from "@/components/offer-detail-modal";
+import { RequestPreviewModal } from "@/components/request-preview-modal";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { getLocalProfile } from "@/lib/local-profile";
 import { useAuth } from "@/contexts/auth-context";
@@ -20,9 +24,10 @@ import { formatDate } from "@/lib/date-utils";
 import {
   getChatById, sendMessage, getOfferForChat, confirmCompletion,
   markCustomerChatRead, deleteMessageForEveryone, deleteMessageForMe,
-  clearChatForCustomer, getChatClearedAt,
+  clearChatForCustomer, getChatClearedAt, getRequestById,
   type Chat, type ChatMessage, type Offer,
 } from "@/lib/requests-store";
+import { isBlockedBy } from "@/lib/report-store";
 import { getAvgResponseMinutes, formatAvgResponseTime } from "@/lib/response-time-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 import { isUserSuspended, SUSPENDED_MESSAGE } from "@/lib/safety-store";
@@ -281,6 +286,8 @@ export default function ChatPage() {
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [selectedMsgId, setSelectedMsgId] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const attachInputRef = useRef<HTMLInputElement>(null);
@@ -290,6 +297,10 @@ export default function ChatPage() {
     ? getOfferForChat(chat.requestId, chat.masterId)
     : undefined;
   const masterLocal = chat?.masterId ? getLocalProfile(chat.masterId) : null;
+  const request = chat ? getRequestById(chat.requestId) : undefined;
+  const isBlocked = !!(user && chat && (
+    isBlockedBy(user.id, chat.masterId) || isBlockedBy(chat.masterId, user.id)
+  ));
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
@@ -338,6 +349,10 @@ export default function ChatPage() {
     if (!input.trim() && !attachPreview) return;
     if (user && isUserSuspended(user.id)) {
       toast({ title: SUSPENDED_MESSAGE, variant: "destructive" });
+      return;
+    }
+    if (isBlocked) {
+      toast({ title: tt.blockedCannotSend, variant: "destructive" });
       return;
     }
     const text = input.trim();
@@ -507,13 +522,14 @@ export default function ChatPage() {
               <OfferStatusBadge status="completed" />
             </div>
           )}
-          <button
-            onClick={() => setShowClearConfirm(true)}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0"
-            title={tt.clearChat}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+          <ChatHeaderActionsMenu
+            otherUserId={chat.masterId}
+            otherUserName={chat.masterName}
+            onViewProfile={() => setShowMasterProfile(true)}
+            onViewDetails={() => setShowDetails(true)}
+            onReport={() => setShowReport(true)}
+            onClearChat={() => setShowClearConfirm(true)}
+          />
         </div>
       </div>
 
@@ -661,6 +677,41 @@ export default function ChatPage() {
             confirmText={tt.clearChatYes}
             onConfirm={() => { clearChatForCustomer(chatId); setShowClearConfirm(false); setSelectedMsgId(null); }}
             onClose={() => setShowClearConfirm(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Report user (from chat) — shares store + admin queue with PPP modal */}
+      <AnimatePresence>
+        {showReport && user && (
+          <ReportModal
+            key="customer-chat-report"
+            reporterUserId={user.id}
+            reportedUserId={chat.masterId}
+            reportedName={chat.masterName}
+            source="chat"
+            chatId={chatId}
+            lastMessageId={chat.messages[chat.messages.length - 1]?.id}
+            onClose={() => setShowReport(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Request / Offer details — reuses existing read-only modals */}
+      <AnimatePresence>
+        {showDetails && offer && (
+          <OfferDetailModal
+            key="customer-chat-offer-details"
+            offer={offer}
+            readOnly
+            onClose={() => setShowDetails(false)}
+          />
+        )}
+        {showDetails && !offer && request && (
+          <RequestPreviewModal
+            key="customer-chat-request-details"
+            req={request}
+            onClose={() => setShowDetails(false)}
           />
         )}
       </AnimatePresence>

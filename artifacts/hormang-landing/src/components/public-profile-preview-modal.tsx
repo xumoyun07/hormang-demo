@@ -12,12 +12,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X, MapPin, ShieldCheck, Star,
   Briefcase, Award, ChevronRight, Flag,
-  IdCard,
+  IdCard, Ban, LockOpen,
 } from "lucide-react";
 import { getLocalProfile, getServiceAreaLabels } from "@/lib/local-profile";
 import { getCategoryDisplayName } from "@/lib/categories";
 import { getAverageRatingForUser, getReviewsForUser, getCompletedCount } from "@/lib/completion-store";
 import { getAvgResponseMinutes, formatAvgResponseTime } from "@/lib/response-time-store";
+import { isBlockedBy, blockUser, unblockUser } from "@/lib/report-store";
+import { useStoreRefresh } from "@/hooks/use-store-refresh";
+import { useToast } from "@/hooks/use-toast";
 import { StarRating } from "@/components/star-rating";
 import { ProviderReviewsSheet } from "@/components/provider-reviews-sheet";
 import { CustomerReviewsSheet } from "@/components/customer-reviews-sheet";
@@ -118,6 +121,8 @@ function ProviderPreviewSheet({
 }) {
   const { user } = useAuth();
   const { t, locale } = useI18n();
+  const { toast } = useToast();
+  useStoreRefresh();
   const tt = t.publicProfilePreviewModal;
   const local = getLocalProfile(data.masterId);
   const albums = local.albums ?? [];
@@ -139,6 +144,17 @@ function ProviderPreviewSheet({
   const pBadges = getBadges(data.masterId);
 
   const canReport = user && user.id !== data.masterId;
+  const blocked = user && user.id !== data.masterId ? isBlockedBy(user.id, data.masterId) : false;
+  function handleToggleBlock() {
+    if (!user) return;
+    if (blocked) {
+      unblockUser(user.id, data.masterId);
+      toast({ title: t.chatPage.unblockedToast.replace("{{name}}", data.masterName) });
+    } else {
+      blockUser(user.id, data.masterId);
+      toast({ title: t.chatPage.blockedToast.replace("{{name}}", data.masterName) });
+    }
+  }
 
   return (
     <>
@@ -170,16 +186,29 @@ function ProviderPreviewSheet({
             <div className="w-10 h-1 rounded-full bg-gray-200" />
           </div>
 
-          {/* ── Close + Report buttons ── */}
+          {/* ── Close + Report + Block buttons ── */}
           <div className="flex items-center justify-between px-4 flex-shrink-0">
             {canReport ? (
-              <button
-                onClick={() => setShowReport(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-500 hover:bg-amber-50 hover:text-amber-600 transition-colors text-xs font-semibold"
-              >
-                <Flag className="w-3.5 h-3.5" />
-                {tt.reportBtn}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowReport(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-500 hover:bg-amber-50 hover:text-amber-600 transition-colors text-xs font-semibold"
+                >
+                  <Flag className="w-3.5 h-3.5" />
+                  {tt.reportBtn}
+                </button>
+                <button
+                  onClick={handleToggleBlock}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors text-xs font-semibold ${
+                    blocked
+                      ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                      : "bg-gray-100 text-gray-500 hover:bg-rose-50 hover:text-rose-600"
+                  }`}
+                >
+                  {blocked ? <LockOpen className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
+                  {blocked ? tt.unblockBtn : tt.blockBtn}
+                </button>
+              </div>
             ) : <div />}
             <button
               onClick={onClose}
@@ -453,6 +482,8 @@ function CustomerPreviewSheet({
 }) {
   const { user } = useAuth();
   const { t } = useI18n();
+  const { toast } = useToast();
+  useStoreRefresh();
   const tt = t.publicProfilePreviewModal;
   const name     = data.customerName?.trim() || tt.fallbackCustomer;
   const initials = data.customerInitials ?? deriveInitials(name);
@@ -470,6 +501,19 @@ function CustomerPreviewSheet({
   const [showReport,  setShowReport]  = useState(false);
 
   const canReport = user && data.customerId && user.id !== data.customerId;
+  const blocked = user && data.customerId && user.id !== data.customerId
+    ? isBlockedBy(user.id, data.customerId)
+    : false;
+  function handleToggleBlock() {
+    if (!user || !data.customerId) return;
+    if (blocked) {
+      unblockUser(user.id, data.customerId);
+      toast({ title: t.chatPage.unblockedToast.replace("{{name}}", name) });
+    } else {
+      blockUser(user.id, data.customerId);
+      toast({ title: t.chatPage.blockedToast.replace("{{name}}", name) });
+    }
+  }
 
   return (
     <>
@@ -501,16 +545,29 @@ function CustomerPreviewSheet({
             <div className="w-10 h-1 rounded-full bg-gray-200" />
           </div>
 
-          {/* Close + Report */}
+          {/* Close + Report + Block */}
           <div className="flex items-center justify-between px-4 pb-1 flex-shrink-0">
             {canReport ? (
-              <button
-                onClick={() => setShowReport(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-500 hover:bg-amber-50 hover:text-amber-600 transition-colors text-xs font-semibold"
-              >
-                <Flag className="w-3.5 h-3.5" />
-                {tt.reportBtn}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowReport(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-500 hover:bg-amber-50 hover:text-amber-600 transition-colors text-xs font-semibold"
+                >
+                  <Flag className="w-3.5 h-3.5" />
+                  {tt.reportBtn}
+                </button>
+                <button
+                  onClick={handleToggleBlock}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors text-xs font-semibold ${
+                    blocked
+                      ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                      : "bg-gray-100 text-gray-500 hover:bg-rose-50 hover:text-rose-600"
+                  }`}
+                >
+                  {blocked ? <LockOpen className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
+                  {blocked ? tt.unblockBtn : tt.blockBtn}
+                </button>
+              </div>
             ) : <div />}
             <button
               onClick={onClose}

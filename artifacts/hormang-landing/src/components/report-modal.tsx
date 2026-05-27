@@ -36,6 +36,12 @@ export interface ReportModalProps {
   reportedUserId: string;
   reportedName:   string;
   onClose:        () => void;
+  /** Where this report originates. Defaults to "profile". */
+  source?:        "profile" | "chat";
+  /** Required when source === "chat". */
+  chatId?:        string;
+  /** Optional — last message id at time of report, when filed from chat. */
+  lastMessageId?: string;
 }
 
 export function ReportModal({
@@ -43,6 +49,9 @@ export function ReportModal({
   reportedUserId,
   reportedName,
   onClose,
+  source = "profile",
+  chatId,
+  lastMessageId,
 }: ReportModalProps) {
   const { toast } = useToast();
   const { t } = useI18n();
@@ -89,6 +98,9 @@ export function ReportModal({
         reason,
         description: description.trim() || undefined,
         attachments: images.length > 0 ? images : undefined,
+        source,
+        ...(source === "chat" && chatId ? { chatId } : {}),
+        ...(source === "chat" && lastMessageId ? { lastMessageId } : {}),
       });
       if (blockToo && !alreadyBlocked) {
         blockUser(reporterUserId, reportedUserId);

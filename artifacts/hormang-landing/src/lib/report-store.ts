@@ -19,6 +19,8 @@ export type ReportReason =
 
 export type ReportStatus = "new" | "in_review" | "resolved" | "dismissed";
 
+export type ReportSource = "profile" | "chat";
+
 export interface UserReport {
   id: string;
   reporterUserId: string;
@@ -29,6 +31,12 @@ export interface UserReport {
   status: ReportStatus;
   adminNote?: string;
   createdAt: string;
+  /** Where the report was filed from. Defaults to "profile" for legacy entries. */
+  source?: ReportSource;
+  /** Set when source === "chat". */
+  chatId?: string;
+  /** Optional context — last message id at the time of the report. */
+  lastMessageId?: string;
 }
 
 const REPORTS_KEY = "hormang_user_reports";
