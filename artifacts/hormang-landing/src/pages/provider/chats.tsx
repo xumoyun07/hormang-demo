@@ -139,6 +139,16 @@ function MsgBubble({
   const { t } = useI18n();
   const tt = t.chatPage;
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const [popupBelow, setPopupBelow] = useState(false);
+
+  useEffect(() => {
+    if (!selected) return;
+    const el = bubbleRef.current;
+    if (!el) return;
+    const { top } = el.getBoundingClientRect();
+    setPopupBelow(top < 140);
+  }, [selected]);
 
   if (msg.sender === "system") {
     type SysMsgKey = "systemMsgOfferAccepted" | "systemMsgOfferRejected" | "systemMsgOfferSiblingClosed" | "systemMsgProviderConfirmed" | "systemMsgCustomerConfirmed" | "systemMsgCompleted";
@@ -186,6 +196,7 @@ function MsgBubble({
 
   return (
     <motion.div
+      ref={bubbleRef}
       initial={{ opacity: 0, y: 8, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.18 }}
@@ -195,7 +206,7 @@ function MsgBubble({
       onPointerLeave={endPress}
     >
       {selected && (
-        <div className={`absolute -top-28 z-30 flex flex-col bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden min-w-[168px] ${isMe ? "right-0" : "left-0"}`}>
+        <div className={`absolute ${popupBelow ? "top-full mt-1" : "-top-28"} z-30 flex flex-col bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden min-w-[168px] ${isMe ? "right-0" : "left-0"}`}>
           {canDeleteForEveryone && (
             <button
               onPointerDown={(e) => e.stopPropagation()}
