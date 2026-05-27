@@ -5,7 +5,7 @@ import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, MessageCircle, ChevronRight, X, ChevronDown,
-  Circle, Send, CheckCircle2, Clock, Loader2, Flag, CalendarPlus, CalendarCheck2, ImageIcon, Star, Check, CheckCheck, Trash2,
+  Circle, Send, CheckCircle2, Clock, Loader2, Flag, CalendarPlus, CalendarCheck2, ImageIcon, Star, Check, CheckCheck, Trash2, EyeOff, Copy,
 } from "lucide-react";
 import { compressImage } from "@/lib/image-utils";
 import { BottomNav } from "@/components/bottom-nav";
@@ -16,7 +16,8 @@ import {
 } from "@/lib/provider-store";
 import {
   getOfferForChat, confirmCompletion, getRequestById, sendSystemMessage,
-  deleteChatMessage, clearChatForProvider, getChatClearedAt,
+  deleteMessageForEveryone, deleteMessageForMe,
+  clearChatForProvider, getChatClearedAt,
   type Offer,
 } from "@/lib/requests-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
@@ -123,13 +124,17 @@ function DaySeparator({ label }: { label: string }) {
 }
 
 function MsgBubble({
-  msg, isFirst, onLongPress, selected, onDelete,
+  msg, isFirst, currentUserId, onLongPress, selected,
+  onDeleteForEveryone, onDeleteForMe, onCopy,
 }: {
   msg: ProviderChatMessage;
   isFirst: boolean;
+  currentUserId: string;
   onLongPress?: () => void;
   selected?: boolean;
-  onDelete?: () => void;
+  onDeleteForEveryone?: () => void;
+  onDeleteForMe?: () => void;
+  onCopy?: () => void;
 }) {
   const { t } = useI18n();
   const tt = t.chatPage;
@@ -162,10 +167,17 @@ function MsgBubble({
     );
   }
 
+  // Hidden for this user via "delete for me"
+  if (msg.deletedForUsers?.includes(currentUserId)) return null;
+
   const isMe = msg.sender === "provider";
+  const isOwnMsg = isMe;
+  const ageMs = Date.now() - new Date(msg.timestamp).getTime();
+  const withinWindow = ageMs <= 5 * 60 * 1000;
+  const canDeleteForEveryone = isOwnMsg && withinWindow && !msg.deletedForEveryone;
 
   function startPress() {
-    if (!isMe || !onLongPress) return;
+    if (!onLongPress) return;
     pressTimer.current = setTimeout(() => { onLongPress(); }, 400);
   }
   function endPress() {
@@ -183,15 +195,35 @@ function MsgBubble({
       onPointerLeave={endPress}
     >
       {selected && (
-        <div className="absolute -top-8 right-0 z-30 flex items-center bg-white border border-gray-200 rounded-xl shadow-xl px-2.5 py-1.5 whitespace-nowrap">
+        <div className={`absolute -top-28 z-30 flex flex-col bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden min-w-[168px] ${isMe ? "right-0" : "left-0"}`}>
+          {canDeleteForEveryone && (
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onDeleteForEveryone?.(); }}
+              className="flex items-center gap-2.5 px-3.5 py-2.5 text-red-500 text-xs font-semibold hover:bg-red-50 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5 flex-shrink-0" />
+              {tt.deleteForEveryone}
+            </button>
+          )}
           <button
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
-            className="flex items-center gap-1.5 text-red-500 text-xs font-semibold"
+            onClick={(e) => { e.stopPropagation(); onDeleteForMe?.(); }}
+            className={`flex items-center gap-2.5 px-3.5 py-2.5 text-gray-600 text-xs font-semibold hover:bg-gray-50 transition-colors ${canDeleteForEveryone ? "border-t border-gray-100" : ""}`}
           >
-            <Trash2 className="w-3 h-3" />
-            {tt.deleteMessage}
+            <EyeOff className="w-3.5 h-3.5 flex-shrink-0" />
+            {tt.deleteForMe}
           </button>
+          {msg.text && !msg.deletedForEveryone && (
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onCopy?.(); }}
+              className="flex items-center gap-2.5 px-3.5 py-2.5 text-gray-600 text-xs font-semibold hover:bg-gray-50 transition-colors border-t border-gray-100"
+            >
+              <Copy className="w-3.5 h-3.5 flex-shrink-0" />
+              {tt.copy}
+            </button>
+          )}
         </div>
       )}
       <div
@@ -202,21 +234,32 @@ function MsgBubble({
         }`}
         style={isMe ? { background: VIOLET } : {}}
       >
-        {msg.attachment?.type === "image" && (
-          <img src={msg.attachment.url} alt="rasm"
-            className="w-full max-w-[220px] object-cover rounded-t-2xl" style={{ display: "block" }} />
-        )}
-        <div className="px-3.5 py-2.5">
-          {msg.text && <p style={{ whiteSpace: "pre-wrap" }}>{msg.text}</p>}
-          <div className={`flex items-center justify-end gap-1 mt-1 ${isMe ? "text-violet-200" : "text-gray-400"}`}>
-            <span className="text-[10px]">{formatTime(msg.timestamp, t.shared.months)}</span>
-            {isMe && (
-              msg.readAt
-                ? <CheckCheck className="w-3.5 h-3.5 text-sky-300" strokeWidth={2.5} />
-                : <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
-            )}
+        {msg.deletedForEveryone ? (
+          <div className="px-3.5 py-2.5">
+            <p className={`italic text-xs ${isMe ? "text-violet-200" : "text-gray-400"}`}>{tt.messageDeleted}</p>
+            <div className={`flex items-center justify-end mt-1 ${isMe ? "text-violet-200" : "text-gray-400"}`}>
+              <span className="text-[10px]">{formatTime(msg.timestamp, t.shared.months)}</span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <>
+            {msg.attachment?.type === "image" && (
+              <img src={msg.attachment.url} alt="rasm"
+                className="w-full max-w-[220px] object-cover rounded-t-2xl" style={{ display: "block" }} />
+            )}
+            <div className="px-3.5 py-2.5">
+              {msg.text && <p style={{ whiteSpace: "pre-wrap" }}>{msg.text}</p>}
+              <div className={`flex items-center justify-end gap-1 mt-1 ${isMe ? "text-violet-200" : "text-gray-400"}`}>
+                <span className="text-[10px]">{formatTime(msg.timestamp, t.shared.months)}</span>
+                {isMe && (
+                  msg.readAt
+                    ? <CheckCheck className="w-3.5 h-3.5 text-sky-300" strokeWidth={2.5} />
+                    : <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </motion.div>
   );
@@ -587,9 +630,12 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
                     key={msg.id}
                     msg={msg}
                     isFirst={i === 0 || group.messages[i - 1].sender !== msg.sender}
-                    onLongPress={msg.sender === "provider" ? () => setSelectedMsgId(msg.id) : undefined}
+                    currentUserId={masterId}
+                    onLongPress={msg.sender !== "system" ? () => setSelectedMsgId(msg.id) : undefined}
                     selected={selectedMsgId === msg.id}
-                    onDelete={() => { deleteChatMessage(chatId, msg.id); setSelectedMsgId(null); }}
+                    onDeleteForEveryone={() => { deleteMessageForEveryone(chatId, msg.id); setSelectedMsgId(null); }}
+                    onDeleteForMe={() => { deleteMessageForMe(chatId, msg.id, masterId); setSelectedMsgId(null); }}
+                    onCopy={() => { navigator.clipboard.writeText(msg.text); setSelectedMsgId(null); }}
                   />
                 ))}
               </div>

@@ -106,6 +106,12 @@ export interface ChatMessage {
   deliveredAt?: string | null;
   /** ISO timestamp when receiver actually opened the chat and saw it. */
   readAt?: string | null;
+  /** Soft-deleted for both parties (within 5-min window). A placeholder is shown instead. */
+  deletedForEveryone?: boolean;
+  /** ISO timestamp when the soft-deletion happened. */
+  deletedAt?: string | null;
+  /** User IDs for whom this message is hidden on their side only. */
+  deletedForUsers?: string[];
 }
 
 /**
@@ -1108,8 +1114,54 @@ export function getLatestChatId(): string | null {
 }
 
 /**
- * Delete a single non-system message from a chat (shared — both sides lose it).
- * Returns false if the message doesn't exist or is a system message.
+ * Soft-delete a message for both parties (only within the 5-minute window).
+ * The message is kept in the list but marked with deletedForEveryone=true.
+ * A placeholder is rendered in place of the content.
+ */
+export function deleteMessageForEveryone(chatId: string, messageId: string): boolean {
+  const chats = readJSON<Chat[]>(CHATS_KEY, []);
+  const idx = chats.findIndex((c) => c.id === chatId);
+  if (idx === -1) return false;
+  const chat = chats[idx];
+  const msgIdx = chat.messages.findIndex((m) => m.id === messageId);
+  if (msgIdx === -1) return false;
+  const msg = chat.messages[msgIdx];
+  if (msg.sender === "system" || msg.deletedForEveryone) return false;
+  // Enforce 5-minute window in store (not just UI)
+  if (Date.now() - new Date(msg.timestamp).getTime() > 5 * 60 * 1000) return false;
+  const updated = [...chat.messages];
+  updated[msgIdx] = { ...msg, deletedForEveryone: true, deletedAt: new Date().toISOString() };
+  chats[idx] = { ...chat, messages: updated };
+  writeJSON(CHATS_KEY, chats);
+  emitStoreChange();
+  return true;
+}
+
+/**
+ * Hide a message from one user's view only. The other party is unaffected.
+ * Works for both own messages (after 5-min window) and incoming messages.
+ */
+export function deleteMessageForMe(chatId: string, messageId: string, userId: string): boolean {
+  const chats = readJSON<Chat[]>(CHATS_KEY, []);
+  const idx = chats.findIndex((c) => c.id === chatId);
+  if (idx === -1) return false;
+  const chat = chats[idx];
+  const msgIdx = chat.messages.findIndex((m) => m.id === messageId);
+  if (msgIdx === -1) return false;
+  const msg = chat.messages[msgIdx];
+  if (msg.sender === "system") return false;
+  if (msg.deletedForUsers?.includes(userId)) return false;
+  const updated = [...chat.messages];
+  updated[msgIdx] = { ...msg, deletedForUsers: [...(msg.deletedForUsers ?? []), userId] };
+  chats[idx] = { ...chat, messages: updated };
+  writeJSON(CHATS_KEY, chats);
+  emitStoreChange();
+  return true;
+}
+
+/**
+ * Hard-delete a single non-system message (legacy — both sides lose it immediately).
+ * Prefer deleteMessageForEveryone / deleteMessageForMe for new UI flows.
  */
 export function deleteChatMessage(chatId: string, messageId: string): boolean {
   const chats = readJSON<Chat[]>(CHATS_KEY, []);

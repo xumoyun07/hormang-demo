@@ -75,6 +75,9 @@ export interface ProviderChatMessage {
   attachment?: import("./requests-store").ChatAttachment;
   deliveredAt?: string | null;
   readAt?: string | null;
+  deletedForEveryone?: boolean;
+  deletedAt?: string | null;
+  deletedForUsers?: string[];
 }
 
 export interface ProviderChat {
