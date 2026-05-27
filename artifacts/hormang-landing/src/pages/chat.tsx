@@ -90,6 +90,7 @@ function OfferStatusBadge({ status }: { status: Offer["status"] }) {
 /* ─── Status banner shown inside message list ────────────────────── */
 function StatusBanner({ status }: { status: Offer["status"] }) {
   const { t } = useI18n();
+  const tt = t.chatPage;
   if (status === "accepted") {
     return (
       <motion.div
@@ -99,7 +100,7 @@ function StatusBanner({ status }: { status: Offer["status"] }) {
       >
         <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 text-emerald-700 text-xs font-semibold shadow-sm">
           <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-          {t.chatPage.bannerAccepted}
+          {tt.bannerAccepted}
         </div>
       </motion.div>
     );
