@@ -23,6 +23,7 @@ import {
   clearChatForCustomer, getChatClearedAt,
   type Chat, type ChatMessage, type Offer,
 } from "@/lib/requests-store";
+import { getAvgResponseMinutes, formatAvgResponseTime } from "@/lib/response-time-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 import { isUserSuspended, SUSPENDED_MESSAGE } from "@/lib/safety-store";
 import { useToast } from "@/hooks/use-toast";
@@ -343,7 +344,7 @@ export default function ChatPage() {
     const attachment = attachPreview ? { type: "image" as const, url: attachPreview } : undefined;
     setInput("");
     setAttachPreview(null);
-    sendMessage(chatId, "customer", text, attachment);
+    sendMessage(chatId, "customer", text, attachment, user?.id);
   }
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -458,7 +459,9 @@ export default function ChatPage() {
             <div className="flex items-center gap-1.5">
               <Circle className="w-2 h-2 fill-emerald-500 text-emerald-500 flex-shrink-0" />
               <p className="text-[11px] text-gray-400">
-                {tFormat(tt.avgResponseTpl, { n: chat.avgResponseTime })}
+                {tFormat(tt.avgResponseTpl, {
+                  n: formatAvgResponseTime(getAvgResponseMinutes(chat.masterId), t.shared.responseTime),
+                })}
               </p>
             </div>
           </button>

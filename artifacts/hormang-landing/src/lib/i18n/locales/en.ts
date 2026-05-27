@@ -394,6 +394,11 @@ export const en: Dict = {
     fileAttachment: "📎 File",
     user: "User",
     all: "All →",
+    responseTime: {
+      notAvailable: "—",
+      minutesTpl: "{{n}} min",
+      aboutHour: "~1 hr",
+    },
   },
   statuses: {
     request: {

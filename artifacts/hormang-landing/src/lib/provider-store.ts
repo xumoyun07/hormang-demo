@@ -546,9 +546,10 @@ export function sendProviderMessage(
   sender: "provider" | "customer",
   text: string,
   attachment?: import("./requests-store").ChatAttachment,
+  senderUserId?: string,
 ): ProviderChat | null {
   const unifiedSender = sender === "provider" ? "master" : "customer";
-  const updated = sendMessage(chatId, unifiedSender, text, attachment);
+  const updated = sendMessage(chatId, unifiedSender, text, attachment, senderUserId);
   return updated ? chatToProviderChat(updated) : null;
 }
 

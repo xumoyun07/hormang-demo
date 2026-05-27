@@ -20,6 +20,7 @@ import {
   clearChatForProvider, getChatClearedAt,
   type Offer,
 } from "@/lib/requests-store";
+import { getAvgResponseMinutes, formatAvgResponseTime } from "@/lib/response-time-store";
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 import { ReviewModal, type ReviewSubmitData } from "@/components/review-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
@@ -452,7 +453,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   function send() {
     if ((!text.trim() && !attachPreview) || isRejected) return;
     const attachment = attachPreview ? { type: "image" as const, url: attachPreview } : undefined;
-    sendProviderMessage(chatId, "provider", text.trim(), attachment);
+    sendProviderMessage(chatId, "provider", text.trim(), attachment, user?.id);
     setText("");
     setAttachPreview(null);
   }
@@ -573,7 +574,12 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             <div className="flex items-center gap-1.5">
               <Circle className="w-2 h-2 fill-emerald-500 text-emerald-500 flex-shrink-0" />
               <p className="text-[11px] text-gray-400">
-                {tFormat(t.providerChats.header.avgResponseTpl, { n: chat.avgResponseTime })}
+                {tFormat(t.providerChats.header.avgResponseTpl, {
+                  n: formatAvgResponseTime(
+                    getAvgResponseMinutes(getRequestById(chat.requestId)?.customerId ?? ""),
+                    t.shared.responseTime,
+                  ),
+                })}
               </p>
             </div>
           </button>

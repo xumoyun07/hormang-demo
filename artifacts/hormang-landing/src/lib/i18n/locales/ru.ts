@@ -396,6 +396,11 @@ export const ru: Dict = {
     fileAttachment: "📎 Файл",
     user: "Пользователь",
     all: "Все →",
+    responseTime: {
+      notAvailable: "—",
+      minutesTpl: "{{n}} мин",
+      aboutHour: "~1 час",
+    },
   },
   statuses: {
     request: {

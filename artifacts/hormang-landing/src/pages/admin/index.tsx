@@ -54,6 +54,7 @@ import {
 import { getTangaBalance, addTangaBalance, spendTangaBalance } from "@/lib/tanga-store";
 import { getReferralCode, getReferralStats, getInviterId, processReferralReward, TANGA_PER_REFERRAL } from "@/lib/referral-store";
 import { getOffers, getPhoneRegistry, getOffersByRequestId, markOfferCompleted, type Offer as BuyerOfferFull, updateOfferStatus, deleteRequestCascade, deleteUserDataCascade, getLast10RejectedEligibility, adminRefundProvider, getRecentRequestCount, REQUEST_DAILY_FLAG_THRESHOLD } from "@/lib/requests-store";
+import { getAvgResponseMinutes, formatAvgResponseTime } from "@/lib/response-time-store";
 import {
   getAllAnnouncements, saveAnnouncement, deleteAnnouncement,
   toggleAnnouncementPublished, toggleAnnouncementPinned,
@@ -1543,7 +1544,7 @@ function AdvancedUserDetailModal({
                         { label: "Qabul %", val: u.completionPct !== undefined ? `${u.completionPct}%` : "—", bg: "bg-emerald-50 border-emerald-100", tx: "text-emerald-700" },
                         { label: "Qabul qilingan", val: `${u.acceptedCount ?? 0} ta`, bg: "bg-violet-50 border-violet-100", tx: "text-violet-700" },
                         { label: "Sharhlar", val: `${u.reviewCount ?? 0} ta`, bg: "bg-amber-50 border-amber-100", tx: "text-amber-700" },
-                        { label: "Javob vaqti", val: u.avgResponseTime !== undefined ? `~${u.avgResponseTime}m` : "—", bg: "bg-blue-50 border-blue-100", tx: "text-blue-700" },
+                        { label: "Javob vaqti", val: formatAvgResponseTime(getAvgResponseMinutes(u.userId), { notAvailable: "—", minutesTpl: "{{n}} daqiqa", aboutHour: "~1 soat" }), bg: "bg-blue-50 border-blue-100", tx: "text-blue-700" },
                       ].map((s) => (
                         <div key={s.label} className={`rounded-xl p-3 border text-center ${s.bg}`}>
                           <p className="text-[9px] font-bold text-gray-400 uppercase mb-0.5">{s.label}</p>

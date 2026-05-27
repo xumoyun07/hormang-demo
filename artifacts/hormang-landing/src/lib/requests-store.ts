@@ -15,6 +15,7 @@ import { addTangaBalance, spendTangaBalance } from "./tanga-store";
 import { recordTangaTransaction } from "./tanga-history-store";
 import { calculateOfferCost } from "./offer-cost";
 import { getBlockedUsers } from "./report-store";
+import { recordReplyFromChat } from "./response-time-store";
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -1002,6 +1003,7 @@ export function sendMessage(
   sender: "customer" | "master",
   text: string,
   attachment?: ChatAttachment,
+  senderUserId?: string,
 ): Chat | null {
   const chats = readJSON<Chat[]>(CHATS_KEY, []);
   const idx = chats.findIndex((c) => c.id === chatId);
@@ -1035,6 +1037,9 @@ export function sendMessage(
     customerUnread,
   };
   writeJSON(CHATS_KEY, chats);
+  if (senderUserId) {
+    try { recordReplyFromChat(chats[idx], msg.id, senderUserId); } catch { /* best-effort */ }
+  }
   console.log(`[Hormang] 💬 Xabar yuborildi`, { chatId, sender, text: text.slice(0, 50), hasAttachment: !!attachment });
   return chats[idx];
 }

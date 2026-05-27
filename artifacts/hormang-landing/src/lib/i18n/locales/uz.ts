@@ -393,6 +393,11 @@ export const uz = {
     fileAttachment: "📎 Fayl",
     user: "Foydalanuvchi",
     all: "Barchasi →",
+    responseTime: {
+      notAvailable: "—",
+      minutesTpl: "{{n}} daqiqa",
+      aboutHour: "~1 soat",
+    },
   },
   statuses: {
     request: {

@@ -17,6 +17,7 @@ import {
 import { getLocalProfile, getServiceAreaLabels } from "@/lib/local-profile";
 import { getCategoryDisplayName } from "@/lib/categories";
 import { getAverageRatingForUser, getReviewsForUser, getCompletedCount } from "@/lib/completion-store";
+import { getAvgResponseMinutes, formatAvgResponseTime } from "@/lib/response-time-store";
 import { StarRating } from "@/components/star-rating";
 import { ProviderReviewsSheet } from "@/components/provider-reviews-sheet";
 import { CustomerReviewsSheet } from "@/components/customer-reviews-sheet";
@@ -313,6 +314,16 @@ function ProviderPreviewSheet({
 
             <BadgeConditionsSheet open={showBadgeHint} onClose={() => setShowBadgeHint(false)} />
 
+            {/* ── Average response time ── */}
+            <div className="flex items-center justify-between mb-4 px-3 py-2.5 rounded-xl bg-blue-50 border border-blue-100">
+              <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wide">
+                {t.chatPage.avgResponseTpl.split("{{n}}")[0].replace(/[:：]\s*$/, "")}
+              </span>
+              <span className="text-sm font-extrabold text-blue-900">
+                {formatAvgResponseTime(getAvgResponseMinutes(data.masterId), t.shared.responseTime)}
+              </span>
+            </div>
+
             {/* ── Service areas / Location ── */}
             {serviceAreas.length > 0 && (
               <div className="flex items-start gap-2.5 mb-4">
@@ -581,6 +592,18 @@ function CustomerPreviewSheet({
                 color="hsl(160,60%,40%)"
               />
             </div>
+
+            {/* ── Average response time ── */}
+            {data.customerId && (
+              <div className="flex items-center justify-between mb-4 px-3 py-2.5 rounded-xl bg-blue-50 border border-blue-100">
+                <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wide">
+                  {t.chatPage.avgResponseTpl.split("{{n}}")[0].replace(/[:：]\s*$/, "")}
+                </span>
+                <span className="text-sm font-extrabold text-blue-900">
+                  {formatAvgResponseTime(getAvgResponseMinutes(data.customerId), t.shared.responseTime)}
+                </span>
+              </div>
+            )}
 
             {/* ── Customer "under review" badge (admin-only warning, shown if present) ── */}
             {data.customerId && (() => {
