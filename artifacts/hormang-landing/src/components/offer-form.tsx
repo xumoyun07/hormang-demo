@@ -39,6 +39,7 @@ import { useI18n } from "@/contexts/i18n-context";
 import { tFormat, getBudgetLabel } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n/locales/uz";
 import { getCategoryDisplayName } from "@/lib/categories";
+import { CategoryIcon } from "@/components/category-icon";
 
 function formatPrice(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -362,9 +363,7 @@ export function OfferForm({ request, onClose, onSubmitted }: Props) {
               {/* Top bar */}
               <div className="px-4 pt-4 pb-3 border-b border-gray-100">
                 <div className="flex items-start gap-3">
-                  <div className="w-11 h-11 rounded-2xl bg-violet-50 flex items-center justify-center flex-shrink-0 text-2xl">
-                    {request.emoji}
-                  </div>
+                  <CategoryIcon categoryId={request.categoryId} emoji={request.emoji} size={44} shape="square" className="flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-extrabold text-sm text-gray-900">{getCategoryDisplayName(request.categoryId, locale, request.categoryName)}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{request.customerName} · {timeAgo(request.createdAt, t)}</p>

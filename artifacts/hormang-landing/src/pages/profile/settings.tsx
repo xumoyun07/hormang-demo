@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { updateProfile, updateProviderProfile, sendSmsCode, addPhone } from "@/lib/auth-client";
 import { regionsList, getRegionLabel, getDistrictLabel } from "@/lib/regions";
 import { getActiveCategories, getCategoryDisplayName, migrateCategoryValuesSafe } from "@/lib/categories";
+import { CategoryIcon } from "@/components/category-icon";
 import {
   getLocalProfile, saveLocalProfile,
   getCompletionChecks, getCompletionPct,
@@ -995,7 +996,7 @@ export default function ProfileSettingsPage() {
                     }`}
                     style={active ? { background: VIOLET } : {}}>
                     {active && <CheckCircle2 className="w-3 h-3" />}
-                    <span className="leading-none">{cat.emoji}</span>
+                    <CategoryIcon categoryId={cat.id} emoji={cat.emoji} size={14} bare className={active ? "text-white" : "text-gray-500"} />
                     {displayName}
                   </button>
                 );

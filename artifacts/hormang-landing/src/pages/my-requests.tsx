@@ -21,6 +21,7 @@ import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n/locales/uz";
 import { getCategoryDisplayName } from "@/lib/categories";
+import { CategoryIcon } from "@/components/category-icon";
 import logoImg from "/hormang-logo.png";
 import { formatDate } from "@/lib/date-utils";
 
@@ -141,11 +142,13 @@ function RequestCard({
         className="px-4 pt-4 pb-3 flex items-start gap-3 cursor-pointer active:bg-gray-50 transition-colors"
         onClick={() => setPreviewOpen(true)}
       >
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${
-          isActive ? "bg-blue-50" : "bg-gray-100"
-        }`}>
-          {req.emoji}
-        </div>
+        <CategoryIcon
+          categoryId={req.categoryId}
+          emoji={req.emoji}
+          size={44}
+          shape="square"
+          className={`flex-shrink-0 ${isActive ? "" : "opacity-70"}`}
+        />
         <div className="flex-1 min-w-0">
           <p className="font-bold text-sm text-gray-900 leading-snug">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
           <p className="text-xs text-gray-400 mt-0.5">{formatDate(req.createdAt, { months: t.shared.months })}</p>

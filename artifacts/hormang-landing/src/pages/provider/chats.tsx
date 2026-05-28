@@ -37,6 +37,7 @@ import { getLocalProfile } from "@/lib/local-profile";
 import { formatDate } from "@/lib/date-utils";
 import { useI18n } from "@/contexts/i18n-context";
 import { getCategoryDisplayName } from "@/lib/categories";
+import { CategoryIcon } from "@/components/category-icon";
 import { tFormat } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n/locales/uz";
 
@@ -893,7 +894,10 @@ function ChatRow({ chat, index, onClick, t }: { chat: ProviderChat; index: numbe
             {formatTime(lastMsg?.timestamp ?? chat.createdAt, t.shared.months)}
           </span>
         </div>
-        <p className="text-xs text-gray-500 font-medium mb-1">{chat.categoryEmoji} {getCategoryDisplayName(chat.categoryId ?? "", locale, chat.categoryName)}</p>
+        <p className="text-xs text-gray-500 font-medium mb-1 inline-flex items-center gap-1">
+          <CategoryIcon categoryId={chat.categoryId ?? null} emoji={chat.categoryEmoji} size={16} shape="square" />
+          {getCategoryDisplayName(chat.categoryId ?? "", locale, chat.categoryName)}
+        </p>
         {offer && (
           offer.providerConfirmedCompleted && !offer.customerConfirmedCompleted && offer.status !== "completed"
             ? (

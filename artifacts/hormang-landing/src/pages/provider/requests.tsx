@@ -27,6 +27,7 @@ import logoImg from "/hormang-logo.png";
 import { TangaChip } from "@/pages/plans";
 import { useI18n } from "@/contexts/i18n-context";
 import { getCategoryDisplayName } from "@/lib/categories";
+import { CategoryIcon } from "@/components/category-icon";
 import { tFormat, getBudgetLabel } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n/locales/uz";
 
@@ -177,9 +178,7 @@ function FullscreenSlider({
               transition={{ duration: 0.2 }}
             >
               <div className="flex items-start gap-3 mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-violet-50 flex items-center justify-center flex-shrink-0 text-2xl">
-                  {current.emoji}
-                </div>
+                <CategoryIcon categoryId={current.categoryId} emoji={current.emoji} size={48} shape="square" className="flex-shrink-0" />
                 <div>
                   <p className="font-extrabold text-base text-gray-900">{getCategoryDisplayName(current.categoryId, locale, current.categoryName)}</p>
                   <p className="text-xs text-gray-400">{current.customerName} · {timeAgo(current.createdAt, t)}</p>
@@ -324,9 +323,7 @@ function OfferDetailModal({
             <div className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
               <div className="px-4 pt-4 pb-3 border-b border-gray-100">
                 <div className="flex items-start gap-3">
-                  <div className="w-11 h-11 rounded-2xl bg-violet-50 flex items-center justify-center flex-shrink-0 text-2xl">
-                    {request.emoji}
-                  </div>
+                  <CategoryIcon categoryId={request.categoryId} emoji={request.emoji} size={44} shape="square" className="flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-extrabold text-sm text-gray-900">{getCategoryDisplayName(request.categoryId, locale, request.categoryName)}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{request.customerName} · {timeAgo(request.createdAt, t)}</p>
@@ -730,7 +727,7 @@ export default function ProviderRequestsPage() {
                   <div 
                     onClick={() => openOfferForm(r)}
                     className="px-4 pt-3 pb-2 border-b border-gray-50 flex items-center gap-2">
-                    <span className="text-sm">{r.emoji}</span>
+                    <CategoryIcon categoryId={r.categoryId} emoji={r.emoji} size={22} shape="square" className="flex-shrink-0" />
                     <p className="text-xs font-semibold text-gray-500 flex-1">{getCategoryDisplayName(r.categoryId, locale, r.categoryName)}</p>
                     {isUnseen && <span className="w-2 h-2 rounded-full bg-violet-500 flex-shrink-0" />}
                     <span className="text-[10px] text-gray-400">{timeAgo(r.createdAt, t)}</span>
@@ -813,9 +810,7 @@ export default function ProviderRequestsPage() {
                     className={`bg-white rounded-2xl border overflow-hidden cursor-pointer active:scale-[.99] transition-all ${cardBorder}`}
                   >
                     <div className="px-4 py-3 flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0 text-lg">
-                        {r.emoji}
-                      </div>
+                      <CategoryIcon categoryId={r.categoryId} emoji={r.emoji} size={36} shape="square" className="flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-gray-800 truncate">{getCategoryDisplayName(r.categoryId, locale, r.categoryName)}</p>
                         <p className="text-[11px] text-gray-400 truncate">{r.customerName} · {getRequestLocation(r, locale)}</p>
@@ -853,9 +848,7 @@ export default function ProviderRequestsPage() {
                   className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
                 >
                   <div className="px-4 py-3 flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0 text-lg opacity-60">
-                      {r.emoji}
-                    </div>
+                    <CategoryIcon categoryId={r.categoryId} emoji={r.emoji} size={36} shape="square" className="flex-shrink-0 opacity-60" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-gray-500 truncate">{getCategoryDisplayName(r.categoryId, locale, r.categoryName)}</p>
                       <p className="text-[11px] text-gray-300 truncate">{r.customerName} · {timeAgo(r.createdAt, t)}</p>

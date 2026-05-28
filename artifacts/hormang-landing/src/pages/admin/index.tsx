@@ -37,6 +37,15 @@ import {
   setCategoryActive as setAdminCategoryActive,
   upsertCategory as upsertAdminCategory,
 } from "@/lib/categories";
+import { CategoryIcon } from "@/components/category-icon";
+import {
+  CATEGORY_ICONS,
+  suggestIconFromEmoji,
+} from "@/lib/categories/icon-registry";
+import {
+  GRADIENT_PRESETS,
+  CATEGORY_COLOR_PRESETS,
+} from "@/lib/categories/gradient-presets";
 import { getCategorySpecificQuestionCount } from "@/lib/questionnaire-store";
 import { Button } from "@/components/ui/button";
 import { TangaCoin } from "@/components/tanga-coin";
@@ -53,7 +62,7 @@ import {
 } from "@/lib/tanga-history-store";
 import { getTangaBalance, addTangaBalance, spendTangaBalance } from "@/lib/tanga-store";
 import { getReferralCode, getReferralStats, getInviterId, processReferralReward, TANGA_PER_REFERRAL } from "@/lib/referral-store";
-import { getOffers, getPhoneRegistry, getOffersByRequestId, markOfferCompleted, type Offer as BuyerOfferFull, updateOfferStatus, deleteRequestCascade, deleteUserDataCascade, getLast10RejectedEligibility, adminRefundProvider, getRecentRequestCount, REQUEST_DAILY_FLAG_THRESHOLD } from "@/lib/requests-store";
+import { getOffers, getPhoneRegistry, getOffersByRequestId, markOfferCompleted, type Offer as BuyerOfferFull, updateOfferStatus, deleteRequestCascade, deleteUserDataCascade, getLast10RejectedEligibility, adminRefundProvider, getRecentRequestCount, getRequestById, REQUEST_DAILY_FLAG_THRESHOLD } from "@/lib/requests-store";
 import { getAvgResponseMinutes, formatAvgResponseTime } from "@/lib/response-time-store";
 import {
   getAllAnnouncements, saveAnnouncement, deleteAnnouncement,
@@ -1057,7 +1066,7 @@ function RequestsSection({ refreshKey }: { refreshKey: number }) {
                   <tr key={r.id} className="hover:bg-red-50/20 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-base">{r.emoji}</span>
+                        <CategoryIcon categoryId={r.categoryId} emoji={r.emoji} size={20} shape="square" />
                         <div>
                           <p className="font-semibold text-gray-800 text-xs leading-tight">{r.categoryName}</p>
                           <p className="text-gray-400 text-[10px] font-mono">{r.id.slice(0, 8)}</p>
@@ -1631,7 +1640,7 @@ function AdvancedUserDetailModal({
                   </div>
                 ) : userRequests.map((r) => (
                   <div key={r.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center gap-3">
-                    <span className="text-xl flex-shrink-0">{r.emoji}</span>
+                    <CategoryIcon categoryId={r.categoryId} emoji={r.emoji} size={28} shape="square" className="flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-800 text-xs truncate">{r.categoryName}</p>
                       <p className="text-[10px] text-gray-400">{fmtDate(r.createdAt)} · {r.offerCount ?? 0} taklif</p>
@@ -1857,7 +1866,7 @@ function AdvancedUserDetailModal({
                       const isIn   = signed >= 0;
                       return (
                         <div key={tx.id} className="bg-gray-50 rounded-xl p-3 flex items-center gap-3 border border-gray-100">
-                          <span className="text-lg flex-shrink-0">{tx.categoryEmoji || "📋"}</span>
+                          <CategoryIcon categoryId={getRequestById(tx.requestId)?.categoryId ?? null} emoji={tx.categoryEmoji || "📋"} size={24} shape="square" className="flex-shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-gray-800 text-xs truncate">{tx.categoryName}</p>
                             <p className="text-[10px] text-gray-400">{new Date(tx.createdAt).toLocaleDateString("uz-UZ")}</p>
@@ -2083,7 +2092,7 @@ function MarketplaceTable({ rows, onOpen, onDelete }: {
               <tr key={r.id} className="hover:bg-red-50/20 transition-colors cursor-pointer" onClick={() => onOpen(r.id)}>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-base">{r.emoji}</span>
+                    <CategoryIcon categoryId={r.categoryId} emoji={r.emoji} size={20} shape="square" />
                     <div>
                       <p className="font-semibold text-gray-800 text-xs leading-tight">{r.categoryName}</p>
                       <p className="text-gray-400 text-[10px] font-mono">{r.id.slice(0, 8)}</p>
@@ -2187,7 +2196,7 @@ function MarketplaceKanban({ rows, onOpen }: { rows: MktRow[]; onOpen: (id: stri
                 <button key={r.id} onClick={() => onOpen(r.id)}
                   className="w-full text-left bg-white rounded-xl border border-gray-100 p-3 hover:border-red-300 hover:shadow-sm transition-all shadow-xs">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-sm flex-shrink-0">{r.emoji}</span>
+                    <CategoryIcon categoryId={r.categoryId} emoji={r.emoji} size={18} shape="square" className="flex-shrink-0" />
                     <p className="text-xs font-extrabold text-gray-800 leading-tight truncate">{r.categoryName}</p>
                   </div>
                   <p className="text-[11px] text-gray-500 truncate mb-2">{r.customerName ?? "Noma'lum"}</p>
@@ -2306,7 +2315,7 @@ function RequestCommandCenter({ row, onClose, onAcceptOffer, onRejectOffer, onRe
         >
           {/* Header */}
           <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 flex-shrink-0">
-            <span className="text-2xl">{r.emoji}</span>
+            <CategoryIcon categoryId={r.categoryId} emoji={r.emoji} size={36} shape="square" className="flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="font-extrabold text-gray-900 text-base leading-tight">{r.categoryName}</p>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -2358,9 +2367,7 @@ function RequestCommandCenter({ row, onClose, onAcceptOffer, onRejectOffer, onRe
                 {/* Request top bar */}
                 <div className="px-4 pt-4 pb-3 border-b border-gray-100">
                   <div className="flex items-start gap-3">
-                    <div className="w-11 h-11 rounded-2xl bg-white border border-gray-200 flex items-center justify-center flex-shrink-0 text-xl shadow-sm">
-                      {r.emoji}
-                    </div>
+                    <CategoryIcon categoryId={r.categoryId} emoji={r.emoji} size={44} shape="square" shadow className="flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-extrabold text-sm text-gray-900">{r.categoryName}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{formatDate(r.createdAt)}</p>
@@ -3656,7 +3663,7 @@ function AdminUserTxModal({
                   const isIn   = signed >= 0;
                   return (
                     <div key={tx.id} className="bg-gray-50 rounded-xl p-3 flex items-center gap-3 border border-gray-100">
-                      <span className="text-xl flex-shrink-0">{tx.categoryEmoji || "📋"}</span>
+                      <CategoryIcon categoryId={getRequestById(tx.requestId)?.categoryId ?? null} emoji={tx.categoryEmoji || "📋"} size={28} shape="square" className="flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-800 text-xs truncate">{tx.categoryName}</p>
                         <p className="text-[10px] text-gray-400">
@@ -5945,10 +5952,13 @@ function CategoryManagementPanel() {
         )}
         {cats.map((row) => (
           <div key={row.id} className={`px-5 py-3 flex items-center gap-3 ${!row.active ? "opacity-60" : ""}`}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
-              style={{ background: row.color + "22", border: `1px solid ${row.color}55` }}>
-              {row.emoji}
-            </div>
+            <CategoryIcon
+              categoryId={row.id}
+              size={40}
+              shape="square"
+              shadow={!!row.gradient || !!row.icon}
+              className="flex-shrink-0"
+            />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-bold text-sm text-gray-900 truncate">{row.nameUz}</p>
@@ -6018,9 +6028,6 @@ function CategoryManagementPanel() {
 }
 
 /* ─── Category editor modal ──────────────────────────────────────── */
-const CAT_COLOR_PRESETS = ["#3B82F6","#10B981","#F59E0B","#8B5CF6","#EC4899","#F43F5E","#EAB308","#06B6D4","#64748B","#0EA5E9","#22C55E","#A855F7"];
-const CAT_EMOJI_PRESETS = ["🔧","🧹","🚗","🚚","📚","🎉","💄","👶","🏗️","🧰","🍳","💆","🎨","🐾","💻","🏥","🌱","🚿"];
-
 /** Slugify a UZ name into a canonical category ID (a-z, 0-9, _). */
 function slugifyCategoryId(name: string): string {
   return name
@@ -6054,7 +6061,13 @@ function CategoryEditorModal({
   const [descRu, setDescRu] = useState(initial?.descriptionRu ?? "");
   const [parentCategoryId, setParentCategoryId] = useState<string>(initial?.parentCategoryId ?? "");
   const [emoji, setEmoji] = useState(initial?.emoji ?? "📋");
-  const [color, setColor] = useState(initial?.color ?? CAT_COLOR_PRESETS[0]);
+  // Auto-suggest a curated icon for legacy emoji-only categories so admins
+  // don't have to start from a blank picker.
+  const [icon, setIcon] = useState<string | undefined>(
+    initial?.icon ?? (initial?.emoji ? suggestIconFromEmoji(initial.emoji) : undefined),
+  );
+  const [color, setColor] = useState(initial?.color ?? CATEGORY_COLOR_PRESETS[0]);
+  const [gradient, setGradient] = useState<string | null>(initial?.gradient ?? null);
   const [baseCost, setBaseCost] = useState(String(initial?.baseCost ?? 0));
   const [active, setActive] = useState(initial?.active !== false);
   const [error, setError] = useState("");
@@ -6093,8 +6106,11 @@ function CategoryEditorModal({
         ...(nameRu.trim() ? { ru: nameRu.trim() } : {}),
       },
       ...(descriptionLocalized ? { descriptionLocalized } : {}),
-      emoji,
+      emoji, // kept as legacy fallback
+      icon: icon ?? undefined,
+      iconFamily: icon ? "phosphor" : undefined,
       color,
+      gradient: gradient ?? null,
       baseCost: isNaN(cost) ? 0 : Math.max(0, cost),
       active,
       parentCategoryId: parentCategoryId.trim() || null,
@@ -6113,10 +6129,16 @@ function CategoryEditorModal({
       >
         <div className="bg-white w-full sm:rounded-3xl sm:max-w-lg max-h-[95vh] overflow-y-auto shadow-2xl pointer-events-auto">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3 sticky top-0 bg-white z-10">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-              style={{ background: color + "22", border: `1px solid ${color}55` }}>
-              {emoji}
-            </div>
+            <CategoryIcon
+              icon={icon}
+              color={color}
+              gradient={gradient}
+              emoji={emoji}
+              size={36}
+              shape="square"
+              shadow={!!gradient || !!icon}
+              className="flex-shrink-0"
+            />
             <div className="flex-1 min-w-0">
               <p className="font-extrabold text-gray-900 text-base">
                 {isNew ? "Yangi kategoriya" : "Kategoriyani tahrirlash"}
@@ -6202,33 +6224,141 @@ function CategoryEditorModal({
               </select>
             </div>
 
+            {/* ── Icon picker ───────────────────────────────────────── */}
             <div>
-              <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">Emoji</label>
-              <div className="flex items-center gap-2">
-                <input value={emoji} onChange={(e) => setEmoji(e.target.value)}
-                  maxLength={4}
-                  className="w-16 h-12 px-2 rounded-xl border border-gray-200 bg-gray-50 text-2xl text-center focus:outline-none focus:ring-2 focus:ring-rose-300" />
-                <div className="flex flex-wrap gap-1.5 flex-1">
-                  {CAT_EMOJI_PRESETS.map((e) => (
-                    <button key={e} type="button" onClick={() => setEmoji(e)}
-                      className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all ${emoji === e ? "bg-rose-100 border-2 border-rose-400" : "bg-gray-50 border border-gray-200 hover:bg-gray-100"}`}>
-                      {e}
+              <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                Ikona
+                {!icon && emoji && (
+                  <span className="ml-1.5 text-amber-600 font-normal normal-case">(eski emoji ishlatilmoqda)</span>
+                )}
+              </label>
+              <div className="grid grid-cols-6 gap-1.5">
+                {CATEGORY_ICONS.map((def) => {
+                  const Icon = def.Component;
+                  const selected = icon === def.name;
+                  return (
+                    <button
+                      key={def.name}
+                      type="button"
+                      onClick={() => setIcon(def.name)}
+                      title={def.label}
+                      className={`aspect-square rounded-xl flex items-center justify-center transition-all ${
+                        selected
+                          ? "bg-blue-50 border-2 border-blue-500 scale-105 shadow-sm"
+                          : "bg-gray-50 border border-gray-200 hover:bg-gray-100 hover:scale-105"
+                      }`}
+                    >
+                      <Icon size={20} weight="fill" className={selected ? "text-blue-600" : "text-gray-700"} />
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
+              </div>
+              {icon && (
+                <button
+                  type="button"
+                  onClick={() => setIcon(undefined)}
+                  className="mt-2 text-[11px] text-gray-400 hover:text-gray-600 font-semibold"
+                >
+                  ✕ Ikonani olib tashlash
+                </button>
+              )}
+            </div>
+
+            {/* ── Solid color ──────────────────────────────────────── */}
+            <div>
+              <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                Rang
+                {gradient && (
+                  <span className="ml-1.5 text-gray-400 font-normal normal-case">(gradient ustun keladi)</span>
+                )}
+              </label>
+              <div className="flex items-center gap-2 flex-wrap">
+                <input type="color" value={color} onChange={(e) => setColor(e.target.value)}
+                  className="w-10 h-10 rounded-full border border-gray-200 cursor-pointer p-0 overflow-hidden" />
+                {CATEGORY_COLOR_PRESETS.map((c) => {
+                  const selected = !gradient && color === c;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setColor(c)}
+                      className={`w-9 h-9 rounded-full transition-all hover:scale-110 ${
+                        selected ? "ring-2 ring-offset-2 ring-gray-900 scale-110" : ""
+                      }`}
+                      style={{ background: c }}
+                      title={c}
+                    />
+                  );
+                })}
               </div>
             </div>
 
+            {/* ── Gradient presets ─────────────────────────────────── */}
             <div>
-              <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">Rang</label>
-              <div className="flex items-center gap-2 flex-wrap">
-                <input type="color" value={color} onChange={(e) => setColor(e.target.value)}
-                  className="w-12 h-10 rounded-lg border border-gray-200 cursor-pointer" />
-                {CAT_COLOR_PRESETS.map((c) => (
-                  <button key={c} type="button" onClick={() => setColor(c)}
-                    className={`w-8 h-8 rounded-lg transition-all ${color === c ? "ring-2 ring-offset-2 ring-gray-900" : ""}`}
-                    style={{ background: c }} title={c} />
-                ))}
+              <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                Gradient
+                <span className="ml-1.5 text-gray-400 font-normal normal-case">(ixtiyoriy — rangdan ustun)</span>
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setGradient(null)}
+                  className={`px-3 h-9 rounded-full text-[11px] font-bold transition-all ${
+                    !gradient
+                      ? "bg-gray-900 text-white"
+                      : "bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100"
+                  }`}
+                >
+                  Yo'q
+                </button>
+                {GRADIENT_PRESETS.map((g) => {
+                  const selected = gradient === g.id;
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setGradient(g.id)}
+                      title={g.label}
+                      className={`relative h-9 px-3 rounded-full text-[11px] font-bold text-white transition-all hover:scale-105 ${
+                        selected ? "ring-2 ring-offset-2 ring-gray-900 scale-105" : ""
+                      }`}
+                      style={{ background: g.css }}
+                    >
+                      {g.label}
+                      {selected && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Live preview card ────────────────────────────────── */}
+            <div>
+              <label className="block text-[11px] font-black uppercase tracking-wide text-gray-400 mb-1.5">
+                Ko'rinish
+              </label>
+              <div className="rounded-2xl border border-gray-200 bg-gradient-to-br from-gray-50 to-white p-4 flex items-center gap-3">
+                <CategoryIcon
+                  icon={icon}
+                  color={color}
+                  gradient={gradient}
+                  emoji={emoji}
+                  size={56}
+                  shape="square"
+                  shadow={!!gradient || !!icon}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-extrabold text-gray-900 text-sm truncate">
+                    {nameUz.trim() || "Kategoriya nomi"}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {(descUz.trim() || nameRu.trim()) || "Xizmat kategoriyasi"}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -6276,7 +6406,10 @@ interface AdminCategoryRow {
   descriptionRu: string;
   parentCategoryId: string | null;
   emoji: string;
+  icon?: string;
+  iconFamily?: string;
   color: string;
+  gradient?: string | null;
   baseCost: number;
   active: boolean;
   builtIn: boolean;
@@ -6295,7 +6428,10 @@ function getAllAdminCategories(): AdminCategoryRow[] {
       descriptionRu: c.descriptionLocalized?.ru ?? "",
       parentCategoryId: c.parentCategoryId ?? null,
       emoji: c.emoji,
+      icon: c.icon,
+      iconFamily: c.iconFamily,
       color: c.color,
+      gradient: c.gradient ?? null,
       baseCost: c.baseCost,
       active: c.active,
       builtIn: c.builtIn,

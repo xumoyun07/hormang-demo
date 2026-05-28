@@ -22,6 +22,7 @@ import { tFormat, type Locale } from "@/lib/i18n";
 import { getLocalProfile } from "@/lib/local-profile";
 import { getLocalizedText } from "@/lib/localization";
 import { getCategoryDisplayName } from "@/lib/categories";
+import { CategoryIcon } from "@/components/category-icon";
 import { compressImage } from "@/lib/image-utils";
 import { regionsList, TOSHKENT_DISTRICTS, getDistrictLabel, getRegionLabel } from "@/lib/regions";
 import logoImg from "/hormang-logo.png";
@@ -927,12 +928,14 @@ function QuizHeader({
   total,
   categoryName,
   emoji,
+  categoryId,
 }: {
   onBack: () => void;
   step?: number;
   total?: number;
   categoryName?: string;
   emoji?: string;
+  categoryId?: string | null;
 }) {
   const progress = step !== undefined && total ? ((step + 1) / total) * 100 : 0;
   return (
@@ -946,9 +949,12 @@ function QuizHeader({
         </button>
         <div className="flex-1 min-w-0">
           {categoryName && (
-            <p className="text-xs text-gray-400 font-medium truncate">
-              {emoji} {categoryName}
-              {step !== undefined && total ? ` — ${step + 1} / ${total}` : ""}
+            <p className="text-xs text-gray-400 font-medium truncate inline-flex items-center gap-1.5">
+              <CategoryIcon categoryId={categoryId ?? null} emoji={emoji} size={16} shape="square" />
+              <span className="truncate">
+                {categoryName}
+                {step !== undefined && total ? ` — ${step + 1} / ${total}` : ""}
+              </span>
             </p>
           )}
           {step !== undefined && total && (
@@ -991,7 +997,7 @@ function CategorySelectScreen({ onSelect }: { onSelect: (id: string) => void }) 
               onClick={() => onSelect(cat.id)}
               className="bg-white border border-gray-100 rounded-2xl p-5 text-left hover:border-blue-200 hover:shadow-md transition-all duration-200 group"
             >
-              <div className="text-2xl mb-3">{cat.emoji}</div>
+              <div className="mb-3"><CategoryIcon categoryId={cat.id} emoji={cat.emoji} size={40} shape="square" /></div>
               <p className="font-bold text-sm text-gray-900 group-hover:text-blue-600 transition-colors leading-snug">
                 {getCategoryDisplayName(cat.id, locale, cat.name)}
               </p>
@@ -1097,6 +1103,7 @@ function QuestionsScreen({
         total={allQuestions.length}
         categoryName={catDisplayName}
         emoji={cat?.emoji}
+        categoryId={cat?.id ?? null}
       />
       <div className="max-w-lg mx-auto px-4 py-8">
         <AnimatePresence mode="wait" custom={direction}>
@@ -1207,7 +1214,7 @@ function SummaryScreen({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <QuizHeader onBack={onBack} categoryName={catDisplayName} emoji={cat?.emoji} />
+      <QuizHeader onBack={onBack} categoryName={catDisplayName} emoji={cat?.emoji} categoryId={cat?.id ?? null} />
       <div className="max-w-lg mx-auto px-4 py-8">
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-1">
@@ -1318,7 +1325,7 @@ function RecommendationsScreen({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
         >
-          <div className="text-2xl mb-2">{cat?.emoji ?? "📋"}</div>
+          <div className="flex justify-center mb-2"><CategoryIcon categoryId={cat?.id ?? null} emoji={cat?.emoji ?? "📋"} size={40} shape="square" /></div>
           <h1 className="text-xl font-extrabold text-gray-900 mb-2">{tq.successTitle}</h1>
           <p className="text-gray-500 text-sm max-w-xs mx-auto mb-1">
             {tFormat(tq.successDescTpl, { cat: catDisplayName })}

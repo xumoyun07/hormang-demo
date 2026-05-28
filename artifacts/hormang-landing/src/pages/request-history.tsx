@@ -20,6 +20,7 @@ import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n/locales/uz";
 import { getCategoryDisplayName } from "@/lib/categories";
+import { CategoryIcon } from "@/components/category-icon";
 
 const URGENCY_CLS: Record<string, string> = {
   today_tomorrow: "bg-red-50 text-red-600 border-red-200",
@@ -84,9 +85,7 @@ function CompletedRequestCard({ req, index }: { req: CustomerRequest; index: num
         onClick={() => setPreviewOpen(true)}
         className="w-full px-4 pt-4 pb-3 flex items-start gap-3 text-left active:bg-gray-50 transition-colors"
       >
-        <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center text-xl flex-shrink-0">
-          {req.emoji}
-        </div>
+        <CategoryIcon categoryId={req.categoryId} emoji={req.emoji} size={44} shape="square" className="flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-bold text-sm text-gray-900 leading-snug">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>

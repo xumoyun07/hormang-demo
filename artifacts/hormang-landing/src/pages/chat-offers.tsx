@@ -27,6 +27,7 @@ import { formatDate as uzDate } from "@/lib/date-utils";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
 import { getCategoryDisplayName } from "@/lib/categories";
+import { CategoryIcon } from "@/components/category-icon";
 
 /* ─── Tab type ───────────────────────────────────────────────────── */
 type Tab = "offers" | "chats";
@@ -103,7 +104,7 @@ function OfferCard({ offer, index, anyAccepted }: {
         {/* Request context strip */}
         {req && (
           <div className="px-4 pt-3 pb-2 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-            <span className="text-sm">{req.emoji}</span>
+            <CategoryIcon categoryId={req.categoryId} emoji={req.emoji} size={18} shape="square" className="flex-shrink-0" />
             <p className="text-xs font-semibold text-gray-500 flex-1 truncate">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
             <span className="text-[10px] text-gray-400">{formatDate(offer.createdAt, t.shared.months)}</span>
           </div>

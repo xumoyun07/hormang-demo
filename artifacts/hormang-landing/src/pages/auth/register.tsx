@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { getActiveCategories, getCategoryDisplayName } from "@/lib/categories";
+import { CategoryIcon } from "@/components/category-icon";
 import { tFormat, getAuthError } from "@/lib/i18n";
 import { sendSmsCode, registerUser, saveProviderProfile } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
@@ -129,7 +130,7 @@ function ProviderForm({ onDone, onBack, loading }: { onDone: (d: ProviderData) =
                 style={active ? { background: "var(--brand-gradient)" } : {}}
               >
                 {active && <CheckCircle2 className="w-3 h-3" />}
-                <span className="leading-none">{cat.emoji}</span>
+                <CategoryIcon categoryId={cat.id} emoji={cat.emoji} size={14} bare className={active ? "text-white" : "text-gray-500"} />
                 {displayName}
               </motion.button>
             );

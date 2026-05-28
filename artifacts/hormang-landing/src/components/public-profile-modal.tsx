@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { getLocalProfile, getServiceAreaLabels } from "@/lib/local-profile";
 import { ImageGrid } from "@/components/image-grid";
+import { CategoryIcon } from "@/components/category-icon";
 import { formatMonthYear } from "@/lib/date-utils";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
@@ -152,8 +153,16 @@ function ProviderSheet({ data, onClose }: { data: ProviderProfileData; onClose: 
           {/* Category pill (contextual) */}
           {data.categoryName && (
             <div className="mt-3 flex flex-wrap gap-1.5">
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20 border border-white/25 text-white">
-                {data.categoryEmoji && <span className="mr-1">{data.categoryEmoji}</span>}
+              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-white/20 border border-white/25 text-white">
+                {data.categoryEmoji && (
+                  <CategoryIcon
+                    categoryId={(data as { categoryId?: string | null }).categoryId ?? null}
+                    emoji={data.categoryEmoji}
+                    size={14}
+                    bare
+                    className="text-white"
+                  />
+                )}
                 {data.categoryName}
               </span>
             </div>

@@ -23,6 +23,7 @@ import { useI18n } from "@/contexts/i18n-context";
 import { tFormat, getBudgetLabel } from "@/lib/i18n";
 import { getLocalizedText } from "@/lib/localization";
 import { getCategoryDisplayName } from "@/lib/categories";
+import { CategoryIcon } from "@/components/category-icon";
 import { getRequestById } from "@/lib/requests-store";
 import type { Dict } from "@/lib/i18n/locales/uz";
 import { useToast } from "@/hooks/use-toast";
@@ -434,9 +435,13 @@ function UpcomingServices() {
               onClick={() => setSelectedService(s)}
               className="w-full bg-white rounded-2xl border border-gray-100 card-shadow p-4 flex items-start gap-3 hover:shadow-sm hover:border-violet-100 transition-all text-left active:scale-[.99]"
             >
-              <div className="w-11 h-11 rounded-xl bg-violet-50 flex flex-col items-center justify-center flex-shrink-0">
-                <span className="text-lg leading-none">{s.categoryEmoji}</span>
-              </div>
+              <CategoryIcon
+                categoryId={s.requestId ? getRequestById(s.requestId)?.categoryId ?? null : null}
+                emoji={s.categoryEmoji}
+                size={44}
+                shape="square"
+                className="flex-shrink-0"
+              />
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm text-gray-900 truncate">
                   {s.requestId
@@ -542,7 +547,7 @@ function RequestSlideCard({
     >
       {/* Header */}
       <div className="px-5 pt-4 pb-3 border-b border-gray-50 flex items-center gap-3">
-        <span className="text-2xl">{request.emoji}</span>
+        <CategoryIcon categoryId={request.categoryId} emoji={request.emoji} size={36} shape="square" className="flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="font-bold text-sm text-gray-900">{getCategoryDisplayName(request.categoryId, locale, request.categoryName)}</p>
           <p className="text-xs text-gray-400">{request.customerName} · {timeAgo(request.createdAt, t)}</p>
@@ -695,7 +700,7 @@ function RequestsModal({
                   >
                     {/* Card header */}
                     <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-gray-50">
-                      <span className="text-2xl">{r.emoji}</span>
+                      <CategoryIcon categoryId={r.categoryId} emoji={r.emoji} size={36} shape="square" className="flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-sm text-gray-900">{getCategoryDisplayName(r.categoryId, locale, r.categoryName)}</p>
                         <p className="text-xs text-gray-400">{r.customerName} · {timeAgo(r.createdAt, t)}</p>

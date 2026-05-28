@@ -15,6 +15,7 @@ import type { CustomerRequest } from "@/lib/requests-store";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
 import { getCategoryDisplayName } from "@/lib/categories";
+import { CategoryIcon } from "@/components/category-icon";
 import { getLocalizedText } from "@/lib/localization";
 import type { Locale } from "@/lib/i18n";
 import { getDistrictLabel, getRegionLabel } from "@/lib/regions";
@@ -170,9 +171,7 @@ export function RequestPreviewModal({ req, onClose }: Props) {
             {/* Request top bar */}
             <div className="px-4 pt-4 pb-3 border-b border-gray-100">
               <div className="flex items-start gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-blue-50 flex items-center justify-center flex-shrink-0 text-xl">
-                  {req.emoji}
-                </div>
+                <CategoryIcon categoryId={req.categoryId} emoji={req.emoji} size={44} shape="square" className="flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-extrabold text-sm text-gray-900">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{formatDate(req.createdAt, { months: t.shared.months })}</p>

@@ -31,9 +31,27 @@ export interface Category {
   nameLocalized: LocalizedText;
   /** Optional multilingual short description (UZ + RU). */
   descriptionLocalized?: LocalizedText;
+  /**
+   * Legacy emoji glyph. Kept as a fallback for categories created before
+   * the icon system existed. New categories should set `icon` instead;
+   * renderers prefer `icon` over `emoji` when both are present.
+   */
   emoji: string;
-  /** Hex color used in admin UI / chips. */
+  /**
+   * Name of a curated icon (e.g. "Wrench"). When set, takes precedence over
+   * `emoji` in `<CategoryIcon />`. See `lib/categories/icon-registry.tsx`.
+   */
+  icon?: string;
+  /** Icon family identifier — currently only "phosphor". Future-proof for Iconify. */
+  iconFamily?: string;
+  /** Hex color used as the icon chip background (when no gradient is set). */
   color: string;
+  /**
+   * Optional gradient preset id (e.g. "blue-indigo"). When set, the chip
+   * background is the resolved gradient and overrides solid `color`.
+   * See `lib/categories/gradient-presets.ts`.
+   */
+  gradient?: string | null;
   /** Base Tanga cost for any offer in this category. */
   baseCost: number;
   /** When false, hidden from selectors / new requests but kept for history. */
@@ -91,7 +109,10 @@ function readStore(): Category[] | null {
       nameLocalized: c.nameLocalized ?? { uz: c.id },
       descriptionLocalized: c.descriptionLocalized,
       emoji: c.emoji ?? "📋",
+      icon: c.icon,
+      iconFamily: c.iconFamily,
       color: c.color ?? DEFAULT_COLORS[c.id] ?? FALLBACK_COLOR,
+      gradient: c.gradient ?? null,
       baseCost: typeof c.baseCost === "number" ? c.baseCost : 0,
       active: c.active !== false,
       builtIn: !!c.builtIn,
@@ -165,7 +186,10 @@ export function upsertCategory(input: Partial<Category> & { id: string }): Categ
     nameLocalized: input.nameLocalized ?? { uz: input.id },
     descriptionLocalized: input.descriptionLocalized,
     emoji: input.emoji ?? "📋",
+    icon: input.icon,
+    iconFamily: input.iconFamily,
     color: input.color ?? FALLBACK_COLOR,
+    gradient: input.gradient ?? null,
     baseCost: input.baseCost ?? 0,
     active: input.active !== false,
     builtIn: false,

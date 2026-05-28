@@ -12,6 +12,7 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { getCategoryDisplayName, getCategoryEmoji } from "@/lib/categories";
+import { CategoryIcon } from "@/components/category-icon";
 import { getRegionLabel } from "@/lib/regions";
 import { getPopularCategories } from "@/lib/popularity";
 import { tFormat } from "@/lib/i18n";
@@ -387,7 +388,9 @@ export default function CustomerHomePage() {
                         {rankMeta.label}
                       </span>
                     )}
-                    <div className="text-xl mb-0.5">{emoji}</div>
+                    <div className="flex justify-center mb-0.5">
+                      <CategoryIcon categoryId={cat.categoryId} emoji={emoji} size={28} shape="square" />
+                    </div>
                     <p className="text-[10px] font-bold text-gray-700 whitespace-nowrap">{name}</p>
                   </button>
                 );
@@ -472,9 +475,7 @@ export default function CustomerHomePage() {
                     className="w-full bg-white rounded-2xl border border-gray-100 card-shadow p-4 text-left hover:border-blue-200 active:scale-[0.99] transition-all"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0 text-lg">
-                        {req.emoji}
-                      </div>
+                      <CategoryIcon categoryId={req.categoryId} emoji={req.emoji} size={40} shape="square" className="flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-gray-900 text-sm truncate">{getCategoryDisplayName(req.categoryId, locale, req.categoryName)}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
