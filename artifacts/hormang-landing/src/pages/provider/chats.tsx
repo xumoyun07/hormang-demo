@@ -102,23 +102,6 @@ function OfferStatusBadge({ status, t }: { status: Offer["status"]; t: Dict }) {
   );
 }
 
-function StatusBanner({ status, t }: { status: Offer["status"]; t: Dict }) {
-  if (status === "accepted") {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="flex items-center justify-center my-4"
-      >
-        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 text-emerald-700 text-xs font-semibold shadow-sm">
-          <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-          {t.providerChats.banner.acceptedContinue}
-        </div>
-      </motion.div>
-    );
-  }
-  return null;
-}
 
 function DaySeparator({ label }: { label: string }) {
   return (
@@ -683,7 +666,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
                 m.sender === "system" &&
                 (m.text.includes("qabul qilindi") || m.text.includes("rad etildi") ||
                  m.text.includes("принято") || m.text.includes("отклонено"))
-            ) && <StatusBanner status={offer.status} t={t} />}
+            )}
 
           <div ref={bottomRef} className="h-1" />
         </div>
