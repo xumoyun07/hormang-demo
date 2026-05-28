@@ -1554,7 +1554,7 @@ export const uz = {
     menuTitle: "Yana",
     menuViewProfile: "Profilni ko'rish",
     menuDetails: "So'rov / Taklif tafsilotlari",
-    menuReport: "Foydalanuvchini shikoyat qilish",
+    menuReport: "Shikoyat qilish",
     menuBlock: "Foydalanuvchini bloklash",
     menuUnblock: "Blokdan chiqarish",
     menuClearChat: "Suhbatni tozalash",
