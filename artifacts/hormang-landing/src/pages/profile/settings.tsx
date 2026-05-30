@@ -996,7 +996,7 @@ export default function ProfileSettingsPage() {
                     }`}
                     style={active ? { background: VIOLET } : {}}>
                     {active && <CheckCircle2 className="w-3 h-3" />}
-                    <CategoryIcon categoryId={cat.id} emoji={cat.emoji} size={14} bare className={active ? "text-white" : "text-gray-500"} />
+                    <CategoryIcon categoryId={cat.id} emoji={cat.emoji} size={25} bare className={active ? "text-white" : "text-gray-500"} />
                     {displayName}
                   </button>
                 );
