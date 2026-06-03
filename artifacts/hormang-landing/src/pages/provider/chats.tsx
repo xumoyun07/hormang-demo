@@ -968,9 +968,10 @@ export default function ProviderChatsPage() {
   const chats = getProviderChats(masterId);
   const totalUnread = chats.reduce((s, c) => s + c.unread, 0);
 
-  const filterableCategoryIds: string[] = Array.from(
-    new Set(chats.map((c) => c.categoryId ?? c.categoryName).filter(Boolean))
-  ).filter((id): id is string => chats.filter((c) => (c.categoryId ?? c.categoryName) === id).length >= 1 && chats.length > 1);
+  const allChatCategoryIds = Array.from(
+    new Set(chats.map((c) => c.categoryId ?? c.categoryName).filter((id): id is string => Boolean(id)))
+  );
+  const filterableCategoryIds: string[] = allChatCategoryIds.length > 1 ? allChatCategoryIds : [];
 
   let displayed = chats;
   if (tab === "unread") displayed = chats.filter((c) => c.unread > 0);
