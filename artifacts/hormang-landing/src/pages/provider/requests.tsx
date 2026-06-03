@@ -666,15 +666,15 @@ export default function ProviderRequestsPage() {
               {filterableCategories.length > 0 && (
                 <button
                   onClick={toggleFilter}
-                  className={`relative flex-shrink-0 w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-sm ${
+                  className={`relative flex-shrink-0 w-7 h-7 rounded-full border flex items-center justify-center transition-all shadow-sm ${
                     filterExpanded || activeCategoryFilters.length > 0
                       ? "bg-violet-600 border-violet-600 text-white"
                       : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
                   }`}
                 >
-                  <SlidersHorizontal className="w-4 h-4" />
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
                   {activeCategoryFilters.length > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-white border border-violet-200 text-violet-700 text-[9px] font-extrabold flex items-center justify-center shadow-sm">
+                    <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-white border border-violet-200 text-violet-700 text-[9px] font-extrabold flex items-center justify-center shadow-sm">
                       {activeCategoryFilters.length}
                     </span>
                   )}
@@ -701,7 +701,7 @@ export default function ProviderRequestsPage() {
                         onBlur={() => { if (!searchQuery) { setSearchExpanded(false); } }}
                         onKeyDown={(e) => { if (e.key === "Escape") { setSearchQuery(""); setSearchExpanded(false); } }}
                         placeholder={t.providerRequests.searchPlaceholder}
-                        className="w-full h-10 pl-9 pr-9 rounded-full bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all shadow-sm"
+                        className="w-full h-7 pl-9 pr-9 rounded-full bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all shadow-sm"
                       />
                       {searchQuery && (
                         <button
@@ -720,13 +720,13 @@ export default function ProviderRequestsPage() {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       onClick={toggleSearch}
-                      className={`flex-shrink-0 w-10 h-10 rounded-full border flex items-center justify-center transition-all shadow-sm ${
+                      className={`flex-shrink-0 w-7 h-7 rounded-full border flex items-center justify-center transition-all shadow-sm ${
                         searchQuery
                           ? "bg-violet-600 border-violet-600 text-white"
                           : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
                       }`}
                     >
-                      <Search className="w-4 h-4" />
+                      <Search className="w-3.5 h-3.5" />
                     </motion.button>
                   )}
                 </AnimatePresence>

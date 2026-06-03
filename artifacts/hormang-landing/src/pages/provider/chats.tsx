@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search, MessageCircle, ChevronRight, X, ChevronDown,
+  Search, MessageCircle, ChevronRight, X, ChevronDown, SlidersHorizontal,
   Circle, Send, CheckCircle2, Clock, Loader2, Flag, CalendarPlus, CalendarCheck2, ImageIcon, Star, Check, CheckCheck, Trash2, EyeOff, Copy,
 } from "lucide-react";
 import { compressImage } from "@/lib/image-utils";
@@ -949,7 +949,7 @@ function ChatRow({ chat, index, onClick, t }: { chat: ProviderChat; index: numbe
   );
 }
 
-type SortTab = "all" | "unread" | "by-service";
+type SortTab = "all" | "unread";
 
 export default function ProviderChatsPage() {
   useStoreRefresh();
@@ -957,33 +957,26 @@ export default function ProviderChatsPage() {
   const [, setLocation] = useLocation();
   const [tab, setTab] = useState<SortTab>("all");
   const [query, setQuery] = useState("");
+  const [filterExpanded, setFilterExpanded] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const [activeCategoryFilters, setActiveCategoryFilters] = useState<string[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [openChatId, setOpenChatId] = useState<string | null>(null);
-  const [selectedService, setSelectedService] = useState<string | null>(null);
-  const [showServiceMenu, setShowServiceMenu] = useState(false);
   const { user } = useAuth();
   const masterId = user?.id ?? "";
 
   const chats = getProviderChats(masterId);
   const totalUnread = chats.reduce((s, c) => s + c.unread, 0);
-  const services = Array.from(
-    new Map(
-      chats.map((c) => [
-        c.categoryId ?? c.categoryName,
-        getCategoryDisplayName(c.categoryId ?? "", locale, c.categoryName),
-      ])
-    ).values()
-  ).sort((a, b) => a.localeCompare(b));
+
+  const filterableCategoryIds: string[] = Array.from(
+    new Set(chats.map((c) => c.categoryId ?? c.categoryName).filter(Boolean))
+  ).filter((id): id is string => chats.filter((c) => (c.categoryId ?? c.categoryName) === id).length >= 1 && chats.length > 1);
 
   let displayed = chats;
   if (tab === "unread") displayed = chats.filter((c) => c.unread > 0);
-  if (tab === "by-service") {
-    const source = selectedService
-      ? chats.filter((c) => getCategoryDisplayName(c.categoryId ?? "", locale, c.categoryName) === selectedService)
-      : chats;
-    displayed = [...source].sort((a, b) =>
-      getCategoryDisplayName(a.categoryId ?? "", locale, a.categoryName)
-        .localeCompare(getCategoryDisplayName(b.categoryId ?? "", locale, b.categoryName))
-    );
+
+  if (activeCategoryFilters.length > 0) {
+    displayed = displayed.filter((c) => activeCategoryFilters.includes(c.categoryId ?? c.categoryName ?? ""));
   }
 
   if (query.trim()) {
@@ -995,16 +988,46 @@ export default function ProviderChatsPage() {
     );
   }
 
+  function toggleCategoryFilter(catId: string) {
+    setActiveCategoryFilters((prev) =>
+      prev.includes(catId) ? prev.filter((c) => c !== catId) : [...prev, catId]
+    );
+  }
+
+  function clearAllFilters() {
+    setActiveCategoryFilters([]);
+  }
+
+  function toggleSearch() {
+    if (searchExpanded) {
+      setQuery("");
+      setSearchExpanded(false);
+    } else {
+      setSearchExpanded(true);
+      setFilterExpanded(false);
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    }
+  }
+
+  function toggleFilter() {
+    if (filterExpanded) {
+      setFilterExpanded(false);
+    } else {
+      setFilterExpanded(true);
+      setSearchExpanded(false);
+      setQuery("");
+    }
+  }
+
   const tabs: Array<{ id: SortTab; label: string; count?: number }> = [
     { id: "all", label: t.providerChats.tabs.all, count: chats.length },
     { id: "unread", label: t.providerChats.tabs.unread, count: totalUnread || undefined },
-    { id: "by-service", label: t.providerChats.tabs.byService },
   ];
 
   return (
     <div className={openChatId ? "h-screen overflow-hidden bg-gray-50" : "min-h-screen bg-gray-50 pb-24"}>
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-lg mx-auto px-4 pt-4 pb-3">
+        <div className="max-w-lg mx-auto px-4 pt-3 pb-3">
           <div className="flex items-center gap-3 mb-3">
             <button onClick={() => setLocation("/provider-home")} className="flex items-center flex-shrink-0">
               <img src={logoImg} alt="Hormang" className="w-8 h-8 object-contain" />
@@ -1019,24 +1042,11 @@ export default function ProviderChatsPage() {
             </div>
           </div>
 
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t.providerChats.searchPlaceholder}
-              className="w-full h-10 pl-9 pr-4 rounded-2xl bg-gray-50 border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all"
-            />
-          </div>
-
           <div className="flex gap-2">
             {tabs.map((tt) => (
               <button
                 key={tt.id}
-                onClick={() => {
-                  setTab(tt.id);
-                  if (tt.id !== "by-service") setSelectedService(null);
-                }}
+                onClick={() => setTab(tt.id)}
                 className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all ${
                   tab === tt.id
                     ? "text-white shadow-sm"
@@ -1052,47 +1062,168 @@ export default function ProviderChatsPage() {
                     {tt.count}
                   </span>
                 )}
-                {tt.id === "by-service" && tab === "by-service" && (
-                  <ChevronDown className="w-3 h-3" />
-                )}
               </button>
             ))}
           </div>
-
-          {tab === "by-service" && (
-            <div className="mt-2 relative">
-              <button
-                onClick={() => setShowServiceMenu((v) => !v)}
-                className="w-full h-9 px-3 rounded-xl border border-gray-200 bg-gray-50 text-xs text-left flex items-center justify-between text-gray-700"
-              >
-                {selectedService ?? t.providerChats.serviceFilter.all}
-                <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-              </button>
-              {showServiceMenu && (
-                <div className="absolute left-0 right-0 top-10 bg-white border border-gray-200 rounded-2xl shadow-lg z-20 overflow-hidden">
-                  <button
-                    onClick={() => { setSelectedService(null); setShowServiceMenu(false); }}
-                    className="w-full px-4 py-2.5 text-xs text-left text-gray-500 hover:bg-gray-50 border-b border-gray-100"
-                  >
-                    {t.providerChats.serviceFilter.all}
-                  </button>
-                  {services.map((s: string) => (
-                    <button
-                      key={s}
-                      onClick={() => { setSelectedService(s); setShowServiceMenu(false); }}
-                      className="w-full px-4 py-2.5 text-xs text-left text-gray-800 hover:bg-violet-50 hover:text-violet-700"
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-4">
+      <div className="max-w-lg mx-auto px-4 pt-3 pb-4">
+        {/* ── Compact toolbar: Filter + Search ── */}
+        <div className="mb-3">
+          <div className="flex items-center gap-2">
+
+            {/* Filter button */}
+            {filterableCategoryIds.length > 0 && (
+              <button
+                onClick={toggleFilter}
+                className={`relative flex-shrink-0 w-7 h-7 rounded-full border flex items-center justify-center transition-all shadow-sm ${
+                  filterExpanded || activeCategoryFilters.length > 0
+                    ? "bg-violet-600 border-violet-600 text-white"
+                    : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                }`}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                {activeCategoryFilters.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-white border border-violet-200 text-violet-700 text-[9px] font-extrabold flex items-center justify-center shadow-sm">
+                    {activeCategoryFilters.length}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* Search button / expanded field */}
+            <motion.div layout className="flex items-center flex-1 min-w-0">
+              <AnimatePresence mode="wait" initial={false}>
+                {searchExpanded ? (
+                  <motion.div
+                    key="search-field"
+                    initial={{ opacity: 0, width: 40 }}
+                    animate={{ opacity: 1, width: "100%" }}
+                    exit={{ opacity: 0, width: 40 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                    className="relative w-full"
+                  >
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input
+                      ref={searchInputRef}
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onBlur={() => { if (!query) setSearchExpanded(false); }}
+                      onKeyDown={(e) => { if (e.key === "Escape") { setQuery(""); setSearchExpanded(false); } }}
+                      placeholder={t.providerChats.searchPlaceholder}
+                      className="w-full h-7 pl-9 pr-9 rounded-full bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-400/30 focus:border-violet-400 transition-all shadow-sm"
+                    />
+                    {query && (
+                      <button
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => { setQuery(""); setSearchExpanded(false); }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-300 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </motion.div>
+                ) : (
+                  <motion.button
+                    key="search-btn"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={toggleSearch}
+                    className={`flex-shrink-0 w-7 h-7 rounded-full border flex items-center justify-center transition-all shadow-sm ${
+                      query
+                        ? "bg-violet-600 border-violet-600 text-white"
+                        : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                    }`}
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </motion.div>
+
+            {/* Active filter pills */}
+            {activeCategoryFilters.length > 0 && !filterExpanded && (
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-shrink min-w-0">
+                {activeCategoryFilters.map((catId) => (
+                  <span
+                    key={catId}
+                    className="inline-flex items-center gap-1 flex-shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full text-white"
+                    style={{ background: "linear-gradient(135deg,hsl(262,80%,54%),hsl(236,76%,60%))" }}
+                  >
+                    {getCategoryDisplayName(catId, locale)}
+                    <button
+                      onClick={() => toggleCategoryFilter(catId)}
+                      className="w-3.5 h-3.5 rounded-full bg-white/25 flex items-center justify-center hover:bg-white/40 transition-colors"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </span>
+                ))}
+                <button
+                  onClick={clearAllFilters}
+                  className="flex-shrink-0 text-[11px] font-bold text-gray-400 hover:text-gray-600 transition-colors ml-0.5"
+                >
+                  {locale === "uz" ? "Tozalash" : "Сбросить"}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Expanded filter chips row */}
+          <AnimatePresence>
+            {filterExpanded && filterableCategoryIds.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                className="overflow-hidden"
+              >
+                <div className="flex items-center gap-1.5 pt-2 pb-0.5 overflow-x-auto no-scrollbar">
+                  <button
+                    onClick={clearAllFilters}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                      activeCategoryFilters.length === 0
+                        ? "text-white border-transparent shadow-sm"
+                        : "bg-gray-100 text-gray-500 border-transparent hover:bg-gray-200"
+                    }`}
+                    style={activeCategoryFilters.length === 0 ? { background: "linear-gradient(135deg,hsl(262,80%,54%),hsl(236,76%,60%))" } : {}}
+                  >
+                    {t.providerChats.tabs.all}
+                  </button>
+                  {filterableCategoryIds.map((catId) => {
+                    const active = activeCategoryFilters.includes(catId);
+                    return (
+                      <button
+                        key={catId}
+                        onClick={() => toggleCategoryFilter(catId)}
+                        className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                          active
+                            ? "text-white border-transparent shadow-sm"
+                            : "bg-gray-100 text-gray-500 border-transparent hover:bg-gray-200"
+                        }`}
+                        style={active ? { background: "linear-gradient(135deg,hsl(262,80%,54%),hsl(236,76%,60%))" } : {}}
+                      >
+                        {getCategoryDisplayName(catId, locale)}
+                      </button>
+                    );
+                  })}
+                  {activeCategoryFilters.length > 0 && (
+                    <button
+                      onClick={() => { clearAllFilters(); setFilterExpanded(false); }}
+                      className="flex-shrink-0 text-[11px] font-bold text-gray-400 hover:text-red-500 transition-colors ml-1"
+                    >
+                      X
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         {displayed.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-3">
