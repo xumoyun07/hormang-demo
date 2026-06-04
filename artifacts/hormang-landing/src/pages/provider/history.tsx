@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ClipboardList, Search, Star, TrendingUp, Wallet, CheckCircle2,
-  ChevronRight, ChevronLeft, MapPin, Repeat, BadgeCheck, MessageSquare, BarChart3,
+  ChevronRight, MapPin, Repeat, BadgeCheck, MessageSquare, BarChart3, Plus,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,16 @@ const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 10
 const PAGE_SIZE = 20;
 
 type Tab = "history" | "reviews" | "stats";
+type DateRange = "all" | "month" | "3months" | "year";
+
+/** Inclusive lower-bound timestamp for a date-range preset, or null for "all". */
+function dateRangeStart(range: DateRange): number | null {
+  if (range === "all") return null;
+  const now = new Date();
+  if (range === "month") return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  if (range === "3months") return new Date(now.getFullYear(), now.getMonth() - 2, 1).getTime();
+  return new Date(now.getFullYear(), 0, 1).getTime();
+}
 
 function StatChip({
   icon: Icon, label, value,
@@ -148,7 +158,9 @@ export default function ProviderHistoryPage() {
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [page, setPage] = useState(1);
+  const [dateFilter, setDateFilter] = useState<DateRange>("all");
+  const [ratingFilter, setRatingFilter] = useState<number>(0);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   useEffect(() => {
     const id = setTimeout(() => setDebounced(search.trim().toLowerCase()), 300);
@@ -171,22 +183,29 @@ export default function ProviderHistoryPage() {
   }, [history]);
 
   const filtered = useMemo(() => {
+    const since = dateRangeStart(dateFilter);
     return history.filter((h) => {
       if (categoryFilter !== "all" && h.categoryId !== categoryFilter) return false;
+      if (since !== null && new Date(h.completedAt).getTime() < since) return false;
+      if (ratingFilter > 0 && (typeof h.rating !== "number" || h.rating < ratingFilter)) return false;
       if (!debounced) return true;
+      const locationText = (h.region || h.district || h.locationName)
+        ? getRequestLocation({ location: h.locationName ?? "", region: h.region, district: h.district }, locale)
+        : "";
       const hay = [
         getCategoryDisplayName(h.categoryId, locale, h.serviceTitle),
         h.customerName ?? "",
         h.serviceDescription,
+        locationText,
       ].join(" ").toLowerCase();
       return hay.includes(debounced);
     });
-  }, [history, categoryFilter, debounced, locale]);
+  }, [history, categoryFilter, dateFilter, ratingFilter, debounced, locale]);
 
-  useEffect(() => { setPage(1); }, [debounced, categoryFilter, tab]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [debounced, categoryFilter, dateFilter, ratingFilter, tab]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageItems = filtered.slice(0, visibleCount);
+  const hasMore = filtered.length > visibleCount;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -254,33 +273,55 @@ export default function ProviderHistoryPage() {
                     className="w-full h-11 pl-9 pr-3 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-violet-400"
                   />
                 </div>
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                  {([
+                    { id: "all" as DateRange, label: tt.filter.all },
+                    { id: "month" as DateRange, label: tt.filter.thisMonth },
+                    { id: "3months" as DateRange, label: tt.filter.last3Months },
+                    { id: "year" as DateRange, label: tt.filter.thisYear },
+                  ]).map((opt) => (
+                    <FilterChip
+                      key={opt.id}
+                      label={opt.label}
+                      active={dateFilter === opt.id}
+                      onClick={() => setDateFilter(opt.id)}
+                    />
+                  ))}
+                </div>
+
                 {categories.length > 1 && (
                   <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-                    <button
+                    <FilterChip
+                      label={tt.filter.all}
+                      active={categoryFilter === "all"}
                       onClick={() => setCategoryFilter("all")}
-                      className={`flex-shrink-0 px-3 h-8 rounded-full text-xs font-bold border transition-colors ${
-                        categoryFilter === "all"
-                          ? "bg-violet-600 text-white border-violet-600"
-                          : "bg-white text-gray-600 border-gray-200"
-                      }`}
-                    >
-                      {tt.filter.all}
-                    </button>
+                    />
                     {categories.map(([id, name]) => (
-                      <button
+                      <FilterChip
                         key={id}
+                        label={getCategoryDisplayName(id, locale, name)}
+                        active={categoryFilter === id}
                         onClick={() => setCategoryFilter(id)}
-                        className={`flex-shrink-0 px-3 h-8 rounded-full text-xs font-bold border transition-colors ${
-                          categoryFilter === id
-                            ? "bg-violet-600 text-white border-violet-600"
-                            : "bg-white text-gray-600 border-gray-200"
-                        }`}
-                      >
-                        {getCategoryDisplayName(id, locale, name)}
-                      </button>
+                      />
                     ))}
                   </div>
                 )}
+
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                  <FilterChip
+                    label={tt.filter.allRatings}
+                    active={ratingFilter === 0}
+                    onClick={() => setRatingFilter(0)}
+                  />
+                  {[5, 4, 3].map((r) => (
+                    <FilterChip
+                      key={r}
+                      label={tFormat(tt.filter.ratingTpl, { n: r })}
+                      active={ratingFilter === r}
+                      onClick={() => setRatingFilter(r)}
+                    />
+                  ))}
+                </div>
               </div>
             )}
 
@@ -308,25 +349,16 @@ export default function ProviderHistoryPage() {
                     ))}
                   </AnimatePresence>
                 </div>
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-3 mt-5">
-                    <button
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                      className="w-10 h-10 rounded-2xl border border-gray-200 bg-white flex items-center justify-center text-gray-600 disabled:opacity-30"
+                {hasMore && (
+                  <div className="flex justify-center mt-5">
+                    <Button
+                      variant="outline"
+                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                      className="h-11 px-6 font-bold border-violet-200 text-violet-700"
                     >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <span className="text-xs font-black text-gray-600">
-                      {tFormat(tt.pagination.pageTpl, { page, total: totalPages })}
-                    </span>
-                    <button
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={page === totalPages}
-                      className="w-10 h-10 rounded-2xl border border-gray-200 bg-white flex items-center justify-center text-gray-600 disabled:opacity-30"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                      <Plus className="w-4 h-4 mr-1.5" />
+                      {tt.loadMore}
+                    </Button>
                   </div>
                 )}
               </>
@@ -379,6 +411,20 @@ export default function ProviderHistoryPage() {
 
       <BottomNav />
     </div>
+  );
+}
+
+function FilterChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex-shrink-0 px-3 h-8 rounded-full text-xs font-bold border transition-colors ${
+        active ? "bg-violet-600 text-white border-violet-600" : "bg-white text-gray-600 border-gray-200"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 
