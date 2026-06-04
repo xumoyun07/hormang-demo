@@ -16,6 +16,7 @@ import { recordTangaTransaction } from "./tanga-history-store";
 import { calculateOfferCost } from "./offer-cost";
 import { getBlockedUsers } from "./report-store";
 import { recordReplyFromChat } from "./response-time-store";
+import { recordServiceCompletion } from "./service-history-store";
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -534,9 +535,57 @@ export function markOfferCompleted(offerId: string): boolean {
     if (request.customerId) incrementCompletedCount(request.customerId, "customer");
   }
   incrementCompletedCount(target.masterId, "provider");
+  recordCompletionSnapshot(target, request);
 
   sendSystemMessage(`${target.requestId}_${target.masterId}`, "✅ Xizmat yakunlandi! Hamkorlik uchun rahmat.");
   return true;
+}
+
+/**
+ * Build a plain-text snapshot of a request's answers (excluding meta/location
+ * fields and base64 blobs) so completed-service history has a self-contained
+ * description even after the original request is gone.
+ */
+function snapshotDescription(answers: Record<string, unknown> | undefined): string {
+  if (!answers) return "";
+  const skip = new Set(["urgency", "budget", "budget_open", "region", "district", "location"]);
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(answers)) {
+    if (skip.has(k) || k.endsWith("_other")) continue;
+    if (v === null || v === undefined || v === "") continue;
+    if (typeof v === "string") {
+      if (v.startsWith("data:")) continue;
+      parts.push(v);
+    } else if (typeof v === "number") {
+      parts.push(String(v));
+    } else if (Array.isArray(v)) {
+      const joined = (v as unknown[])
+        .filter((x) => typeof x === "string" && !(x as string).startsWith("data:"))
+        .join(", ");
+      if (joined) parts.push(joined);
+    }
+  }
+  return parts.join(" · ");
+}
+
+/** Record an immutable Service-History snapshot when an offer is finalised. */
+function recordCompletionSnapshot(offer: Offer, request: CustomerRequest | undefined): void {
+  recordServiceCompletion({
+    providerId: offer.masterId,
+    customerId: request?.customerId,
+    customerName: request?.customerName,
+    requestId: offer.requestId,
+    offerId: offer.id,
+    categoryId: request?.categoryId ?? "",
+    categoryName: request?.categoryName ?? "",
+    emoji: request?.emoji,
+    serviceTitle: request?.categoryName ?? "",
+    serviceDescription: snapshotDescription(request?.answers),
+    finalPrice: offer.price,
+    region: request?.region,
+    district: request?.district,
+    beforePhotos: request?.requestPhotos,
+  });
 }
 
 /**
@@ -580,6 +629,7 @@ export function confirmCompletion(
       if (request.customerId) incrementCompletedCount(request.customerId, "customer");
     }
     incrementCompletedCount(target.masterId, "provider");
+    recordCompletionSnapshot(target, request);
     sendSystemMessage(
       `${target.requestId}_${target.masterId}`,
       systemMsgs?.completed ?? "✅ Xizmat yakunlandi! Hamkorlik uchun rahmat."

@@ -451,6 +451,12 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
       action: () => onNavigate("/provider/requests"),
     },
     {
+      icon: ClipboardList,
+      title: t.dashboard.providerItems.history.title,
+      desc: t.dashboard.providerItems.history.desc,
+      action: () => onNavigate("/provider/history"),
+    },
+    {
       icon: TrendingUp,
       title: t.dashboard.providerItems.stats.title,
       desc: t.dashboard.providerItems.stats.desc,

@@ -1,0 +1,1 @@
+- [Offer-completion dual path](completion-dual-path.md) — completion fires via BOTH markOfferCompleted and confirmCompletion; hook on-completion side-effects into both, idempotently.

@@ -38,6 +38,8 @@ import ProviderReviewsPage from "@/pages/provider-reviews";
 import CustomerReviewsPage from "@/pages/customer-reviews";
 import PlansPage from "@/pages/plans";
 import TangaHistoryPage from "@/pages/provider/tanga-history";
+import ProviderHistoryPage from "@/pages/provider/history";
+import ProviderHistoryDetailPage from "@/pages/provider/history-detail";
 import CustomerHomePage from "@/pages/customer-home";
 import FeedbackPage from "@/pages/feedback";
 
@@ -168,6 +170,12 @@ function Router() {
       </Route>
       <Route path="/provider/tanga-history">
         {() => <ProtectedRoute component={TangaHistoryPage} />}
+      </Route>
+      <Route path="/provider/history">
+        {() => <ProtectedRoute component={ProviderHistoryPage} />}
+      </Route>
+      <Route path="/provider/history/:id">
+        {() => <ProtectedRoute component={ProviderHistoryDetailPage} />}
       </Route>
       <Route path="/feedback">
         {() => <ProtectedRoute component={FeedbackPage} />}

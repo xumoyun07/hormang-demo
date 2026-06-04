@@ -11,6 +11,10 @@ import { useAuth } from "@/contexts/auth-context";
 import { onStoreChange } from "@/lib/store-events";
 import { getLocalProfile, type LocalProfile, type PortfolioItem } from "@/lib/local-profile";
 import { getCompletedCount } from "@/lib/completion-store";
+import { getPortfolioItems, type ServiceHistory } from "@/lib/service-history-store";
+import { CategoryIcon } from "@/components/category-icon";
+import { getCategoryDisplayName } from "@/lib/categories";
+import { formatDate } from "@/lib/date-utils";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
 
@@ -73,7 +77,7 @@ function StarRating({ rating, count, newLabel, reviewsCountTpl }: { rating?: num
 }
 
 export default function ProviderProfilePage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tt = t.providerProfilePage;
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
@@ -155,6 +159,7 @@ export default function ProviderProfilePage() {
   const district = localData.district ?? "";
   const experience = localData.experience;
   const portfolioItems: PortfolioItem[] = localData.portfolioItems ?? [];
+  const completedPortfolio: ServiceHistory[] = getPortfolioItems(provider.id);
   const bio = profile?.bio ?? "";
   const categories: string[] = profile?.categories ?? [];
   const serviceAreas: string[] = localData.serviceAreas ?? [];
@@ -314,6 +319,56 @@ export default function ProviderProfilePage() {
                       )}
                     </div>
                   ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ── Completed work portfolio ── */}
+          <AnimatePresence>
+            {completedPortfolio.length > 0 && (
+              <motion.div
+                key="completed-portfolio"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3, delay: 0.05 }}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5"
+              >
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">
+                  {tFormat(tt.completedWorkLabelTpl, { n: completedPortfolio.length })}
+                </p>
+                <div className="space-y-2.5">
+                  {completedPortfolio.map((job) => {
+                    const cover = job.afterPhotos?.[0] ?? job.beforePhotos?.[0];
+                    return (
+                      <div key={job.id} className="flex items-center gap-3 rounded-2xl border border-gray-100 p-2.5">
+                        {cover ? (
+                          <img
+                            src={cover}
+                            alt={job.serviceTitle}
+                            className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <CategoryIcon categoryId={job.categoryId} emoji={job.emoji} size={56} shape="square" className="flex-shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-gray-900 truncate">
+                            {getCategoryDisplayName(job.categoryId, locale, job.serviceTitle)}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {formatDate(job.completedAt, { months: t.shared.months })}
+                          </p>
+                        </div>
+                        {typeof job.rating === "number" && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100 flex-shrink-0">
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                            {job.rating.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </motion.div>
             )}
