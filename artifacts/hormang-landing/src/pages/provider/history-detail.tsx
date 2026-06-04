@@ -52,7 +52,7 @@ function Section({ icon: Icon, title, children }: { icon: typeof Star; title: st
 }
 
 export default function ProviderHistoryDetailPage() {
-  useStoreRefresh();
+  const storeVersion = useStoreRefresh();
   const { t, locale } = useI18n();
   const tt = t.providerHistory;
   const td = tt.detail;
@@ -63,7 +63,7 @@ export default function ProviderHistoryDetailPage() {
 
   const item = useMemo(
     () => (params.id && user?.id ? getServiceHistoryByIdForProvider(user.id, params.id) : undefined),
-    [params.id, user?.id]
+    [params.id, user?.id, storeVersion]
   );
 
   if (!item) {
