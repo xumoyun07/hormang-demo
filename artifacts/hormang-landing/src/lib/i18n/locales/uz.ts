@@ -559,14 +559,14 @@ export const uz = {
   },
   providerRequests: {
     title: "So'rovlar",
-    subtitleTpl: "{{open}} ta ochiq · {{responded}} ta javob berilgan",
+    subtitleTpl: "{{open}} ta",
     markAllSeen: "Barchasi ko'rildi",
     filterAll: "Barchasi",
     searchPlaceholder: "Tavsif, joylashuv bo'yicha qidiring...",
     searchNoResults: "Qidiruv bo'yicha natija topilmadi",
     tabs: {
       all: "Barchasi",
-      unread: "O'qilmagan",
+      unread: "Yangi",
       noOffers: "Taklifsiz",
     },
     banner: {

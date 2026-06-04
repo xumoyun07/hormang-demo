@@ -786,6 +786,7 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
             subjectName={chat.customerName}
             subjectInitials={chat.customerInitials}
             subjectColor={chat.customerColor}
+            subjectPhotoUrl={customerLocal?.photoUrl}
             prompt={t.providerChats.review.prompt}
             onSubmit={handleReviewSubmit}
             onSkip={() => { setShowReview(false); setReviewDismissed(true); }}

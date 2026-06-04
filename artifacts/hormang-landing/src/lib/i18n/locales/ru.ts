@@ -562,14 +562,14 @@ export const ru: Dict = {
   },
   providerRequests: {
     title: "Заявки",
-    subtitleTpl: "{{open}} открытых · {{responded}} с ответом",
+    subtitleTpl: "{{open}} доступных",
     markAllSeen: "Все просмотрены",
     filterAll: "Все",
     searchPlaceholder: "Поиск по описанию, адресу...",
     searchNoResults: "По вашему запросу ничего не найдено",
     tabs: {
       all: "Все",
-      unread: "Непросмотренные",
+      unread: "Новые",
       noOffers: "Без предложений",
     },
     banner: {

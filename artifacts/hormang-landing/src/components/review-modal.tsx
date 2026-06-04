@@ -26,6 +26,7 @@ interface ReviewModalProps {
   subjectName: string;
   subjectInitials: string;
   subjectColor: string;
+  subjectPhotoUrl?: string;
   prompt?: string;
   showProviderSliders?: boolean;
   onSubmit: (data: ReviewSubmitData) => void;
@@ -62,6 +63,7 @@ export function ReviewModal({
   subjectName,
   subjectInitials,
   subjectColor,
+  subjectPhotoUrl,
   prompt,
   showProviderSliders = false,
   onSubmit,
@@ -160,10 +162,19 @@ export function ReviewModal({
           {/* Avatar */}
           <div className="flex flex-col items-center mb-5">
             <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-black text-xl mb-3 shadow-sm"
+              className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-black text-xl mb-3 shadow-sm overflow-hidden"
               style={{ background: subjectColor }}
             >
-              {subjectInitials}
+              {subjectPhotoUrl ? (
+                <img
+                  src={subjectPhotoUrl}
+                  alt={subjectName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
+              ) : (
+                subjectInitials
+              )}
             </div>
             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">
               {effectivePrompt}

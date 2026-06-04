@@ -646,6 +646,7 @@ export default function ChatPage() {
             subjectName={chat.masterName}
             subjectInitials={chat.masterInitials}
             subjectColor={chat.masterColor}
+            subjectPhotoUrl={masterLocal?.photoUrl}
             prompt={tt.rateProvider}
             showProviderSliders
             onSubmit={handleReviewSubmit}

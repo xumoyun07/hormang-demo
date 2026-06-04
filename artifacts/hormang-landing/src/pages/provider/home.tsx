@@ -489,6 +489,7 @@ function UpcomingServices() {
             subjectName={reviewService.customerName}
             subjectInitials={reviewService.customerInitials}
             subjectColor={reviewService.customerColor}
+            subjectPhotoUrl={reviewService.customerId ? getLocalProfile(reviewService.customerId).photoUrl : undefined}
             prompt={t.providerHome.upcoming.reviewPrompt}
             onSubmit={handleReviewSubmit}
             onSkip={() => {
