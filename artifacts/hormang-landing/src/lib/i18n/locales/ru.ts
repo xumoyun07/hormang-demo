@@ -1793,7 +1793,7 @@ export const ru: Dict = {
       beforePhotos: "До работы",
       afterPhotos: "После работы",
       review: "Отзыв клиента",
-      noReview: "Клиент ещё не оставил отзыв",
+      noReview: "Комментарий не оставлен",
       viewReview: "Смотреть отзыв",
       addToPortfolio: "Добавить в портфолио",
       removeFromPortfolio: "Убрать из портфолио",

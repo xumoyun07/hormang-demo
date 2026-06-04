@@ -1791,7 +1791,7 @@ export const en: Dict = {
       beforePhotos: "Before",
       afterPhotos: "After",
       review: "Customer review",
-      noReview: "The customer has not left a review yet",
+      noReview: "No comment left",
       viewReview: "View review",
       addToPortfolio: "Add to portfolio",
       removeFromPortfolio: "Remove from portfolio",

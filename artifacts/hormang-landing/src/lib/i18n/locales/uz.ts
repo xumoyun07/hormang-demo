@@ -1790,7 +1790,7 @@ export const uz = {
       beforePhotos: "Ishdan oldin",
       afterPhotos: "Ishdan keyin",
       review: "Mijoz sharhi",
-      noReview: "Mijoz hali sharh qoldirmagan",
+      noReview: "Izoh qoldirilmagan",
       viewReview: "Sharhni ko'rish",
       addToPortfolio: "Portfolioga qo'shish",
       removeFromPortfolio: "Portfoliodan olib tashlash",
