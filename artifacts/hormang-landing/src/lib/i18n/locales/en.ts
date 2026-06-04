@@ -655,7 +655,7 @@ export const en: Dict = {
     },
     banner: { acceptedContinue: "Offer accepted — Chat continues" },
     separators: { today: "Today", yesterday: "Yesterday" },
-    header: { avgResponseTpl: "Avg response time: {{n}} min", completed: "Completed", review: "Rate" },
+    header: { avgResponseTpl: "Avg response time: {{n}}", completed: "Completed", review: "Rate" },
     rejected: "Offer rejected. Chat closed.",
     input: { placeholder: "Write a message...", attachAlt: "photo" },
     schedule: {
@@ -1530,7 +1530,7 @@ export const en: Dict = {
     imageAlt: "image",
     notFound: "Chat not found",
     backToRequests: "Back to my requests",
-    avgResponseTpl: "Average reply time: {{n}} min",
+    avgResponseTpl: "Average reply time: {{n}}",
     waitingProvider: "Waiting for provider",
     completeBtn: "Completed",
     rateTitle: "Rate",

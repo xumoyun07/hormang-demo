@@ -657,7 +657,7 @@ export const ru: Dict = {
     },
     banner: { acceptedContinue: "Предложение принято — Чат продолжается" },
     separators: { today: "Сегодня", yesterday: "Вчера" },
-    header: { avgResponseTpl: "Среднее время ответа: {{n}} мин", completed: "Завершено", review: "Оценить" },
+    header: { avgResponseTpl: "Среднее время ответа: {{n}}", completed: "Завершено", review: "Оценить" },
     rejected: "Предложение отклонено. Чат закрыт.",
     input: { placeholder: "Напишите сообщение...", attachAlt: "фото" },
     schedule: {
@@ -1532,7 +1532,7 @@ export const ru: Dict = {
     imageAlt: "фото",
     notFound: "Чат не найден",
     backToRequests: "Вернуться к запросам",
-    avgResponseTpl: "Среднее время ответа: {{n}} мин",
+    avgResponseTpl: "Среднее время ответа: {{n}}",
     waitingProvider: "Ждём исполнителя",
     completeBtn: "Завершено",
     rateTitle: "Оценить",

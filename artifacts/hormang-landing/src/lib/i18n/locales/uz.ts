@@ -654,7 +654,7 @@ export const uz = {
     },
     banner: { acceptedContinue: "Taklif qabul qilindi — Suhbat davom etmoqda" },
     separators: { today: "Bugun", yesterday: "Kecha" },
-    header: { avgResponseTpl: "O'rtacha javob vaqti: {{n}} daqiqa", completed: "Tugatildi", review: "Baholash" },
+    header: { avgResponseTpl: "O'rtacha javob vaqti: {{n}}", completed: "Tugatildi", review: "Baholash" },
     rejected: "Taklif rad etildi. Suhbat yopildi.",
     input: { placeholder: "Xabar yozing...", attachAlt: "rasm" },
     schedule: {
@@ -1529,7 +1529,7 @@ export const uz = {
     imageAlt: "rasm",
     notFound: "Chat topilmadi",
     backToRequests: "So'rovlarimga qaytish",
-    avgResponseTpl: "O'rtacha javob vaqti: {{n}} daqiqa",
+    avgResponseTpl: "O'rtacha javob vaqti: {{n}}",
     waitingProvider: "Ijrochi kutilmoqda",
     completeBtn: "Tugatildi",
     rateTitle: "Baholash",
