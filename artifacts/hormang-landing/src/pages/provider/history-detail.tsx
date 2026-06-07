@@ -227,7 +227,7 @@ export default function ProviderHistoryDetailPage() {
             <Button
               variant="outline"
               className="w-full h-10 mt-3 font-bold border-violet-200 text-violet-700"
-              onClick={() => navigate("/provider-reviews")}
+              onClick={() => navigate(`/provider-reviews?requestId=${item.requestId}`)}
             >
               {td.viewReview}
             </Button>

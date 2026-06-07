@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Eye, Image as ImageIcon, MessageCircle, ThumbsDown, ThumbsUp, UserRound, X } from "lucide-react";
@@ -247,10 +247,14 @@ function ReviewCard({
   review,
   onPreview,
   onProfile,
+  highlighted = false,
+  cardRef,
 }: {
   review: Review;
   onPreview: () => void;
   onProfile: () => void;
+  highlighted?: boolean;
+  cardRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const { t, locale } = useI18n();
   const tt = t.providerReviewsPage;
@@ -260,9 +264,12 @@ function ReviewCard({
 
   return (
     <motion.div
+      ref={cardRef}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-3xl border border-gray-100 card-shadow p-4"
+      className={`bg-white rounded-3xl border card-shadow p-4 transition-colors ${
+        highlighted ? "border-violet-400 ring-2 ring-violet-200" : "border-gray-100"
+      }`}
     >
       <div className="flex items-start gap-3">
         <button onClick={onProfile} className="flex-shrink-0 active:scale-95 transition-transform">
@@ -365,6 +372,24 @@ export default function ProviderReviewsPage() {
   const [profileReview, setProfileReview] = useState<Review | null>(null);
   const profileMeta = profileReview ? getReviewerMeta(profileReview, tt.fallbackCustomer) : null;
 
+  const targetRequestId = useMemo(
+    () => new URLSearchParams(window.location.search).get("requestId"),
+    []
+  );
+  const highlightedReview = useMemo(
+    () => (targetRequestId ? reviews.find((r) => r.requestId === targetRequestId) : null),
+    [targetRequestId, reviews]
+  );
+  const highlightedRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!highlightedRef.current) return;
+    const timer = setTimeout(() => {
+      highlightedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [highlightedReview]);
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-100">
@@ -454,14 +479,19 @@ export default function ProviderReviewsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {reviews.map((review) => (
-              <ReviewCard
-                key={review.id}
-                review={review}
-                onPreview={() => setSelectedReview(review)}
-                onProfile={() => setProfileReview(review)}
-              />
-            ))}
+            {reviews.map((review) => {
+              const isHighlighted = review.id === highlightedReview?.id;
+              return (
+                <ReviewCard
+                  key={review.id}
+                  review={review}
+                  onPreview={() => setSelectedReview(review)}
+                  onProfile={() => setProfileReview(review)}
+                  highlighted={isHighlighted}
+                  cardRef={isHighlighted ? highlightedRef : undefined}
+                />
+              );
+            })}
           </div>
         )}
       </main>
