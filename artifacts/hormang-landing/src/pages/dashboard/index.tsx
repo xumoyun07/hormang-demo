@@ -541,7 +541,7 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
                 onClick={() => toast({ title: t.dashboard.historyToast })}
               >
                 <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                <span className="text-xs font-semibold text-gray-600">{tFormat(t.dashboard.completedSuffixTpl, { count: completedCount })}</span>
+                <span className="text-xs font-semibold text-gray-600 underline" onClick={() => onNavigate("/provider/history")}> {tFormat(t.dashboard.completedSuffixTpl, { count: completedCount })}</span>
               </button>
             </div>
 

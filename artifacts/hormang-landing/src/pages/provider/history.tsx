@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ClipboardList, Search, Star, TrendingUp, Wallet, CheckCircle2,
-  ChevronRight, MapPin, Repeat, BadgeCheck, MessageSquare, BarChart3, Plus,
+  ChevronRight, MapPin, Repeat, BadgeCheck, MessageSquare, BarChart3, Plus, Info,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
@@ -39,15 +39,38 @@ function dateRangeStart(range: DateRange): number | null {
 }
 
 function StatChip({
-  icon: Icon, label, value,
-}: { icon: typeof Star; label: string; value: string }) {
+  icon: Icon, label, value, tooltip,
+}: { icon: typeof Star; label: string; value: string; tooltip?: string }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-2xl bg-white/15 backdrop-blur px-3 py-2.5 flex flex-col gap-1">
+    <div className="relative rounded-2xl bg-white/15 backdrop-blur px-3 py-2.5 flex flex-col gap-1">
       <div className="flex items-center gap-1.5 text-white/80">
         <Icon className="w-3.5 h-3.5" />
-        <span className="text-[10px] font-bold uppercase tracking-wide">{label}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wide flex-1">{label}</span>
+        {tooltip && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+            className="w-4 h-4 flex items-center justify-center text-white/60 hover:text-white transition-colors flex-shrink-0"
+          >
+            <Info className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
       <span className="text-white font-black text-base leading-none">{value}</span>
+      {tooltip && open && (
+        <div
+          className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-gray-900 text-white text-[11px] font-medium leading-snug rounded-xl px-3 py-2 shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {tooltip}
+          <button
+            type="button"
+            className="absolute top-1 right-2 text-white/50 hover:text-white text-xs"
+            onClick={() => setOpen(false)}
+          >✕</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -231,7 +254,7 @@ export default function ProviderHistoryPage() {
             <StatChip icon={CheckCircle2} label={tt.stats.totalCompleted} value={String(stats.totalCompleted)} />
             <StatChip icon={Star} label={tt.stats.avgRating} value={stats.averageRating > 0 ? stats.averageRating.toFixed(1) : "—"} />
             <StatChip icon={Wallet} label={tt.stats.totalEarnings} value={`${stats.totalEarnings.toLocaleString()}`} />
-            <StatChip icon={TrendingUp} label={tt.stats.successRate} value={`${stats.successRate}%`} />
+            <StatChip icon={TrendingUp} label={tt.stats.successRate} value={`${stats.successRate}%`} tooltip={tt.stats.successRateInfo} />
           </div>
         </div>
 

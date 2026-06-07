@@ -1753,6 +1753,7 @@ export const en: Dict = {
       totalEarnings: "Total earnings",
       thisMonth: "This month",
       successRate: "Success rate",
+      successRateInfo: "Share of jobs with no rating or a rating of 4★ and above",
       repeatCustomers: "Repeat customers",
       popularCategory: "Top category",
     },

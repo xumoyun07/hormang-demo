@@ -1752,6 +1752,7 @@ export const uz = {
       totalEarnings: "Jami daromad",
       thisMonth: "Shu oy daromadi",
       successRate: "Muvaffaqiyat",
+      successRateInfo: "Baholanmagan yoki 4★ va undan yuqori baho olgan buyurtmalar ulushi",
       repeatCustomers: "Doimiy mijozlar",
       popularCategory: "Eng faol yo'nalish",
     },

@@ -1755,6 +1755,7 @@ export const ru: Dict = {
       totalEarnings: "Всего доход",
       thisMonth: "Доход за месяц",
       successRate: "Успешность",
+      successRateInfo: "Доля заказов без оценки или с оценкой 4★ и выше",
       repeatCustomers: "Постоянные клиенты",
       popularCategory: "Топ направление",
     },
