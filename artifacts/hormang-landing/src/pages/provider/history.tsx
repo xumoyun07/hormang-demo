@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ClipboardList, Search, Star, TrendingUp, Wallet, CheckCircle2,
   ChevronRight, MapPin, Repeat, BadgeCheck, MessageSquare, BarChart3, Plus, Info,
+  Pencil, Trash2,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { getReviewsForUser, type Review } from "@/lib/completion-store";
 import {
   getProviderHistory,
   getProviderHistoryStats,
+  removePortfolioProject,
   type ServiceHistory,
 } from "@/lib/service-history-store";
 
@@ -75,7 +77,15 @@ function StatChip({
   );
 }
 
-function HistoryCard({ item, index, onOpen }: { item: ServiceHistory; index: number; onOpen: () => void }) {
+function HistoryCard({
+  item, index, onOpen, onEditPortfolio, onRemovePortfolio,
+}: {
+  item: ServiceHistory;
+  index: number;
+  onOpen: () => void;
+  onEditPortfolio: () => void;
+  onRemovePortfolio: () => void;
+}) {
   const { t, locale } = useI18n();
   const tt = t.providerHistory;
   const location = (item.region || item.district)
@@ -83,65 +93,91 @@ function HistoryCard({ item, index, onOpen }: { item: ServiceHistory; index: num
     : null;
 
   return (
-    <motion.button
-      type="button"
-      onClick={onOpen}
+    <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.04, 0.3), duration: 0.3 }}
-      className="w-full text-left bg-white rounded-2xl border border-gray-100 card-shadow p-4 active:bg-gray-50 transition-colors"
+      className="w-full bg-white rounded-2xl border border-gray-100 card-shadow overflow-hidden"
     >
-      <div className="flex items-start gap-3">
-        <CategoryIcon categoryId={item.categoryId} emoji={item.emoji} size={46} shape="square" className="flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-black text-sm text-gray-900 leading-snug truncate">
-              {getCategoryDisplayName(item.categoryId, locale, item.serviceTitle)}
-            </p>
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
-              <CheckCircle2 className="w-3 h-3" />
-              {tt.card.completed}
-            </span>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="w-full text-left p-4 active:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-start gap-3">
+          <CategoryIcon categoryId={item.categoryId} emoji={item.emoji} size={46} shape="square" className="flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-black text-sm text-gray-900 leading-snug truncate">
+                {getCategoryDisplayName(item.categoryId, locale, item.serviceTitle)}
+              </p>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
+                <CheckCircle2 className="w-3 h-3" />
+                {tt.card.completed}
+              </span>
+            </div>
+            {item.customerName && (
+              <p className="text-xs text-gray-500 mt-0.5 truncate">{item.customerName}</p>
+            )}
+            <p className="text-[11px] text-gray-400 mt-0.5">{formatDate(item.completedAt, { months: t.shared.months })}</p>
           </div>
-          {item.customerName && (
-            <p className="text-xs text-gray-500 mt-0.5 truncate">{item.customerName}</p>
-          )}
-          <p className="text-[11px] text-gray-400 mt-0.5">{formatDate(item.completedAt, { months: t.shared.months })}</p>
+          <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0 mt-1" />
         </div>
-        <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0 mt-1" />
-      </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-100">
-          <Wallet className="w-3 h-3 inline mr-1" />
-          {Number(item.finalPrice).toLocaleString()} {tt.sumSuffix}
-        </span>
-        {typeof item.rating === "number" && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
-            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-            {item.rating.toFixed(1)}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-100">
+            <Wallet className="w-3 h-3 inline mr-1" />
+            {Number(item.finalPrice).toLocaleString()} {tt.sumSuffix}
           </span>
-        )}
-        {item.isRepeatCustomer && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
-            <Repeat className="w-3 h-3" />
-            {tt.repeatCustomer}
-          </span>
-        )}
-        {item.isPortfolio && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-100">
-            <BadgeCheck className="w-3 h-3" />
-            {tt.portfolioBadge}
-          </span>
-        )}
-        {location && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500">
-            <MapPin className="w-3 h-3" />
-            {location}
-          </span>
-        )}
-      </div>
-    </motion.button>
+          {typeof item.rating === "number" && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+              {item.rating.toFixed(1)}
+            </span>
+          )}
+          {item.isRepeatCustomer && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+              <Repeat className="w-3 h-3" />
+              {tt.repeatCustomer}
+            </span>
+          )}
+          {item.isPortfolio && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-100">
+              <BadgeCheck className="w-3 h-3" />
+              {tt.portfolioBadge}
+            </span>
+          )}
+          {location && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500">
+              <MapPin className="w-3 h-3" />
+              {location}
+            </span>
+          )}
+        </div>
+      </button>
+
+      {item.isPortfolio && (
+        <div className="flex border-t border-gray-100">
+          <button
+            type="button"
+            onClick={onEditPortfolio}
+            className="flex-1 h-11 flex items-center justify-center gap-1.5 text-xs font-bold text-fuchsia-700 hover:bg-fuchsia-50 transition-colors"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            {tt.card.editPortfolio}
+          </button>
+          <div className="w-px bg-gray-100" />
+          <button
+            type="button"
+            onClick={onRemovePortfolio}
+            className="flex-1 h-11 flex items-center justify-center gap-1.5 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            {tt.card.removePortfolio}
+          </button>
+        </div>
+      )}
+    </motion.div>
   );
 }
 
@@ -368,6 +404,8 @@ export default function ProviderHistoryPage() {
                         item={item}
                         index={i}
                         onOpen={() => navigate(`/provider/history/${item.id}`)}
+                        onEditPortfolio={() => navigate(`/provider/history/${item.id}?portfolio=edit`)}
+                        onRemovePortfolio={() => removePortfolioProject(item.id)}
                       />
                     ))}
                   </AnimatePresence>

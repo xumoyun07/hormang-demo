@@ -18,6 +18,25 @@
 import { emitStoreChange } from "./store-events";
 import { getReviewsForUser } from "./completion-store";
 
+/**
+ * A portfolio project derived from a completed service. Lives *inside* a
+ * ServiceHistory record (`portfolioData`) — it is NOT a standalone entity. The
+ * shape is intentionally extensible: future fields (views, likes, saves,
+ * aiSummary, before/after pairings) can be added as optional properties without
+ * a data migration, since records are plain JSON in localStorage.
+ */
+export interface PortfolioProject {
+  title: string;
+  description: string;
+  /** Cover image — always one of the parent record's afterPhotos. */
+  coverPhoto: string;
+  /** Extra images (subset of the parent record's afterPhotos). */
+  additionalPhotos: string[];
+  featured: boolean;
+  createdAt: string; // ISO timestamp
+  /* Reserved for future, no migration required: views?, likes?, saves?, aiSummary? */
+}
+
 export interface ServiceHistory {
   id: string;
 
@@ -34,6 +53,8 @@ export interface ServiceHistory {
 
   serviceTitle: string;
   serviceDescription: string;
+  /** Provider's free-text notes about the completed work (completion modal). */
+  completionNotes?: string;
 
   finalPrice: number;
 
@@ -57,6 +78,8 @@ export interface ServiceHistory {
 
   isRepeatCustomer: boolean;
   isPortfolio: boolean;
+  /** Present only when this completed job has been published as a portfolio project. */
+  portfolioData?: PortfolioProject;
 }
 
 export interface ProviderHistoryStats {
@@ -82,10 +105,13 @@ export interface RecordCompletionInput {
   emoji?: string;
   serviceTitle: string;
   serviceDescription?: string;
+  completionNotes?: string;
+  durationMinutes?: number;
   finalPrice: number;
   region?: string;
   district?: string;
   beforePhotos?: string[];
+  afterPhotos?: string[];
   completedAt?: string;
 }
 
@@ -161,10 +187,13 @@ export function recordServiceCompletion(input: RecordCompletionInput): void {
     emoji: input.emoji,
     serviceTitle: input.serviceTitle,
     serviceDescription: input.serviceDescription ?? "",
+    completionNotes: input.completionNotes?.trim() || undefined,
+    durationMinutes: input.durationMinutes && input.durationMinutes > 0 ? input.durationMinutes : undefined,
     finalPrice: input.finalPrice ?? 0,
     status: "completed",
     completedAt: input.completedAt ?? new Date().toISOString(),
     beforePhotos: input.beforePhotos && input.beforePhotos.length ? input.beforePhotos : undefined,
+    afterPhotos: input.afterPhotos && input.afterPhotos.length ? input.afterPhotos : undefined,
     region: input.region,
     district: input.district,
     isRepeatCustomer,
@@ -175,14 +204,49 @@ export function recordServiceCompletion(input: RecordCompletionInput): void {
   emitStoreChange();
 }
 
-/** Mark / unmark a history record as a portfolio item. */
-export function setPortfolio(id: string, isPortfolio: boolean): void {
+/** Maximum number of portfolio projects a provider can pin as "featured". */
+export const MAX_FEATURED_PROJECTS = 3;
+
+/** Count a provider's currently-featured portfolio projects (optionally excluding one record). */
+export function countFeaturedProjects(providerId: string, excludeId?: string): number {
+  return allHistory().filter(
+    (h) =>
+      h.providerId === providerId &&
+      h.isPortfolio &&
+      h.portfolioData?.featured === true &&
+      h.id !== excludeId
+  ).length;
+}
+
+/**
+ * Publish (or update) a completed job as a portfolio project. Sets
+ * `portfolioData` and flips `isPortfolio` to true. The caller is responsible for
+ * enforcing the featured cap (see countFeaturedProjects / MAX_FEATURED_PROJECTS).
+ */
+export function savePortfolioProject(id: string, project: PortfolioProject): void {
   const history = allHistory();
   let changed = false;
   const next = history.map((h) => {
-    if (h.id === id && h.isPortfolio !== isPortfolio) {
+    if (h.id === id) {
       changed = true;
-      return { ...h, isPortfolio };
+      return { ...h, isPortfolio: true, portfolioData: project };
+    }
+    return h;
+  });
+  if (!changed) return;
+  writeJSON(HISTORY_KEY, next);
+  emitStoreChange();
+}
+
+/** Remove a job from the portfolio: clears `portfolioData` and unsets `isPortfolio`. */
+export function removePortfolioProject(id: string): void {
+  const history = allHistory();
+  let changed = false;
+  const next = history.map((h) => {
+    if (h.id === id && (h.isPortfolio || h.portfolioData)) {
+      changed = true;
+      const { portfolioData: _drop, ...rest } = h;
+      return { ...rest, isPortfolio: false };
     }
     return h;
   });
@@ -240,6 +304,70 @@ export function getServiceHistoryByIdForProvider(
 /** Portfolio-flagged completed services for a provider, newest first. */
 export function getPortfolioItems(providerId: string): ServiceHistory[] {
   return getProviderHistory(providerId).filter((h) => h.isPortfolio);
+}
+
+/**
+ * A public, customer-data-free view of a portfolio project. This is the ONLY
+ * shape that should ever be rendered on the public provider profile — it omits
+ * customerId, customerName, finalPrice and the precise location, leaving only
+ * what is safe to show to anonymous visitors.
+ */
+export interface PublicPortfolioProject {
+  id: string;
+  title: string;
+  description: string;
+  coverPhoto?: string;
+  /** Cover + additional photos (deduped). */
+  photos: string[];
+  categoryId: string;
+  categoryName: string;
+  emoji?: string;
+  completedAt: string;
+  durationMinutes?: number;
+  rating?: number;
+  review?: string;
+  featured: boolean;
+}
+
+/**
+ * Sanitized portfolio for the public provider profile. Loads ONLY records that
+ * have been published (isPortfolio && portfolioData), strips all customer/private
+ * data, and orders featured-first then newest. `limit` supports future
+ * pagination without changing the call sites.
+ */
+export function getPublicPortfolio(providerId: string, limit?: number): PublicPortfolioProject[] {
+  if (!providerId) return [];
+  const mapped = getProviderHistory(providerId)
+    .filter((h) => h.isPortfolio && h.portfolioData)
+    .map((h): PublicPortfolioProject => {
+      const p = h.portfolioData!;
+      const cover = p.coverPhoto || h.afterPhotos?.[0] || h.beforePhotos?.[0];
+      const photos = Array.from(
+        new Set([cover, ...(p.additionalPhotos ?? [])].filter((x): x is string => !!x))
+      );
+      return {
+        id: h.id,
+        title: p.title,
+        description: p.description,
+        coverPhoto: cover,
+        photos,
+        categoryId: h.categoryId,
+        categoryName: h.categoryName,
+        emoji: h.emoji,
+        completedAt: h.completedAt,
+        durationMinutes: h.durationMinutes,
+        rating: h.rating,
+        review: h.review,
+        featured: !!p.featured,
+      };
+    });
+
+  mapped.sort((a, b) => {
+    if (a.featured !== b.featured) return a.featured ? -1 : 1;
+    return new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime();
+  });
+
+  return typeof limit === "number" ? mapped.slice(0, limit) : mapped;
 }
 
 /** Derived analytics for the Statistics tab / header. */

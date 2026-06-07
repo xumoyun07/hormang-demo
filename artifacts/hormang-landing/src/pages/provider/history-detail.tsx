@@ -1,16 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, CheckCircle2, Wallet, MapPin, Star, Repeat, BadgeCheck,
   CalendarDays, UserRound, FileText, Image as ImageIcon, MessageSquare, X,
-  ChevronRight,
+  ChevronRight, Clock, NotebookPen, ImagePlus, Loader2, Sparkles, Pencil, Trash2, Pin,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
 import { StarRating } from "@/components/star-rating";
 import { CategoryIcon } from "@/components/category-icon";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
+import { PortfolioProjectModal } from "@/components/portfolio-project-modal";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
@@ -18,10 +19,17 @@ import { formatDate } from "@/lib/date-utils";
 import { getCategoryDisplayName } from "@/lib/categories";
 import { getRequestLocation } from "@/lib/regions";
 import { getOfferById } from "@/lib/requests-store";
+import { compressImage } from "@/lib/image-utils";
 import {
   getServiceHistoryByIdForProvider,
-  setPortfolio,
+  savePortfolioProject,
+  removePortfolioProject,
+  countFeaturedProjects,
+  setAfterPhotos,
+  type PortfolioProject,
 } from "@/lib/service-history-store";
+
+const MAX_AFTER_PHOTOS = 10;
 
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
 
@@ -64,16 +72,61 @@ export default function ProviderHistoryDetailPage() {
   const { user } = useAuth();
   const [zoom, setZoom] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [portfolioOpen, setPortfolioOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const item = useMemo(
     () => (params.id && user?.id ? getServiceHistoryByIdForProvider(user.id, params.id) : undefined),
     [params.id, user?.id, storeVersion]
   );
 
+  const featuredCount = useMemo(
+    () => (user?.id ? countFeaturedProjects(user.id, params.id) : 0),
+    [user?.id, params.id, storeVersion]
+  );
+
   const offerSnap = useMemo(
     () => (item ? getOfferById(item.offerId) : undefined),
     [item?.offerId]
   );
+
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("portfolio") === "edit" && item && (item.afterPhotos?.length ?? 0) > 0) {
+      setPortfolioOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.id]);
+
+  async function handleAddPhotos(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (!files.length || !item) return;
+    const current = item.afterPhotos ?? [];
+    const room = MAX_AFTER_PHOTOS - current.length;
+    if (room <= 0) return;
+    setUploading(true);
+    try {
+      const next: string[] = [];
+      for (const f of files.slice(0, room)) {
+        next.push(await compressImage(f, 1024, 0.72));
+      }
+      setAfterPhotos(item.id, [...current, ...next].slice(0, MAX_AFTER_PHOTOS));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleSavePortfolio(project: PortfolioProject) {
+    if (!item) return;
+    savePortfolioProject(item.id, project);
+  }
+
+  function handleRemovePortfolio() {
+    if (!item) return;
+    removePortfolioProject(item.id);
+  }
 
   if (!item) {
     return (
@@ -171,7 +224,25 @@ export default function ProviderHistoryDetailPage() {
               <Wallet className="w-4 h-4 text-gray-400" />
               <span>{Number(item.finalPrice).toLocaleString()} {tt.sumSuffix}</span>
             </div>
+            {typeof item.durationMinutes === "number" && item.durationMinutes > 0 && (
+              <div className="flex items-center gap-2 text-gray-700">
+                <Clock className="w-4 h-4 text-gray-400" />
+                <span>{item.durationMinutes} {td.minutesSuffix}</span>
+              </div>
+            )}
           </div>
+
+          {item.completionNotes && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <NotebookPen className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">
+                  {td.completionNotes}
+                </span>
+              </div>
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{item.completionNotes}</p>
+            </div>
+          )}
 
           {/* Open offer/request detail modal */}
           {offerSnap && (
@@ -197,22 +268,40 @@ export default function ProviderHistoryDetailPage() {
         </Section>
 
         {/* Photos */}
-        {(beforePhotos.length > 0 || afterPhotos.length > 0) && (
-          <Section icon={ImageIcon} title={td.photos}>
-            {beforePhotos.length > 0 && (
-              <div className="mb-3">
-                <p className="text-xs font-bold text-gray-500 mb-2">{td.beforePhotos}</p>
-                <PhotoGrid photos={beforePhotos} onOpen={setZoom} />
-              </div>
+        <Section icon={ImageIcon} title={td.photos}>
+          {beforePhotos.length > 0 && (
+            <div className="mb-3">
+              <p className="text-xs font-bold text-gray-500 mb-2">{td.beforePhotos}</p>
+              <PhotoGrid photos={beforePhotos} onOpen={setZoom} />
+            </div>
+          )}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-gray-500">{td.afterPhotos}</p>
+              <span className="text-[11px] text-gray-400">{afterPhotos.length}/{MAX_AFTER_PHOTOS}</span>
+            </div>
+            {afterPhotos.length > 0 && <PhotoGrid photos={afterPhotos} onOpen={setZoom} />}
+            {afterPhotos.length < MAX_AFTER_PHOTOS && (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="mt-2 w-full h-11 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center gap-2 text-sm font-bold text-gray-500 hover:border-violet-300 hover:text-violet-600 transition-colors disabled:opacity-50"
+              >
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                {td.addAfterPhotos}
+              </button>
             )}
-            {afterPhotos.length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-gray-500 mb-2">{td.afterPhotos}</p>
-                <PhotoGrid photos={afterPhotos} onOpen={setZoom} />
-              </div>
-            )}
-          </Section>
-        )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              hidden
+              onChange={handleAddPhotos}
+            />
+          </div>
+        </Section>
 
         {/* Review */}
         {(typeof item.rating === "number" || item.review) && (
@@ -234,33 +323,67 @@ export default function ProviderHistoryDetailPage() {
           </Section>
         )}
 
-        {/* Portfolio toggle */}
-        <button
-          type="button"
-          onClick={() => setPortfolio(item.id, !item.isPortfolio)}
-          className={`w-full rounded-2xl border p-4 flex items-center justify-between gap-3 transition-colors ${
-            item.isPortfolio
-              ? "bg-fuchsia-50 border-fuchsia-200"
-              : "bg-white border-gray-200 hover:bg-gray-50"
-          }`}
-        >
-          <div className="flex items-center gap-2.5 text-left">
-            <BadgeCheck className={`w-5 h-5 flex-shrink-0 ${item.isPortfolio ? "text-fuchsia-600" : "text-gray-400"}`} />
-            <div>
-              <p className={`font-black text-sm ${item.isPortfolio ? "text-fuchsia-700" : "text-gray-800"}`}>
-                {item.isPortfolio ? td.removeFromPortfolio : td.addToPortfolio}
-              </p>
-              <p className="text-xs text-gray-500">{td.portfolioHint}</p>
+        {/* Portfolio */}
+        {item.isPortfolio && item.portfolioData ? (
+          <div className="rounded-2xl border border-fuchsia-200 bg-fuchsia-50 p-4">
+            <div className="flex items-start gap-2.5">
+              <BadgeCheck className="w-5 h-5 text-fuchsia-600 flex-shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-black text-sm text-fuchsia-700 truncate">{item.portfolioData.title}</p>
+                  {item.portfolioData.featured && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-fuchsia-600 text-white flex-shrink-0">
+                      <Pin className="w-2.5 h-2.5" />
+                      {td.featuredBadge}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-fuchsia-600/80 mt-0.5">{td.inPortfolio}</p>
+              </div>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPortfolioOpen(true)}
+                className="flex-1 h-10 rounded-xl bg-white border border-fuchsia-200 text-sm font-bold text-fuchsia-700 flex items-center justify-center gap-1.5 hover:bg-fuchsia-100 transition-colors"
+              >
+                <Pencil className="w-4 h-4" />
+                {td.editPortfolio}
+              </button>
+              <button
+                type="button"
+                onClick={handleRemovePortfolio}
+                className="h-10 px-4 rounded-xl bg-white border border-red-200 text-sm font-bold text-red-600 flex items-center justify-center gap-1.5 hover:bg-red-50 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                {td.removeFromPortfolio}
+              </button>
             </div>
           </div>
-          <span
-            className={`w-11 h-6 rounded-full flex items-center px-0.5 transition-colors flex-shrink-0 ${
-              item.isPortfolio ? "bg-fuchsia-500 justify-end" : "bg-gray-200 justify-start"
-            }`}
+        ) : afterPhotos.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setPortfolioOpen(true)}
+            className="w-full rounded-2xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-3 hover:bg-fuchsia-50 hover:border-fuchsia-200 transition-colors group"
           >
-            <span className="w-5 h-5 rounded-full bg-white shadow" />
-          </span>
-        </button>
+            <div className="flex items-center gap-2.5 text-left">
+              <Sparkles className="w-5 h-5 text-fuchsia-500 flex-shrink-0" />
+              <div>
+                <p className="font-black text-sm text-gray-800 group-hover:text-fuchsia-700">{td.createPortfolio}</p>
+                <p className="text-xs text-gray-500">{td.portfolioHint}</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-fuchsia-400 flex-shrink-0" />
+          </button>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-4 flex items-center gap-2.5">
+            <Sparkles className="w-5 h-5 text-gray-300 flex-shrink-0" />
+            <div>
+              <p className="font-black text-sm text-gray-500">{td.createPortfolio}</p>
+              <p className="text-xs text-gray-400">{td.portfolioNeedsPhotos}</p>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Existing offer detail modal (read-only) */}
@@ -271,6 +394,19 @@ export default function ProviderHistoryDetailPage() {
             offer={offerSnap}
             readOnly
             onClose={() => setSheetOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {portfolioOpen && (
+          <PortfolioProjectModal
+            key="history-portfolio-modal"
+            item={item}
+            existing={item.portfolioData}
+            featuredCount={featuredCount}
+            onSave={handleSavePortfolio}
+            onClose={() => setPortfolioOpen(false)}
           />
         )}
       </AnimatePresence>

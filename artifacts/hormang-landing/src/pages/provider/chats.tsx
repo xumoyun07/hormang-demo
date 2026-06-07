@@ -24,6 +24,8 @@ import { getAvgResponseMinutes, formatAvgResponseTime } from "@/lib/response-tim
 import { addReview, hasReviewedRequest } from "@/lib/completion-store";
 import { ReviewModal, type ReviewSubmitData } from "@/components/review-modal";
 import { ConfirmModal } from "@/components/confirm-modal";
+import { CompletionModal } from "@/components/completion-modal";
+import type { CompletionDetails } from "@/lib/requests-store";
 import { ChatHeaderActionsMenu } from "@/components/chat-header-actions-menu";
 import { ReportModal } from "@/components/report-modal";
 import { OfferDetailModal } from "@/components/offer-detail-modal";
@@ -467,13 +469,13 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
     e.target.value = "";
   }
 
-  function handleComplete() {
+  function handleComplete(details: CompletionDetails) {
     if (!offer || !chat) return;
     const result = confirmCompletion(offer.id, "provider", {
       providerConfirmed: t.chatPage.systemMsgProviderConfirmed,
       customerConfirmed: t.chatPage.systemMsgCustomerConfirmed,
       completed:         t.chatPage.systemMsgCompleted,
-    });
+    }, details);
     if (result === "completed" && !hasReviewedRequest(chat.requestId, masterId)) {
       setShowReview(true);
     }
@@ -796,11 +798,8 @@ function ChatView({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 
       <AnimatePresence>
         {showCompleteConfirm && (
-          <ConfirmModal
-            key="provider-chats-complete-confirm"
-            title={t.providerChats.complete.title}
-            message={t.providerChats.complete.message}
-            confirmText={t.providerChats.complete.confirm}
+          <CompletionModal
+            key="provider-chats-complete-modal"
             onConfirm={handleComplete}
             onClose={() => setShowCompleteConfirm(false)}
           />

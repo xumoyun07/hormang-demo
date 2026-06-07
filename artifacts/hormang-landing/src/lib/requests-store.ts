@@ -73,6 +73,19 @@ export interface Offer {
   /** Two-party completion flags — both must be true before status → "completed" */
   providerConfirmedCompleted?: boolean;
   customerConfirmedCompleted?: boolean;
+  /** Provider-supplied completion details (completion modal). Persisted on the
+   * offer so they survive a one-sided "waiting" confirmation and are captured in
+   * the Service-History snapshot whenever the offer is finally completed. */
+  completionAfterPhotos?: string[];
+  completionNotes?: string;
+  completionDurationMinutes?: number;
+}
+
+/** Provider completion details collected in the completion modal. */
+export interface CompletionDetails {
+  afterPhotos?: string[];
+  completionNotes?: string;
+  durationMinutes?: number;
 }
 
 /* ─── Offer Limit Constants ──────────────────────────────────────── */
@@ -581,10 +594,13 @@ function recordCompletionSnapshot(offer: Offer, request: CustomerRequest | undef
     emoji: request?.emoji,
     serviceTitle: request?.categoryName ?? "",
     serviceDescription: snapshotDescription(request?.answers),
+    completionNotes: offer.completionNotes,
+    durationMinutes: offer.completionDurationMinutes,
     finalPrice: offer.price,
     region: request?.region,
     district: request?.district,
     beforePhotos: request?.requestPhotos,
+    afterPhotos: offer.completionAfterPhotos,
   });
 }
 
@@ -603,7 +619,8 @@ function recordCompletionSnapshot(offer: Offer, request: CustomerRequest | undef
 export function confirmCompletion(
   offerId: string,
   role: "provider" | "customer",
-  systemMsgs?: { providerConfirmed: string; customerConfirmed: string; completed: string }
+  systemMsgs?: { providerConfirmed: string; customerConfirmed: string; completed: string },
+  details?: CompletionDetails
 ): "completed" | "waiting" {
   const allOffers = getOffers();
   const target = allOffers.find((o) => o.id === offerId);
@@ -614,6 +631,19 @@ export function confirmCompletion(
     ...target,
     providerConfirmedCompleted: role === "provider" ? true : target.providerConfirmedCompleted,
     customerConfirmedCompleted: role === "customer" ? true : target.customerConfirmedCompleted,
+    // Persist provider completion details (only the provider supplies these).
+    completionAfterPhotos:
+      role === "provider" && details?.afterPhotos?.length
+        ? details.afterPhotos
+        : target.completionAfterPhotos,
+    completionNotes:
+      role === "provider" && details?.completionNotes?.trim()
+        ? details.completionNotes.trim()
+        : target.completionNotes,
+    completionDurationMinutes:
+      role === "provider" && details?.durationMinutes && details.durationMinutes > 0
+        ? details.durationMinutes
+        : target.completionDurationMinutes,
   };
 
   if (updated.providerConfirmedCompleted && updated.customerConfirmedCompleted) {
@@ -629,7 +659,7 @@ export function confirmCompletion(
       if (request.customerId) incrementCompletedCount(request.customerId, "customer");
     }
     incrementCompletedCount(target.masterId, "provider");
-    recordCompletionSnapshot(target, request);
+    recordCompletionSnapshot(updated, request);
     sendSystemMessage(
       `${target.requestId}_${target.masterId}`,
       systemMsgs?.completed ?? "✅ Xizmat yakunlandi! Hamkorlik uchun rahmat."

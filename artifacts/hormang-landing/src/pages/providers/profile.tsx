@@ -11,7 +11,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { onStoreChange } from "@/lib/store-events";
 import { getLocalProfile, type LocalProfile, type PortfolioItem } from "@/lib/local-profile";
 import { getCompletedCount } from "@/lib/completion-store";
-import { getPortfolioItems, type ServiceHistory } from "@/lib/service-history-store";
+import { getPublicPortfolio, type PublicPortfolioProject } from "@/lib/service-history-store";
+import { PortfolioDetailModal } from "@/components/portfolio-detail-modal";
 import { CategoryIcon } from "@/components/category-icon";
 import { getCategoryDisplayName } from "@/lib/categories";
 import { formatDate } from "@/lib/date-utils";
@@ -88,6 +89,7 @@ export default function ProviderProfilePage() {
   const [localData, setLocalData] = useState<LocalProfile>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedProject, setSelectedProject] = useState<PublicPortfolioProject | null>(null);
 
   const isOwnProfile = !!currentUser && !!provider && currentUser.id === provider.id;
 
@@ -159,7 +161,7 @@ export default function ProviderProfilePage() {
   const district = localData.district ?? "";
   const experience = localData.experience;
   const portfolioItems: PortfolioItem[] = localData.portfolioItems ?? [];
-  const completedPortfolio: ServiceHistory[] = getPortfolioItems(provider.id);
+  const publicPortfolio: PublicPortfolioProject[] = getPublicPortfolio(provider.id);
   const bio = profile?.bio ?? "";
   const categories: string[] = profile?.categories ?? [];
   const serviceAreas: string[] = localData.serviceAreas ?? [];
@@ -324,11 +326,11 @@ export default function ProviderProfilePage() {
             )}
           </AnimatePresence>
 
-          {/* ── Completed work portfolio ── */}
+          {/* ── Work portfolio (published projects) ── */}
           <AnimatePresence>
-            {completedPortfolio.length > 0 && (
+            {publicPortfolio.length > 0 && (
               <motion.div
-                key="completed-portfolio"
+                key="work-portfolio"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
@@ -336,39 +338,53 @@ export default function ProviderProfilePage() {
                 className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5"
               >
                 <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">
-                  {tFormat(tt.completedWorkLabelTpl, { n: completedPortfolio.length })}
+                  {tFormat(tt.workPortfolioLabelTpl, { n: publicPortfolio.length })}
                 </p>
-                <div className="space-y-2.5">
-                  {completedPortfolio.map((job) => {
-                    const cover = job.afterPhotos?.[0] ?? job.beforePhotos?.[0];
-                    return (
-                      <div key={job.id} className="flex items-center gap-3 rounded-2xl border border-gray-100 p-2.5">
-                        {cover ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {publicPortfolio.map((project) => (
+                    <button
+                      key={project.id}
+                      type="button"
+                      onClick={() => setSelectedProject(project)}
+                      className="text-left rounded-2xl border border-gray-100 overflow-hidden hover:border-violet-200 hover:shadow-sm transition-all active:scale-[.98]"
+                    >
+                      <div className="aspect-square bg-gray-100 relative">
+                        {project.coverPhoto ? (
                           <img
-                            src={cover}
-                            alt={job.serviceTitle}
-                            className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+                            src={project.coverPhoto}
+                            alt={project.title}
+                            loading="lazy"
+                            className="w-full h-full object-cover"
                           />
                         ) : (
-                          <CategoryIcon categoryId={job.categoryId} emoji={job.emoji} size={56} shape="square" className="flex-shrink-0" />
+                          <div className="w-full h-full flex items-center justify-center">
+                            <CategoryIcon categoryId={project.categoryId} emoji={project.emoji} size={48} shape="square" />
+                          </div>
                         )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm text-gray-900 truncate">
-                            {getCategoryDisplayName(job.categoryId, locale, job.serviceTitle)}
-                          </p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {formatDate(job.completedAt, { months: t.shared.months })}
-                          </p>
-                        </div>
-                        {typeof job.rating === "number" && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100 flex-shrink-0">
-                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                            {job.rating.toFixed(1)}
+                        {project.featured && (
+                          <span className="absolute top-2 left-2 inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-fuchsia-600 text-white">
+                            <Award className="w-2.5 h-2.5" />
+                            {tt.portfolioFeatured}
+                          </span>
+                        )}
+                        {typeof project.rating === "number" && (
+                          <span className="absolute bottom-2 right-2 inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-black/60 text-white">
+                            <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+                            {project.rating.toFixed(1)}
                           </span>
                         )}
                       </div>
-                    );
-                  })}
+                      <div className="p-2.5">
+                        <p className="font-bold text-xs text-gray-900 truncate">{project.title}</p>
+                        <p className="text-[10px] text-violet-600 font-semibold truncate mt-0.5">
+                          {getCategoryDisplayName(project.categoryId, locale, project.categoryName)}
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          {formatDate(project.completedAt, { months: t.shared.months })}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </motion.div>
             )}
@@ -434,6 +450,16 @@ export default function ProviderProfilePage() {
           )}
         </motion.div>
       </main>
+
+      <AnimatePresence>
+        {selectedProject && (
+          <PortfolioDetailModal
+            key="portfolio-detail"
+            project={selectedProject}
+            onClose={() => setSelectedProject(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
