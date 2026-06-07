@@ -538,10 +538,10 @@ function ProviderContent({ onNavigate }: { onNavigate: (path: string) => void })
               <span className="text-gray-200">·</span>
               <button
                 className="flex items-center gap-1"
-                onClick={() => toast({ title: t.dashboard.historyToast })}
+                onClick={() => onNavigate("/provider/history")}
               >
                 <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                <span className="text-xs font-semibold text-gray-600 underline" onClick={() => onNavigate("/provider/history")}> {tFormat(t.dashboard.completedSuffixTpl, { count: completedCount })}</span>
+                <span className="text-xs font-semibold text-gray-600 underline">{tFormat(t.dashboard.completedSuffixTpl, { count: completedCount })}</span>
               </button>
             </div>
 
