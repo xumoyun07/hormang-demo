@@ -1787,6 +1787,7 @@ export const en: Dict = {
       title: "Service details",
       back: "Back to history",
       details: "Details",
+      requestDescription: "Customer's request",
       finalPrice: "Final price",
       photos: "Photos",
       beforePhotos: "Before",

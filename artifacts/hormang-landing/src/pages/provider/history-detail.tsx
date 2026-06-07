@@ -164,9 +164,14 @@ export default function ProviderHistoryDetailPage() {
             </div>
           </div>
           {item.serviceDescription && (
-            <p className="text-sm text-gray-600 leading-relaxed mt-3 pt-3 border-t border-gray-50">
-              {item.serviceDescription}
-            </p>
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
+                {td.requestDescription}
+              </p>
+              <div className="bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm text-gray-700 leading-relaxed">
+                {item.serviceDescription}
+              </div>
+            </div>
           )}
         </Section>
 

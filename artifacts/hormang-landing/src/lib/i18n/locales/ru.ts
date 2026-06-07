@@ -1789,6 +1789,7 @@ export const ru: Dict = {
       title: "Детали услуги",
       back: "Назад к истории",
       details: "Детали",
+      requestDescription: "Запрос заказчика",
       finalPrice: "Итоговая цена",
       photos: "Фотографии",
       beforePhotos: "До работы",
