@@ -4,23 +4,52 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, CheckCircle2, Wallet, MapPin, Star, Repeat, BadgeCheck,
   CalendarDays, UserRound, FileText, Image as ImageIcon, MessageSquare, X,
+  ChevronRight, Send,
 } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { Button } from "@/components/ui/button";
 import { StarRating } from "@/components/star-rating";
 import { CategoryIcon } from "@/components/category-icon";
+import { BottomSheet } from "@/components/settings/bottom-sheet";
 import { useStoreRefresh } from "@/hooks/use-store-refresh";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { formatDate } from "@/lib/date-utils";
 import { getCategoryDisplayName } from "@/lib/categories";
 import { getRequestLocation } from "@/lib/regions";
+import { getRequestById, getOfferById } from "@/lib/requests-store";
+import { getAllQuestionsForCategory, collectActiveQuestions, type QuestionOption } from "@/lib/questionnaire-store";
+import { getLocalizedText } from "@/lib/localization";
 import {
   getServiceHistoryByIdForProvider,
   setPortfolio,
 } from "@/lib/service-history-store";
 
 const VIOLET = "linear-gradient(135deg, hsl(262,80%,54%) 0%, hsl(236,76%,60%) 100%)";
+
+const SKIP_KEYS = new Set(["budget_open", "urgency", "budget", "region", "district", "location"]);
+
+function fmtAnswer(value: unknown, options?: QuestionOption[], otherText?: string, locale?: string): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "string" && value.startsWith("data:")) return "__IMAGE__";
+  if (typeof value === "boolean") return value ? "✓" : "—";
+  if (typeof value === "number") return value.toLocaleString();
+  const optLabel = (o: QuestionOption) => getLocalizedText(o.labelLocalized ?? o.label, (locale ?? "uz") as "uz" | "ru");
+  const otherOpt = options?.find((o) => o.type === "other");
+  if (typeof value === "string") {
+    if (otherOpt && value === otherOpt.value && otherText) return otherText;
+    const match = options?.find((o) => o.value === value);
+    return match ? optLabel(match) : value;
+  }
+  if (Array.isArray(value)) {
+    return (value as string[]).map((v) => {
+      if (otherOpt && v === otherOpt.value && otherText) return otherText;
+      const match = options?.find((o) => o.value === v);
+      return match ? optLabel(match) : v;
+    }).join(", ");
+  }
+  return String(value);
+}
 
 function PhotoGrid({ photos, onOpen }: { photos: string[]; onOpen: (url: string) => void }) {
   return (
@@ -60,11 +89,39 @@ export default function ProviderHistoryDetailPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [zoom, setZoom] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const item = useMemo(
     () => (params.id && user?.id ? getServiceHistoryByIdForProvider(user.id, params.id) : undefined),
     [params.id, user?.id, storeVersion]
   );
+
+  const reqSnap = useMemo(
+    () => (item ? getRequestById(item.requestId) : undefined),
+    [item?.requestId]
+  );
+
+  const offerSnap = useMemo(
+    () => (item ? getOfferById(item.offerId) : undefined),
+    [item?.offerId]
+  );
+
+  const qaPairs = useMemo(() => {
+    if (!reqSnap) return [];
+    const allQ = getAllQuestionsForCategory(reqSnap.categoryId);
+    const active = collectActiveQuestions(allQ, (reqSnap.answers ?? {}) as Record<string, unknown>);
+    return active
+      .filter((q) => !SKIP_KEYS.has(q.id))
+      .map((q) => {
+        const raw = reqSnap.answers?.[q.id];
+        if (raw === null || raw === undefined || raw === "" || (Array.isArray(raw) && raw.length === 0)) return null;
+        const otherText = reqSnap.answers?.[q.id + "_other"] as string | undefined;
+        const formatted = fmtAnswer(raw, q.options, otherText, locale);
+        if (formatted === "__IMAGE__") return null;
+        return { label: getLocalizedText(q.labelLocalized ?? q.label, locale as "uz" | "ru"), value: formatted };
+      })
+      .filter(Boolean) as { label: string; value: string }[];
+  }, [reqSnap, locale]);
 
   if (!item) {
     return (
@@ -163,16 +220,26 @@ export default function ProviderHistoryDetailPage() {
               <span>{Number(item.finalPrice).toLocaleString()} {tt.sumSuffix}</span>
             </div>
           </div>
-          {item.serviceDescription && (
-            <div className="mt-3 pt-3 border-t border-gray-100">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
-                {td.requestDescription}
-              </p>
-              <div className="bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm text-gray-700 leading-relaxed">
-                {item.serviceDescription}
+
+          {/* Request-offer details button */}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={() => setSheetOpen(true)}
+              className="w-full flex items-center justify-between gap-2 rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5 hover:bg-violet-50 hover:border-violet-100 transition-colors group"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="w-3.5 h-3.5 text-gray-400 group-hover:text-violet-500 flex-shrink-0 transition-colors" />
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider group-hover:text-violet-600 transition-colors">
+                  {td.requestDescription}
+                </span>
               </div>
-            </div>
-          )}
+              <div className="flex items-center gap-1 text-violet-600 flex-shrink-0">
+                <span className="text-xs font-bold">{td.viewRequest}</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </div>
+            </button>
+          </div>
         </Section>
 
         {/* Photos */}
@@ -241,6 +308,52 @@ export default function ProviderHistoryDetailPage() {
           </span>
         </button>
       </main>
+
+      {/* Request & Offer bottom sheet */}
+      <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} title={td.sheetTitle}>
+        <div className="px-5 pb-6 space-y-5">
+
+          {/* Request Q&A */}
+          <div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
+              {td.sectionRequest}
+            </p>
+            {qaPairs.length > 0 ? (
+              <div className="space-y-2.5">
+                {qaPairs.map(({ label, value }) => (
+                  <div key={label} className="bg-gray-50 rounded-xl px-3 py-2.5">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
+                    <p className="text-sm font-semibold text-gray-800 leading-snug">{value}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 italic">—</p>
+            )}
+          </div>
+
+          {/* Offer message */}
+          {(offerSnap?.message || item.serviceDescription) && (
+            <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
+                {td.sectionOffer}
+              </p>
+              <div className="bg-violet-50 border border-violet-100 rounded-xl px-3 py-3 flex gap-2.5">
+                <Send className="w-4 h-4 text-violet-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {offerSnap?.message || item.serviceDescription}
+                </p>
+              </div>
+              {offerSnap && (
+                <p className="text-xs text-gray-400 mt-2 text-right">
+                  {Number(offerSnap.price).toLocaleString()} {tt.sumSuffix}
+                </p>
+              )}
+            </div>
+          )}
+
+        </div>
+      </BottomSheet>
 
       <AnimatePresence>
         {zoom && (
