@@ -220,20 +220,27 @@ export function countFeaturedProjects(providerId: string, excludeId?: string): n
 
 /**
  * Publish (or update) a completed job as a portfolio project. Sets
- * `portfolioData` and flips `isPortfolio` to true. The caller is responsible for
- * enforcing the featured cap (see countFeaturedProjects / MAX_FEATURED_PROJECTS).
+ * `portfolioData` and flips `isPortfolio` to true. The featured cap
+ * (MAX_FEATURED_PROJECTS) is enforced here at the data layer: if the provider
+ * already has the maximum number of featured projects, `featured` is forced to
+ * false even when the caller requests it.
  */
 export function savePortfolioProject(id: string, project: PortfolioProject): void {
   const history = allHistory();
-  let changed = false;
-  const next = history.map((h) => {
-    if (h.id === id) {
-      changed = true;
-      return { ...h, isPortfolio: true, portfolioData: project };
+  const target = history.find((h) => h.id === id);
+  if (!target) return;
+
+  let resolved = project;
+  if (project.featured) {
+    const featuredCount = countFeaturedProjects(target.providerId, id);
+    if (featuredCount >= MAX_FEATURED_PROJECTS) {
+      resolved = { ...project, featured: false };
     }
-    return h;
-  });
-  if (!changed) return;
+  }
+
+  const next = history.map((h) =>
+    h.id === id ? { ...h, isPortfolio: true, portfolioData: resolved } : h
+  );
   writeJSON(HISTORY_KEY, next);
   emitStoreChange();
 }
@@ -299,11 +306,6 @@ export function getServiceHistoryByIdForProvider(
   if (!providerId) return undefined;
   const found = allHistory().find((h) => h.id === id && h.providerId === providerId);
   return found ? enrich(found) : undefined;
-}
-
-/** Portfolio-flagged completed services for a provider, newest first. */
-export function getPortfolioItems(providerId: string): ServiceHistory[] {
-  return getProviderHistory(providerId).filter((h) => h.isPortfolio);
 }
 
 /**
