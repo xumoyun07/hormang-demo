@@ -31,11 +31,46 @@ import { getBadges } from "@/lib/badge-store";
 import { useAuth } from "@/contexts/auth-context";
 import { useI18n } from "@/contexts/i18n-context";
 import { tFormat } from "@/lib/i18n";
-import type {
-  ProviderProfileData,
-  CustomerProfileData,
-  PublicProfileModalProps,
-} from "@/components/public-profile-modal";
+import { getPublicPortfolio, type PublicPortfolioProject } from "@/lib/service-history-store";
+import { PortfolioDetailModal } from "@/components/portfolio-detail-modal";
+import { CategoryIcon } from "@/components/category-icon";
+import { formatDate } from "@/lib/date-utils";
+
+/* ─── Prop types (unified — formerly in public-profile-modal) ─────────── */
+export interface ProviderProfileData {
+  masterId: string;
+  masterName: string;
+  masterInitials: string;
+  masterColor: string;
+  avgResponseTime?: number;
+  categoryName?: string;
+  categoryEmoji?: string;
+}
+
+export interface CustomerProfileData {
+  customerName: string;
+  customerInitials?: string;
+  customerColor?: string;
+  /**
+   * Preferred: pass the customer's userId so the sheet can auto-load
+   * their photo from localStorage (mirrors what ProviderSheet does with masterId).
+   */
+  customerId?: string;
+  /** Explicit photo override — used when customerId is not available. */
+  photoUrl?: string;
+  region?: string;
+  district?: string;
+  joinedAt?: string;
+  categoryName?: string;
+  categoryEmoji?: string;
+}
+
+export interface PublicProfileModalProps {
+  mode: "provider" | "customer";
+  providerData?: ProviderProfileData;
+  customerData?: CustomerProfileData;
+  onClose: () => void;
+}
 
 /* ─── Theme ──────────────────────────────────────────────────────────── */
 const VIOLET       = "hsl(262,80%,54%)";
@@ -142,6 +177,9 @@ function ProviderPreviewSheet({
   const [showReport, setShowReport]   = useState(false);
   const [showBadgeHint, setShowBadgeHint] = useState(false);
   const pBadges = getBadges(data.masterId);
+
+  const publicPortfolio = getPublicPortfolio(data.masterId);
+  const [selectedProject, setSelectedProject] = useState<PublicPortfolioProject | null>(null);
 
   const canReport = user && user.id !== data.masterId;
   const blocked = user && user.id !== data.masterId ? isBlockedBy(user.id, data.masterId) : false;
@@ -407,28 +445,79 @@ function ProviderPreviewSheet({
               </div>
             )}
 
-            {/* ── Portfolio albums ── */}
-            {albums.length > 0 && (
+            {/* ── Portfolio (completed work + uploaded albums) ── */}
+            {(publicPortfolio.length > 0 || albums.length > 0) && (
               <div className="mb-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{tt.portfolioLabel}</p>
-                  <span className="text-xs text-violet-600 font-bold">
-                    {tFormat(tt.portfolioCountTpl, { photos: allPhotos.length, albums: albums.length })}
-                  </span>
-                </div>
-                {albums.map((album) => (
-                  <div key={album.id}>
-                    <p className="text-xs font-semibold text-gray-700 mb-1.5">
-                      {album.title} <span className="text-gray-400 font-normal">{tFormat(tt.portfolioAlbumCountTpl, { n: album.photos.length })}</span>
-                    </p>
-                    <ImageGrid
-                      urls={album.photos.map((p) => p.url)}
-                      maxVisible={6}
-                      columns={3}
-                      compact
-                    />
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{tt.portfolioLabel}</p>
+
+                {/* Completed-work projects (sanitized — no customer data) */}
+                {publicPortfolio.length > 0 && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {publicPortfolio.map((project) => (
+                      <button
+                        key={project.id}
+                        type="button"
+                        onClick={() => setSelectedProject(project)}
+                        className="text-left rounded-2xl border border-gray-100 overflow-hidden hover:border-violet-200 hover:shadow-sm transition-all active:scale-[.98]"
+                      >
+                        <div className="aspect-square bg-gray-100 relative">
+                          {project.coverPhoto ? (
+                            <img
+                              src={project.coverPhoto}
+                              alt={project.title}
+                              loading="lazy"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <CategoryIcon categoryId={project.categoryId} emoji={project.emoji} size={48} shape="square" />
+                            </div>
+                          )}
+                          {project.featured && (
+                            <span className="absolute top-2 left-2 inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full bg-fuchsia-600 text-white">
+                              <Award className="w-2.5 h-2.5" />
+                              {t.providerProfilePage.portfolioFeatured}
+                            </span>
+                          )}
+                          {typeof project.rating === "number" && (
+                            <span className="absolute bottom-2 right-2 inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-black/60 text-white">
+                              <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+                              {project.rating.toFixed(1)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-2.5">
+                          <p className="font-bold text-xs text-gray-900 truncate">{project.title}</p>
+                          <p className="text-[10px] text-violet-600 font-semibold truncate mt-0.5">
+                            {getCategoryDisplayName(project.categoryId, locale, project.categoryName)}
+                          </p>
+                          <p className="text-[10px] text-gray-400 mt-0.5">
+                            {formatDate(project.completedAt, { months: t.shared.months })}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                ))}
+                )}
+
+                {/* Uploaded gallery albums */}
+                {albums.length > 0 && (
+                  <div className="space-y-3">
+                    {albums.map((album) => (
+                      <div key={album.id}>
+                        <p className="text-xs font-semibold text-gray-700 mb-1.5">
+                          {album.title} <span className="text-gray-400 font-normal">{tFormat(tt.portfolioAlbumCountTpl, { n: album.photos.length })}</span>
+                        </p>
+                        <ImageGrid
+                          urls={album.photos.map((p) => p.url)}
+                          maxVisible={6}
+                          columns={3}
+                          compact
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -463,6 +552,17 @@ function ProviderPreviewSheet({
             reportedUserId={data.masterId}
             reportedName={data.masterName}
             onClose={() => setShowReport(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Portfolio project detail ── */}
+      <AnimatePresence>
+        {selectedProject && (
+          <PortfolioDetailModal
+            key="ppp-portfolio-detail"
+            project={selectedProject}
+            onClose={() => setSelectedProject(null)}
           />
         )}
       </AnimatePresence>
