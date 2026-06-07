@@ -1220,6 +1220,8 @@ export const en: Dict = {
     coverHint: "Choose the main displayed photo",
     additionalLabel: "Additional photos",
     additionalHint: "Select extra photos for the gallery",
+    photosLabel: "Photos",
+    photosHint: "Tap to include/remove • Crown = cover",
     featuredLabel: "Featured project",
     featuredHint: "Shown at the top of your profile",
     featuredLocked: "You can feature at most 3 projects",

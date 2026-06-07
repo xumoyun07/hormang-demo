@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { BadgeCheck, Check, Pin, Sparkles } from "lucide-react";
+import { BadgeCheck, Check, Crown, Pin, Sparkles } from "lucide-react";
 import { useI18n } from "@/contexts/i18n-context";
 import { getCategoryDisplayName } from "@/lib/categories";
 import {
@@ -39,25 +39,30 @@ export function PortfolioProjectModal({
     existing?.description ?? item.completionNotes ?? item.serviceDescription ?? ""
   );
   const [cover, setCover] = useState<string>(existing?.coverPhoto ?? photos[0] ?? "");
-  const [additional, setAdditional] = useState<string[]>(existing?.additionalPhotos ?? []);
+  const [included, setIncluded] = useState<Set<string>>(() => {
+    if (existing) {
+      return new Set([existing.coverPhoto, ...existing.additionalPhotos].filter(Boolean));
+    }
+    return new Set(photos);
+  });
   const [featured, setFeatured] = useState(existing?.featured ?? false);
 
   const featuredLocked = !featured && featuredCount >= MAX_FEATURED_PROJECTS;
   const hasPhotos = photos.length > 0;
   const canSave = hasPhotos && !!cover && title.trim().length > 0 && description.trim().length > 0;
 
-  const additionalSet = useMemo(() => new Set(additional), [additional]);
-
-  function toggleAdditional(url: string) {
-    if (url === cover) return; // cover can't double as additional
-    setAdditional((prev) =>
-      prev.includes(url) ? prev.filter((u) => u !== url) : [...prev, url]
-    );
+  function toggleIncluded(url: string) {
+    if (url === cover) return; // cover is always included
+    setIncluded((prev) => {
+      const next = new Set(prev);
+      if (next.has(url)) next.delete(url); else next.add(url);
+      return next;
+    });
   }
 
-  function selectCover(url: string) {
+  function setCoverPhoto(url: string) {
     setCover(url);
-    setAdditional((prev) => prev.filter((u) => u !== url));
+    setIncluded((prev) => (prev.has(url) ? prev : new Set([...prev, url])));
   }
 
   function handleSave() {
@@ -66,7 +71,7 @@ export function PortfolioProjectModal({
       title: title.trim(),
       description: description.trim(),
       coverPhoto: cover,
-      additionalPhotos: additional,
+      additionalPhotos: photos.filter((u) => u !== cover && included.has(u)),
       featured,
       createdAt: existing?.createdAt ?? new Date().toISOString(),
     });
@@ -146,67 +151,59 @@ export function PortfolioProjectModal({
                 <p className="text-[11px] text-gray-400 mt-1 text-right">{description.length}/{MAX_DESC}</p>
               </div>
 
-              {/* Cover photo */}
+              {/* Unified photo selector — include/exclude + cover */}
               <div>
-                <p className="text-sm font-black text-gray-800">{tt.coverLabel}</p>
-                <p className="text-xs text-gray-400 mb-2.5">{tt.coverHint}</p>
+                <p className="text-sm font-black text-gray-800">{tt.photosLabel}</p>
+                <p className="text-xs text-gray-400 mb-2.5">{tt.photosHint}</p>
                 <div className="grid grid-cols-4 gap-2">
                   {photos.map((url, i) => {
                     const isCover = url === cover;
+                    const isIncluded = included.has(url);
                     return (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => selectCover(url)}
-                        className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-colors ${
-                          isCover ? "border-violet-500" : "border-transparent"
-                        }`}
-                      >
-                        <img src={url} alt="" className="w-full h-full object-cover" />
-                        {isCover && (
-                          <span className="absolute inset-0 bg-violet-600/30 flex items-center justify-center">
-                            <span className="w-6 h-6 rounded-full bg-violet-600 text-white flex items-center justify-center">
-                              <Check className="w-4 h-4" />
+                      <div key={i} className="relative aspect-square">
+                        {/* Tap whole tile = toggle included */}
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => toggleIncluded(url)}
+                          onKeyDown={(e) => e.key === "Enter" && toggleIncluded(url)}
+                          className={`w-full h-full rounded-xl overflow-hidden border-2 transition-all cursor-pointer select-none ${
+                            isCover
+                              ? "border-violet-500"
+                              : isIncluded
+                              ? "border-violet-300"
+                              : "border-transparent"
+                          }`}
+                        >
+                          <img src={url} alt="" className="w-full h-full object-cover" />
+                          {!isIncluded && (
+                            <span className="absolute inset-0 bg-white/55 rounded-xl" />
+                          )}
+                          {isIncluded && !isCover && (
+                            <span className="absolute top-1 left-1 w-5 h-5 rounded-full bg-violet-500 text-white flex items-center justify-center pointer-events-none">
+                              <Check className="w-3 h-3" />
                             </span>
-                          </span>
-                        )}
-                      </button>
+                          )}
+                        </div>
+
+                        {/* Crown button = set as cover */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setCoverPhoto(url); }}
+                          className={`absolute top-1 right-1 w-6 h-6 rounded-full flex items-center justify-center transition-all shadow-sm ${
+                            isCover
+                              ? "bg-violet-600 text-white"
+                              : "bg-black/40 text-white/80 hover:bg-black/60"
+                          }`}
+                          aria-label={tt.coverLabel}
+                        >
+                          <Crown className="w-3 h-3" />
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
               </div>
-
-              {/* Additional photos */}
-              {photos.length > 1 && (
-                <div>
-                  <p className="text-sm font-black text-gray-800">{tt.additionalLabel}</p>
-                  <p className="text-xs text-gray-400 mb-2.5">{tt.additionalHint}</p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {photos
-                      .filter((url) => url !== cover)
-                      .map((url, i) => {
-                        const selected = additionalSet.has(url);
-                        return (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => toggleAdditional(url)}
-                            className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-colors ${
-                              selected ? "border-fuchsia-500" : "border-transparent"
-                            }`}
-                          >
-                            <img src={url} alt="" className="w-full h-full object-cover" />
-                            {selected && (
-                              <span className="absolute top-1 right-1 w-5 h-5 rounded-full bg-fuchsia-500 text-white flex items-center justify-center">
-                                <Check className="w-3 h-3" />
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
 
               {/* Featured */}
               <button

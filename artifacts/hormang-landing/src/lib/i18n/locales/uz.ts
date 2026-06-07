@@ -1219,6 +1219,8 @@ export const uz = {
     coverHint: "Asosiy ko'rsatiladigan rasmni tanlang",
     additionalLabel: "Qo'shimcha rasmlar",
     additionalHint: "Galereyaga qo'shimcha rasmlar tanlang",
+    photosLabel: "Rasmlar",
+    photosHint: "Bosib rasmni tanlang/olib tashlang • Toj tugmasi — muqova",
     featuredLabel: "Tanlangan loyiha",
     featuredHint: "Profilingiz tepasida ko'rsatiladi",
     featuredLocked: "Eng ko'pi 3 ta tanlangan loyiha bo'lishi mumkin",

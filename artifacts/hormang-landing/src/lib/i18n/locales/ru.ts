@@ -1222,6 +1222,8 @@ export const ru: Dict = {
     coverHint: "Выберите главное фото",
     additionalLabel: "Дополнительные фото",
     additionalHint: "Выберите фото для галереи",
+    photosLabel: "Фотографии",
+    photosHint: "Нажмите, чтобы включить/убрать • Корона — обложка",
     featuredLabel: "Избранный проект",
     featuredHint: "Показывается вверху вашего профиля",
     featuredLocked: "Можно выбрать не более 3 избранных проектов",
